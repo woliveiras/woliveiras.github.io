@@ -1,0 +1,146 @@
+media:
+  input: src/assets
+  output: ../../assets
+
+content:
+  - name: config
+    label: Website configuration
+    path: src/config.json
+    type: file
+    fields:
+      - name: SITE_TITLE
+        label: Title
+        type: string
+      - name: SITE_DESCRIPTION
+        label: Description
+        type: string
+      - name: SITE_FAVICON
+        label: Favicon
+        type: string
+      - name: NAME
+        label: Your name
+        type: string
+      - name: POSTS_PER_PAGE
+        label: Posts per page
+        type: number
+        default: 5
+      - name: MANUAL_DARK_MODE
+        label: Show dark mode toggle
+        type: boolean
+        default: true
+      - name: SEARCH_ENABLED
+        label: Enable search
+        type: boolean
+        default: true
+      - name: BASE_COLOR
+        label: Base color
+        type: select
+        options:
+          values: [slate, stone, gray, neutral, zinc]
+      - name: ACCENT_COLOR
+        label: Accent color
+        type: select
+        options:
+          values:
+            [
+              red,
+              orange,
+              amber,
+              yellow,
+              lime,
+              green,
+              emerald,
+              teal,
+              cyan,
+              sky,
+              blue,
+              indigo,
+              violet,
+              purple,
+              fuchsia,
+              pink,
+              rose,
+            ]
+      - name: SOCIAL_LINKS
+        label: Social links
+        type: object
+        fields:
+          - name: FACEBOOK_URL
+            label: Facebook URL
+            type: string
+          - name: TWITTER_URL
+            label: Twitter URL
+            type: string
+          - name: INSTAGRAM_URL
+            label: Instagram URL
+            type: string
+          - name: LINKEDIN_URL
+            label: LinkedIn URL
+            type: string
+          - name: GITHUB_URL
+            label: GitHub URL
+            type: string
+          - name: EMAIL
+            label: Email
+            type: string
+          - name: YOUTUBE_URL
+            label: YouTube URL
+            type: string
+          - name: SUBSTACK_URL
+            label: Substack URL
+            type: string
+
+  - name: about
+    label: About page
+    path: src/content/info/about.md
+    type: file
+    fields:
+      - name: body
+        label: Body
+        type: rich-text
+
+  - name: description
+    label: Description
+    path: src/content/info/description.md
+    type: file
+    fields:
+      - name: body
+        label: Body
+        type: rich-text
+
+  - name: posts
+    label: Posts
+    path: src/content/blog
+    type: collection
+    filename: "{primary}.md"
+    view:
+      fields: [title, published, description, pubDate]
+      primary: title
+      sort: [date, title]
+      default:
+        search: ""
+        sort: title
+        order: desc
+    fields:
+      - name: title
+        label: Title
+        type: string
+      - name: description
+        label: Description
+        type: string
+      - name: published
+        label: Published
+        type: boolean
+        default: false
+      - name: pubDate
+        label: Creation date
+        type: date
+        options:
+          format: MMM dd yyyy
+          min: 2023-12-24
+      - name: heroImage
+        label: Hero Image
+        type: image
+      - name: body
+        label: Body
+        type: rich-text

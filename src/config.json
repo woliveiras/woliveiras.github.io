@@ -1,0 +1,28 @@
+{
+  "SITE": "https://flo-bit.dev",
+  "BASE": "/blog-template",
+  "SITE_TITLE": "Blog template",
+  "SITE_NAME": "blog template",
+  "SITE_DESCRIPTION": "Welcome to my website!",
+  "SITE_FAVICON": "🙃",
+  "NAME": "flo-bit",
+  "POSTS_PER_PAGE": 5,
+  "MANUAL_DARK_MODE": true,
+  "SEARCH_ENABLED": true,
+  "SHOW_IMAGES": true,
+  "BASE_COLOR": "stone",
+  "ACCENT_COLOR": "rose",
+  "SOCIAL_LINKS": {
+    "FACEBOOK_URL": "",
+    "TWITTER_URL": "",
+    "GITHUB_URL": "https://github.com/flo-bit",
+    "INSTAGRAM_URL": "",
+    "LINKEDIN_URL": "",
+    "YOUTUBE_URL": "",
+    "SUBSTACK_URL": "",
+    "EMAIL": "flo.bit.dev@gmail.com",
+    "BLUESKY_URL": "https://bsky.app/profile/flo-bit.dev",
+    "SHOW_RSS": true
+  },
+  "BLUESKY_IDENTIFIER": "flo-bit.dev"
+}
