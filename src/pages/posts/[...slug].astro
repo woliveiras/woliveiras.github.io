@@ -49,7 +49,7 @@ if (replacedHero && !images[replacedHero])
     <BlogPost>
       <div class="flex mt-8 items-center gap-x-4 text-xs">
         <FormattedDate date={post.data.pubDate} />
-        <div class="flex gap-x-2">
+        <div class="flex gap-x-2 flex-wrap">
           {post.data.tags?.map((tag: string) => <Tag {tag} />)}
         </div>
       </div>
