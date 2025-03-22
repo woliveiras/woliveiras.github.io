@@ -40,7 +40,7 @@ const { title, description, pubDate, slug, heroImage, tags, noImage } =
       <time datetime="2020-03-16" class="text-base-500">
         <FormattedDate date={pubDate} />
       </time>
-      {tags?.map((tag: string) => <Tag {tag} />)}
+      {tags?.slice(0, 2).map((tag: string) => <Tag {tag} />)}
     </div>
   </div>
 </article>
