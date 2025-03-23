@@ -5,7 +5,10 @@ pubDate: "Mar 23 2025"
 published: true
 tags: ["security", "github-actions", "npm", "docker"]
 ---
+
 We can enable the Dependabot versions to check our GitHub repositories for outdated dependencies by adding a `dependabot.yml` file in each repository's `.github` folder. We can also create a global .github folder for our organization or our GitHub user by creating a new repository with this name (".github") and adding the dependabot.yml.
+
+I strongly recommend you use a **service account** instead of your user to be the **assignee** of the Dependabot pull requests if you're setting it in your company repositories.
 
 In this example, I'm updating the dependencies for GitHub Actions, NPM, and Docker.
 
@@ -57,7 +60,20 @@ updates:
       prefix: 'chores(deps): update Docker deps'
 ```
 
-We can also ignore some dependencies by adding the `ignore` key.
+Take attention to your timezone in the settings in the line:
+
+```yml
+      timezone: 'Europe/Madrid'
+```
+
+In this example, in the commit message, I'm using the [conventional commits](https://www.conventionalcommits.org/en/v1.0.0/) standard. You can set it as you prefer.
+
+```yml
+    commit-message:
+      prefix: 'chores(deps): update npm packages'
+```
+
+We can also **ignore some dependencies** by adding the `ignore` key.
 
 ```yml
 # https://docs.github.com/en/github/administering-a-repository/configuration-options-for-dependency-updates
@@ -91,13 +107,13 @@ updates:
       - 'YOUR_USER or a SERVICE_ACCOUNT'
     commit-message:
       prefix: 'chores(deps): update npm packages'
-    ignore: // [!code highlight]
-      # Ignore updates to packages that start with 'react' // [!code highlight]
-      # Wildcards match zero or more arbitrary characters // [!code highlight]
-      - dependency-name: "react*" // [!code highlight]
-      # For all packages, ignore all patch updates // [!code highlight]
-      - dependency-name: "*" // [!code highlight]
-        update-types: ["version-update:semver-patch"] // [!code highlight]
+    ignore:
+      # Ignore updates to packages that start with 'react'
+      # Wildcards match zero or more arbitrary characters
+      - dependency-name: "react*"
+      # For all packages, ignore all patch updates
+      - dependency-name: "*"
+        update-types: ["version-update:semver-patch"]
 
  # Enable version updates for Docker
   - package-ecosystem: "docker"
