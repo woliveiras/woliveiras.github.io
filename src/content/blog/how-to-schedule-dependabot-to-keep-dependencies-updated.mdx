@@ -107,13 +107,13 @@ updates:
       - 'YOUR_USER or a SERVICE_ACCOUNT'
     commit-message:
       prefix: 'chores(deps): update npm packages'
-    ignore:
-      # Ignore updates to packages that start with 'react'
+    ignore: // [!code highlight]
+      # Ignore updates to packages that start with 'react' 
       # Wildcards match zero or more arbitrary characters
-      - dependency-name: "react*"
-      # For all packages, ignore all patch updates
-      - dependency-name: "*"
-        update-types: ["version-update:semver-patch"]
+      - dependency-name: "react*" // [!code highlight]
+      # For all packages, ignore all patch updates 
+      - dependency-name: "*" // [!code highlight]
+        update-types: ["version-update:semver-patch"] // [!code highlight]
 
  # Enable version updates for Docker
   - package-ecosystem: "docker"
