@@ -19,58 +19,58 @@ version: 2
 
 updates:
   # Maintain dependencies for GitHub Actions
-  - package-ecosystem: 'github-actions'
+  - package-ecosystem: "github-actions"
     # Workflow files stored in the default location of `.github/workflows`. (You don't need to specify `/.github/workflows` for `directory`. You can use `directory: "/"`.)
-    directory: '/'
+    directory: "/"
     schedule:
-      interval: 'weekly'
-      time: '08:00'
-      timezone: 'Europe/Madrid'
+      interval: "weekly"
+      time: "08:00"
+      timezone: "Europe/Madrid"
     assignees:
-      - 'YOUR_USER or a SERVICE_ACCOUNT'
+      - "YOUR_USER or a SERVICE_ACCOUNT"
     commit-message:
-      prefix: 'chore(deps): update actions'
+      prefix: "chore(deps): update actions"
 
   # Maintain dependencies for npm
-  - package-ecosystem: 'npm'
-    directory: '/'
+  - package-ecosystem: "npm"
+    directory: "/"
     open-pull-requests-limit: 5
     schedule:
-      interval: 'weekly'
-      day: 'monday'
-      time: '08:00'
-      timezone: 'Europe/Madrid'
+      interval: "weekly"
+      day: "monday"
+      time: "08:00"
+      timezone: "Europe/Madrid"
     assignees:
-      - 'YOUR_USER or a SERVICE_ACCOUNT'
+      - "YOUR_USER or a SERVICE_ACCOUNT"
     commit-message:
-      prefix: 'chores(deps): update npm packages'
+      prefix: "chores(deps): update npm packages"
 
- # Enable version updates for Docker
+  # Enable version updates for Docker
   - package-ecosystem: "docker"
     # Look for a `Dockerfile` in the `root` directory
     directory: "/"
     schedule:
-      interval: 'weekly'
-      day: 'monday'
-      time: '08:00'
-      timezone: 'Europe/Madrid'
+      interval: "weekly"
+      day: "monday"
+      time: "08:00"
+      timezone: "Europe/Madrid"
     assignees:
-      - 'YOUR_USER or a SERVICE_ACCOUNT'
+      - "YOUR_USER or a SERVICE_ACCOUNT"
     commit-message:
-      prefix: 'chores(deps): update Docker deps'
+      prefix: "chores(deps): update Docker deps"
 ```
 
 Take attention to your timezone in the settings in the line:
 
 ```yml title="dependabot.yml"
-      timezone: 'Europe/Madrid'
+timezone: "Europe/Madrid"
 ```
 
 In this example, in the commit message, I'm using the [conventional commits](https://www.conventionalcommits.org/en/v1.0.0/) standard. You can set it as you prefer.
 
 ```yml
-    commit-message:
-      prefix: 'chores(deps): update npm packages'
+commit-message:
+  prefix: "chores(deps): update npm packages"
 ```
 
 We can also **ignore some dependencies** by adding the `ignore` key.
@@ -108,10 +108,10 @@ updates:
     commit-message:
       prefix: 'chores(deps): update npm packages'
     ignore: // [!code highlight]
-      # Ignore updates to packages that start with 'react' 
+      # Ignore updates to packages that start with 'react'
       # Wildcards match zero or more arbitrary characters
       - dependency-name: "react*" // [!code highlight]
-      # For all packages, ignore all patch updates 
+      # For all packages, ignore all patch updates
       - dependency-name: "*" // [!code highlight]
         update-types: ["version-update:semver-patch"] // [!code highlight]
 

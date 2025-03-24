@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "astro dev",
     "start": "astro dev",
-    "build": "astro check && astro build && pagefind",
+    "build": "astro check && astro build",
+    "postbuild": "pagefind",
     "preview": "astro preview",
     "astro": "astro",
     "format": "prettier --write ."

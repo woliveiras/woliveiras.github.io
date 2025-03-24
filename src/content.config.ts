@@ -1,10 +1,10 @@
 import { defineCollection, z } from "astro:content";
-import { glob } from 'astro/loaders';
+import { glob } from "astro/loaders";
 
 const blog = defineCollection({
-	loader: glob({ pattern: '**/[^_]*.{md,mdx}', base: "./src/content/blog/" }),
- 	// Type-check frontmatter using a schema
-  	schema: z.object({
+  loader: glob({ pattern: "**/[^_]*.{md,mdx}", base: "./src/content/blog/" }),
+  // Type-check frontmatter using a schema
+  schema: z.object({
     // title of the blog post, don't repeat this in the markdown part
     title: z.string(),
 
@@ -14,7 +14,7 @@ const blog = defineCollection({
     disableComments: z.boolean().optional(),
 
     disableLikes: z.boolean().optional(),
-    
+
     // date published
     pubDate: z.coerce.date(),
 
@@ -41,7 +41,7 @@ const blog = defineCollection({
 
     // whether to use the hero image as the og image (instead of the default `/src/assets/background.png`)
     useHeroAsOGImage: z.boolean().optional(),
-    
+
     // wether to show title and short description in the og image
     noTextInOGImage: z.boolean().optional(),
   }),
@@ -49,7 +49,6 @@ const blog = defineCollection({
 
 import { authorFeedLoader } from "@ascorbic/bluesky-loader";
 import { BLUESKY_IDENTIFIER } from "./config.json";
-
 
 const posts = defineCollection({
   loader: authorFeedLoader({
