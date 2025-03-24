@@ -12,7 +12,7 @@ I strongly recommend you use a **service account** instead of your user to be th
 
 In this example, I'm updating the dependencies for GitHub Actions, NPM, and Docker.
 
-```yml
+```yml title="dependabot.yml"
 # https://docs.github.com/en/github/administering-a-repository/configuration-options-for-dependency-updates
 
 version: 2
@@ -62,7 +62,7 @@ updates:
 
 Take attention to your timezone in the settings in the line:
 
-```yml
+```yml title="dependabot.yml"
       timezone: 'Europe/Madrid'
 ```
 
@@ -75,7 +75,7 @@ In this example, in the commit message, I'm using the [conventional commits](htt
 
 We can also **ignore some dependencies** by adding the `ignore` key.
 
-```yml
+```yml title="dependabot.yml" ins={32, 35, 37, 38}
 # https://docs.github.com/en/github/administering-a-repository/configuration-options-for-dependency-updates
 
 version: 2
