@@ -1,0 +1,22 @@
+name: on_pull_request
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+
+jobs:
+  scan:
+    name: npm audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: install dependencies
+        run: npm ci
+      - uses: oke-py/npm-audit-action@v2
+        with:
+          github_token: ${{ secrets.AUTH_GITHUB_TOKEN }}
+          audit_level: moderate
+          create_issues: false
