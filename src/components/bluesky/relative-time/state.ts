@@ -18,7 +18,7 @@ export function register(
   date: Date | number,
   locale: string,
   live: boolean,
-  callback: Callback
+  callback: Callback,
 ) {
   // get the formatter for the given locale, we do this here so we don't keep having to look it up on each tick
   const formatter = getFormatter(locale);

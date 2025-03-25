@@ -2,7 +2,7 @@
 
 My personal blog.
 
-Starter used to create this blog: [flo-bit.dev/blog-template](https://flo-bit.dev/blog-template/)
+The starter used to create this blog: [flo-bit.dev/blog-template](https://flo-bit.dev/blog-template/)
 
 ---
 

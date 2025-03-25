@@ -7,17 +7,23 @@ const posts = await getBlogPosts();
 // turn posts into an object with slugs as keys, and title and description as values
 // { slug: { title, description } }
 
-const pages = posts.reduce((acc, post) => {
-  acc[post.id] = {
-    title: post.data.noTextInOGImage ? "" : post.data.title,
-    description: post.data.noTextInOGImage
-      ? ""
-      : post.data.shortDescription ?? post.data.description ?? "",
-    useHero: post.data.useHeroAsOGImage ?? false,
-    heroImage: post.data.heroImage?.replace("../..", "/src"),
-  };
-  return acc;
-}, {} as Record<string, { title: string; description: string; useHero: boolean; heroImage?: string }>);
+const pages = posts.reduce(
+  (acc, post) => {
+    acc[post.id] = {
+      title: post.data.noTextInOGImage ? "" : post.data.title,
+      description: post.data.noTextInOGImage
+        ? ""
+        : (post.data.shortDescription ?? post.data.description ?? ""),
+      useHero: post.data.useHeroAsOGImage ?? false,
+      heroImage: post.data.heroImage?.replace("../..", "/src"),
+    };
+    return acc;
+  },
+  {} as Record<
+    string,
+    { title: string; description: string; useHero: boolean; heroImage?: string }
+  >,
+);
 
 export const { getStaticPaths, GET } = OGImageRoute({
   // Tell us the name of your dynamic route segment.

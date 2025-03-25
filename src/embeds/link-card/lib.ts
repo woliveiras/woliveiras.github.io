@@ -26,19 +26,19 @@ export async function parseOpenGraph(pageUrl: string) {
   const image = urlOrNull(
     getMetaProperty("og:image:secure_url") ||
       getMetaProperty("og:image:url") ||
-      getMetaProperty("og:image")
+      getMetaProperty("og:image"),
   );
   const imageAlt = getMetaProperty("og:image:alt");
   const video = urlOrNull(
     getMetaProperty("og:video:secure_url") ||
       getMetaProperty("og:video:url") ||
-      getMetaProperty("og:video")
+      getMetaProperty("og:video"),
   );
   const videoType = getMetaProperty("og:video:type");
   const url =
     urlOrNull(
       getMetaProperty("og:url") ||
-        html.querySelector("link[rel='canonical']")?.getAttribute("href")
+        html.querySelector("link[rel='canonical']")?.getAttribute("href"),
     ) || pageUrl;
 
   return { title, description, image, imageAlt, url, video, videoType };
