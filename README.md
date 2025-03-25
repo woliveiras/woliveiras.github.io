@@ -1,4 +1,4 @@
-# WOLIVEIRAS Notes
+# William Oliveira's notes
 
 My personal blog.
 
