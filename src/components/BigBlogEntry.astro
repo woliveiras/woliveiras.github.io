@@ -8,9 +8,7 @@ const { title, description, pubDate, slug, heroImage, tags, noImage } =
   Astro.props;
 ---
 
-<article
-  class="relative isolate flex flex-col gap-8 lg:flex-row group lg:grid lg:grid-cols-2 mt-8"
->
+<article class="relative isolate flex flex-col gap-8 lg:flex-row group mt-8">
   {
     noImage || !SHOW_IMAGES || !heroImage ? null : (
       <div class="relative aspect-[16/9] lg:w-full lg:shrink-0">
@@ -37,7 +35,6 @@ const { title, description, pubDate, slug, heroImage, tags, noImage } =
         {description}
       </p>
     </div>
-
 
     <div class="flex items-center gap-x-4 text-xs flex-wrap">
       <time datetime="2020-03-16" class="text-base-500">
