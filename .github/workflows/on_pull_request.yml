@@ -27,3 +27,24 @@ jobs:
           github_token: ${{ secrets.AUTH_GITHUB_TOKEN }}
           audit_level: moderate
           create_issues: false
+
+  linting:
+    name: npm prettier:check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+      - name: Cache Node.js modules
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-
+      - name: install dependencies
+        run: npm ci
+      - name: npm prettier:check
+        run: npm run prettier:check

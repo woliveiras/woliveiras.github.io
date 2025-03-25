@@ -9,6 +9,7 @@
     "postbuild": "pagefind",
     "preview": "astro preview",
     "astro": "astro",
+    "prettier:check": "prettier --check .",
     "format": "prettier --write ."
   },
   "dependencies": {
