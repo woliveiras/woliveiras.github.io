@@ -32,15 +32,15 @@ export function renderPostAsHtml(post?: AppBskyFeedDefs.PostView | Post) {
   for (const segment of rt.segments()) {
     if (segment.isLink()) {
       html += `${preLink} href="${escapeHTML(segment.link?.uri)}">${escapeHTML(
-        segment.text
+        segment.text,
       )}</a>`;
     } else if (segment.isMention()) {
       html += `${preLink} href="https://bsky.app/profile/${escapeHTML(
-        segment.mention?.did
+        segment.mention?.did,
       )}">${escapeHTML(segment.text)}</a>`;
     } else if (segment.isTag()) {
       html += `${preLink} href="https://bsky.app/hastag/${escapeHTML(
-        segment.tag?.tag
+        segment.tag?.tag,
       )}">#${escapeHTML(segment.tag?.tag)}</a>`;
     } else {
       html += escapeHTML(segment.text);
@@ -52,7 +52,7 @@ export function renderPostAsHtml(post?: AppBskyFeedDefs.PostView | Post) {
 }
 
 export function viewRecordToPostView(
-  viewRecord: AppBskyEmbedRecord.ViewRecord
+  viewRecord: AppBskyEmbedRecord.ViewRecord,
 ): AppBskyFeedDefs.PostView {
   const { value, embeds, ...rest } = viewRecord;
   return {
@@ -65,7 +65,7 @@ export function viewRecordToPostView(
 
 export function viewRecordToEmbed(
   viewRecord: AppBskyEmbedRecord.ViewRecord,
-  allowNestedQuotes = false
+  allowNestedQuotes = false,
 ) {
   const { embed } = viewRecordToPostView(viewRecord);
 
@@ -95,7 +95,7 @@ const agent = new AtpAgent({
 });
 
 export async function resolvePost(
-  postUrl: string | Post | AppBskyFeedDefs.PostView
+  postUrl: string | Post | AppBskyFeedDefs.PostView,
 ): Promise<Post | undefined> {
   let atUri;
 
@@ -124,7 +124,7 @@ export async function resolvePost(
         did = handleResolution.data.did;
       } catch (e: any) {
         console.error(
-          `[error]  astro-embed` + "\n         " + (e?.message ?? e)
+          `[error]  astro-embed` + "\n         " + (e?.message ?? e),
         );
         return undefined;
       }
@@ -207,7 +207,7 @@ export async function getComments(uri: string) {
   return replies.sort(
     (a: any, b: any) =>
       new Date(b.post.record.createdAt).getTime() -
-      new Date(a.post.record.createdAt).getTime()
+      new Date(a.post.record.createdAt).getTime(),
   );
 }
 
