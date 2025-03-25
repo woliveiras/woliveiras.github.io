@@ -51,7 +51,7 @@ For example, if we're using in your package.json a structure like this:
 
 With the command `lint:check`. We need to put it in our GitHub Action.
 
-```yml title="on_pull_request.yml"
+```yml title="on_pull_request.yml" ins={13}
 jobs:
   linting:
     runs-on: ubuntu-latest
@@ -64,7 +64,7 @@ jobs:
       - name: install dependencies
         run: npm ci
       - name: npm lint
-        run: npm run lint:check
+        run: npm run lint:check 
 ```
 
 The full script will be this:
