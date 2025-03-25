@@ -8,7 +8,7 @@ import mdx from "@astrojs/mdx";
 import sitemap from "@astrojs/sitemap";
 import tailwind from "@astrojs/tailwind";
 import svelte from "@astrojs/svelte";
-import { pagefind } from "vite-plugin-pagefind";
+import pagefind from "astro-pagefind";
 
 import { BASE, SITE } from "./src/config.json";
 
