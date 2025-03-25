@@ -1,0 +1,95 @@
+---
+title: "How to run linters in GitHub Actions for pull requests"
+description: "Ensure code quality with linters in GitHub Actions for pull requests. Automating linting on opened, reopened, or synchronized PRs."
+pubDate: "Mar 25 2025"
+published: true
+tags: ["github-actions", "javascript", "lint", "npm"]
+---
+
+Integrating linters into our GitHub Actions workflow for pull requests is a simple yet powerful way to improve code quality and streamline our development process. By automating linting, we can ensure that our code meets the standards, reduce the risk of errors, and create more maintainable code.
+
+To run the GitHub Action in our pull request, we need the dispatcher `on: pull_request` and the types of interactions that will trigger this routine. 
+
+```yml title="on_pull_request.yml"
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+```
+
+In this case, the Action will run when the pull request is `opened`, `reopened`, or `synchronize`.
+
+After that, we can create the **job** to run the linter:
+
+```yml title="on_pull_request.yml"
+jobs:
+  linting:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js 22.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+      - name: install dependencies
+        run: npm ci
+      - name: npm lint
+        run: npm run lint
+```
+
+Don't forget to use the command to run the linter you have in your `package.json`.
+
+For example, if we're using in your package.json a structure like this:
+
+```json title="package.json"
+  "scripts": {
+    "lint:check": "eslint .",
+  },
+```
+
+With the command `lint:check`. We need to put it in our GitHub Action.
+
+```yml title="on_pull_request.yml"
+jobs:
+  linting:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js 22.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+      - name: install dependencies
+        run: npm ci
+      - name: npm lint
+        run: npm run lint:check
+```
+
+The full script will be this:
+
+```yml title="on_pull_request.yml"
+name: Running Linter in Pull Requests
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+
+jobs:
+  linting:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js 22.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+      - name: install dependencies
+        run: npm ci
+      - name: npm lint
+        run: npm run lint
+```
