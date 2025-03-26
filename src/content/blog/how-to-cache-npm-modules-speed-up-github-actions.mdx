@@ -1,0 +1,181 @@
+---
+title: "How to cache NPM modules to speed up the GitHub Actions"
+description: "Learn how to cache NPM modules in GitHub Actions to reduce build times and improve CI efficiency. Optimize your workflow with simple and effective steps."
+pubDate: "Mar 26 2025"
+published: true
+tags: ["github-actions", "javascript", "npm"]
+---
+
+Sometimes, the installation dependencies step of our GitHub Actions can take a long time to complete. This occurs because most of our applications today are made with third-party code, which can be the framework we're using, libraries, or something else.
+
+And it's common to have something like this example, where we have the install phase three times.
+
+```yml
+jobs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+      - name: install dependencies
+        run: npm ci
+      - name: npm test
+        run: npm t
+
+  linting:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+      - name: install dependencies
+        run: npm ci
+      - name: npm lint
+        run: npm run lint
+
+  scan:
+    name: npm audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+      - name: install dependencies
+        run: npm ci
+      - uses: oke-py/npm-audit-action@v2
+        with:
+          audit_level: moderate
+          github_token: ${{ secrets.AUTH_GITHUB_TOKEN }}
+          create_issues: false
+          issue_assignees: oke-py
+          issue_labels: vulnerability,test
+          dedupe_issues: true
+```
+
+To avoid waiting too long for it, we can use the cache action and speed up our pipeline.
+
+We can do it by adding these lines:
+
+```yml
+- name: Cache Node.js modules
+  uses: actions/cache@v4
+  with:
+    path: ~/.npm
+    key: ${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json') }}
+    restore-keys: |
+      ${{ runner.os }}-npm-
+```
+
+## Breakdown
+
+- `- name: Cache Node.js modules`: This line gives a name to this particular step in the workflow.
+- `uses: actions/cache@v4`: This indicates that the step will use the official GitHub Action called "cache" at version 4. This action is designed to cache dependencies to speed up our workflows.
+- `with:` This keyword introduces the input parameters for the cache action:
+- `path: ~/.npm`: Specifies the directory to be cached. In this case, it's the default location where npm stores downloaded packages (`~/.npm`).
+- `key: ${{ runner.os }}-npm-${{ hashFiles('*/*/package-lock.json') }}`: Defines the cache key. The key determines whether a cache hit occurs (i.e., whether the cache can be reused).
+- `${{ runner.os }}` is the operating system of the runner executing the job.
+- `npm-` is just static text within the key.
+- `${{ hashFiles('*/*/package-lock.json') }}` calculates a hash based on the contents of all `package-lock.json` files in the repository. If the `package-lock.json` file hasn't changed, the hash will be the same, and the cache will be hit.
+- `restore-keys: |  ${{ runner.os }}-npm-`: Provides fallback keys in case the primary key doesn't result in a cache hit. In this case, it will try to restore a cache that matches the runner's OS and contains "npm" in the key.
+
+## How it Works
+
+1. Cache Creation:
+
+- When the workflow runs, this step calculates the cache key based on the OS and the hash of the `package-lock.json` file(s). Example of cache key `ubuntu-latest-npm-abc123`.
+- It then checks if a cache with that key exists.
+- If it doesn't exist, the action caches the `~/.npm` directory with the generated key.
+
+1. Cache Restoration:
+
+- On subsequent workflow runs, the same cache key is calculated.
+- The action checks if a cache with that key exists.
+- If it does, the action restores the cached `~/.npm` directory, avoiding the need to re-download all the npm packages.
+- If the primary key doesn't match, the action tries the restore keys as fallbacks.
+
+## Key Point
+
+The cache key is crucial. By including the hash of the `package-lock.json` file in the key, the cache is only reused if the project's dependencies haven't changed. If the `package-lock.json` file changes (indicating that dependencies have been updated), a new cache key is generated, and a fresh cache is created.
+
+## Final version
+
+The final version of our workflow with the cache option should be something like this:
+
+```yml ins={5,6,7,8,9,10,11,25,26,27,28,29,30,31,46,47,48,49,50,51,52}
+jobs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cache Node.js modules
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-
+      - name: Use Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+      - name: install dependencies
+        run: npm ci
+      - name: npm test
+        run: npm t
+
+  linting:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cache Node.js modules
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-
+      - name: Use Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+      - name: install dependencies
+        run: npm ci
+      - name: npm lint
+        run: npm run lint
+
+  scan:
+    name: npm audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cache Node.js modules
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-
+      - name: Use Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+      - name: install dependencies
+        run: npm ci
+      - uses: oke-py/npm-audit-action@v2
+        with:
+          audit_level: moderate
+          github_token: ${{ secrets.AUTH_GITHUB_TOKEN }}
+          create_issues: false
+          issue_assignees: oke-py
+          issue_labels: vulnerability,test
+          dedupe_issues: true
+```
+
+## Conclusion
+
+Caching NPM modules in GitHub Actions significantly speeds up our workflows by avoiding redundant downloads of dependencies. Utilizing the `actions/cache@v4` action with a key based on the `package-lock.json` hash ensures that the cache is only used when dependencies remain unchanged. This optimization reduces build times and improves overall pipeline efficiency, leading to faster development cycles.
