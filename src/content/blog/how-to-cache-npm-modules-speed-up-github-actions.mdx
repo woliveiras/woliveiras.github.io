@@ -75,14 +75,14 @@ We can do it by adding these lines:
 ## Breakdown
 
 - `- name: Cache Node.js modules`: This line gives a name to this particular step in the workflow.
-- `uses: actions/cache@v4`: This indicates that the step will use the official GitHub Action called "cache" at version 4. This action is designed to cache dependencies to speed up our workflows.
-- `with:` This keyword introduces the input parameters for the cache action:
-- `path: ~/.npm`: Specifies the directory to be cached. In this case, it's the default location where npm stores downloaded packages (`~/.npm`).
-- `key: ${{ runner.os }}-npm-${{ hashFiles('*/*/package-lock.json') }}`: Defines the cache key. The key determines whether a cache hit occurs (i.e., whether the cache can be reused).
-- `${{ runner.os }}` is the operating system of the runner executing the job.
-- `npm-` is just static text within the key.
-- `${{ hashFiles('*/*/package-lock.json') }}` calculates a hash based on the contents of all `package-lock.json` files in the repository. If the `package-lock.json` file hasn't changed, the hash will be the same, and the cache will be hit.
-- `restore-keys: |  ${{ runner.os }}-npm-`: Provides fallback keys in case the primary key doesn't result in a cache hit. In this case, it will try to restore a cache that matches the runner's OS and contains "npm" in the key.
+  - `uses: actions/cache@v4`: This indicates that the step will use the official GitHub Action called "cache" at version 4. This action is designed to cache dependencies to speed up our workflows.
+  - `with:` This keyword introduces the input parameters for the cache action:
+    - `path: ~/.npm`: Specifies the directory to be cached. In this case, it's the default location where npm stores downloaded packages (`~/.npm`).
+    - `key: ${{ runner.os }}-npm-${{ hashFiles('*/*/package-lock.json') }}`: Defines the cache key. The key determines whether a cache hit occurs (i.e., whether the cache can be reused).
+      - `${{ runner.os }}` is the operating system of the runner executing the job.
+      - `npm-` is just static text within the key.
+      - `${{ hashFiles('*/*/package-lock.json') }}` calculates a hash based on the contents of all `package-lock.json` files in the repository. If the `package-lock.json` file hasn't changed, the hash will be the same, and the cache will be hit.
+    - `restore-keys: |  ${{ runner.os }}-npm-`: Provides fallback keys in case the primary key doesn't result in a cache hit. In this case, it will try to restore a cache that matches the runner's OS and contains "npm" in the key.
 
 ## How it Works
 
@@ -92,7 +92,7 @@ We can do it by adding these lines:
 - It then checks if a cache with that key exists.
 - If it doesn't exist, the action caches the `~/.npm` directory with the generated key.
 
-1. Cache Restoration:
+2. Cache Restoration:
 
 - On subsequent workflow runs, the same cache key is calculated.
 - The action checks if a cache with that key exists.
@@ -179,3 +179,8 @@ jobs:
 ## Conclusion
 
 Caching NPM modules in GitHub Actions significantly speeds up our workflows by avoiding redundant downloads of dependencies. Utilizing the `actions/cache@v4` action with a key based on the `package-lock.json` hash ensures that the cache is only used when dependencies remain unchanged. This optimization reduces build times and improves overall pipeline efficiency, leading to faster development cycles.
+
+## References
+
+- [Cache dependencies and build outputs in GitHub Actions](https://github.com/actions/cache)
+- [GitHub - Caching dependencies to speed up workflows](https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/caching-dependencies-to-speed-up-workflows)

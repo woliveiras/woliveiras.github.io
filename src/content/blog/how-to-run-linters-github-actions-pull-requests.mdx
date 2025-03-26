@@ -8,7 +8,7 @@ tags: ["github-actions", "javascript", "lint", "npm"]
 
 Integrating linters into our GitHub Actions workflow for pull requests is a simple yet powerful way to improve code quality and streamline our development process. By automating linting, we can ensure that our code meets the standards, reduce the risk of errors, and create more maintainable code.
 
-To run the GitHub Action in our pull request, we need the dispatcher `on: pull_request` and the types of interactions that will trigger this routine. 
+To run the GitHub Action in our pull request, we need the dispatcher `on: pull_request` and the types of interactions that will trigger this routine.
 
 ```yml title="on_pull_request.yml"
 on:
@@ -64,7 +64,7 @@ jobs:
       - name: install dependencies
         run: npm ci
       - name: npm lint
-        run: npm run lint:check 
+        run: npm run lint:check
 ```
 
 The full script will be this:
