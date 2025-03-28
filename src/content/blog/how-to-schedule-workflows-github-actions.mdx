@@ -1,0 +1,64 @@
+---
+title: "How to schedule workflows in GitHub Actions"
+description: "Scheduling workflows in GitHub Actions is easy with the `schedule` event and cron expressions. Learn how to set up scheduled jobs."
+pubDate: "Mar 28 2025"
+published: true
+tags:
+  [
+    "github-actions",
+    "ci",
+    "cd",
+    "continuous-integration",
+    "continuous-delivery",
+  ]
+---
+
+Sometimes we need to schedule some task in our CI/CD pipelines. This job is not hard in GitHub Actions. We have an event named `schedule` to use in these cases and we can use the cron expressions to reach this goal with no difficult.
+
+You can use my web app to easily create your cron expression: [woliveiras.github.io/cronor](https://woliveiras.github.io/cronor/).
+
+Schedule example:
+
+```yml ins={3}
+on:
+  schedule:
+    - cron: "0 0 12 1 *" // At 12:00 AM, on day 12 of the month, only in January
+```
+
+**OBS:** The **\*** is a special character in YAML so you have to quote this string.
+
+We can also trigger one workflow with multiple schedules.
+
+Example:
+
+```yml ins={3,4}
+on:
+  schedule:
+    - cron: "0 0 12 1 *" // At 12:00 AM, on day 12 of the month, only in January
+    - cron: "0 12 12 1 *" // At 12:00 PM, on day 12 of the month, only in January
+```
+
+And we can access the schedule data in the jobs with this syntax `github.event.schedule`.
+
+Example:
+
+```yml ins={11}
+on:
+  schedule:
+    - cron: "0 0 12 1 *"
+    - cron: "0 12 12 1 *"
+
+jobs:
+  scheduled:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Do not deploy on Fidays!
+        if: github.event.schedule != "0 0 * * 5"
+        run: echo "You should not deploy on Fridays"
+```
+
+One important thing you can do with this schedule event is [enable the Dependabot checks to keep your dependencies updated](/posts/how-to-schedule-dependabot-to-keep-dependencies-updated/).
+
+## Reference
+
+- [Events that trigger workflows](https://docs.github.com/en/actions/writing-workflows/choosing-when-your-workflow-runs/events-that-trigger-workflows#schedule)
