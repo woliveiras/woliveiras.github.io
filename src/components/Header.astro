@@ -33,7 +33,7 @@ const { active } = Astro.props;
         </div>
       </a>
     </div>
-    <div class="flex gap-x-10">
+    <div class="flex gap-x-3 md:gap-x-10">
       <HeaderLink
         href={BASE + "/"}
         active={active === "blog"}
@@ -43,6 +43,11 @@ const { active } = Astro.props;
         href={BASE + "/about"}
         active={active === "about"}
         class="text-sm font-semibold leading-6">About</HeaderLink
+      >
+      <HeaderLink
+        href={BASE + "/projects"}
+        active={active === "projects"}
+        class="text-sm font-semibold leading-6">Projects</HeaderLink
       >
 
       {MANUAL_DARK_MODE ? <ThemeToggle /> : null}
