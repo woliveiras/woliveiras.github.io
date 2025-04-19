@@ -24,7 +24,7 @@ const { posts, totalPages, currentPage, tag, showFeatured } = Astro.props;
 <BaseLayout title={SITE_TITLE} description={SITE_DESCRIPTION}>
   <Header active="blog" />
   <main class="max-w-2xl lg:max-w-3xl mx-auto mt-8 px-4">
-    <ProseWrapper class="pb-8">
+    <ProseWrapper>
       <slot />
     </ProseWrapper>
 
