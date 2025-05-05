@@ -22,7 +22,7 @@ jobs:
             ${{ runner.os }}-npm-
       - name: install dependencies
         run: npm ci
-      - uses: oke-py/npm-audit-action@v2
+      - uses: oke-py/npm-audit-action@v3
         with:
           github_token: ${{ secrets.AUTH_GITHUB_TOKEN }}
           audit_level: moderate
