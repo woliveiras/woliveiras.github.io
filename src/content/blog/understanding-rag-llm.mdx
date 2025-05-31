@@ -1,0 +1,76 @@
+---
+title: "Understanding the RAG Pattern with LLMs"
+description: "Discover what Retrieval-Augmented Generation (RAG) is and how it improves Large Language Model (LLM) responses by connecting them to external knowledge, reducing hallucinations and providing up-to-date information."
+pubDate: "May 31 2025"
+published: true
+tags: ["llm", "ai", "foundation-models", "machine-learning"]
+---
+
+## Introduction
+
+Retrieval-Augmented Generation (RAG) refers to the combination of retrieval systems with large language models (LLMs). LLMs have revolutionized the way we interact with information. However, they can sometimes generate inaccurate or outdated responses because the training data has a date limit, and they can "hallucinate" to create the response you're looking for (even if this response is not the correct information).
+
+The RAG pattern addresses this issue by combining the power of retrieval systems with LLMs.
+
+## What is RAG?
+
+RAG is an architecture that enhances the performance of LLMs by allowing them to access external knowledge sources. Instead of solely relying on the data they were trained on, LLMs equipped with RAG can retrieve relevant information from a knowledge base before generating a response. For example, accessing the internal wiki, documentation, repositories, etc., while generating the answer to our question in the chat.
+
+## How Does RAG Work?
+
+Instead of depending only on the LLM training data, the RAG system first searches for the relevant information about what we're looking for in an external source of knowledge, like on the internet, scientific databases, and so on.
+
+The RAG process involves the following key steps:
+
+- **Retrieval**: When a query is received, a retrieval system searches a knowledge base (e.g., a document store, a database, etc.) for relevant information.
+- **Augmentation**: The retrieved information is then added to the original query, providing the LLM an additional context.
+- **Generation**: The LLM uses the augmented query to generate a more informed and accurate response.
+
+For me, it's like: when we ask something for a system using the RAG pattern, the RAG system first "understands" our question and incorporates it with relevant information that we didn't have or forgot to add to the context before sending it to the LLM.
+
+## Benefits of RAG
+
+- **Improved Accuracy**: By grounding LLM responses in external knowledge, RAG reduces the likelihood of hallucinations (generating false information).
+- **Up-to-Date Information**: RAG allows LLMs to access the latest information from a knowledge base, keeping their responses current.
+- **Transparency and Explainability**: By providing the retrieved sources, RAG makes it easier to understand why the LLM generated a particular response.
+- **Customization**: RAG enables businesses to adapt LLMs to specific domains by incorporating proprietary data into the knowledge base.
+
+## Key components of a RAG System
+
+| Component        | Description                                                        |
+| :--------------- | :----------------------------------------------------------------- |
+| User Query       | The question or request submitted by the user.                     |
+| Retrieval System | Searches the knowledge base for relevant documents or information. |
+| Knowledge Base   | A collection of documents or data used for retrieval.              |
+| LLM              | Generates a response based on the augmented query.                 |
+
+## Ethical Considerations with RAG
+
+As we have with the LLMs in general, while RAG significantly improves LLM capabilities, it also introduces important ethical considerations. The power to select and provide the context for the LLM's response means that the design of the RAG system and the data it accesses can become new vectors for bias or manipulation.
+
+It is crucial to be aware that the "ground truth" provided by RAG systems is, in itself, curated, and this curation process can (and should) be subject to ethical scrutiny.
+
+**Examples of potential ethical issues we could face:**
+
+- **Manipulation and Bias:** an AI provider could configure the RAG system to retrieve information that benefits them, directly influencing the LLM's response. For example, a RAG system could be designed to:
+  - Promote specific products or services if the AI provider has commercial interests.
+  - Present a biased view on political or social topics by selectively choosing sources.
+  - Hide negative information or legitimate criticism about an organization if RAG is used for its customer service.
+- **Censorship and Information Control:** The choice of data sources for the RAG's knowledge base can lead to censorship if certain viewpoints or information are systematically excluded.
+- **Privacy Concerns:** If the knowledge base contains private or sensitive data that is inadvertently retrieved and exposed by the LLM, it could lead to privacy violations.
+- **Amplification of Misinformation:** If the RAG system retrieves information from unreliable or false sources, the LLM might present this misinformation as factual, potentially citing the flawed source and making it seem more credible.
+- **Accountability:** Determining responsibility becomes complex if the RAG system leads to harmful or incorrect outputs based on the retrieved data. Is the LLM, the RAG system developer, or the source of the data responsible?
+
+## Conclusion
+
+We should use RAG systems when we need to ensure that the LLM responses are accurate, up-to-date, and transparent. The RAG pattern offers a significant improvement over traditional LLM usage. By incorporating external knowledge, RAG enhances the accuracy, relevance, and reliability of LLM outputs. This technology is poised to play a crucial role in the future of AI applications.
+
+However, the RAG pattern is not a silver bullet for improving LLM answers. We still need to ask the right questions to get the best responses. Perhaps in the future, artificial intelligence will become even smarter than us humans.
+
+## References
+
+- [What is Retrieval-Augmented Generation (RAG)](https://www.youtube.com/watch?v=T-D1OfcDW1M&ab_channel=IBMTechnology)
+- [Evaluating the Effect of Retrieval Augmentation on Social Biases](https://arxiv.org/abs/2502.17611#)
+- [Does RAG Introduce Unfairness in LLMs? Evaluating Fairness in Retrieval-Augmented Generation Systems](https://aclanthology.org/2025.coling-main.669.pdf)
+- [The ethical security of large language models: A systematic review](https://www.researchgate.net/publication/388456218_The_ethical_security_of_large_language_models_A_systematic_review)
+- [The Ethical Implications of Large Language Models in AI](https://www.computer.org/publications/tech-news/trends/ethics-of-large-language-models-in-ai)
