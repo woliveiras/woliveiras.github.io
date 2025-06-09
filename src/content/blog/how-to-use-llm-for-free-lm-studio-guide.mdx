@@ -1,0 +1,95 @@
+---
+title: "How to Use a LLM for Free: LM Studio Guide"
+description: "Learn how to leverage LM Studio for free local LLM use, ensuring privacy and customization."
+pubDate: "Jun 09 2025"
+published: true
+tags: ["llm", "ai", "machine-learning"]
+---
+
+## Introduction
+
+We know that LLMs are powerful tools capable of a wide range of text-based tasks, and I'm particularly fond of this kind of tool, such as Agents and Code Assistants. But I'm also not happy with the need to pay so expensive for these things cause of the hype over the companies talking about AI. We know that LLMs are useful, but we also know that the prices that the companies are charging are unsustainable for most users.
+
+Running LLMs locally on our computer with LM Studio offers significant advantages in this case. We can run it for **free**, we can keep our **privacy** with our data, we can access it **offline**, and we can also **customize** it more than the provided options we have in the market.
+
+This guide provides an overview of using Large Language Models (LLMs) for free on our own computer with LM Studio.
+
+## What is LM Studio?
+
+LM Studio is an application that allows us to easily run LLMs locally on our computers, even without needing a powerful GPU. It's designed to be user-friendly, especially for those who are new to LLMs or want more control over their AI interactions.
+
+What LM Studio can do for us:
+
+- **Local LLM Execution:** The core function is to let us download and run various open-source LLMs (like Llama 2, Mistral, Vicuna, and many more) directly on our computer. This means we don't need an internet connection to use them, and our data stays private.
+- **No Coding Required (Mostly):** While we can integrate it into our code, LM Studio provides a built-in chat interface that lets us interact with the models without writing any code.
+- **Hardware Flexibility:** It's designed to work on a wide range of hardware, including CPUs (though performance will be slower) and GPUs. It intelligently utilizes our available resources to run the models as efficiently as possible.
+- **Model Discovery & Management:** LM Studio has a built-in model explorer that lets us browse and download models from Hugging Face Hub, a popular repository for AI models. It also manages your downloaded models, making it easy to switch between them.
+
+If you read the latest blog post about [Retrieval-Augmented Generation (RAG)](/posts/understanding-rag-llm/), you might be thinking about how to use it with LM Studio.
+
+This is the official information we have about RAG in LM Studio:
+
+> When you drag and drop a document into LM Studio to chat with it or perform RAG, that document stays on your machine. All document processing is done locally, and nothing you upload into LM Studio leaves the application.
+
+To run LM Studio effectively, you need to ensure your system meets the following requirements:
+
+- **Operating System:** Windows, macOS, or Linux.
+- **Hardware:** A CPU with reasonable processing power.
+- **RAM:** Sufficient memory (at least 8GB, 16GB recommended).
+- **Storage:** Adequate disk space to download and store LLM models.
+
+## How to use LLM Studio
+
+First of all, we need to install LM Studio to start using it. To be smarter, instead of explaining to you how to install it and this guide being outdated soon, just go to the official website and download the latest version: [lmstudio.ai](https://lmstudio.ai).
+
+After installing it, we need to select the model we would like to run. The first screen of the desktop application will be the model download screen. If you skipped it for some reason, you just need to find the **Discover** button (a normal search button), and the option to download models will be shown for you.
+
+To select a good model, we can find the option that fits best with our hardware. Usually, the LM Studio already shows us the Best Match option. We can try to download it, or we can test other models.
+
+If you have never downloaded or used a model before, there are some important things you need to know to download the best option for your case. Let's understand these things with an example. Imagine you selected the **Google/Gemma-3-4B** model.
+
+The "Google" before the slash symbol is the provider of this model. The "Gemma" is the name of the model, and Gemma is the free version of Gemini, the famous Google model. The number after the name of the model is the version of this model; in this case is 3. And the number with a B is the number of parameters in the model.
+
+To be clear:
+
+Higher numbers generally mean a more powerful (and larger) model, but also require more resources to run. A 7B model will be smaller and faster than a 34B model if you don't have powerful hardware. So, Gemma-3-4b: This indicates the size of the Gemma model (4 billion parameters – a good balance between performance and resource usage).
+
+For example, the version 3 of Gemma, has these options available: Gemma-3-1B, Gemma-3-4B, Gemma-3-12B, and Gemma-3-27B.
+
+## To help our decision-making
+
+| Hardware Level                                                     | Recommended Model(s)                                       | Notes/Considerations                                                                                      |
+| ------------------------------------------------------------------ | ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| **Limited Hardware (CPU only or < 8GB RAM)**                       | [Phi-2 ](https://huggingface.co/microsoft/phi-2)           | Smaller models perform better on limited resources.                                                       |
+| **Moderate Hardware (8GB - 16GB RAM, GPU with some VRAM)**         | [Gemma-3-4B](https://lmstudio.ai/models/google/gemma-3-4b) | A good balance of performance and resource usage.                                                         |
+| **Powerful Hardware (Lots of RAM, dedicated GPU with ample VRAM)** | Larger Models                                              | Explore options based on your specific needs and available resources.                                     |
+| **Need Long Context?**                                             | Models with 4096+ tokens                                   | Prioritize models offering larger context windows for processing long documents or complex conversations. |
+
+## What is a "Context Window"?
+
+Imagine you're having a conversation with someone. To understand what they’re saying now, you need to remember some of what was said earlier in the conversation. LLMs are similar – they need a "memory" to understand and respond effectively. This memory is the context window.
+
+What does it mean to have a "larger context window"?
+
+A larger context window means that the LLM can remember and process more of the conversation or document at once.
+
+If you want to summarize a long article, extract information from a legal contract, or analyze a lengthy research paper, you need an LLM that can "see" the entire document (or at least a significant portion of it) to understand its overall meaning and nuances. A small context window would force the LLM to process the document in smaller chunks, potentially losing important connections and leading to inaccurate or incomplete results.
+
+In a complex conversation, you might refer back to earlier points or build upon previous statements. A larger context window allows the LLM to keep track of these references and generate more coherent and relevant responses. Without a large enough context window, the LLM might forget what you were talking about earlier in the conversation, leading to nonsensical or off-topic replies.
+
+In essence, if you're dealing with tasks that require understanding a lot of information at once, prioritizing models with larger context windows is crucial for achieving good results.
+
+Example:
+
+- Small Context Window (e.g., 2048 tokens): Might struggle to summarize a 5-page document or maintain coherence in a lengthy debate.
+- Large Context Window (e.g., 4096+ tokens): Can handle longer documents and more complex conversations, leading to better summarization, analysis, and overall performance.
+
+## Conclusion
+
+LM Studio offers a powerful and free solution for utilizing LLMs locally. By understanding its requirements and capabilities, you can leverage its features for various applications, ensuring privacy, cost-effectiveness, and customization.
+
+I hope this guide helps you to understand how to use it and how to choose the best model for your needs.
+
+## References
+
+- [LM Studio Official Website](https://lmstudio.ai/)
