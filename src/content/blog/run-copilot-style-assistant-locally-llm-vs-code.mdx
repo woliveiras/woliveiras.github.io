@@ -1,0 +1,147 @@
+---
+title: "Run your own Copilot-Style AI in VS Code: A guide to use local LLMs to coding"
+description: "Learn how to set up a Copilot-style AI assistant in Visual Studio Code using local LLMs. This guide covers the necessary tools, configurations, and tips for effective coding assistance."
+pubDate: "Jun 15 2025"
+published: true
+tags: ["llm", "coding", "machine-learning", "vscode", "copilot"]
+---
+
+## Introduction
+
+If you don't know what this tool is, GitHub Copilot is an AI-powered coding assistant that helps developers write code faster by providing suggestions and automating repetitive tasks. These kinds of tools are really useful in day-to-day tasks, because we do a lot of repetitive tasks every time we code.
+
+But, if you already know that and like to code with the support of GitHub Copilot, I think you have already faced the doubts and some issues like:
+
+- The GitHub Copilot Pricing
+- Your company's limitation on using online tools for coding
+  - Risk of leaking intellectual property, security keys, etc
+  - If Copilot is creating the code, who owns it?
+- You cannot provide your data for training Copilot (due to the points above)
+- Ethical issues, like environmental concerns about the use of AI and the big data centers running it
+
+If you're working in a company that pays for GitHub Copilot, that's nice, because you can just run it and do your job. But if you're a student, are working in a company without a GitHub plan, or even if you're an individual consultant, the pricing can be a problem.
+
+Also, when your company enables Copilot in your projects, you have to use it with parsimony, because you can leak credentials or even share code that the company doesn't want to share with anyone. So, maybe you cannot provide the context Copilot needs to do a good job.
+
+And, to finish this first part, if you think about ethical issues, like the conscient use of energy, maybe you don't want to use a technology that consumes a lot of natural resources to just complete the shit code you do (like me).
+
+A good option to address it is to run a local version of the AI Assistants like Copilot. So, in this text, I'll share with you an option to do it without difficulty. If you want to understand the pros and cons of running a local LLM, you can continue reading the text until the end. If you just want to go directly, the next part is everything you need.
+
+## Running a local LLM for Coding
+
+The task of running a local LLM for coding is **really** easy. You'll just need the Continue extension in your editor or IDE.
+
+This extension will provide you with the options of using:
+
+- Editor Mode
+- Autocomplete
+- Chat Mode
+- Agent Mode
+
+Sadly, we can run Continue only in VS Code or JetBrains IDEs.
+
+Here, I'll show you Continue running on VS Code.
+
+To install it, just go to the **Extensions** tab in VS Code and search for **Continue**. The official extension is the continue.dev one.
+
+Once installed, the Continue options will be available in VS Code. You'll now see the Continue option in your status bar, and the extension will open the options to finish the configuration. You don't need to sign in to Continue services, just click on the local option (the option "or, remain local"). If you don't have Ollama installed in your system, the extension will recommend it. You can just follow the instructions, and the settings will be finished.
+
+For now, use the recommended settings. It'll be all you need to start. You can try other models later.
+
+## What do I need to run a local LLM with VS Code?
+
+If you use a cloud option of the Coding Agents, you're using the computation power of a dedicated machine with a powerful configuration and well optimized to do this job. On our computer, I think it is not the same.
+
+The requirements to run it well on our computer will depend on the model we want to use.
+
+To run the LLMs locally **effectively**, you need to ensure your system meets the following requirements:
+
+- **Operating System:** Windows, macOS, or Linux.
+- **Hardware:** A CPU with reasonable processing power.
+- **RAM:** Sufficient memory (at least 8GB, 16GB recommended).
+- **Storage:** Adequate disk space to download and store LLM models.
+
+It's the same thing we learn in the use of [LM Studio to use LLM chats free on our machines](/posts/how-to-use-llm-for-free-lm-studio-guide/).
+
+But remember, you can find the small models if you don't meet these requirements.
+
+## How to install new models
+
+To run my local LLM environment in VS Code, I get the latest Ollama version. I tested some models, and my machine was close to burning. The best option I found was Gemma. I'm using the gemma3:4b.
+
+If you want to use the same model as I, you can install it by using the Ollama command.
+
+```shell
+ollama pull gemma3:4b
+```
+
+After downloading it, you need to create a settings folder in your editor. If you click on Add Models in the settings tab of Continue chat, this folder will be created for you. If not, go and create it with this name `.continue/models`.
+
+The extension needs a settings file to get the model information. To be organized, let's use the model name in the settings file. Example: `gemma3:4b.yaml`.
+
+Now, we need to set the settings. You can copy the following lines to your YAML file.
+
+```yaml
+name: Gemma3:4b
+version: 0.0.1
+schema: v1
+models:
+  - provider: ollama
+    model: gemma3:4b
+    name: Gemma3:4b
+    roles:
+      - chat
+      - edit
+```
+
+Pay attention to the **roles** option. The roles option is the key responsible for saying to Continue in what kind of use we want this model to run. After doing it, the Gemma3:4b will be available to be selected in the **Edit** and **Chat** options on the settings.
+
+## Making the job more efficient
+
+We always need to provide a lot of context to receive good responses. This creates the boring task of chatting a lot with the assistants. But we can work smarter by using instruction files.
+
+The instruction files are the prompts we always want the assistant to use in our interactions.
+
+In Continue, we can do it by creating the **rules** files. You can create your rule file by creating the folder `.continue/rules`.
+
+An example of a rules file is my rules for working with full-stack JavaScript development:
+
+```yaml
+name: Coding Assistant - Fullstack (TypeScript, React, Nest.js)
+version: 0.0.1
+schema: v1
+rules:
+  - Always give concise responses
+  - Use clear and simple language
+  - Avoid unnecessary jargon
+  - Provide examples when explaining complex concepts
+  - Always check for errors in code snippets
+  - Use English comments in code only when necessary to explain complex code functionality
+  - When generating code, prioritize using modern TypeScript features
+  - When generating React components, follow best practices for functional components and hooks
+  - When generating Nest.js services or controllers, ensure proper dependency injection and module structure
+  - When generating React components, ensure proper handling of state updates to avoid unexpected behavior
+  - When asked to refactor code, prioritize readability and maintainability over micro-optimizations
+  - When generating unit tests, focus on testing edge cases and boundary conditions to ensure code robustness
+  - When generating React components, consider accessibility (a11y) and ensure the generated code follows ARIA guidelines
+```
+
+You can also find my latest version of this rule file [here](https://hub.continue.dev/woliveiras/fullstack-typescript).
+
+## Conclusion
+
+Running a local LLM with Continue in VS Code offers a compelling alternative to cloud-based coding assistants, addressing concerns about pricing, data privacy, and ethical considerations. While requiring certain hardware specifications, the ability to customize models and define interaction rules through instruction files significantly enhances efficiency and control, empowering us to leverage AI assistance responsibly and effectively.
+
+If you want to learn more about this stuff, don't miss this article:
+
+[Understanding the RAG Pattern with LLMs](/posts/understanding-rag-llm/)
+
+## References
+
+- [GitHub Copilot Pricing](https://docs.github.com/en/copilot/about-github-copilot/plans-for-github-copilot)
+- [Assess the environmental impact of data centers](https://www.techtarget.com/searchDataCenter/feature/Assess-the-environmental-impact-of-data-centers)
+- [The Silent Burden Of AI: Unveiling The Hidden Environmental Costs Of Data Centers By 2030](https://www.forbes.com/councils/forbestechcouncil/2024/08/16/the-silent-burden-of-ai-unveiling-the-hidden-environmental-costs-of-data-centers-by-2030/)
+- [Is It Safe To Use GitHub Copilot At Work? What You Need To Know](https://www.copilot.live/blog/is-it-safe-to-use-github-copilot-at-work)
+- [GitHub Copilot Security and Privacy Concerns: Understanding the Risks and Best Practices](https://blog.gitguardian.com/github-copilot-security-and-privacy/)
+- [GitHub Copilot: Unveiling the Pros, Cons, and Key Considerations](https://medium.com/neudesic-innovation/github-copilot-unveiling-the-pros-cons-and-key-considerations-f7da9389676)
+- [Continue Extension](https://www.continue.dev/)
