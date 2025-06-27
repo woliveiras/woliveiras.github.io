@@ -1,0 +1,292 @@
+---
+title: "LangChain vs. LangGraph: From Simple Chains to Complex AI Agents"
+description: "Explore the differences between LangChain and LangGraph, two powerful frameworks for building AI applications. Learn when to use each and see code examples in action."
+pubDate: "Jun 27 2025"
+published: true
+tags: ["llm", "langchain", "langgraph", "ai-agents"]
+---
+
+If you, like me, are new to the AI Agents world, you probably heard about LangChan and LangGraph. The thing is: if you didn't have time before to learn more about these tools, you may be uncertain about what each one is and when to use it.
+
+**LangChain** has become the go-to framework for chaining LLM calls with other components like APIs, databases, and document stores. It allows developers to move beyond simple prompts and build sophisticated, data-aware applications.
+
+However, as applications become more complex, the simple, linear nature of LangChain's "chains" can become a limitation. What if you need your application to loop, make decisions, and operate more like an autonomous agent?
+
+This is where **LangGraph** comes in. It's not a replacement for LangChain but a powerful extension built by the same team, designed specifically for creating complex, stateful, and cyclical applications.
+
+Let's dive into the core differences, see them in action with code, and understand them.
+
+# Table of Contents
+
+- [Requirements](#requirements)
+- [The Power of Sequential Chains: LangChain](#the-power-of-sequential-chains-langchain)
+  - [LangChain Code Example: A Simple RAG Chain](#langchain-code-example-a-simple-rag-chain)
+- [When Chains Aren't Enough: LangGraph](#when-chains-arent-enough-langgraph)
+  - [LangGraph Code Example: A Local Agent with a Tool](#langgraph-code-example-a-local-agent-with-a-tool)
+- [How to Run the Examples](#how-to-run-the-examples)
+  - [Step 1: Download the Local Models](#step-1-download-the-local-models)
+  - [Step 2: Create a Project Folder and Virtual Environment](#step-2-create-a-project-folder-and-virtual-environment)
+  - [Step 3: Install Required Libraries](#step-3-install-required-libraries)
+  - [Step 4: Run the Code](#step-4-run-the-code)
+- [Conclusion: Which One Should You Use?](#conclusion-which-one-should-you-use)
+- [References](#references)
+
+## Requirements
+
+If you want to run the code examples on your machine, you'll need the following dependencies:
+
+- [Python 3.8+](https://www.python.org/downloads/)
+- [Ollama](https://ollama.com/) installed and running
+
+By leveraging Ollama, you can build and test these powerful patterns privately and cost-effectively on your hardware.
+
+I use Visual Studio Code to type code, and its installed extensions already satisfy the needs for working with Python.
+
+If you don't know how to run the code examples, we have a session for doing it after the code.
+
+## The Power of Sequential Chains: LangChain
+
+At its core, LangChain is designed to create Directed Acyclic Graphs (DAGs). Don't let the term intimidate you. It simply means you are building a sequence of steps that flows in one direction, without loops. Think of it as a factory assembly line: an input goes in one end, passes through a series of stations, and a final output comes out the other end.
+
+This structure is perfect for predictable, sequential tasks. A classic example is a Retrieval-Augmented Generation (RAG) pipeline:
+
+Receive a user's question.
+Fetch relevant documents from a database.
+"Stuff" the context from those documents into a prompt.
+Send the prompt to an LLM to generate an answer.
+
+If you don't know what RAG is, you can check this post: [Understanding the RAG Pattern with LLMs](/posts/understanding-rag-llm/).
+
+### LangChain Code Example: A Simple RAG Chain
+
+This example creates a simple RAG chain that answers questions based on a small piece of provided text, using Ollama to run both the chat model and the embeddings model locally.
+
+```python
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.runnables import RunnablePassthrough
+from langchain_community.vectorstores import FAISS
+from langchain_ollama import ChatOllama, OllamaEmbeddings
+
+# 1. Set up the LLM and Embeddings model using Ollama
+# Make sure Ollama is running with the required models:
+# ollama pull llama3
+# ollama pull nomic-embed-text
+llm = ChatOllama(model="llama3")
+embeddings = OllamaEmbeddings(model="nomic-embed-text")
+
+# 2. Create a simple text source and Vector Store
+text_chunks = [
+    "LangGraph is a library for building stateful, multi-actor applications with LLMs.",
+    "It extends the LangChain ecosystem and enables creating cyclical graphs.",
+    "LangChain is primarily used for creating linear sequences of LLM calls (chains).",
+    "You can use LangChain Expression Language (LCEL) to compose these chains."
+]
+# Create a vector store from the text chunks
+# This will index the text chunks and allow for efficient retrieval
+vectorstore = FAISS.from_texts(texts=text_chunks, embedding=embeddings)
+retriever = vectorstore.as_retriever(search_kwargs={"k": 2})
+
+# 3. Create a Prompt Template
+template = """
+Answer the question based only on the following context:
+{context}
+
+Question: {question}
+"""
+prompt = ChatPromptTemplate.from_template(template)
+
+# 4. Build the RAG Chain using LCEL
+retrieval_chain = (
+    {"context": retriever, "question": RunnablePassthrough()}
+    | prompt
+    | llm
+    | StrOutputParser()
+)
+
+# 5. Invoke the chain
+question = "What is LangGraph used for?"
+response = retrieval_chain.invoke(question)
+retrieval_chain = (
+    {"context": retriever, "question": RunnablePassthrough()}
+    | prompt
+    | llm
+    | StrOutputParser()
+)
+
+print("Question:", question)
+print("Answer:", response)
+
+question_two = "What is the main feature of LangChain?"
+response_two = retrieval_chain.invoke(question_two)
+
+print("\nQuestion:", question_two)
+print("Answer:", response_two)
+```
+
+You can play with the `text_chunks` to see how things work.
+
+## When Chains Aren't Enough: LangGraph
+
+Complex tasks require reflection, tool usage, and decision-making. This requires loops and conditional logic, something a simple Directed Acyclic Graph (DAG) cannot handle. LangGraph models the application as a **stateful graph**, where nodes represent functions and edges define the next step based on the current state.
+
+### LangGraph Code Example: A Local Agent with a Tool
+
+This example builds an agent that can decide whether to use a "search" tool or respond directly to the user. The logic is driven entirely by a local llama3 model running in Ollama.
+
+```python
+import operator
+from typing import Annotated, TypedDict, List
+from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
+from langchain_ollama import ChatOllama
+from langgraph.graph import StateGraph, END
+
+# 1. Define the agent state
+class AgentState(TypedDict):
+    messages: Annotated[List[BaseMessage], operator.add]
+
+# 2. Define the graph nodes
+# 2.1 Main node that calls the LLM
+def call_model(state: AgentState):
+    """Main node that calls the LLM."""
+    print("---CALLING MODEL---")
+    response = llm.invoke(state["messages"])
+    return {"messages": [response]}
+
+# 2.2 Tool node (mock)
+def call_tool(state: AgentState):
+    """Simulated tool node."""
+    print("---USING TOOL---")
+    tool_response = HumanMessage(
+        content="The latest report indicates a 15% increase in market share. What should I do next?",
+        name="tool_output"
+    )
+    return {"messages": [tool_response]}
+
+# 3. Conditional logic to decide the next step
+def should_continue(state: AgentState) -> str:
+    """
+    Decides the next step. If the last LLM message includes 'search',
+    calls the tool. Otherwise, ends the process.
+    """
+    print("---ASSESSING NEXT STEP---")
+    last_message = state["messages"][-1]
+    if isinstance(last_message, AIMessage) and "search" in last_message.content.lower():
+        print("DECISION: Use Tool")
+        return "tool"
+    else:
+        print("DECISION: End")
+        return END
+
+# 4. Build the state graph
+# Make sure Ollama is running with the 'llama3' model pulled.
+# ollama pull llama3
+llm = ChatOllama(model="llama3", temperature=0)
+
+# Define the workflow using StateGraph
+workflow = StateGraph(AgentState)
+workflow.add_node("agent", call_model)
+workflow.add_node("tool", call_tool)
+workflow.set_entry_point("agent")
+workflow.add_conditional_edges(
+    "agent",
+    should_continue,
+    {"tool": "tool", END: END},
+)
+workflow.add_edge("tool", "agent")
+app = workflow.compile()
+
+# 5. Run the graph with examples
+
+def print_message_output(output):
+    """
+    Pretty print the output for the user, showing only the message content in a readable way.
+    """
+    messages = output.get('messages', [])
+    for msg in messages:
+        role = msg.__class__.__name__
+        print(f"[{role}]\n{msg.content}\n")
+
+## EXAMPLE 1: Agent decides to end immediately
+inputs_1 = {"messages": [HumanMessage(content="What is the weather in Madrid?")]}
+for output in app.stream(inputs_1, {"recursion_limit": 5}):
+    for key, value in output.items():
+        print(f"Output from node '{key}':\n---")
+        print_message_output(value)
+        print("---\n")
+
+## EXAMPLE 2: Agent decides to use a tool
+inputs_2 = {"messages": [HumanMessage(content="I need the latest market report. Can you perform a search?")]}
+for output in app.stream(inputs_2, {"recursion_limit": 5}):
+    for key, value in output.items():
+        print(f"Output from node '{key}':\n---")
+        print_message_output(value)
+        print("---\n")
+```
+
+The function `print_message_output` is not necessary for running the model. I just added it here to make the output a bit more legible for us.
+
+You can play with the `inputs_1` and `inputs_2` to check how the application will work.
+
+## How to Run the Examples
+
+### Step 1: Download the Local Models
+
+Open your terminal and pull the models we'll be using from Ollama's registry. The nomic-embed-text model is for generating embeddings (vectorizing text), and llama3 is our chat model.
+
+You can use the Visual Studio Code Terminal to do it.
+
+```sh
+ollama pull llama3
+ollama pull nomic-embed-text
+```
+
+### Step 2: Create a Project Folder and Virtual Environment
+
+It's good practice to isolate your project's dependencies. Virtual Env will help us isolate it.
+
+On your opened terminal, type the following commands (one by one, please):
+
+```sh
+mkdir langchain-langgraph-examples
+cd langchain-langgraph-examples
+python -m venv venv
+source venv/bin/activate  # On Windows, use `venv\Scripts\activate`
+```
+
+### Step 3: Install Required Libraries
+
+Install all the necessary packages. Note that we are installing langchain-ollama instead of the OpenAI-specific library, like we usually find in the documentation and blog post examples.
+
+```sh
+pip install langchain langchain_core langchain_community langgraph faiss-cpu
+```
+
+### Step 4: Run the Code
+
+Save each code block into its respective .py file (langchain_ollama_example.py and langgraph_ollama_example.py). Then, run them from your terminal.
+
+Make sure the Ollama application is running first.
+
+```sh
+# Run the LangChain example
+python langchain_ollama_example.py
+
+# Run the LangGraph example
+python langgraph_ollama_example.py
+```
+
+You will see the output printed to your console, showing how each framework processes the requests using your local models.
+
+## Conclusion: Which One Should You Use?
+
+To be direct:
+
+- Use **LangChain** for building predictable, sequential workflows. It's perfect for RAG, summarization, and other tasks that follow a clear, linear path.
+- Use **LangGraph** when you need your application to reason, plan, and loop. It's the right choice for building complex agents, multi-step conversational models, or any process that requires dynamic, state-driven execution.
+
+## References
+
+- LangChain Documentation: https://python.langchain.com/
+- LangGraph Documentation: https://langchain-ai.github.io/langgraph/
+- Ollama: https://ollama.com/
