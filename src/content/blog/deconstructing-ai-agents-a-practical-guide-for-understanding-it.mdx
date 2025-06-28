@@ -1,0 +1,335 @@
+---
+title: "Deconstructing AI Agents: A Practical Guide for Understanding it"
+description: "Explore the anatomy of AI Agents, their execution flow, and the architecture needed to run them effectively. This guide provides a practical understanding of AI Agents beyond the hype."
+pubDate: "Sat Jun 28 18:00:00 2025 +0200"
+published: true
+tags: ["llm", "ai-agents", "ai-concepts"]
+---
+
+As software engineers, we design systems, build services, and manage complexity in software projects. Now, a new architectural component is entering the scene: the **AI Agent**. I know… Perhaps you're tired of reading or listening about it due to the LinkedIn AI Specialists boom in the last year, but I promise that in this article, I just want to share something cool and I'm not here to sell you anything.
+
+## Introduction
+
+AI Agents are more than just another API or microservice connected to our architecture; they're an autonomous, and this changes things (I think). Suppose this is not another technology immersed in the hyper cycle that will be destroyed by poor managerial decisions and the high leadership of big companies. In that case, I believe that it will be really important in the future software we'll be working on.
+
+This article deconstructs the AI Agent, moving beyond the hype to detail its core anatomy, its practical execution flow, and the architecture required to run it in a real-world environment.
+
+## What is an AI Agent?
+
+An AI Agent in the end of the day is a software. But, instead of being a static program doing something, it can autonomously perform tasks to achieve a specific goal. It uses reasoning, memory, and tools to interact with the environment, making decisions based on its understanding of the world and the task at hand. Unlike traditional software, which follows predefined rules, an AI Agent can adapt its behavior based on new information and changing conditions.
+
+For me, the part of "an AI Agent can adapt its behavior based on new information and changing conditions" is the most important and excited part of it. This is the key difference between an AI Agent and a traditional software component. It can learn from its experiences, adjust its strategies, and improve its performance over time.
+
+I'm not talking about magic. The AI Agents are developed by us and it can take a lot of bad decisions, but the point is that it can chose the way that it'll run instead of only following pre-determined instructions.
+
+Let's explore the anatomy of an AI Agent and how it works in practice to understand it better.
+
+## The Anatomy of an AI Agent
+
+At its core, an AI Agent is a system designed to achieve a goal autonomously. While implementations vary, most agents are built around a loop that can be simplified as **Perceive** -> **Plan** -> **Act**. This loop is powered by four key components:
+
+**1. Reasoning Engine:** This is the agent's "brain." It's almost always a Large Language Model (LLM) like GPT-4o or Google's Gemini. Its job is not just to generate text, but to plan. Given a goal, its memory, and a set of available tools, it decides what to do next.
+
+**2. Tools / Capabilities:** An agent is useless without the ability to act. Tools are the functions or APIs that can be invoked to interact with the outside world. Each tool is a capability, like `search_web`, `send_email`, `query_database`, or `execute_shell_command`. For a developer, these are the well-defined, robust functions we already excel at building.
+
+**3. Memory:** An agent needs to remember things to be effective. We can break memory into two types:
+
+- **Short-Term Memory:** This is the context of the current task, like the conversation history or recent tool outputs. It's managed within the execution loop itself.
+- **Long-Term Memory:** For persistence across tasks, an agent needs a way to store and retrieve information. This is often implemented using a **vector database** (like Pinecone or Chroma). It allows the agent to recall past interactions or "learn" from large documents by finding relevant information.
+
+**4. Goal / Objective:** This is the initial instruction from the user. It's the mission statement that kicks off the agent's Perceive-Plan-Act loop. A well-defined goal is critical for success.
+
+## How It Works: A Code-Level Walkthrough
+
+Let's see how these components work together in practice. The following Python code creates a "Researcher" agent whose goal is to answer a question. We will label each part according to the anatomy described above.
+
+### Requirements
+
+If you want to run the code examples on your machine, you’ll need the following dependencies:
+
+- [Python 3.8+](https://www.python.org/)
+- [Ollama is installed and running](https://ollama.com/)
+
+By leveraging Ollama, you can build and test these powerful patterns privately and cost-effectively on your hardware.
+
+I use Visual Studio Code to type code, and its installed extensions already satisfy the needs for working with Python.
+
+If you don’t know how to run the code examples, we have a session for doing it after the code.
+
+### The Agent Code
+
+This Python script creates a basic AI agent that uses a local language model from Ollama to achieve a goal. The agent is given a specific tool: a function that can search the web using DuckDuckGo.
+
+When you provide a question, the agent's LLM "brain" first decides whether it needs to perform a web search to find the answer. If a search is necessary, it executes the tool, analyzes the search results, and then generates a final, summarized answer. If the model believes it already knows the answer, it provides it directly without using the tool.
+
+In this example, I'm enforcing the model to use the tool with a question about very actual data. The model will use the search tool, because maybe the data used to train it is not updated with information about something happening in the year 2025.
+
+_If you're reading this text after 2025, just change the year in the text, and the model will be enforced to search on the web._
+
+```python
+import json
+import ollama
+from duckduckgo_search import DDGS
+
+# --- 1. Tools / Capabilities ---
+#
+# This function is a 'tool' that the agent can use to perform web searches.
+# It uses the DuckDuckGo search engine to find relevant information based on a query.
+def search_web(query: str) -> str:
+    """
+    Performs a web search using DuckDuckGo. This is a 'tool'.
+    """
+    print(f"--- ACTION: Executing tool 'search_web' with query: {query} ---")
+    ddgs = DDGS()
+    results = ddgs.text(keywords=query, max_results=5)
+    return json.dumps(results) if results else "[]"
+
+# --- 2. The Main Agent Execution Loop ---
+#
+# This function runs the agent, which is designed to achieve a specific goal.
+# It uses a local LLM (Large Language Model) to reason about the goal and decide
+# whether to use tools, like web search, to gather more information.
+# In this case, the agent's goal is provided as a string argument.
+# The agent will print its reasoning and the final answer to the console.
+# The agent's reasoning process is divided into several steps:
+# 1. Define the goal.
+# 2. Initialize the agent with the goal.
+# 3. Reason about the goal and decide on the next action.
+# 4. If a tool is needed, execute it and gather the results.
+# 5. Use the results to generate a final answer.
+def run_agent(goal: str):
+    """
+    This function encapsulates the agent's execution loop.
+    """
+    print(f"--- GOAL: {goal} ---")
+
+    messages = [
+        {"role": "user", "content": goal}
+    ]
+
+    tools = [
+        {
+            "type": "function",
+            "function": {
+                "name": "search_web",
+                "description": "Searches the web for information about a topic.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": "The search query."
+                        }
+                    },
+                    "required": ["query"]
+                }
+            }
+        }
+    ]
+
+    # --- 3. Reasoning Engine (The 'Plan' Step) ---
+    #
+    # This is where the agent uses a local LLM to reason about the goal.
+    # It will generate a plan or decide on the next action based on the goal.
+    print("--- PLAN: Asking local LLM for the next step... ---")
+    response = ollama.chat(
+        model="qwen3:0.6b",
+        messages=messages,
+        tools=tools
+    )
+
+    response_message = response['message']
+    messages.append(response_message)
+
+    summary = ""
+
+    # --- 4. The 'Act' and 'Perceive' Steps ---
+    #
+    # Here, the agent decides whether to use a tool based on the response from the LLM.
+    # If the model decides to use a tool, we execute it.
+    # If the model does not use a tool, we proceed to generate a final answer.
+    if response_message.get('tool_calls'):
+        available_tools = {"search_web": search_web}
+
+        for tool_call in response_message['tool_calls']:
+            function_to_call = available_tools[tool_call['function']['name']]
+            function_args = tool_call['function']['arguments']
+
+            function_response = function_to_call(query=function_args.get("query"))
+
+            print("--- PERCEPTION: Received tool output. ---")
+            messages.append(
+                {
+                    "role": "tool",
+                    "content": function_response,
+                }
+            )
+
+        # --- 5. Final Reasoning ---
+        # After executing the tool, we ask the model to generate a final response
+        print("--- PLAN: Generating final response based on tool output... ---")
+        final_response = ollama.chat(
+            model="qwen3:0.6b",
+            messages=messages,
+        )
+        summary = final_response['message']['content']
+    else:
+        print("--- INFO: Model provided a direct answer without using tools. ---")
+        summary = response_message.get('content', "The model did not provide a valid response.")
+
+    print(f"\n--- AGENT: Final Answer ---")
+    print(summary)
+
+# --- Let's run it ---
+if __name__ == "__main__":
+    user_goal = "How much are companies like Google, Microsoft, and Amazon investing in AI in 2025?"
+    run_agent(user_goal)
+```
+
+To observe the model's direct responses rather than its tool usage, provide input text that aligns more closely with its training data.
+
+For example:
+
+```python
+# --- Let's run it ---
+if __name__ == "__main__":
+    user_goal = "What is the role of a vector database in an AI Agent?"
+    run_agent(user_goal)
+```
+
+## Architecture: Where and How Do Agents Run?
+
+An agent is a computational process, but its autonomous and stateful nature requires specific architectural considerations. They aren't just stateless microservices.
+
+Let's explore the needs of the AI Agents architecture.
+
+### Execution Environments
+
+An agent can run anywhere a standard application can:
+
+- **Local Machine/VM:** For development and simple, long-running agents.
+- **Containers (Docker/Kubernetes):** The standard for deploying scalable, isolated agents. You can have a fleet of agents, each in its own container, managed by an orchestrator like Kubernetes.
+- **Serverless Functions (AWS Lambda/Google Cloud Functions):** This is ideal for **event-driven agents**. For example, a new file landing in an S3 bucket triggers a Lambda function that runs an agent to process it.
+
+### Common Architectural Patterns
+
+**Monolithic Agent (Our Example):** A single, self-contained process that includes the reasoning loop, tools, and memory. It's simple and effective for specific tasks but doesn't scale well for complex, multi-domain problems.
+
+**Orchestrator-Worker Model:** This is a more advanced pattern for complex tasks.
+
+- An **Orchestrator Agent** receives the main goal. It plans by breaking the goal into sub-tasks.
+- It then delegates these sub-tasks to specialized **Worker Agents** (e.g., `CodeWritingAgent`, `DatabaseQueryAgent`, `ApiCallingAgent`).
+- This pattern is highly scalable and promotes the _separation of concerns_, as each worker agent can have its specific tools and context. Frameworks like LangChain and LlamaIndex provide structures to build these kinds of multi-agent systems.
+
+### Key Infrastructure Dependencies using Providers
+
+When you move an agent to production, you're not just deploying the Python code. You're managing a system with some critical external dependencies:
+
+- **LLM Provider:** A reliable, low-latency connection to an LLM API (OpenAI, Google AI, etc.) is non-negotiable.
+- **Vector Database Provider:** For any agent that needs long-term memory, a managed vector DB (like Pinecone) is a core part of the infrastructure.
+- **Tool Endpoints & Service Discovery:** The APIs and services the agent uses must be highly available and monitored. If an agent's tool fails, the agent fails.
+- **Unified Credential & Configuration Management:** Agents need access to numerous API keys and secrets. This access must be managed securely through a service like AWS/Google Secrets Manager or HashiCorp Vault, for example.
+
+### Key Infrastructure Considerations for Self-Hosted Agents
+
+Using a self-hosted model, you are no longer managing external API calls but rather a full stack of internal infrastructure. The dependencies shift from third-party services to your operational capabilities:
+
+- **Model Hosting & Serving Infrastructure:** This is the most significant change. What was a simple API call now becomes a complex internal service that you must build and maintain.
+- **Compute Hardware:** LLMs require powerful GPUs to run with acceptable latency. This involves significant upfront investment and ongoing management of hardware resources, power, and cooling.
+- **Serving Framework:** You need a dedicated framework to serve the model efficiently. While Ollama is excellent for development and smaller-scale deployments, production environments often use more advanced tools like **vLLM**, TensorRT-LLM, or custom solutions to maximize throughput and minimize latency.
+- **Scalability & Uptime:** How do you handle thousands of concurrent requests? You become responsible for load balancing, auto-scaling GPU nodes (often using Kubernetes), and ensuring high availability so that a single server failure doesn't bring down your agents.
+- **Vector Database:** While you could still use a managed service, a fully self-hosted strategy often implies running your vector database. Tools like **Chroma**, **Weaviate**, or **Redis** with a `vector module` become another critical piece of infrastructure that you must deploy, scale, and back up.
+- **Tool Endpoints & Service Discovery:** This dependency remains, but its complexity can increase. Your agent will still need to interact with other APIs and services. In an internal environment, you must ensure robust service discovery, internal networking, and monitoring for these endpoints.
+- **Unified Credential & Configuration Management:** The need for security doesn't disappear; it just changes focus. Instead of managing an OpenAI API key, you now need to secure access to your internal model-serving endpoint, your vector database, and any other internal tools. Services like HashiCorp Vault or cloud-native secret managers remain essential for managing database credentials, internal service tokens, and other secrets in a secure and auditable way.
+
+## How to Run the Examples
+
+### Step 1: Download the Local Models
+
+Open your terminal and pull the models we’ll be using from Ollama’s registry. The qwen3:0.6b for using the LLM model with support for tools, and llama3 is our chat model.
+You can use the Visual Studio Code Terminal to do it.
+
+```sh
+ollama pull llama3
+ollama pull qwen3:0.6b
+```
+
+You can use other models instead of Qwen, you just need to pay attention to using a model with supports using tools.
+You can find them in this link: [ollama/search?c=tools](https://ollama.com/search?c=tools)
+
+### Step 2: Create a Project Folder and Virtual Environment
+
+It’s good practice to isolate your project’s dependencies. Virtual Env will help us isolate it.
+On your open terminal, type the following commands (one by one, please):
+
+```sh
+mkdir ai-agent-example
+cd ai-agent-example
+python -m venv venv
+source venv/bin/activate  # On Windows, use `venv\Scripts\activate`
+```
+
+### Step 3: Install Required Libraries
+
+On your terminal, run the following:
+
+```sh
+pip install ollama duckduckgo-search
+```
+
+### Step 4: Run the Code
+
+Save the code in the .py file ai-agent.py.
+Make sure the Ollama application is running first, and run the following in your terminal:
+
+```sh
+python ai-agent.py
+```
+
+You will see the execution of the code.
+
+Example:
+
+```sh
+(venv) ➜  ai-agent-example git:(main) ✗ python ai-agent.py
+--- GOAL: How much are companies like Google, Microsoft, and Amazon investing in AI in 2025? ---
+--- PLAN: Asking local LLM for the next step... ---
+--- ACTION: Executing tool 'search_web' with query: companies investing in AI 2025 Google Microsoft Amazon ---
+--- PERCEPTION: Received tool output. ---
+--- PLAN: Generating final response based on tool output... ---
+
+--- AGENT: Final Answer ---
+<think>
+Okay, the user is asking how much Google, Microsoft, and Amazon are investing in AI in 2025. I need to find the answer by using the search_web function. Let me check the provided data.
+
+First, there's a title mentioning tech giants spending $320 billion on AI in 2025. That's a solid number. Then another entry states Microsoft is investing $320 billion in AI. Also, Amazon is mentioned as part of the same spending. The user is specifically asking for Google, so I should include that as well. Wait, the data might not have Google's exact figure. The user might be expecting the total combined spending, but I need to make sure to list each company's contribution. Let me verify each entry. The first three entries all mention Microsoft, Amazon, and Meta spending $320 billion each. So the answer should state that each of these three tech giants is investing $320 billion in AI in 2025, with the combined total being a record. That covers all three companies and the specific year.
+</think>
+
+The combined investment in AI by companies like Google, Microsoft, and Amazon in 2025 is set to surpass $320 billion. Here's the breakdown:
+
+- **Microsoft** is investing **$320 billion** in AI and data centers in 2025.
+- **Amazon** also contributes **$320 billion** to AI and cloud computing.
+- **Google** is expected to invest **$320 billion** in AI and tech infrastructure.
+
+This marks a record amount for these tech giants in the AI sector.
+```
+
+## Conclusion
+
+For me, AI Agents represent a significant evolution in software engineering, moving beyond traditional programming paradigms to autonomous, reasoning systems, and this will require some focus in the next years to avoid the hype and keep our eyes on the important thing.
+
+Furthermore, deploying these agents effectively requires careful consideration of architectural patterns and infrastructure dependencies, whether leveraging external providers or managing a self-hosted environment. The shift necessitates developers to focus on architecting environments, building robust tools, defining precise goals, and managing information flow, marking a pivotal new phase in software development.
+
+I honestly don't know how all these changes will impact our role or our day-to-day work, but I believe that this kind of stuff is really useful and could be studied by everyone to use in the software projects we're working on.
+
+## References
+
+- [LangChain - Conceptual guide](https://python.langchain.com/docs/concepts/)
+- [What is AI agent orchestration?](https://www.ibm.com/think/topics/ai-agent-orchestration)
+- [A Distributed State of Mind: Event-Driven Multi-Agent Systems](https://www.confluent.io/blog/event-driven-multi-agent-systems/)
+- [Building effective agents](https://www.anthropic.com/engineering/building-effective-agents)
+- [IBM - What is a vector database?](https://www.ibm.com/think/topics/vector-database)
+- [datacamp - The Top 7 Vector Databases in 2025](https://www.datacamp.com/blog/the-top-5-vector-databases)
+- [Ollama - Local LLMs](https://ollama.com/)
+- [Python - Ollama](https://pypi.org/project/ollama/)
+- [Python - DuckDuckGo Search](https://pypi.org/project/duckduckgo-search/)
