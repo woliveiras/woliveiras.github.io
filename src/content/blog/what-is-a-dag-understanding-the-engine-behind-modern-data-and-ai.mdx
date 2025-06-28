@@ -14,6 +14,12 @@ tags:
   ]
 ---
 
+import GraphSVG from "../../assets/posts/graph.svg";
+import DirectedGraphSVG from "../../assets/posts/directed-graph.svg";
+import AcyclicCyclic from "../../assets/posts/comparison.svg";
+
+import DarkModeSVG from "../../components/DarkModeSVG.astro";
+
 In the latest post I mentioned "DAG" while I was talking about LangChain and LangGraph. But, this term is not only related to these technologies. You'll also hear about it when we talk about tools like Apache Airflow, dbt, or even. It sounds like complex computer science jargon, but the concept is surprisingly simple and incredibly powerful, like when we talk about [RAG](/posts/understanding-rag-llm/).
 
 At its core, a DAG, **"Directed Acyclic Graph"**, is just a smart and reliable way to organize a list of tasks.
@@ -30,11 +36,19 @@ In this context, a graph is simply a structure made of two things:
 - **Edges**: These are the lines that connect the nodes, showing the relationship and flow between them.
   Think of it like a simple map: cities are the nodes, and the roads connecting them are the _edges_.
 
+<DarkModeSVG maxWidth="60%">
+  <GraphSVG />
+</DarkModeSVG>
+
 ## D - Directed
 
 Next, we have **Directed**. This means the _flow_ through the graph is one-way. The edges have a specific direction, like one-way streets.
 
 If you have an edge from Node A to Node B, it means Task A must happen before Task B. The process moves forward along the specified path. You can't go from B back to A unless there is a separate edge pointing that way.
+
+<DarkModeSVG maxWidth="60%">
+  <DirectedGraphSVG />
+</DarkModeSVG>
 
 ## A - Acyclic
 
@@ -49,6 +63,10 @@ Think about the steps to make a cup of coffee:
 1. Add milk.
 
 This is a DAG. You perform each step in a logical order, and you never loop back from "adding milk" to "boiling water."
+
+<DarkModeSVG>
+  <AcyclicCyclic />
+</DarkModeSVG>
 
 ## Why Are DAGs So Useful?
 

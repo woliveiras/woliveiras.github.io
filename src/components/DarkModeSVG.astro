@@ -1,0 +1,23 @@
+---
+const { alt = "", maxWidth, maxHeight } = Astro.props;
+---
+
+<span class="svg-wrapper" role="img" aria-label={alt}>
+  <slot />
+</span>
+
+<style define:vars={{ maxWidth, maxHeight }}>
+  .svg-wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+  }
+
+  .svg-wrapper :global(svg) {
+    width: var(--maxWidth);
+    height: var(--maxHeight);
+    display: block;
+  }
+</style>

@@ -66,6 +66,15 @@ const { title, description, image } = Astro.props;
       .MathJax svg {
         display: inline !important;
       }
+
+      /* SVG dark mode global override */
+      html.dark .svg-wrapper svg * {
+        stroke: #fff !important;
+        fill: #fff !important;
+      }
+      html.dark .svg-wrapper svg *[fill="none"] {
+        fill: none !important;
+      }
     </style>
   </head>
 
