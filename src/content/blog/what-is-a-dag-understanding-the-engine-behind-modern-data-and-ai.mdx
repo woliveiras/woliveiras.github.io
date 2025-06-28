@@ -36,7 +36,10 @@ In this context, a graph is simply a structure made of two things:
 - **Edges**: These are the lines that connect the nodes, showing the relationship and flow between them.
   Think of it like a simple map: cities are the nodes, and the roads connecting them are the _edges_.
 
-<DarkModeSVG maxWidth="60%">
+<DarkModeSVG
+  maxWidth="60%"
+  alt="Hand-drawn graph illustration showing several nodes (circles) connected by edges (lines), representing the structure of a graph with nodes and relationships."
+>
   <GraphSVG />
 </DarkModeSVG>
 
@@ -46,7 +49,10 @@ Next, we have **Directed**. This means the _flow_ through the graph is one-way. 
 
 If you have an edge from Node A to Node B, it means Task A must happen before Task B. The process moves forward along the specified path. You can't go from B back to A unless there is a separate edge pointing that way.
 
-<DarkModeSVG maxWidth="60%">
+<DarkModeSVG
+  maxWidth="60%"
+  alt="Hand-drawn directed graph illustration showing several nodes (circles) connected by arrows, representing a one-way flow between tasks in a process."
+>
   <DirectedGraphSVG />
 </DarkModeSVG>
 
@@ -64,7 +70,7 @@ Think about the steps to make a cup of coffee:
 
 This is a DAG. You perform each step in a logical order, and you never loop back from "adding milk" to "boiling water."
 
-<DarkModeSVG>
+<DarkModeSVG alt="Hand-drawn comparison illustration showing two graphs: one acyclic (with arrows moving forward only) and one cyclic (with arrows forming a loop), visually explaining the difference between acyclic and cyclic graphs.">
   <AcyclicCyclic />
 </DarkModeSVG>
 

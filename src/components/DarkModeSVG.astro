@@ -1,5 +1,11 @@
 ---
-const { alt = "", maxWidth, maxHeight } = Astro.props;
+type Props = {
+  alt: string;
+  maxWidth?: string;
+  maxHeight?: string;
+};
+
+const { alt, maxWidth, maxHeight } = Astro.props;
 ---
 
 <span class="svg-wrapper" role="img" aria-label={alt}>
