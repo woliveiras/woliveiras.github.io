@@ -4,6 +4,7 @@ import BaseLayout from "$layouts/BaseLayout.astro";
 import BlogPost from "$layouts/BlogPost.astro";
 import Header from "$components/Header.astro";
 import Footer from "$components/Footer.astro";
+import AIDisclaimer from "$components/AIDisclaimer.astro";
 import { Image } from "astro:assets";
 import FormattedDate from "$components/FormattedDate.astro";
 import { getBlogPosts } from "src/utils";
@@ -47,9 +48,10 @@ if (replacedHero && !images[replacedHero])
       ) : null
     }
     <BlogPost>
-
       <h1 class="mt-4">{post.data.title}</h1>
       <Content />
+
+      <AIDisclaimer />
 
       <div class="flex mt-8 items-center gap-x-4 text-xs">
         <FormattedDate date={post.data.pubDate} />
