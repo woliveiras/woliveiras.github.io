@@ -50,3 +50,15 @@ const { title, description, image = "main.png" } = Astro.props;
   property="twitter:image"
   content={new URL(BASE + "/open-graph/" + image, Astro.url)}
 />
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-RBHTWKJ9LC"
+></script>
+<script is:inline>
+  window.dataLayer = window.dataLayer || [];
+  function gtag() {
+    dataLayer.push(arguments);
+  }
+  gtag("js", new Date());
+  gtag("config", "G-RBHTWKJ9LC");
+</script>
