@@ -1,0 +1,378 @@
+---
+title: "Distinguishing Generative AI from Agentic AI"
+description: "This article explores the key differences between generative AI and agentic AI, providing insights into their unique characteristics and applications."
+pubDate: "Mon Jun 30 18:00:00 2025 +0200"
+published: true
+tags: ["llm", "ai-agents", "llm", "gen-ai", "ai-concepts"]
+---
+
+The landscape of Artificial Intelligence is evolving at an unprecedented pace, introducing new paradigms that reshape how we design, develop, and interact with software systems. It has been just a few years since we've started listening about Machine Learning and GPT and today the market is obfuscated with a lot of AI providers, AI possibilities and so on. Among the most prominent of these, for me (today), and in the context of software engineering, are Generative AI and Agentic AI.
+
+While both leverage advanced machine learning models, their fundamental goals, operational mechanisms, and architectural implications differ significantly. For us, software engineers and software architects, understanding these distinctions is crucial for identifying appropriate use cases, mitigating risks, and building robust, intelligent applications.
+
+In this article we'll dive into the core differences between Generative and Agentic AI, exploring their underlying principles and providing practical examples using local LLMs with Ollama and agentic frameworks like LangChain.
+
+Disclaimer: This text is not about whether one is better than the other, because it is not possible to do this kind of comparison, as the nature of each is so different (and usually we use both together).
+
+## The Key Differences: Generative vs. Agentic AI
+
+At its heart, Generative AI excels at _creation_. It focuses on producing content, whether it's text, images, audio, or video, based on patterns learned from vast datasets. Its primary interaction model is often **prompt-based** by a user, and its output is typically a static piece of generated content in response to a **single request**.
+
+While this technology is incredibly useful for tasks like content generation, summarization, and data augmentation, its "intelligence" is largely confined to the realm of generating outputs based on our inputs and its trained data.
+
+Of course, GenAI is very powerful, and the models are usually trained on large datasets that we, as normal people, will never have access to. However, even with that, depending on the train data is painful for the GenAI to create a good output, because the world doesn't stop creating things and changing, and we can receive bad generations and hallucinations due to our prompts because of biased datasets for training and outdated information.
+
+Agentic AI, on the other hand, represents a paradigm shift towards **autonomous** action and task automation within an environment. An Agentic AI system is designed to **perceive** its environment, **reason** about its goals, **plan** sequences of actions, and **execute** those actions, often leveraging tools and interacting with external systems.
+
+This involves multi-step reasoning, self-correction, and the ability to adapt to dynamic conditions. The "intelligence" of an agent lies in its capacity for goal-oriented behavior and its ability to orchestrate complex operations in the real world.
+
+And, in the end of the day, we can use both together, because Generative AI can be used to generate content that Agentic AI can use to perform actions, and Agentic AI can be used to automate the process of generating content. But not only for creating content, but also for automating tasks that require interaction with external systems, like searching for information, making API calls, or even controlling hardware.
+
+Using tools with our AI Agents, the capabilities of the Agents are significantly big.
+
+Let's break down the key differentiating characteristics.
+
+### Main Focus
+
+Generative AI focuses on content generation (text, image, audio, etc.). Agentic AI focuses on performing actions and automating tasks within an environment.
+
+### Type of Output
+
+Generative AI produces content (text, image, video). Agentic AI produces a sequence of actions, tool calls/using, and environmental interactions.
+
+### Central Mechanism
+
+Generative AI relies on Foundation Models (LLMs, multimodal models). Agentic AI employs a planner based on AI (generally LLM), tools, like using libraries, API calls, operational system calls, and an Action Loop.
+
+### External Interaction
+
+Generative AI primarily interacts through prompts (often with RAG for context). Agentic AI actively interacts with tools and external systems.
+
+### Autonomy
+
+Generative AI responds to a single request. Agentic AI is capable of multi-step reasoning, planning, and self-correction.
+
+### Complexity
+
+Generative AI is more focused on the quality of generation. Agentic AI is more complex due to orchestration, planning, and tool management.
+
+### Risk
+
+Generative AI carries risks of inconsistent content or hallucinations. Agentic AI involves performing real-world actions with potential consequences, requiring robust guardrails.
+
+In essence, Generative AI is about the capacity to create, while Agentic AI is about the capacity to act and automate, leveraging the generative capabilities of its underlying intelligence.
+
+#### Summarization
+
+| Characteristic       | Generative AI                               | Agentic AI (Agents)                                                               |
+| -------------------- | ------------------------------------------- | --------------------------------------------------------------------------------- |
+| Main Focus           | Generate content (text, image, audio, etc.) | Perform actions and automate tasks within an environment                          |
+| Type of Output       | Content (text, image, video)                | Sequence of actions, tool calls, environmental interaction                        |
+| Central Mechanism    | Foundation Models (LLMs, multimodal models) | AI-based Planner (generally LLM), Tools, Action Loop                              |
+| External Interaction | Primarily through prompts (RAG for context) | Actively interact with tools and external systems                                 |
+| Autonomy             | Responds to a single request                | Capable of multi-step reasoning, planning, and self-correction                    |
+| Complexity           | More focused on generation quality          | More complex due to orchestration, planning, and tool management                  |
+| Risk                 | Inconsistent content or hallucinations      | Execution of real-world actions with potential consequences (requires guardrails) |
+
+Let's see some code examples to illustrate these concepts in practice.
+
+## Requirements
+
+If you want to run the code examples on your machine, you’ll need the following dependencies:
+
+- [Python 3.8+](https://www.python.org/)
+- [Ollama is installed and running](https://ollama.com/)
+
+By leveraging Ollama, you can build and test these powerful patterns privately and cost-effectively on your hardware.
+
+I use Visual Studio Code to type code, and its installed extensions already satisfy the needs for working with Python.
+
+If you don’t know how to run the code examples, we have a session for doing it after the code.
+
+## Generative AI Example: Text Generation with Ollama
+
+This example demonstrates a basic text generation task using a locally running Ollama instance. We will use the Llama 3 model to generate a simple marketing slogan.
+
+```python
+import ollama
+
+# This function sends a prompt to the Ollama LLM and returns a generated slogan.
+def generate_slogan(topic: str) -> str:
+    """
+    Generates a marketing slogan for a given topic using Ollama.
+    """
+    # Prepare the prompt for the LLM
+    prompt = f"Generate a catchy and concise marketing slogan for a company that specializes in {topic}. Make it sound innovative."
+    # Call the Ollama LLM with the prompt and get the response
+    response = ollama.chat(model='llama3', messages=[
+        {'role': 'user', 'content': prompt}
+    ])
+    # Extract the generated slogan from the response
+    return response['message']['content']
+
+if __name__ == "__main__":
+    print("--- Generative AI Example (Ollama) ---")
+    # Example 1: Generate a slogan for retro gaming
+    topic = "retro gaming and nostalgia"
+    slogan = generate_slogan(topic)
+    print(f"Topic: {topic}")
+    print(f"Generated Slogan: {slogan}\n")
+
+    # Example 2: Generate a slogan for board games
+    topic_2 = "board games and tabletop gaming"
+    slogan_2 = generate_slogan(topic_2)
+    print(f"Topic: {topic_2}")
+    print(f"Generated Slogan: {slogan_2}\n")
+```
+
+After running this code, we'll receive the something like this in the output:
+
+```sh
+--- Generative AI Example (Ollama) ---
+Topic: retro gaming and nostalgia
+Generated Slogan: Here are some ideas for a catchy and concise marketing slogan for a company that specializes in retro gaming and nostalgia:
+
+1. **"Level Up Your Nostalgia"** - This slogan plays on the popular gaming term "level up," but gives it a nostalgic twist, implying that customers can level up their fond memories of the past.
+2. **"Retro Revival: Where Classics Come Alive Again"** - This slogan emphasizes the idea that retro games and nostalgia are not just relics of the past, but can be revived and enjoyed again in new ways.
+3. **"Play Like You Used To"** - Simple and straightforward, this slogan speaks to the desire many people have to recapture the joy and excitement they experienced while playing their favorite childhood games.
+4. **"Unplugged, Unleashed: The Power of Retro Gaming"** - This slogan highlights the unique benefits of retro gaming, such as the absence of distractions and the freedom to play without internet connectivity.
+5. **"Embrace Your Inner Child"** - This slogan takes a more playful approach, encouraging customers to tap into their youthful enthusiasm and sense of wonder by embracing retro gaming.
+6. **"Retro Reborn: Experience the Classics in a Whole New Way"** - This slogan emphasizes the company's commitment to innovation and creativity, implying that customers can expect new and exciting ways to experience old favorites.
+7. **"Game On, Time Warp Off"** - This slogan plays on the idea of time travel, suggesting that customers can escape the stresses of modern life and return to a simpler, more carefree era through retro gaming.
+
+I hope one of these slogans sparks your interest!
+
+Topic: board games and tabletop gaming
+Generated Slogan: Here are a few options:
+
+1. **"Level Up Your Fun!"** - This slogan emphasizes the excitement of playing board games and the idea that you can "level up" your social experiences.
+2. **"Roll with Imagination!"** - This one highlights the creative potential of tabletop gaming, suggesting that players can unleash their imagination and have a blast.
+3. **"Game On: Where Play Meets Innovation!"** - This slogan positions the company as a hub for innovative gameplay and creativity, emphasizing the intersection of playfulness and technology.
+4. **"Unroll the Fun!"** - A playful take on "unleash the fun," this slogan suggests that the company's games are the key to unlocking hours of entertainment.
+5. **"Where Strategy Meets Social!"** - This one highlights the social aspect of board gaming, emphasizing that strategy and competition can be a fun and engaging way to connect with others.
+
+My personal favorite is:
+
+**"Game On: Where Play Meets Innovation!"**
+
+This slogan conveys a sense of excitement, creativity, and innovation, while also highlighting the company's focus on tabletop gaming. It's short, memorable, and easy to use across various marketing channels.
+```
+
+## Agentic AI Example: Task Automation with LangChain and Ollama
+
+This example showcases a simple agent that can answer questions using a local LLM and a "tool" that simulates a search engine. The agent will decide when to use the tool based on the user's query.
+
+First, let's define a simple "search tool" that simulates searching for information. In a real-world scenario, this would integrate with a search API (e.g., Google Search, DuckDuckGo Search).
+
+```python
+from langchain_core.tools import tool
+
+# This tool simulates a search engine for the agent to use.
+# In a real application, you would call an external search API here.
+@tool
+def search_tool(query: str) -> str:
+    """
+    Simulates a search engine to find information.
+    In a real application, this would call an external search API, like Google or DuckDuckGo.
+    For this example, it returns hardcoded responses based on the query.
+    """
+    print(f"--- Search tool called with query: '{query}' ---")
+
+    # Check the query and return a hardcoded response for each supported case
+    if "current weather in madrid" in query.lower():
+        return "Final Answer: The current weather in Madrid is hot like the hell with a temperature of 48 degrees Celsius."
+    elif "population of paris" in query.lower():
+        return "Final Answer: The population of Paris is approximately TOO MUCH people."
+    elif "capital of brazilian guiana" in query.lower():
+        return "Final Answer: The capital of Brazilian Guiana is Lisbon."
+    else:
+        return f"Information for '{query}' not found in simulated search."
+
+if __name__ == '__main__':
+    # Test the tool with example queries
+    print(search_tool.invoke("current weather in madrid"))
+    print(search_tool.invoke("population of paris"))
+    print(search_tool.invoke("capital of brazilian guiana"))
+```
+
+Now, let's create the Agentic AI application using LangChain.
+
+```python
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_ollama import ChatOllama
+from tools import search_tool
+from langchain.agents import create_react_agent, AgentExecutor
+
+# Initialize the local LLM (Llama 3) using Ollama
+llm = ChatOllama(model="llama3")
+
+# Define the prompt template for the agent, enforcing tool use and the ReAct format
+# The agent is instructed to always use a tool and never answer from its own knowledge
+# After providing the 'Final Answer', the agent must stop
+# The template also injects the available tools and their names
+# The agent_scratchpad variable is used by LangChain to keep track of the reasoning steps
+
+template = """
+You are an AI assistant that must always use the available tools to answer questions. Do not answer directly from your own knowledge.
+
+Question: {input}
+{agent_scratchpad}
+
+Use the following format:
+Thought: Do I need to use a tool? Yes
+Action: <tool name>
+Action Input: <input to the tool>
+Observation: <tool result>
+Thought: I have the information needed.
+Final Answer: <answer based on tool result>
+
+After you provide 'Final Answer:', stop and do not continue. Never repeat the cycle after the final answer.
+
+TOOLS:
+{tools}
+Tool names: {tool_names}
+"""
+
+prompt = ChatPromptTemplate.from_template(template)
+
+# Register the available tools for the agent
+tools = [search_tool]
+
+# Create the ReAct agent with the LLM, tools, and prompt
+agent = create_react_agent(llm, tools, prompt)
+
+# Create the AgentExecutor, which manages the agent's reasoning and tool use
+agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True, handle_parsing_errors=True, max_iterations=1)
+
+def run_agent_query(query: str):
+    """
+    Runs a query through the LangChain agent and prints the result.
+    """
+    print(f"\n--- Agentic AI Example (LangChain + Ollama) ---")
+    print(f"Query: '{query}'")
+    response = agent_executor.invoke({"input": query})
+    print(f"Agent Response: {response['output']}\n")
+
+if __name__ == '__main__':
+    # Run example queries to demonstrate agentic AI
+    run_agent_query("Current weather in madrid")
+    run_agent_query("What is the population of paris?")
+    run_agent_query("What is the capital of brazilian guiana?")
+```
+
+And, after running this code, we'll receive the following output:
+
+```sh
+--- Agentic AI Example (LangChain + Ollama) ---
+Query: 'Current weather in madrid'
+
+
+> Entering new AgentExecutor chain...
+Thought: Do I need to use a tool? Yes
+Action: search_tool
+Action Input: "Current weather in Madrid"--- Search tool called with query: 'Current weather in Madrid' ---
+Final Answer: The current weather in Madrid is hot like the hell with a temperature of 48 degrees Celsius.
+
+> Finished chain.
+Agent Response: Agent stopped due to iteration limit or time limit.
+
+
+--- Agentic AI Example (LangChain + Ollama) ---
+Query: 'What is the population of paris?'
+
+
+> Entering new AgentExecutor chain...
+Thought: Do I need to use a tool? Yes
+Action: search_tool
+Action Input: "What is the population of Paris?"--- Search tool called with query: 'What is the population of Paris?' ---
+Final Answer: The population of Paris is approximately TOO MUCH people.
+
+> Finished chain.
+Agent Response: Agent stopped due to iteration limit or time limit.
+
+
+--- Agentic AI Example (LangChain + Ollama) ---
+Query: 'What is the capital of brazilian guiana?'
+
+
+> Entering new AgentExecutor chain...
+Thought: Do I need to use a tool? Yes
+Action: search_tool
+Action Input: "What is the capital of Brazilian Guiana?"--- Search tool called with query: 'What is the capital of Brazilian Guiana?' ---
+Final Answer: The capital of Brazilian Guiana is Lisbon.
+
+> Finished chain.
+Agent Response: Agent stopped due to iteration limit or time limit.
+```
+
+## How to Run the Examples
+
+### Step 1: Download the Local Models
+
+Open your terminal and pull the models we'll be using from Ollama's registry. The llama3 model is our chat model.
+
+You can use the Visual Studio Code Terminal to do it.
+
+```sh
+ollama pull llama3
+```
+
+### Step 2: Create a Project Folder and Virtual Environment
+
+It's good practice to isolate your project's dependencies. Virtual Env will help us isolate it.
+
+On your opened terminal, type the following commands (one by one, please):
+
+```sh
+mkdir genai-agentic-ai
+cd genai-agentic-ai
+python -m venv venv
+source venv/bin/activate  # On Windows, use `venv\Scripts\activate`
+```
+
+### Step 3: Install Required Libraries
+
+Install all the necessary packages. Note that we are installing langchain-ollama instead of the OpenAI-specific library, like we usually find in the documentation and blog post examples.
+
+```sh
+ pip install langchain langchain-core langchain_ollama ollama
+```
+
+### Step 4: Run the Code
+
+Save each code block into its respective .py file (genai.py, tools.py, agent.py). Then, run them from your terminal.
+
+Make sure the Ollama application is running first.
+
+```sh
+# Run the GenAI example
+python genai.py
+
+# Run the Agent example
+python agent.py
+```
+
+You will see the output printed to your console, showing how the GenAI generates content and how the Agentic AI interacts with the search tool to answer queries.
+
+If you want, you can try to change the queries in the `run_agent_query` function to see how the agent responds to different inputs.
+
+You can also modify the Agent behavior by changing the prompt template or adding more tools.
+
+## Conclusion
+
+The distinction between Generative AI and Agentic AI is not merely semantic; it represents a fundamental divergence in their design principles, capabilities, and ultimately, their applications in software engineering.
+
+While Generative AI empowers us to create unprecedented content and synthesize information, Agentic AI moves towards autonomous systems capable of complex decision-making, tool utilization, and real-world task execution.
+
+For us, software engineers, understanding these paradigms is paramount for designing intelligent systems that are not only capable of advanced content generation but also possess the autonomy and reasoning abilities to interact meaningfully and productively within dynamic environments. As we integrate these AI capabilities into our architectures, careful consideration of their unique characteristics will be key to building the next generation of robust, intelligent, and impactful software solutions.
+
+## GitHub Repository for Examples
+
+[github.com/woliveiras/genai-agentic-ai](https://github.com/woliveiras/genai-agentic-ai)
+
+## References
+
+- [Ollama Documentation](https://ollama.com)
+- [LangChain Documentation](https://www.langchain.com)
+- [free resource - Generative AI and LLMs for Dummies by Snowflake](https://www.snowflake.com/thankyou/generative-ai-and-llms-for-dummies/)
+- [ReAct: Synergizing Reasoning and Acting in Language Models](https://arxiv.org/abs/2210.03629) (for Agentic AI inspiration)
