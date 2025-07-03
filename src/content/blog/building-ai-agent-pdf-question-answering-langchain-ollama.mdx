@@ -1,0 +1,304 @@
+---
+title: "Building an AI Agent for PDF Question Answering with LangChain and Ollama"
+description: "Learn how to build an AI agent that can answer questions from PDF documents using LangChain and Ollama. Step-by-step guide with code examples."
+pubDate: "Thu Jul 3 18:00:00 2025 +0200"
+published: true
+tags: ["llm", "ai-agents", "langchain", "ollama"]
+---
+
+## Introduction
+
+This article is a simple tutorial on how to build an AI agent that can read PDF files stored in a local directory and answer questions about their content. The agent will use LangChain for orchestration and Ollama for running local LLMs and embeddings.
+
+We'll walk through the entire process, from loading PDF documents, embeddings generation, RAG and retrieval to generating answers using a local language model.
+
+We'll use the following technologies:
+
+- **LangChain**: A framework for building applications with LLMs.
+- **Ollama**: A platform for running local LLMs and embeddings.
+- **Gemma**: the LLM we'll use for generating answers.
+- **Nomic Embeddings**: A model for generating text embeddings.
+- **ChromaDB**: A vector database for storing and retrieving embeddings.
+
+Let's get started!
+
+## The Agent
+
+The core idea behind this agent is to implement a Retrieval-Augmented Generation (RAG) pattern. This involves several key steps:
+
+1. Document Loading: Loading the content from multiple PDF files.
+1. Text Splitting: Breaking down the large text content into smaller, manageable chunks.
+1. Embedding Generation: Converting these text chunks into numerical vector representations (embeddings).
+1. Vector Store Creation: Storing these embeddings in a vector database for efficient similarity search.
+1. Retrieval: When a query comes in, it retrieves the most relevant text chunks from the vector store.
+1. Generation: Passing the retrieved chunks and the user query to an LLM to generate an informed answer.
+   By orchestrating these steps, our agent can "understand" the context of the PDFs and provide accurate answers.
+
+If you don't know what RAG is, I recommend reading my article on [RAG - Understanding the RAG Pattern with LLMs](/posts/understanding-rag-llm/).
+
+## Architecture Overview
+
+The agent's architecture can be visualized as follows:
+
+- **PDF Loader**: Utilizes a Python library to read PDF documents.
+- **Text Splitter**: Chunks the extracted text to fit within the LLM's context window.
+- **Embedding Model**: A local embedding model converts text to vectors.
+- **Vector Store**: A local vector database stores the embeddings.
+- **Retriever**: Queries the vector store to find relevant document chunks.
+- **Local LLM (Ollama)**: A locally hosted language model processes the retrieved context and user query to formulate an answer.
+- **LangChain**: Acts as the orchestration layer, connecting all these components and defining the flow of information.
+
+## Requirements
+
+To run the code examples provided, you will need the following technical prerequisites:
+
+- [Python 3.9+](https://www.python.org/downloads/)
+- [Ollama is installed and running](https://ollama.com/docs/installation)
+
+By leveraging Ollama, you can build and test these powerful patterns privately and cost-effectively on your hardware.
+
+I use Visual Studio Code to type code, and its installed extensions already satisfy the needs for working with Python.
+
+If you don’t know how to run the code examples, we have a session for doing it after the code.
+
+## The AI Agent for PDF Question Answering with LangChain and Ollama Code
+
+```python
+import os
+from langchain_community.document_loaders import PyPDFDirectoryLoader
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_ollama import OllamaEmbeddings, OllamaLLM
+from langchain_community.vectorstores import Chroma
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.runnables import RunnablePassthrough
+from langchain_core.output_parsers import StrOutputParser
+
+# 1. Configuration
+DATA_PATH = "data/" # Directory where your PDF files are located
+VECTOR_DB_PATH = "./chroma_db" # Directory to store the vector database
+LLM_MODEL = "gemma3:4b" # Local LLM model for generating answers
+EMBEDDING_MODEL = "nomic-embed-text:latest" # Local embedding model for generating embeddings
+
+# 2. Load Documents
+def load_documents(data_path):
+    loader = PyPDFDirectoryLoader(data_path)
+    documents = loader.load()
+    print(f"Loaded {len(documents)} documents.")
+    return documents
+
+# 3. Split Text
+#
+# chunk_size:
+#   Defines the maximum size of each text chunk in characters.
+#   Larger chunks can provide more context but must fit
+#   within the LLM's context window.
+# chunk_overlap:
+#   Specifies the number of characters that overlap between
+#   consecutive chunks. This helps maintain context across
+#   chunk boundaries and prevents loss of information.
+# add_start_index:
+#   When True, a metadata field containing the starting index
+#   of the chunk within the original document is added. Useful
+#   for traceability and debugging.
+def split_documents(documents):
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=1000,
+        chunk_overlap=200,
+        add_start_index=True
+    )
+    chunks = text_splitter.split_documents(documents)
+    print(f"Split documents into {len(chunks)} chunks.")
+    return chunks
+
+# 4. Create Embeddings and Vector Store
+#
+# documents:
+#   The list of text chunks to be converted into embeddings.
+# embedding_model:
+#   The local embedding model used to convert text chunks into
+#   numerical vector representations. This model should be
+#   compatible with Ollama.
+# vector_db_path:
+#   The directory where the vector store will be persisted.
+#   This allows for efficient storage and retrieval of embeddings.
+#   The vector store can be queried later to find relevant chunks
+#   based on user queries.
+def create_vector_store(chunks, embedding_model, vector_db_path):
+    print("Creating embeddings and vector store...")
+    embeddings = OllamaEmbeddings(model=embedding_model)
+    vector_store = Chroma.from_documents(
+        documents=chunks,
+        embedding=embeddings,
+        persist_directory=vector_db_path
+    )
+    print("Vector store created and persisted.")
+    return vector_store
+
+# 5. Initialize LLM
+def initialize_llm(llm_model):
+    print(f"Initializing LLM: {llm_model}")
+    llm = OllamaLLM(model=llm_model)
+    return llm
+
+# 6. Build the RAG Chain
+def build_rag_chain(vector_store, llm):
+    retriever = vector_store.as_retriever(search_kwargs={"k": 3}) # Retrieve top 3 relevant chunks
+
+    prompt_template = """
+    You are an AI assistant for question-answering over documents.
+    Use the following retrieved context to answer the question.
+    If you don't know the answer, just say that you don't know.
+
+    Context: {context}
+    Question: {question}
+    Answer:
+    """
+    prompt = ChatPromptTemplate.from_template(prompt_template)
+
+    rag_chain = (
+        {"context": retriever, "question": RunnablePassthrough()}
+        | prompt
+        | llm
+        | StrOutputParser()
+    )
+    print("RAG chain built.")
+    return rag_chain
+
+# Main execution flow
+def main():
+    if not os.path.exists(DATA_PATH):
+        os.makedirs(DATA_PATH)
+        print(f"Please place your PDF files in the '{DATA_PATH}' directory.")
+        return
+
+    documents = load_documents(DATA_PATH)
+    if not documents:
+        print("No PDF documents found. Please add PDFs to the 'data/' directory.")
+        return
+
+    chunks = split_documents(documents)
+    vector_store = create_vector_store(chunks, EMBEDDING_MODEL, VECTOR_DB_PATH)
+    llm = initialize_llm(LLM_MODEL)
+    rag_chain = build_rag_chain(vector_store, llm)
+
+    print("\nAI Agent is ready! You can now ask questions about your PDFs.")
+    print("Type 'exit' to quit.")
+
+    while True:
+        user_query = input("\nYour question: ")
+        if user_query.lower() == 'exit':
+            print("Exiting agent. Goodbye!")
+            break
+
+        try:
+            response = rag_chain.invoke(user_query)
+            print(f"\nAgent's Answer: {response}")
+        except Exception as e:
+            print(f"An error occurred: {e}")
+            print("Please ensure Ollama is running and the models are downloaded.")
+
+if __name__ == "__main__":
+    main()
+```
+
+## How to Run the Examples
+
+### Step 1: Download the Local Models
+
+Open your terminal and pull the models we’ll be using from Ollama’s registry.
+
+We'll use gemma3:4b for the LLM and nomic-embed-text:latest for embeddings.
+
+```sh
+ollama pull gemma3:4b
+ollama pull nomic-embed-text:latest
+```
+
+You can use another combination if you understand it.
+
+### Step 2: Create a Project Folder and Virtual Environment
+
+It’s good practice to isolate your project’s dependencies. Virtual Env will help us isolate it. On your open terminal, type the following commands (one by one, please):
+
+```sh
+mkdir reader-agent
+cd reader-agent
+python -m venv venv
+source venv/bin/activate  # On Windows, use `venv\Scripts\activate`
+```
+
+### Step 3: Install Required Libraries
+
+On your terminal, run the following:
+
+```sh
+pip install langchain langchain-community pypdf chromadb
+```
+
+### Step 4: Run the Code
+
+Save the code in the .py file `agent.py`.
+
+Make sure the Ollama application is running first, and run the following in your terminal:
+
+```sh
+python agent.py
+```
+
+You will see the execution of the code.
+
+The application will run in your terminal, and you can type your answer after the text:
+
+```sh
+AI Agent is ready! You can now ask questions about your PDFs.
+Type 'exit' to quit.
+
+Your question:
+```
+
+If you want to stop the agent, just type **"exit"**.
+
+## Example
+
+For this example I used the ebook "Generative AI and LLMs for Dummies" available free by Snowflake. You can download it from [here](https://www.snowflake.com/resource/generative-ai-and-llms-for-dummies/).
+
+The agent will read the PDF files in the `data/` directory, split them into manageable chunks, create embeddings, and store them in a vector database. When I ask a question, it retrieves relevant chunks and generates an answer using the local LLM.
+
+For example, if I ask:
+
+```
+Your question: What is the main topic of the book?
+```
+
+It will result in an answer like:
+
+```
+(venv) ➜  reader-agent git:(main) ✗ python agent.py
+Loaded 52 documents.
+Split documents into 138 chunks.
+Creating embeddings and vector store...
+Vector store created and persisted.
+Initializing LLM: gemma3:4b
+RAG chain built.
+
+AI Agent is ready! You can now ask questions about your PDFs.
+Type 'exit' to quit.
+
+Your question: What is the main topic of the book?
+
+Agent's Answer: The main topic of the book is Generative AI and Large Language Models (LLMs). It provides an introductory overview to these technologies and discusses techniques for training, tuning, and deploying machine learning models.
+```
+
+This shows how the agent can effectively understand and answer questions based on the content of the PDF documents.
+
+## Conclusion
+
+This tutorial has provided a step-by-step guide to creating such an agent, demonstrating the potential of combining these technologies for practical applications. Feel free to adapt and extend this example to suit your specific needs, whether for personal projects or enterprise applications.
+
+## References
+
+- [Ollama Documentation](https://ollama.com/docs/)
+- [LangChain Documentation](https://www.langchain.com/)
+- [Gemma LLM](https://ollama.com/library/gemma3)
+- [Nomic Embeddings](https://ollama.com/library/nomic-embed-text)
+- [ChromaDB](https://www.trychroma.com/)
