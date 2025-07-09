@@ -99,6 +99,15 @@ content:
         label: Body
         type: rich-text
 
+  - name: devlog
+    label: DevLog page
+    path: src/content/devlog/devlog.mdx
+    type: file
+    fields:
+      - name: body
+        label: Body
+        type: rich-text
+
   - name: description
     label: Description
     path: src/content/info/description.md

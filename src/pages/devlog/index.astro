@@ -1,0 +1,22 @@
+---
+import { SITE_TITLE, SITE_DESCRIPTION } from "../../config.json";
+
+import Footer from "$components/Footer.astro";
+import Header from "$components/Header.astro";
+import BaseLayout from "$layouts/BaseLayout.astro";
+import BlogPost from "$layouts/BlogPost.astro";
+import { Content } from "$content/devlog/devlog.mdx";
+---
+
+<BaseLayout title={SITE_TITLE} description={SITE_DESCRIPTION}>
+  <Header active="devlog" />
+
+  <main class="max-w-2xl lg:max-w-3xl mx-auto mt-8 px-4">
+    <h1 class="text-3xl font-bold mb-4">Log</h1>
+    <BlogPost>
+      <Content />
+    </BlogPost>
+  </main>
+
+  <Footer />
+</BaseLayout>
