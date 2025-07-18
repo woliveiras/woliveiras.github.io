@@ -1,0 +1,224 @@
+---
+title: "What to do after installing Pwnagotchi"
+description: "A guide to configure Pwnagotchi after installation"
+pubDate: "Fri Jul 18 18:00:00 2025 +0200"
+published: true
+tags:
+  [
+    "hacking",
+    "maker",
+    "hardware",
+  ]
+---
+
+If you're not familiar with the Pwnagotchi, it's a virtual pet that can do some fun things with Wi-Fi. It was started by evilsocket in 2019 as a summer project that turned into a really nice tool. You can see the entire story of the pwnagotchi creation in the references of this post.
+
+In this article, I don't want to teach you how to install the boot image or something like that, because we have a lot of good tutorials on YouTube for this first part. I just want to keep here the steps after the installation for my use while creating Pwonagotchis for my friends. And, maybe it can be useful for you too.
+
+If you want to build a pwnagotchi too, I use these components:
+
+- Raspberry Pi Zero WH (the W means it has wi-fi board, the H means it has pre-soldered headers)
+- Waveshare 4
+- PiSugar 3 for power management
+- Sandisk Extreme PRO 64GB microSDXC
+- This 3D Printable case by MAXDARKDOG: [Pwnagotchi Case](https://cults3d.com/en/3d-model/gadget/coque-pwnagotchi-waveshare3-pisugar3-et-protection-d-ecran-plexiglass)
+
+For installing the boot image, I used the [Raspberry Pi Imager](https://www.raspberrypi.com/software/), which is a great tool for flashing images to microSD cards.
+
+And, instead of using the pwnagotchi.ai image, I used the pwnagotchi.org image, which is updated more frequently. You can find it here: [pwnagotchi.org](https://pwnagotchi.org/3rd-party-images/index.html).
+
+In the references section, you can find the links to the YouTube videos that I used for the installation.
+
+Now, to the steps **after** the installation.
+
+## Connecting to the pwnagotchi
+
+Remember to use the data transfer port of the Raspberry Pi.
+
+You can connect to the pwnagotchi via SSH using the default credentials:
+
+```sh
+ssh pi@10.0.0.2
+```
+
+Password: `raspberry`.
+
+Change the password immediately after logging in for security reasons:
+
+```sh
+passwd
+```
+
+Also, change the password for the `root` user:
+
+```sh
+sudo su
+passwd
+```
+
+## Configuring the pwnagotchi
+
+To the first configuration, we can use the wizard:
+
+```sh
+sudo pwnagotchi --wizard
+```
+
+Remember to add your Wi-Fi credentials to the whitelist when prompted.
+
+The config file will be stored in `/etc/pwnagotchi/config.toml`.
+
+You can edit this file to customize your pwnagotchi settings. For example, you can change the name, enable plugins, and configure the display.
+
+The final configuration file will look something like this:
+
+```toml
+main.name = "pwnagotchi"
+main.lang = "en"
+main.whitelist = [
+  "EXAMPLE_NETWORK",
+  "fo:od:ba:be:fo:od",
+]
+
+ui.display.enabled = true
+ui.display.type = "waveshare_4"
+ui.display.color = "black"
+ui.fps = 1
+```
+
+## Enabling the SFTP
+
+To easily change the settings file with a GUI or your favorite text editor, we can enable SFTP access.
+
+Access the pwnagotchi settings file:
+
+```sh
+sudo nano /etc/ssh/sshd_config
+```
+
+Change the `#PermitRootLogin prohibit-password` to `PermitRootLogin yes`.
+
+```sh
+PermitRootLogin yes
+```
+
+Then, restart the SSH service:
+
+```sh
+service ssh restart
+```
+
+We can now connect to the pwnagotchi via SFTP using the same credentials:
+
+```sh
+host: 10.0.0.2
+username: root
+password: *the new password*
+port: 22
+```
+
+You can use any SFTP client, like FileZilla or WinSCP, to connect to the pwnagotchi and edit the configuration file.
+
+## Enabling Bluetooth Tethering
+
+Before anything make sure that the bluetooth tethering is activated and for apple you need iPhone’s personal hotspot ON. Keep phone unlocked.
+
+Follow these steps to enable Bluetooth tethering:
+
+1. `sudo bluetoothctl`
+1. `scan on`
+1. `discoverable on`
+1. Find your phone's Bluetooth address (it will look like `XX:XX:XX:XX:XX:XX`).
+1. `pair XX:XX:XX:XX:XX:XX`
+1. `trust XX:XX:XX:XX:XX:XX`
+
+To test if the tethering is working, you can use the following command:
+
+```sh
+ping google.com
+```
+
+## WebUI
+
+To access the WebUI, you can use the following URL in your web browser:
+
+```
+10.0.0.2:8080
+```
+
+Remember to update the credentials.
+
+```sh
+sudo nano /etc/pwnagotchi/config.toml
+
+# find for these items and change them to the desired values
+ui.web.username = "your_login_user"
+ui.web.password = "your_password"
+```
+
+## Plugins
+
+Some plugins can be installed by the command line, but some need to be installed manually.
+
+To install via command line, you can use the following command:
+
+```sh
+sudo pwnagotchi plugins install <plugin_name>
+```
+
+To install manually, you can copy the `.py` plugin file to the `/usr/local/share/pwnagotchi/custom-plugins/` and add the plugin settings to the `/etc/pwnagotchi/config.toml` file.
+
+We already have some nice plugins installed by default. I just added some more that I like to use:
+
+- [Experience](https://github.com/Kaska89/pwnagotchi-EXPv2-plugin/blob/main/expv2.py)
+- [Age](https://github.com/Kaska89/pwnagotchi-EXPv2-plugin/blob/main/agev2.py)
+
+To download the plugins, you can use the following commands:
+
+```sh
+cd /usr/local/share/pwnagotchi/custom-plugins/
+sudo wget https://raw.githubusercontent.com/<username>/<repo>/refs/heads/main/<plugin_name>.py
+```
+
+Example:
+
+```sh
+cd /usr/local/share/pwnagotchi/custom-plugins/
+
+sudo wget https://raw.githubusercontent.com/Kaska89/pwnagotchi-EXPv2-plugin/refs/heads/main/expv2.py
+sudo wget https://raw.githubusercontent.com/Kaska89/pwnagotchi-EXPv2-plugin/refs/heads/main/agev2.py
+```
+
+
+To enable the Experience plugin, add the following to your `config.toml`:
+
+```toml
+sudo nano /etc/pwngtochi/config.toml
+
+main.plugins.expv2.enabled = true
+main.plugins.expv2.lvl_x_coord = 5
+main.plugins.expv2.lvl_y_coord = 88
+main.plugins.expv2.exp_x_coord = 38
+main.plugins.expv2.exp_y_coord = 88
+main.plugins.expv2.bar_symbols_count = 12
+main.plugins.expv2.bar_symbol = "█"
+```
+
+You can find more plugins [here](https://pwnagotchi.org/3rd-party-plugins/index.html).
+
+## References
+
+**for MacOS:**
+
+https://www.youtube.com/watch?v=Jal06m87Tqw&ab_channel=CybercatLabs
+
+**for Windows:**
+
+https://www.youtube.com/watch?v=P9bxhljddGw&ab_channel=HedgeTech
+
+- [Pwnagotchi Official Website](https://pwnagotchi.ai/)
+- [Pwnagotchi Org Website](https://pwnagotchi.org/)
+- [Weaponizing and Gamifying AI for WiFi Hacking: Presenting Pwnagotchi 1.0.0](https://www.evilsocket.net/2019/10/19/Weaponizing-and-Gamifying-AI-for-WiFi-Hacking-Presenting-Pwnagotchi-1-0-0/)
+- [Pwnagotchi Guerilla Guide - 2022](https://github.com/Xyl0se/Pwnagotchi-new-guerilla-guide)
+- [Pwnagotchi Defaults](https://github.com/jayofelony/pwnagotchi/blob/noai/pwnagotchi/defaults.toml)
+
