@@ -1,0 +1,329 @@
+---
+title: "How to Chat with Your GitHub Repository: A Guide to Local RAG with Ollama and LangChain"
+description: "Creating an AI Agent to read your GitHub repository using Ollama and LangChain to answer questions about its code structure, documentation, and more."
+pubDate: "Sun Jul 20 17:00:00 2025 +0200"
+published: true
+tags: ["llm", "ai-agents", "langchain", "ollama"]
+---
+
+Creating an AI Agent to read your GitHub repository using Ollama and LangChain to answer questions about its code structure, documentation, and more.
+
+## Introduction
+
+This article serves as a tutorial for building a solution that utilizes a single GitHub repository as a Retrieval-Augmented Generation (RAG) agent. The agent ingests an entire GitHub repository and enables users to ask questions about it in natural language. We will build this agent using Python, LangChain, and a locally running Large Language Model (LLM) powered by Ollama, ensuring that your code and queries remain completely private and offline.
+
+We'll also use ChromaDB for storing our vectors, llama3, and nomic-embed-text for LLM.
+
+## The Agent
+
+The architecture of our agent is based on the RAG pattern. This pattern enhances the capabilities of an LLM by providing it with relevant, external information at query time. Instead of relying solely on its pre-trained knowledge, the model uses the provided context to formulate a grounded and accurate answer.
+
+Just to enforce our Agent to use our repository instead of its previous knowledge for this article, we'll use this prompt:
+
+```
+Never use prior model knowledge or external information. If the answer is not in the context,
+```
+
+And, if the Agent doesn't find the answer to our question in the repository, it'll say that it's not possible to help us. We make it by passing the following parameters for the Agent:
+
+```
+Explicitly state that it is not possible to answer based only on the repository.
+```
+
+Our pipeline consists of several key stages:
+
+### 1. Document Loading
+
+We first need to fetch the source code from the target GitHub repository. LangChain provides a convenient **GithubFileLoader** for this purpose. It can clone a repository and load files that match specific criteria, such as file extensions (`.py`, `.ts`, `.java`, `.swift`, `.kt`, .md, etc.), allowing us to focus only on relevant content.
+
+### 2. Text Splitting
+
+LLMs have a **finite context window**, meaning they can only process a limited amount of text at once. To handle large codebases, we must split the loaded documents into smaller, manageable chunks. We'll use the **RecursiveCharacterTextSplitter**, which is effective for code as it attempts to split based on semantic boundaries, such as newlines, functions, and classes. We also configure a `chunk_overlap` to maintain contextual continuity between adjacent chunks.
+
+### 3. Embedding and Vector Storage
+
+To find the most relevant code chunks for a given user question, we need to perform a semantic search. This is achieved by converting both the document chunks and the user's query into numerical representations called **embeddings**. We will use a local embedding model from Ollama, such as **nomic-embed-text**. These embeddings are then stored in a specialized database called a vector store. For this example, we use **Chroma**, a lightweight and efficient in-memory/on-disk vector store perfect for local development. A key feature we implement here is persistence: the vector database is saved to disk after the first run, avoiding the need to re-process the entire repository every time the agent starts.
+
+### 4. Retrieval and Generation
+
+When a user asks a question, the following happens:
+
+- The user's question is converted into an embedding using the same model.
+- The vector store performs a similarity search to find the code chunks whose embeddings are closest to the question's embedding. This is our retrieval step.
+- These relevant chunks (the context) are then passed to the LLM along with the original question, guided by a carefully crafted prompt.
+- The prompt instructs the LLM (in our case, a local **llama3** model via Ollama) to answer the question exclusively based on the provided context. This is crucial for preventing the model from "hallucinating" or using irrelevant external knowledge.
+- Finally, the LLM generates the answer, which is presented to the user.
+
+This entire workflow is orchestrated using LangChain's Expression Language (LCEL), specifically with **create_stuff_documents_chain** and **create_retrieval_chain**, which elegantly chain these components together.
+
+## Requirements
+
+To run the code examples provided, you will need the following technical prerequisites:
+
+- [Python 3.9+](https://www.python.org/downloads/)
+- [Ollama is installed and running](https://ollama.com/)
+- [A GitHub Token](https://github.com/settings/tokens)
+
+By leveraging Ollama, you can build and test these powerful patterns privately and cost-effectively on your hardware.
+
+I use Visual Studio Code to type code, and its installed extensions already satisfy the needs for working with Python.
+
+We need the GitHub token to avoid the rate limit in the API requests. You need to create a `.env` file in the same directory as your code with the following content:
+
+```
+GITHUB_ACCESS_TOKEN=your_github_token_here
+```
+
+If you don’t know how to run the code examples, we have a session for doing it after the code.
+
+## The AI Agent to Chat with Your GitHub Repository
+
+Below is the complete Python script for our GitHub Q&A agent. It encapsulates all the steps discussed before.
+
+```python
+import os
+from dotenv import load_dotenv
+from langchain_chroma import Chroma
+from langchain_community.document_loaders import GithubFileLoader
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_ollama.chat_models import ChatOllama
+from langchain_ollama.embeddings import OllamaEmbeddings
+from langchain_core.prompts import ChatPromptTemplate
+from langchain.chains.combine_documents import create_stuff_documents_chain
+from langchain.chains.retrieval import create_retrieval_chain
+
+# --- 1. Load Environment Variables ---
+# Make sure to create a .env file with your GITHUB_ACCESS_TOKEN
+load_dotenv()
+GITHUB_TOKEN = os.getenv("GITHUB_ACCESS_TOKEN")
+
+# --- 2. Define Constants ---
+# The GitHub repository to analyze
+# The vector database path
+# The LLM and embedding models to use
+# Make sure to have the models available in your Ollama server
+# You can change these to your preferred models
+REPO_URL = "https://github.com/woliveiras/reader-agent"
+CHROMA_PERSIST_DIRECTORY = "./chroma_db"
+LLM_MODEL = "llama3"
+EMBEDDING_MODEL = "nomic-embed-text"
+
+def main():
+    """
+    Main function to set up and run the GitHub QA agent.
+    """
+    print("Starting the AI agent for GitHub repository analysis...")
+
+    # --- 3. Initialize Models ---
+    llm = ChatOllama(model=LLM_MODEL, base_url="http://localhost:11434")
+    embeddings = OllamaEmbeddings(model=EMBEDDING_MODEL, base_url="http://localhost:11434")
+
+    # --- 4. Load or Create the Vector Database ---
+    if os.path.exists(CHROMA_PERSIST_DIRECTORY):
+        print(f"Loading existing vector database from {CHROMA_PERSIST_DIRECTORY}...")
+        vector_store = Chroma(
+            persist_directory=CHROMA_PERSIST_DIRECTORY,
+            embedding_function=embeddings
+        )
+    else:
+        print(f"Creating new vector database for {REPO_URL}...")
+
+        # Load the repository files
+        print("Loading files from the GitHub repository...")
+        loader = GithubFileLoader(
+            repo="woliveiras/reader-agent",
+            branch="main",
+            access_token=GITHUB_TOKEN,
+            github_api_url="https://api.github.com",
+            file_filter=lambda file_path: file_path.endswith((".py", ".md")),
+        )
+        docs = loader.load()
+
+        # Filter for relevant source code files
+        print(f"Loaded {len(docs)} documents from the repository.")
+        source_code_docs = docs
+        print(f"Filtered to {len(source_code_docs)} source code documents.")
+
+        # Split documents into chunks
+        splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+        splits = splitter.split_documents(source_code_docs)
+        print(f"Documents split into {len(splits)} chunks.")
+
+        # Create and persist the vector store
+        vector_store = Chroma.from_documents(
+            documents=splits,
+            embedding=embeddings,
+            persist_directory=CHROMA_PERSIST_DIRECTORY
+        )
+        print("Vector database created and persisted.")
+
+    # --- 5. Create the RAG Chain ---
+    retriever = vector_store.as_retriever()
+
+    prompt_template = ChatPromptTemplate.from_messages([
+        ("system", (
+            "Answer user questions only based on the context below, which is extracted from the repository. "
+            "Never use prior model knowledge or external information. If the answer is not in the context,"
+            "explicitly state that it is not possible to answer based only on the repository.\n\n{context}"
+        )),
+        ("human", "{input}"),
+    ])
+
+    combine_docs_chain = create_stuff_documents_chain(llm, prompt_template)
+    retrieval_chain = create_retrieval_chain(retriever, combine_docs_chain)
+
+    # --- 6. Start Interactive Chat Loop ---
+    print("\nAgent is ready. You can now ask questions.")
+    while True:
+        try:
+            question = input("Type your question (or 'exit' to quit): ")
+            if question.strip().lower() == 'exit':
+                print("Exiting agent...")
+                break
+
+            print("Querying the agent...")
+            result = retrieval_chain.invoke({"input": question})
+
+            print("\n--- Agent Response ---")
+            print(result["answer"])
+            print("--------------------------\n")
+
+        except KeyboardInterrupt:
+            print("\nExiting agent...")
+            break
+
+if __name__ == "__main__":
+    main()
+```
+
+## How to Run the Examples
+
+### Step 1: Download the Local Models
+
+Open your terminal and pull the models we’ll be using from Ollama’s registry.
+
+We'll use llama3 for the LLM and nomic-embed-text:latest for embeddings.
+
+```sh
+ollama pull llama3
+ollama pull nomic-embed-text:latest
+```
+
+You can use another combination if you understand it.
+
+### Step 2: Create a Project Folder and Virtual Environment
+
+It’s good practice to isolate your project’s dependencies. Virtual Env will help us isolate it. On your open terminal, type the following commands (one by one, please):
+
+```sh
+mkdir github-ai-agent
+cd github-ai-agent
+python -m venv venv
+source venv/bin/activate  # On Windows, use `venv\Scripts\activate`
+```
+
+### Step 3: Install Required Libraries
+
+On your terminal, run the following:
+
+```sh
+pip install langchain-community langchain langchain-chroma langchain-core langchain-ollama chromadb python-dotenv beautifulsoup4
+```
+
+### Step 4: Run the Code
+
+Save the code in the .py file `agent.py`.
+
+Make sure the Ollama application is running first, and run the following in your terminal:
+
+```sh
+python agent.py
+```
+
+You will see the execution of the code.
+
+The application will run in your terminal, and you can type your answer after the text:
+
+```sh
+Agent is ready. You can now ask questions.
+Type your question (or 'exit' to quit):
+```
+
+If you want to stop the agent, just type **"exit"**.
+
+## Examples
+
+For these examples, I'll use another repository of my experiments with AI Agents that you can see in the line `REPO_URL = "https://github.com/woliveiras/reader-agent"`.
+
+Question:
+
+```sh
+What is the Directory where your PDF files are located?
+```
+
+The Agent response:
+
+```sh
+--- Agent Response ---
+According to the context, the directory where your PDF files are located is `data/`. This is specified in the configuration section as `DATA_PATH = "data/"`.
+--------------------------
+```
+
+Question:
+
+```sh
+What is the Local LLM model for generating answers?
+```
+
+The Agent response:
+
+```sh
+--- Agent Response ---
+The local LLM (Large Language Model) model used in this repository is `gemma3:4b`.
+--------------------------
+```
+
+Question:
+
+```sh
+How to run this project?
+```
+
+The Agent response:
+
+```sh
+--- Agent Response ---
+To run the project:
+
+1. Clone the repository: `git clone git@github.com:woliveiras/reader-agent.git`
+2. Navigate to the cloned directory: `cd reader-agent`
+3. Create and activate a virtual environment: `python -m venv venv` (On Windows, use `venv\Scripts\activate`)
+4. Install dependencies: `pip install -r requirements.txt`
+5. Create the data directory: `mkdir data`
+6. Download the PDF files: Add some PDF files to the `data` directory.
+7. Run the agent: `python agent.py`
+
+This will start the agent, which will process the PDF files in the `data` directory and allow you to ask questions about their content.
+--------------------------
+```
+
+## Conclusion
+
+We have successfully built a powerful, local, and private Q&A agent for GitHub repositories. By combining LangChain's modular components with the accessibility of local models via Ollama, we've created a tool that can significantly accelerate codebase comprehension without exposing sensitive information to third-party services. This local-first approach offers immense benefits in terms of privacy, cost, and customization.
+
+From here, this architecture can be extended in numerous ways. One could replace the simple retriever with a more advanced one like the **MultiQueryRetriever**, build a web interface using Streamlit or FastAPI, or even evolve this single agent into a multi-agent system using a framework like LangGraph, where different agents specialize in analyzing code, documentation, and commit history to provide even more comprehensive answers.
+
+## GitHub Repository for Examples
+
+[github/woliveiras/github-ai-agent](https://github.com/woliveiras/github-ai-agent)
+
+You can find the complete code and examples in the GitHub repository linked above. This repository contains the full implementation of the AI agent, including the necessary configurations and instructions for running it.
+
+## References
+
+- LangChain Documentation: https://python.langchain.com/
+- Ollama: https://ollama.com/
+- Chroma DB: https://www.trychroma.com/
+- Further Reading:
+- Oshin, M., & Campos, N. (2024). Learning LangChain. O'Reilly Media. (As seen in the uploaded files).
+- Alammar, J., & Grootendorst, M. (2023). Hands-On Large Language Models. O'Reilly Media. (As seen in the uploaded files).
