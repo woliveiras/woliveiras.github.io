@@ -138,6 +138,32 @@ To test if the tethering is working, you can use the following command:
 ping google.com
 ```
 
+If your pwnagotchi doesn't have internet access, you can try to restart the pwnagotchi:
+
+```sh
+sudo systemctl restart pwnagotchi
+```
+
+Maybe it will not be working at first, but after a few tries, it should connect to the internet via your phone's Bluetooth tethering.
+
+If it doesn't work, you can try to update the `/etc/pwnagotchi/config.toml` file with the following settings:
+
+```toml
+sudo /etc/pwnagotchi/config.toml
+
+main.plugins.bt-tether.enabled = true
+main.plugins.bt-tether.phone-name = "Your Bluetooth Phone's Name"
+main.plugins.bt-tether.phone = "android or ios" (in lowercase)
+main.plugins.bt-tether.mac = "YOUR_PHONE_MAC_ADDRESS"
+main.plugins.bt-tether.ip = "192.168.44.2" #172.20.10.2 if ios
+```
+
+And then restart the pwnagotchi:
+
+```sh
+sudo systemctl restart pwnagotchi
+```
+
 ## WebUI
 
 To access the WebUI, you can use the following URL in your web browser:
