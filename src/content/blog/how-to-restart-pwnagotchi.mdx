@@ -1,0 +1,80 @@
+---
+title: "How to restart Pwnagotchi"
+description: "A guide to the ways to restart Pwnagotchi"
+pubDate: "Tue Jul 22 18:00:00 2025 +0200"
+published: true
+tags:
+  [
+    "hacking",
+    "maker",
+    "hardware",
+  ]
+---
+
+Restarting your Pwnagotchi can help resolve issues or apply new configurations. There are a few ways to do this, depending on your situation.
+
+## Using SSH to restart Pwnagotchi
+
+The most common way to restart your Pwnagotchi is via **SSH**.
+
+1. **Connect via SSH**: Open your terminal and connect to your Pwnagotchi. Replace `your_pwnagotchi_ip` with your device's IP address. The default password is `raspberry` if you haven't changed it.
+
+```sh
+ssh pi@your_pwnagotchi_ip
+```
+
+If you didn't change the default settings and followed the official tutorial, this is the SSH command:
+
+```sh
+ssh pi@10.0.0.2
+```
+
+2. **Restart the service**: Once connected, you can restart the Pwnagotchi service using `systemctl`. This is the recommended way as it gracefully stops and starts the service.
+
+```sh
+sudo systemctl restart pwnagotchi
+```
+
+3. **Check if Pwnagotchi is running**
+
+```sh
+sudo systemctl status pwnagotchi
+```
+
+## Using `pwnkill` to Stop and Start
+
+If you want to explicitly stop and then start the Pwnagotchi service, you can use **pwnkill**. This command is often used for debugging or ensuring a clean restart.
+
+1. **Connect via SSH**: First, connect to your Pwnagotchi via SSH as described above.
+
+2. **Restart the service**:
+
+```sh
+sudo pwnkill
+```
+
+3. **Check if Pwnagotchi is running**
+
+```sh
+sudo systemctl status pwnagotchi
+```
+
+## If SSH is not available
+
+If for some reason you cannot access your Pwnagotchi via SSH (e.g., the network is down, or the device is unresponsive), you have a few options:
+
+1. **Physical Reboot (Power Cycle)**
+
+The simplest method is to unplug the Pwnagotchi from its power source, wait a few seconds, and then plug it back in. This performs a hard reboot. While effective, it should be a last resort as it doesn't gracefully shut down the system.
+
+2. **Connect a Screen and Keyboard**
+
+If your Pwnagotchi setup allows, you might be able to connect a mini HDMI display and a USB keyboard directly to the Raspberry Pi. This will give you a console interface to log in and troubleshoot or restart.
+
+Once you see the login prompt, enter your username and password.
+
+Then, you can use the `sudo systemctl restart pwnagotchi` command as described above.
+
+---
+
+Remember to be careful when power cycling your device, as improper shutdowns can sometimes lead to SD card corruption.
