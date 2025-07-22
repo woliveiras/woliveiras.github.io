@@ -1,6 +1,6 @@
 ---
-title: "How to restart Pwnagotchi"
-description: "A guide to the ways to restart Pwnagotchi"
+title: "How to check if your pwnagotchi is working"
+description: "A guide to the ways to check if Pwnagotchi is working"
 pubDate: "Tue Jul 22 18:00:00 2025 +0200"
 published: true
 tags:
@@ -11,11 +11,9 @@ tags:
   ]
 ---
 
-Restarting your Pwnagotchi can help resolve issues or apply new configurations. There are a few ways to do this, depending on your situation.
+Sometimes your Pwnagotchi's screen might not be working, but the Raspberry Pi's activity LED is still blinking. This usually means the device itself is powered on and possibly running, even if the display isn't. Here's how to confirm if your Pwnagotchi is actually working.
 
-## Using SSH to restart Pwnagotchi
-
-The most common way to restart your Pwnagotchi is via **SSH**.
+The most reliable way to check if your Pwnagotchi is working is by trying to connect to it via SSH. This assumes you know its IP address.
 
 1. **Connect via SSH**: Open your terminal and connect to your Pwnagotchi. Replace `your_pwnagotchi_ip` with your device's IP address. The default password is `raspberry` if you haven't changed it.
 
@@ -29,34 +27,34 @@ If you didn't change the default settings and followed the official tutorial, th
 ssh pi@10.0.0.2
 ```
 
-2. **Restart the service**: Once connected, you can restart the Pwnagotchi service using `systemctl`. This is the recommended way as it gracefully stops and starts the service.
+If the SSH is not available, it can be some issue with the network connection. You can find some help bellow.
 
-```sh
-sudo systemctl restart pwnagotchi
-```
+3. **Check Pwnagotchi Service Status**
 
-3. **Check if Pwnagotchi is running**
-
-```sh
-sudo systemctl status pwnagotchi
-```
-
-## Using `pwnkill` to Stop and Start
-
-If you want to explicitly stop and then start the Pwnagotchi service, you can use **pwnkill**. This command is often used for debugging or ensuring a clean restart.
-
-1. **Connect via SSH**: First, connect to your Pwnagotchi via SSH as described above.
-
-2. **Restart the service**:
-
-```sh
-sudo pwnkill
-```
-
-3. **Check if Pwnagotchi is running**
+Once you're successfully connected via SSH, you can directly check the status of the Pwnagotchi service.
 
 ```sh
 sudo systemctl status pwnagotchi
+```
+
+4. **Look for "Active: active (running)"**
+
+In the output, you should see a line starting with Active:. If it says Active: active (running) in green, your Pwnagotchi is working as expected. If it's stopped or failed, it will indicate that.
+
+5. **Check log files**
+
+If the service appears to be running but you suspect issues, checking the Pwnagotchi logs can provide more details.
+
+```sh
+sudo journalctl -u pwnagotchi -f
+```
+
+This command will show you real-time logs of the Pwnagotchi service. Look for any error messages or unusual behavior that might indicate a problem. Press Ctrl+C to exit the log view.
+
+You can also use grep to find for errors:
+
+```sh
+sudo journalctl -u pwnagotchi | grep "ERROR"
 ```
 
 ## If SSH is not available

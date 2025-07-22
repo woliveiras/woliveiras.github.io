@@ -1,0 +1,64 @@
+---
+title: "How to backup the pwnagotchi settings and plugins"
+description: "A guide to the ways to backup Pwnagotchi settings and plugins"
+pubDate: "Tue Jul 22 18:00:00 2025 +0200"
+published: true
+tags:
+  [
+    "hacking",
+    "maker",
+    "hardware",
+  ]
+---
+
+Backing up your Pwnagotchi settings is crucial before making major changes or if you plan to reinstall the system. This ensures you can restore your personalized configurations. The main configuration file for Pwnagotchi is `/etc/pwnagotchi/config.toml`.
+
+## Using `scp` to copy the config files from Pwnagotchi to your PC
+
+Open the terminal in your PC.
+
+You can use the following command to copy the Pwnagotchi settings:
+
+```sh
+scp pi@10.0.0.2:/etc/pwnagotchi/config.toml /<path>/pwnagotchi_config_backup.toml
+```
+
+Example in MacOS:
+
+```sh
+scp pi@10.0.0.2:/etc/pwnagotchi/config.toml /Users/<your user>/<destination>/pwnagotchi_config_backup.toml
+```
+
+When you run this command, the system will ask for the password for the pi user on your Pwnagotchi (the default is raspberry). If you have changed the default password, use that instead.
+
+If you are using Windows, you can use the `scp` command in a terminal like Git Bash or PowerShell. The command will be similar, but ensure you have the correct path format for Windows.
+
+## Using `scp` to copy the plugins files from Pwnagotchi to your PC
+
+Open the terminal in your PC.
+
+You can use the following command to copy the Pwnagotchi settings:
+
+```sh
+scp -r pi@10.0.2:/usr/local/share/pwnagotchi/custom-plugins/ /<path>/pwnagotchi_plugins_backup
+```
+
+Example in MacOS:
+
+```sh
+scp -r pi@10.0.2:/usr/local/share/pwnagotchi/custom-plugins/ /Users/<your user>/<destination>/pwnagotchi_plugins_backup
+```
+
+When you run this command, the system will ask for the password for the pi user on your Pwnagotchi (the default is raspberry). If you have changed the default password, use that instead.
+
+If you are using Windows, you can use the `scp` command in a terminal like Git Bash or PowerShell. The command will be similar, but ensure you have the correct path format for Windows.
+
+### Explanation
+
+- `scp`: This is the secure copy command.
+- `pi@10.0.0.2:/etc/pwnagotchi/config.toml`: This represents the remote source.
+	- `pi@10.0.0.2`: The user (pi) and IP address of your Pwnagotchi.
+	- `:/etc/pwnagotchi/config.toml`: The full path to the config.toml file on your Pwnagotchi. Note that there are no double slashes or trailing slashes on the filename.
+- `/Users/<your user>/<destination>/pwnagotchi_config_backup.toml`: This is the local destination.
+	- Adding a new filename (`pwnagotchi_config_backup.toml`) at the destination is a good practice. It helps prevent accidental overwrites and clearly indicates it's a backup.
+
