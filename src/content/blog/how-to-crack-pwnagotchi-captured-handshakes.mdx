@@ -1,0 +1,195 @@
+---
+title: "How to Crack Pwnagotchi-Captured Handshakes"
+description: "A guide to cracking handshakes captured by Pwnagotchi"
+pubDate: "Wed Jul 23 18:00:00 2025 +0200"
+published: true
+tags:
+  [
+    "hacking",
+    "maker",
+    "hardware",
+  ]
+---
+
+This tutorial will guide you through the process of extracting Wi-Fi handshakes captured by your Pwnagotchi device and then attempting to crack them using Hashcat with a wordlist. Remember, this process is for educational purposes only, to understand Wi-Fi security, and should only be performed on networks you own or have explicit permission to test. Unauthorized access to networks is illegal and unethical.
+
+## Requirements
+
+- A Pwnagotchi device (fully configured and capturing handshakes).
+- A computer with SSH client (like PuTTY on Windows, or built-in ssh in Linux/macOS).
+- Hashcat installed on your computer.
+- A wordlist (you can download one from https://weakpass.com/download – we'll use a common one for demonstration).
+- `hcxdumptool` (often pre-installed on Kali Linux or easily installed on other Linux distributions).
+- `hcxpcapngtool` (also often pre-installed or easily installed).
+
+## Step 1: Recover the handshakes from your Pwnagotchi
+
+The Pwnagotchi stores captured handshakes in a specific directory. We'll use Secure Copy Protocol (the `scp`) to transfer these files to your local machine.
+
+### Connect to your Pwnagotchi
+
+Ensure your Pwnagotchi is powered on and connected to your computer (either via USB tethering, Wi-Fi, or whatever method you've configured for SSH access).
+
+You can check if the Pwnagotchi is working well using the ping or accessing it with SSH.
+
+### Transfer the handshakes using SCP
+
+First of all, open your terminal.
+
+From your local computer's terminal, use `scp` to copy the handshake files. Replace `pi@pwnagotchi.local` with your Pwnagotchi's actual address and `/path/to/local/directory` with where you want to save the handshakes on your computer.
+
+```sh
+scp -r pi@pwnagotchi.local:/home/pi/handshakes/*.pcapng /path/to/local/directory/
+
+# Or for .pcap files:
+# scp pi@pwnagotchi.local:/home/pi/handshakes/*.pcap /path/to/local/directory/
+```
+
+If you want, you can also copy the entire handshakes folder.
+
+```sh
+scp -r pi@pwnagotchi.local:/home/pi/handshakes/ /path/to/local/directory/
+```
+
+For example, to copy them to a handshakes folder in your *home* directory:
+
+```sh
+scp -r pi@pwnagotchi.local:/home/pi/handshakes/ ~/handshakes/
+```
+
+Enter your Pwnagotchi's password when prompted.
+
+All examples:
+
+```sh
+# Copy .pcapng files:
+scp -r pi@pwnagotchi.local:/home/pi/handshakes/*.pcapng /path/to/local/directory/
+
+# Copy .pcap files:
+scp -r pi@pwnagotchi.local:/home/pi/handshakes/*.pcap /path/to/local/directory/
+
+# Copy the entire folder
+scp -r pi@pwnagotchi.local:/home/pi/handshakes/ /path/to/local/directory/
+```
+
+## Step 2: Prepare handshake files for Hashcat
+
+Hashcat requires the handshake files to be in a specific format (**HC22000** for WPA/WPA2). We can do it in our computer or use the website tool to convert.
+
+I prefer to do it locally in my machine to run a command to convert all my files at once. We'll use `hcxpcapngtool` to convert the `.pcapng` files (or `.pcap` files, though `.pcapng` is more common for Pwnagotchi).
+
+If you want to use the website, you can access this link: [hashcat.net/cap2hashcat](https://hashcat.net/cap2hashcat).
+
+### Navigate to the Handshake Directory
+
+Open a terminal on your local machine and navigate to the directory where you saved the handshakes:
+
+```sh
+cd /path/to/local/directory/handshakes/
+```
+
+If you're using the home folder for the handshakes, just run it:
+
+```sh
+cd ~/handshakes/
+```
+
+### Convert to Hashcat Format
+
+If your using MacOS, you can install `hcxpcapngtool` using Homebrew:
+
+```sh
+brew install hcxtools
+```
+
+Use hcxpcapngtool to convert the .pcap files into a hash format that Hashcat can understand.
+
+```sh
+hcxpcapngtool -o output.hc22000 *.pcap
+```
+
+This command takes all .pcap files in the current directory and merges their crackable handshakes into a single file named **output.hc22000**.
+
+## Step 3: Obtain a Wordlist
+A wordlist is a file containing a list of potential passwords. The stronger your wordlist, the higher your chances of cracking a weak password.
+Go to [weakpass.com/download](https://weakpass.com/download). You'll see several options for downloading wordlists. Be aware that these files are extremely large (tens of gigabytes) and will require significant disk space and download time. These are professional-grade lists.
+
+- For a comprehensive, large wordlist, consider `weakpass_4.txt` or `weakpass_4a.txt`.
+- If you're looking for lists specifically tailored to Latin-based character sets, `weakpass_4.latin.txt` or `weakpass_4a.latin.txt` might be suitable.
+- `weakpass_4.merged.txt` is likely a combination of other lists.
+
+## Step 4: Crack the handshakes with Hashcat
+
+Now, we'll use Hashcat to attempt to crack the captured handshakes using your wordlist.
+
+### Running Hashcat
+
+Navigate to the directory containing your **output.hc22000** file and your wordlist.
+
+Run the Hashcat commands. The basic command for WPA/WPA2 cracking with Hashcat is:
+
+```sh
+hashcat -m 22000 -a 0 output.hc22000 /path/to/your/wordlist.txt
+```
+
+Let's break down the command:
+
+- `-m 22000`: Specifies the hash mode for WPA-EAPOL-PBKDF2 (Pwnagotchi captures these, and they are typically WPA/WPA2 handshakes).
+- `-a 0`: Specifies the attack mode. **0** means "Direct Attack" (brute-force using a wordlist).
+- `output.hc22000`: The input hash file generated by hcxpcapngtool.
+- `/path/to/your/wordlist.txt`: The path to the wordlist you downloaded.
+
+Example:
+
+```sh
+hashcat -m 22000 -a 0 output.hc22000 weakpass_4.txt
+```
+
+The output will show you the progress of the cracking attempt. If a password is found, it will be displayed in the terminal.
+
+Example output:
+
+```sh
+> handshakes hashcat -m 22000 -a 0 output.hc22000 weakpass_4.txt
+
+hashcat (v6.2.6) starting
+
+Minimum password length supported by kernel: 8
+Maximum password length supported by kernel: 63
+
+Hashes: 3 digests; 3 unique digests, 3 unique salts
+Bitmaps: 16 bits, 65536 entries, 0x0000ffff mask, 262144 bytes, 5/13 rotates
+Rules: 1
+
+Optimizers applied:
+* Zero-Byte
+* Slow-Hash-SIMD-LOOP
+
+Watchdog: Temperature abort trigger set to 100c
+
+Host memory required for this attack: 562 MB
+
+Dictionary cache building weakpass_4.txt: 9428516041 bytes (39.10%)
+```
+
+### Monitor the cracking process
+
+Hashcat will start processing the wordlist against the handshakes. This can take a significant amount of time, depending on your computer's processing power (CPU/GPU) and the size of your wordlist.
+
+If a password is found in your wordlist that matches a handshake, Hashcat will output the cracked password. You can also press `s` while Hashcat is running to see its status.
+
+### View cracked passwords
+
+Once Hashcat finishes (or if you stop it with `q`), any successfully cracked passwords will be saved to a file named `hashcat.potfile` in your Hashcat directory. You can view this file to see the results.
+
+```sh
+cat ~/.hashcat/hashcat.potfile
+```
+
+## Understanding the results and next steps
+
+If you successfully crack a handshake, it means that the Wi-Fi network's password was present in your wordlist. This highlights the importance of using strong, unique passwords for Wi-Fi networks.
+- For Educational Purposes: This exercise demonstrates how common or weak passwords can be vulnerable to dictionary attacks.
+- Improving Security: Encourage the use of long, complex passwords that are not easily guessable and include a mix of uppercase and lowercase letters, numbers, and symbols.
+- Beyond Wordlists: For more advanced scenarios, Hashcat supports other attack modes like brute-force (trying every possible combination), but these are significantly more resource-intensive.
+Remember to always use these skills responsibly and ethically. Understanding these vulnerabilities helps in building more secure systems.
