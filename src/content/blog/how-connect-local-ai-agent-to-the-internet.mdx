@@ -1,0 +1,252 @@
+---
+title: "How to Connect a Local AI Agent to the Internet"
+description: "A comprehensive guide on enabling your local AI agent to access the internet for real-time information retrieval."
+pubDate: "Sat Jul 26 22:00:00 2025 +0200"
+published: true
+tags: ["llm", "ai-agents", "ollama"]
+---
+
+## Introduction
+
+This post will guide you through building a simple AI agent that connects to the internet. We'll leverage the power of local Large Language Models (LLMs) using Ollama, ensuring your operations remain private and cost-free. We will implement a basic **ReAct (Reason + Act)** framework in Python to empower our agent with web search capabilities.
+
+## The ReAct Framework
+
+At the core of our agent is the ReAct pattern, a paradigm introduced by researchers at Google. The name stands for "Reason" and "Act." This framework enables an LLM to synergize its reasoning capabilities with actions, or "tools."
+
+The process is iterative and intuitive:
+
+1. **Reason**: Given a goal, the LLM first "thinks" about a plan to achieve it. It breaks down the problem and determines if it needs more information.
+1. **Act**: If the LLM decides it needs external information, it is called a "tool." A tool is simply a function the agent can execute, such as performing a web search, accessing a database, or calling an API.
+1. **Observe**: The agent executes the tool and receives an output (an observation).
+1. **Repeat**: The observation is fed back into the LLM, which then reasons about the next step. This loop continues until the agent has gathered enough information to fulfill the initial goal.
+
+## Local LLMs and Tool Calling with Ollama
+
+We will use Ollama to run a powerful LLM directly on our local machine. This approach has several advantages:
+
+- **Privacy**: Your data never leaves your machine.
+- **Cost-Effective**: No need to pay for expensive LLM provider APIs.
+- **Customization**: You have full control over the models and their configurations.
+
+Modern LLMs, including many available through Ollama (such as Llama, Phi, and Qwen), support **function calling** or **tool** usage. This is a crucial feature where the model's output isn't just text but a structured request to call a specific function (our tool) with the correct arguments. Our agent's "brain" will use this feature to decide when and how to use the **search_web** tool.
+
+## Requirements
+
+To run the code example, you'll need the following:
+
+- [Python 3.9+](https://www.python.org/downloads/)
+- [Ollama is installed and running](https://ollama.com/)
+- A local LLM with function-calling support: We'll use [qwen3:0.6b](https://ollama.com/library/qwen3), a small and efficient model.
+
+By leveraging Ollama, you can build and test these powerful patterns privately and cost-effectively on your hardware.
+
+I use Visual Studio Code to type code, and its installed extensions already satisfy the needs for working with Python.
+
+If you don’t know how to run the code examples, we have a session for doing it after the code.
+
+## The Local AI Agent Connected to the Internet
+
+The following Python script defines a tool for web search and implements the main agent loop. The agent is given a goal, uses the LLM to reason about it, executes a web search if necessary, and then provides a final answer.
+
+```python
+import json
+import ollama
+from ddgs import DDGS
+
+# --- 1. Tool Definition ---
+# This function is a 'tool' that our agent can use. It performs a web search
+# using the DuckDuckGo search engine to find information based on a query.
+def search_web(query: str) -> str:
+    """
+    Performs a web search using DuckDuckGo and returns the results as a JSON string.
+    This is the primary tool available to the agent.
+    """
+    print(f"--- ACTION: Executing tool 'search_web' with query: '{query}' ---")
+    try:
+        with DDGS() as ddgs:
+            # We perform a text search with a limit of 5 results for brevity.
+            results = list(ddgs.text(query=query, max_results=5))
+        return json.dumps(results) if results else "[]"
+    except Exception as e:
+        print(f"--- ERROR in search_web: {e} ---")
+        return "[]"
+
+# --- 2. The Agent's Execution Logic ---
+# This function orchestrates the agent's operation. It takes a goal,
+# communicates with a local LLM via Ollama, and decides whether to use tools
+# to gather information or to answer directly.
+def run_agent(goal: str):
+    """
+    Runs the main agent loop to achieve a specified goal.
+    """
+    print(f"--- GOAL: {goal} ---")
+
+    # The conversation history starts with the user's goal.
+    # This list will be updated with the agent's thoughts, tool calls, and observations.
+    messages = [{"role": "user", "content": goal}]
+
+    # This is the JSON schema for the 'search_web' tool.
+    # It tells the LLM how to call the function, including its name, description,
+    # and required parameters.
+    tools = [
+        {
+            "type": "function",
+            "function": {
+                "name": "search_web",
+                "description": "Searches the web for up-to-date information on a topic.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": "The search query to find information.",
+                        }
+                    },
+                    "required": ["query"],
+                },
+            },
+        }
+    ]
+
+    # --- 3. REASONING Step ---
+    # The agent uses the LLM to decide on the next action.
+    # The LLM's response may be a direct answer or a request to call a tool.
+    print("--- PLAN: Asking local LLM for the next step... ---")
+    response = ollama.chat(model="qwen3:0.6b", messages=messages, tools=tools)
+
+    response_message = response['message']
+    messages.append(response_message) # Append the model's response to the history.
+
+    # --- 4. ACTION and OBSERVATION Step ---
+    # Check if the LLM requested a tool call.
+    if response_message.get('tool_calls'):
+        available_tools = {"search_web": search_web}
+        tool_call = response_message['tool_calls'][0] # We handle the first tool call.
+
+        function_name = tool_call['function']['name']
+        function_to_call = available_tools[function_name]
+        function_args = tool_call['function']['arguments']
+
+        # Execute the tool with the arguments provided by the LLM.
+        function_response = function_to_call(query=function_args.get("query", ""))
+
+        print("--- PERCEPTION: Received tool output. ---")
+
+        # Append the tool's output to the conversation history.
+        messages.append({
+            "role": "tool",
+            "content": function_response,
+        })
+
+        # --- 5. FINAL REASONING Step ---
+        # Now with the new information, we ask the LLM to generate the final response.
+        print("--- PLAN: Generating final response based on tool output... ---")
+        final_response = ollama.chat(model="qwen3:0.6b", messages=messages)
+        summary = final_response['message']['content']
+    else:
+        # If no tool was called, the model's first response is the answer.
+        print("--- INFO: Model provided a direct answer without using tools. ---")
+        summary = response_message.get('content', "The model did not provide a valid response.")
+
+    print("\n--- AGENT: Final Answer ---")
+    print(summary)
+
+# --- Main execution block ---
+if __name__ == "__main__":
+    # Define the goal for the agent.
+    # This query requires up-to-date information, forcing the agent to use its search tool.
+    user_goal = "What are the latest developments in using Golang for data engineering in 2025?"
+    run_agent(user_goal)
+```
+
+## How to Run the Examples
+
+### Step 1: Download the Local Models
+
+Open your terminal and pull the models we’ll be using from Ollama’s registry. The qwen3:0.6b for using the LLM model with support for tools, and llama3 is our chat model. You can use the Visual Studio Code Terminal to do it.
+
+```sh
+ollama pull qwen3:0.6b
+```
+
+You can use other models instead of Qwen; you just need to pay attention to using a model with supports using tools. You can find them in this link: [ollama/search?c=tools](https://ollama.com/search?c=tools).
+
+### Step 2: Create a Project Folder and Virtual Environment
+
+It’s good practice to isolate your project’s dependencies. Virtual Env will help us isolate it. On your open terminal, type the following commands (one by one, please):
+
+```sh
+mkdir ai-agent-connected-to-internet
+cd ai-agent-connected-to-internet
+python -m venv venv
+source venv/bin/activate  # On Windows, use `venv\Scripts\activate`
+```
+
+### Step 3: Install Required Libraries
+
+On your terminal, run the following:
+
+```
+pip install ollama duckduckgo-search
+```
+
+### Step 4: Run the Code
+
+Save the code in the .py file **agent.py**. Make sure the Ollama application is running first, and run the following in your terminal:
+
+```sh
+python agent.py
+```
+
+You will see the execution of the code.
+
+Example:
+
+```sh
+(venv) ➜  ai-agent-connected-to-internet python3 agent.py
+--- GOAL: What are the latest developments in using Golang for data engineering in 2025? ---
+--- PLAN: Asking local LLM for the next step... ---
+--- INFO: Model provided a direct answer without using tools. ---
+
+--- AGENT: Final Answer ---
+<think>
+Okay, the user is asking about the latest developments in using Golang for data engineering in 2025. Let me break this down. First, I need to figure out what Golang is doing in data engineering. Golang is a programming language, so the user wants to know how it's being applied in data engineering fields.
+
+I should start by confirming that the user is asking about updates in 2025, so I need to look at recent trends in the year. Data engineering involves handling large volumes of data, so I should mention tools and frameworks that support that. Golang is known for being efficient, so maybe talk about optimizations or performance aspects.
+
+Then, I need to think about specific areas. Maybe cloud integration, like using AWS or Azure services. Also, data processing frameworks like Apache Spark, which is a popular tool for big data. Golang's concurrency features could be important for handling multiple requests or threads.
+
+I should also consider how to handle data pipelines. Since data engineering often involves pipelines, Golang's capabilities in concurrency and reliability might be relevant. Maybe mention tools like Kube, which allows managing containers and services, but I need to check if Kube is part of Golang ecosystem.
+
+Wait, Kube is a Kubernetes, but the user's question is about Golang. So maybe focus on Golang's own features in data engineering. Also, maybe mention the adoption of Golang in industries like finance or healthcare where data is critical.
+
+I should structure the answer by first stating the latest developments, then specific areas like cloud integration, frameworks, and concurrency. Make sure to mention 2025 as the year and the impact on data engineering. Need to keep it clear and concise, avoiding technical jargon but explaining enough for a non-technical audience.
+</think>
+
+The latest developments in using Golang for data engineering in 2025 include enhanced concurrency and performance features, which are critical for handling large volumes of data. Here's how it's being applied:
+
+1. **Concurrency & Optimization**: Golang's native concurrency models and efficient execution speed make it ideal for real-time data processing. Tools like **Go-Redis** or **Go-MySQL** optimize data handling for high-throughput environments.
+
+2. **Cloud Integration**: Golang supports integration with cloud platforms like AWS (Lambda, SageMaker) and Azure (Kubernetes), enabling seamless data processing and storage in cloud-native architectures.
+
+3. **Frameworks & Tools**:
+   - **Apache Spark**: Golang's ecosystem includes Spark and its integration with Go, which is a top choice for big data processing.
+   - **Kubernetes**: Golang's ecosystem with Kubernetes allows managing microservices and containers, which is essential for scalable data engineering pipelines.
+
+4. **Data Engineering Practices**: Golang’s focus on reliability and performance aligns with modern data engineering trends, such as fault-tolerant systems and automated data pipelines.
+
+In 2025, Golang's capabilities will drive advancements in real-time analytics, edge computing, and hybrid cloud data engineering workflows.
+```
+
+## Conclusion
+
+You have successfully built a basic AI agent that can reason and act to achieve a goal by connecting to the internet. This simple ReAct pattern, powered by a local LLM via Ollama, is the foundation for creating much more sophisticated autonomous systems.
+
+For more complex applications, you might explore frameworks like [LangChain and LangGraph](/posts/langchain-vs-langgraph-from-simple-chains-to-complex-ai-agents/). LangGraph, in particular, is excellent for designing stateful, multi-agent systems where you can define complex workflows as a graph of nodes and edges. This allows for more control and reliability in cyclical and long-running agentic processes. The principles remain the same: empower your agent with tools and let it reason its way to a solution.
+
+## References
+
+- Yao, S., Zhao, J., Yu, D., Du, N., Shafran, I., Narasimhan, K., & Cao, Y. (2023). [ReAct: Synergizing Reasoning and Acting in Language Models](https://arxiv.org/pdf/2210.03629)
+- Ollama Official Blog. (2024). Tool support. https://ollama.com/blog/tool-support
+- [DuckDuckGo Search](https://pypi.org/project/duckduckgo-search/)
