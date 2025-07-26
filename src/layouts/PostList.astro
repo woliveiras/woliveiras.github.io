@@ -19,6 +19,11 @@ type Props = {
 };
 
 const { posts, totalPages, currentPage, tag, showFeatured } = Astro.props;
+
+if (currentPage < 1 || currentPage > totalPages) {
+  // Render nothing for out-of-range pages (Astro will use 404 fallback if configured)
+  return null;
+}
 ---
 
 <BaseLayout title={SITE_TITLE} description={SITE_DESCRIPTION}>
