@@ -1,0 +1,365 @@
+---
+title: "How to Connect an AI Agent to the SQL Database: understanding Text-to-SQL"
+description: "A comprehensive guide on enabling your AI agent to access a SQL database for real-time information retrieval."
+pubDate: "Sun Jul 27 12:00:00 2025 +0200"
+published: true
+tags: ["llm", "ai-agents", "ollama", "sql"]
+---
+
+## Introduction
+
+In our previous post, we taught our AI agent how to connect to the internet to fetch real-time, unstructured information. Now, we'll take a significant step further by giving it the ability to query structured data from a local SQL database. This transforms our agent from a simple researcher into an autonomous data analyst.
+
+[How to Connect a Local AI Agent to the Internet](/posts/how-connect-local-ai-agent-to-the-internet/).
+
+This guide will walk you through empowering your AI agent, running on Ollama, with the tools to interact with an SQLite database. The agent will learn to understand natural language questions, inspect database schemas, write its own SQL queries, and deliver precise answers based on the data it finds. This entire process is known as **Text-to-SQL**.
+
+## The Text-to-SQL Agent
+
+The core challenge we're solving is bridging the gap between human questions and a structured database. A Text-to-SQL agent acts as that bridge. Instead of a single tool for searching, this agent requires a toolkit to interact with the database systematically.
+
+The agent will use the **ReAct (Reason + Act)** framework in a more sophisticated, multi-step process:
+
+1. **Goal Analysis (Reason)**: The agent receives a natural language question, like "Which employees work in the Engineering department?". It recognizes that the answer lies within a database.
+1. **Discovery (Act)**: The agent doesn't know the database structure. Its first action is to use the `list_tables` tool to see what tables are available.
+1. **Inspection (Act)**: After identifying a relevant table (e.g., `employees`), it uses a `get_schema` tool to understand the table's columns and data types. This is crucial for writing a valid query.
+1. **Query Generation (Reason & Act)**: With knowledge of the tables and schemas, the agent's LLM brain formulates a SQL query. It then uses a `run_sql_query` tool to execute it against the database.
+1. **Synthesis (Reason)**: The agent receives the query result (e.g., a list of names). It then interprets this raw data and formulates a final, human-readable answer to the original question.
+
+This multi-tool approach allows the agent to navigate and understand unknown databases dynamically, making it a powerful and flexible analyst.
+
+## Requirements
+
+To run the code example, you'll need the following:
+
+- [Python 3.9+](https://www.python.org/downloads/)
+- [Ollama is installed and running](https://ollama.com/)
+- A local LLM with function-calling support: We'll use [qwen3:latest](https://ollama.com/library/qwen3:latest)
+
+By leveraging Ollama, you can build and test these powerful patterns privately and cost-effectively on your hardware.
+
+I use Visual Studio Code to type code, and its installed extensions already satisfy the needs for working with Python.
+
+If you don’t know how to run the code examples, we have a session to guide you through it after the code is presented.
+
+### A Note on Choosing Your Model
+
+A local LLM with tool-calling support is essential. For this guide, we'll use `qwen3:latest`.
+
+Choosing the right model is critical. While smaller models like `qwen3:0.5b` are fast, they often lack the reasoning power for complex, multi-step tasks **like Text-to-SQL**. During initial tests, smaller models would often fail to create a valid plan, call the wrong tool, or generate incorrect SQL.
+
+The `qwen3:latest` tag typically points to a more capable, larger parameter model (e.g., 8.19B), which can successfully handle the chain of reasoning required: listing tables, inspecting schemas, and then writing a correct `JOIN` query. Always opt for a more powerful model when your agent needs to perform several steps to reach a goal, and keep attention to your hardware capabilities and the model's requirements.
+
+## Code Example
+
+First, we need a simple script to create and populate our sample SQLite database. This ensures the example is fully self-contained. Then, we'll present the agent code itself.
+
+### 1. Database Setup Script
+
+Save this code as `setup_database.py`. It will create a `company.db` file with some sample data.
+
+```python
+# setup_database.py
+import sqlite3
+
+def setup_database():
+    """
+    Creates and populates the company.db SQLite database.
+    """
+    conn = sqlite3.connect('company.db')
+    cursor = conn.cursor()
+
+    # Create departments table
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS departments (
+        id INTEGER PRIMARY KEY,
+        name TEXT NOT NULL
+    )
+    ''')
+
+    # Create employees table
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS employees (
+        id INTEGER PRIMARY KEY,
+        name TEXT NOT NULL,
+        department_id INTEGER,
+        FOREIGN KEY (department_id) REFERENCES departments (id)
+    )
+    ''')
+
+    # Clear existing data
+    cursor.execute('DELETE FROM employees')
+    cursor.execute('DELETE FROM departments')
+
+    # Insert sample data
+    departments = [(1, 'Engineering'), (2, 'Human Resources'), (3, 'Sales')]
+    employees = [
+        (1, 'Alice', 1),
+        (2, 'Bob', 1),
+        (3, 'Charlie', 3),
+        (4, 'David', 2),
+        (5, 'Eve', 3)
+    ]
+
+    cursor.executemany('INSERT INTO departments VALUES (?, ?)', departments)
+    cursor.executemany('INSERT INTO employees VALUES (?, ?, ?)', employees)
+
+    conn.commit()
+    conn.close()
+    print("--- INFO: Database 'company.db' created and populated successfully. ---")
+
+if __name__ == '__main__':
+    setup_database()
+```
+
+### 2. The Text-to-SQL Agent Script
+
+This is the main agent code. Save it as `agent.py`.
+
+```python
+# agent.py
+import json
+import ollama
+import sqlite3
+import setup_database
+
+# --- 1. Database Tool Definitions ---
+
+def run_sql_query(query: str) -> str:
+    """
+    Executes a SQL query against the 'company.db' and returns the results.
+    This is a tool the agent can use.
+    """
+    print(f"--- ACTION: Executing SQL Query: '{query}' ---")
+    try:
+        conn = sqlite3.connect('company.db')
+        cursor = conn.cursor()
+        cursor.execute(query)
+        results = cursor.fetchall()
+        conn.close()
+        return json.dumps(results) if results else "[]"
+    except sqlite3.OperationalError as e:
+        return f"Error: {e}"
+
+def list_tables() -> str:
+    """
+    Lists all tables in the 'company.db' database.
+    This is a tool the agent can use.
+    """
+    print("--- ACTION: Listing tables ---")
+    return run_sql_query("SELECT name FROM sqlite_master WHERE type='table';")
+
+def get_table_schema(table_name: str) -> str:
+    """
+    Gets the schema for a specific table in the 'company.db' database.
+    This is a tool the agent can use.
+    """
+    print(f"--- ACTION: Getting schema for table '{table_name}' ---")
+    query = f"PRAGMA table_info({table_name});"
+    return run_sql_query(query)
+
+# --- 2. The Agent's Execution Logic ---
+
+def run_agent(goal: str):
+    """
+    Runs the main agent loop with multiple tool calls to achieve a goal.
+    """
+    print(f"--- GOAL: {goal} ---")
+    messages = [
+        {
+            "role": "system",
+            "content": (
+                "You are a database assistant. Your job is to answer the user's question by using the available tools in sequence: "
+                "first, list the tables; then, get the schema of relevant tables; then, construct and execute the correct SQL query using run_sql_query. "
+                "If the information requested is split across multiple tables, use JOINs based on foreign keys to combine the data. "
+                "For example, if the user asks for employee names and their department names, and the employees table has a department_id column and there is a departments table with id and name, you should use a JOIN to get the department name. "
+                "Only return the final answer after executing the SQL query. Always show the SQL results as your final answer."
+            )
+        },
+        {"role": "user", "content": goal}
+    ]
+
+    # Define the toolkit available to the agent
+    tools = [
+        # Each tool is defined with a JSON schema for the LLM
+        {
+          "type": "function",
+          "function": {
+            "name": "list_tables",
+            "description": "Lists all tables in the database."
+          }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "get_table_schema",
+                "description": "Returns the schema (columns and data types) for a given table.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {"table_name": {"type": "string", "description": "The name of the table."}},
+                    "required": ["table_name"],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "run_sql_query",
+                "description": "Executes a SQL query against the database.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {"query": {"type": "string", "description": "The SQL query to execute."}},
+                    "required": ["query"],
+                },
+            },
+        },
+    ]
+
+    available_tools = {
+        "run_sql_query": run_sql_query,
+        "list_tables": list_tables,
+        "get_table_schema": get_table_schema,
+    }
+
+    # The agent may need to use tools multiple times, so we loop until it has a final answer
+    for _ in range(5): # Limit to 5 iterations to prevent infinite loops
+        print(f"--- PLAN: Asking local LLM for the next step (Iteration {_ + 1}) ---")
+        response = ollama.chat(model="qwen3:latest", messages=messages, tools=tools)
+        response_message = response['message']
+        messages.append(response_message)
+
+        if not response_message.get("tool_calls"):
+            # If the model does not request a tool, it's providing the final answer
+            print("--- INFO: Model has provided the final answer. ---")
+            break
+
+        # --- ACTION and OBSERVATION Step ---
+        # The model requested a tool call, so we execute it
+        for tool_call in response_message['tool_calls']:
+            function_name = tool_call['function']['name']
+            function_to_call = available_tools[function_name]
+            function_args = tool_call['function']['arguments']
+
+            # Call the function with the provided arguments
+            function_response = function_to_call(**function_args)
+
+            print("--- PERCEPTION: Received tool output. ---")
+
+            # Add the tool's output to the conversation history
+            messages.append({
+                "role": "tool",
+                "name": function_name,
+                "content": function_response,
+            })
+
+    # Print the final answer from the LLM
+    final_answer = messages[-1].get('content', "The agent could not determine an answer.")
+    print("\n--- AGENT: Final Answer ---")
+    print(final_answer)
+
+
+# --- Main execution block ---
+if __name__ == "__main__":
+    # First, ensure the database is set up
+    setup_database.setup_database()
+
+    print("--- INFO: Interactive agent. Type your question or 'exit' to quit. ---")
+    while True:
+        user_goal = input("\n[USER] > ")
+        if user_goal.strip().lower() in ("exit", "quit"):
+            print("Exiting agent.")
+            break
+        print(f"--- INFO: Starting agent with goal: '{user_goal}' ---")
+        run_agent(user_goal)
+```
+
+## How to Run the Examples
+
+### Step 1: Download the Local Models
+
+Open your terminal and pull the models we’ll be using from Ollama’s registry. The qwen3:latest for using the LLM model with support for tools, and llama3 is our chat model. You can use the Visual Studio Code Terminal to do it.
+
+```sh
+ollama pull qwen3:latest
+```
+
+You can use other models instead of Qwen; you just need to pay attention to using a model with supports using tools. You can find them in this link: [ollama/search?c=tools](https://ollama.com/search?c=tools).
+
+### Step 2: Create a Project Folder and Virtual Environment
+
+It’s good practice to isolate your project’s dependencies. Virtual Env will help us isolate it. On your open terminal, type the following commands (one by one, please):
+
+```sh
+mkdir ai-agent-sql
+cd ai-agent-sql
+python -m venv venv
+source venv/bin/activate  # On Windows, use `venv\Scripts\activate`
+```
+
+### Step 3: Install Required Libraries
+
+On your terminal, run the following:
+
+```
+pip install ollama
+```
+
+Step 4: Run the Code
+
+```sh
+python agent.py
+```
+
+Example output:
+
+```sh
+(venv) ➜  ai-agent-sql python agent.py
+--- INFO: Database 'company.db' created and populated successfully. ---
+--- INFO: Interactive agent. Type your question or 'exit' to quit. ---
+
+[USER] >
+```
+
+```sh
+[USER] > Which employees work in the Engineering department?
+--- INFO: Starting agent with goal: 'Which employees work in the Engineering department?' ---
+--- GOAL: Which employees work in the Engineering department? ---
+--- PLAN: Asking local LLM for the next step (Iteration 1) ---
+--- ACTION: Listing tables ---
+--- ACTION: Executing SQL Query: 'SELECT name FROM sqlite_master WHERE type='table';' ---
+--- PERCEPTION: Received tool output. ---
+--- PLAN: Asking local LLM for the next step (Iteration 2) ---
+--- ACTION: Getting schema for table 'employees' ---
+--- ACTION: Executing SQL Query: 'PRAGMA table_info(employees);' ---
+--- PERCEPTION: Received tool output. ---
+--- ACTION: Getting schema for table 'departments' ---
+--- ACTION: Executing SQL Query: 'PRAGMA table_info(departments);' ---
+--- PERCEPTION: Received tool output. ---
+--- PLAN: Asking local LLM for the next step (Iteration 3) ---
+--- ACTION: Executing SQL Query: 'SELECT employees.name FROM employees JOIN departments ON employees.department_id = departments.id WHERE departments.name = 'Engineering';' ---
+--- PERCEPTION: Received tool output. ---
+--- PLAN: Asking local LLM for the next step (Iteration 4) ---
+--- INFO: Model has provided the final answer. ---
+
+--- AGENT: Final Answer ---
+<think>
+</think>
+
+The employees who work in the Engineering department are:
+
+- Alice
+- Bob
+```
+
+
+## Conclusion
+
+You have now successfully elevated your agent's capabilities from a web researcher to a data analyst. By providing it with a toolkit for database interaction, the agent can now answer questions using structured, private, and local data. This **Text-to-SQL** pattern is a cornerstone of building powerful, data-driven AI applications.
+
+The next logical step is to combine these skills. Imagine an agent that can answer a question by first searching the web for context and then querying a local database for specific details. This level of complex workflow orchestration is where frameworks like LangGraph truly shine, allowing you to build robust, stateful systems of collaborating agents.
+
+## References
+
+- Yao, S., Zhao, J., Yu, D., Du, N., Shafran, I., Narasimhan, K., & Cao, Y. (2023). [ReAct: Synergizing Reasoning and Acting in Language Models](https://arxiv.org/pdf/2210.03629)
+- Ollama Official Blog. (2024). Tool support. https://ollama.com/blog/tool-support
+- SQLite Official Documentation. https://www.sqlite.org/docs.html
