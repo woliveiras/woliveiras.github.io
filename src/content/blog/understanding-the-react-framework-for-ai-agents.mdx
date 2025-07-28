@@ -1,0 +1,530 @@
+---
+title: "Understanding the ReAct Framework for AI Agents"
+description: "An in-depth exploration of the ReAct framework, its components, and how it empowers AI agents to reason and act effectively."
+pubDate: "Mon Jul 28 17:00:00 2025 +0200"
+published: true
+tags: ["llm", "ai-agents", "ollama"]
+---
+
+## Introduction
+
+In our journey of building [AI agents](/posts/deconstructing-ai-agents-a-practical-guide-for-understanding-it/), we've enabled them to perform tasks like [searching the web](/posts/how-connect-local-ai-agent-to-the-internet/) and [querying databases](/posts/how-connect-an-ai-agent-to-sql-database/). The "magic" that allows an agent to decide what to do and when to do it is often powered by a cognitive framework. The most foundational and effective of these is **ReAct**, which stands for **Reason + Act**.
+
+Although we have implicitly used this pattern before, this article provides a detailed exploration of the ReAct framework. Understanding how it works is crucial for anyone looking to build reliable, transparent, and more intelligent autonomous agents. We will break down its core components, compare it to other methods, and show how it unlocks sophisticated problem-solving capabilities in Large Language Models (LLMs).
+
+Of course, we'll have a code example in this article too.
+
+## The Core Problem: The LLM's Paradox of Knowledge
+
+Standard Large Language Models present a fascinating paradox: they are vast repositories of information, yet simultaneously ignorant of the real, live world. This stems from two fundamental limitations:
+
+1. **Static Knowledge - A Digital Time Capsule**: An LLM's knowledge is frozen at the moment its training concludes. Think of it as a brilliant encyclopedia printed on a single day and never updated. It can tell you about the history of the internet but cannot tell you today's date or the top news story right now. It is, by design, perpetually out of date.
+1. **Lack of Grounding— The Isolated Scholar**: LLMs are masters of language, not arbiters of truth. They can "hallucinate" because their primary goal is to generate **statistically plausible sequences of text**, not to state verified facts. Imagine a scholar who has read every book in a library but has never stepped outside to see if the world matches what the books describe. Without a way to cross-reference information against an external, authoritative source, an LLM can confidently invent plausible-sounding but incorrect information.
+
+To break the LLM out of this digital isolation, we give it **"tools"**. These are functions that act as the agent's senses and hands, allowing it to interact with the world beyond its training data. A tool can be a search engine, a database connection, or any API.
+
+This, however, introduces the central challenge of agent design: with access to these new capabilities, **how does an LLM learn to reason about which tool to use, when to use it, and how to interpret the results?**
+
+## Two Early Approaches: "Chain-of-Thought" vs. "Acting"
+
+Before ReAct, two main strategies existed: Chain-of-Thought (CoT) and Acting.
+
+### Chain-of-Thought (CoT)
+
+The Chain-of-Thought (CoT) prompting technique, proposed by Google researchers in 2022, was a pivotal discovery in language model engineering. It encourages LLMs to generate a sequence of intermediate reasoning steps before arriving at a final answer, dramatically improving their performance on complex reasoning tasks.
+
+Before CoT, standard prompting often failed on problems requiring multi-step logic, such as arithmetic, common-sense, or symbolic reasoning. When asked a complex question, the model would try to produce the answer in a single pass, often leading to incorrect or illogical results.
+
+The researchers realized that for humans, solving such problems is a process. We break the problem down, work through the intermediate steps, and then reach a conclusion. CoT was designed to make LLMs mimic this more deliberate, human-like approach.
+
+Example of prompt before CoT: `Q: The cafeteria had 23 apples. If they used 20 for lunch and bought 6 more, how many do they have?`
+
+Example of prompt after CoT: `Q: The cafeteria had 23 apples. If they used 20 for lunch and bought 6 more, how many do they have? A: Let's think step by step.`
+
+Take attention to the instruction "Let's think step by step." This is the key to CoT. It prompts the model to generate a sequence of reasoning steps, which it does internally, before arriving at the final answer.
+
+In our Agentic example we could ask: **"What is 5 * (3 + 2)?"**
+
+CoT Output:
+
+```sh
+First, I need to solve the parentheses.
+
+3 + 2 is 5.
+
+Then I need to multiply 5 by 5, which is 25.
+
+The answer is 25.
+```
+
+Code Example:
+
+```python
+# chain_of_thought_agent.py
+import ollama
+
+def run_chain_of_thought_agent(goal: str):
+    """
+    Demonstrates the Chain-of-Thought (CoT) pattern.
+    The LLM is prompted to "think step by step" to solve a problem internally.
+    """
+    print(f"--- GOAL: {goal} ---")
+
+    # --- Prompt Engineering for CoT ---
+    # We combine the goal with a specific instruction to trigger the reasoning process.
+    prompt = f"{goal}\n\nLet's think step by step."
+
+    # The conversation history contains only the enhanced user prompt.
+    messages = [{"role": "user", "content": prompt}]
+
+    # --- Reasoning-Only Step ---
+    # We call the LLM without providing any tools.
+    # The model must rely entirely on its internal knowledge and reasoning.
+    print("--- PLAN: Asking LLM to reason step-by-step... ---")
+    response = ollama.chat(
+        model="qwen3:latest",
+        messages=messages
+        # Note the absence of the 'tools' parameter.
+    )
+
+    # The final output is the model's entire thought process.
+    print("\n--- AGENT: Final Output (Reasoning Trace) ---")
+    print(response['message']['content'])
+
+
+if __name__ == "__main__":
+    user_goal = "What is 5 * (3 + 2)?"
+    run_chain_of_thought_agent(user_goal)
+```
+
+Output:
+
+```sh
+--- GOAL: What is 5 * (3 + 2)? ---
+--- PLAN: Asking LLM to reason step-by-step... ---
+
+--- AGENT: Final Output (Reasoning Trace) ---
+<think>
+Okay, so I need to figure out what 5 multiplied by (3 plus 2) is. Let me start by recalling the order of operations. I think it's parentheses first, then exponents, multiplication and division, and finally addition and subtraction. Right, PEMDAS. So in this problem, there's a parentheses, so I should do that part first.
+
+Inside the parentheses, there's 3 plus 2. That's straightforward. 3 plus 2 equals 5. So now the equation simplifies to 5 multiplied by 5. Wait, is that right? Let me check again. The original problem is 5*(3+2). So yes, first calculate 3+2, which is 5, then multiply by 5. So 5*5 is 25. Hmm, that seems simple. But let me make sure I didn't skip any steps or make a mistake.
+
+Alternatively, maybe I can think of it without parentheses. If there were no parentheses, like 5*3 + 2, that would be different. But here, the parentheses mean that the addition happens before the multiplication. So definitely, the parentheses take priority. So 3+2 is 5, then 5*5 is 25.
+
+Wait, is there another way to approach this? Maybe distribute the multiplication over the addition? Wait, but the parentheses are already grouping the addition. So if I were to distribute, it would be 5*3 + 5*2, which is 15 + 10, which is also 25. Oh, that's another way to see it. So both methods give the same result. That's reassuring.
+
+So whether I do the addition first and then multiply, or distribute the multiplication over the addition, I end up with 25. That makes me more confident that the answer is correct.
+
+Let me just verify once more. 3+2 is definitely 5. Then 5 multiplied by 5 is 25. Yep. I don't think I made any mistakes here. It's a straightforward problem, but it's good to check. Sometimes, even simple problems can have tricks if you're not careful. But in this case, everything seems to line up.
+
+Another way to think about it: if I have 5 groups of (3+2), each group has 5 items. So 5 groups would be 5*5=25. Alternatively, if I break down the 3+2 into 3 and 2, then each group has 3 and 2, so 5 groups of 3 is 15, and 5 groups of 2 is 10, adding them together gives 25. Either way, same answer.
+
+So I think I've confirmed it multiple times. The answer is 25.
+</think>
+
+To solve the expression $ 5 \times (3 + 2) $, we follow the standard order of operations, often remembered by the acronym PEMDAS: Parentheses, Exponents, Multiplication and Division (from left to right), Addition and Subtraction (from left to right).
+
+---
+
+### Step 1: Solve the expression inside the parentheses
+The expression inside the parentheses is:
+$$
+3 + 2 = 5
+$$
+
+---
+
+### Step 2: Multiply the result by 5
+Now substitute the result back into the original expression:
+$$
+5 \times 5 = 25
+$$
+
+---
+
+### Final Answer:
+$$
+\boxed{25}
+$$
+```
+
+While this approach is powerful, it has limitations. It relies on the LLM's **internal knowledge** and reasoning capabilities, which can lead to errors if the model doesn't have accurate information or if the problem is too complex for it to reason through effectively.
+
+### Acting Only
+
+The Acting Only approach is the most direct way to make an LLM interact with the world. In this model, the LLM is prompted to map a user's request directly to an action without generating an explicit reasoning process beforehand.
+
+The mechanism is straightforward. The LLM is provided with two things:
+
+1. A user's goal (e.g., "What's the weather like in Paris?").
+1. A list of available tools, described in a structured format (like JSON Schema) that the model can understand.
+
+The model's single task is to analyze the goal and, if appropriate, select one of the tools and generate the precise parameters needed to call it.
+
+Unlike Chain-of-Thought, where the model "thinks out loud," the Acting Only approach is silent. It doesn't produce a trace of its reasoning. The process is a direct leap from Goal -> Action.
+
+While direct, this lack of an explicit reasoning step is what makes the Acting Only approach brittle. The model might choose the wrong tool or formulate the parameters incorrectly, and because it doesn't "show its work," it's difficult to understand why it failed.
+
+Example Goal: "What's the weather like in Paris today?"
+
+Acting Only Output:
+
+```sh
+--- GOAL: What is the current weather in Paris? ---
+--- PLAN: Asking LLM to select an action directly... ---
+--- AGENT: Chose to call tool 'search_web' ---
+--- ACTION: Executing search for 'current weather in Paris' ---
+
+--- AGENT: Final Output (Raw Tool Result) ---
+[{"title": "Paris , Ville de Paris , France Weather Forecast | AccuWeather", "href": "https://www.accuweather.com/en/fr/paris/623/weather-forecast/623", "body": "9:57 AM. Paris Weather Radar. Paris Weather Radar. Static Radar Temporarily Unavailable. Thank you for your patience as we work to get everything up and running again."}, {"title": "14-day weather forecast for Paris . - BBC Weather", "href": "https://www.bbc.com/weather/2988507", "body": "Search for a location. Paris - Weather warnings issued. 14-day forecast."}, {"title": "Paris France Weather | ten day weather forecast | Euronews", "href": "https://www.euronews.com/weather/europe/france/paris", "body": "Weather Forecast for Paris | euronews, previsions for Paris , France (temperature, wind, rainfall\u2026)."}]
+```
+
+In this case, the LLM directly outputs a call to the `search_web` tool with the correct parameters. It doesn't explain why it chose that tool.
+
+Code Example:
+
+```python
+# acting_only_agent.py
+import json
+import ollama
+from ddgs import DDGS
+
+def search_web(query: str) -> str:
+    """
+    A simple tool that performs a web search.
+    """
+    print(f"--- ACTION: Executing search for '{query}' ---")
+    with DDGS() as ddgs:
+        results = list(ddgs.text(query=query, max_results=3))
+    return json.dumps(results)
+
+def run_acting_only_agent(goal: str):
+    """
+    Demonstrates the 'Acting Only' approach.
+    The LLM is prompted to directly choose and execute a tool.
+    """
+    print(f"--- GOAL: {goal} ---")
+
+    # The tool schema is provided to the LLM
+    tools = [
+        {
+            "type": "function",
+            "function": {
+                "name": "search_web",
+                "description": "Finds up-to-date information by searching the web.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": "The search query."
+                        }
+                    },
+                    "required": ["query"],
+                },
+            },
+        }
+    ]
+
+    # The conversation history contains only the user's request
+    messages = [{"role": "user", "content": goal}]
+
+    # --- Direct Action Step ---
+    # The LLM is called once and is expected to immediately respond with a tool call.
+    # There is no intermediate "thought" step.
+    print("--- PLAN: Asking LLM to select an action directly... ---")
+    response = ollama.chat(model="qwen3:latest", messages=messages, tools=tools)
+    response_message = response['message']
+
+    if response_message.get("tool_calls"):
+        tool_call = response_message['tool_calls'][0]
+        function_name = tool_call['function']['name']
+        function_args = tool_call['function']['arguments']
+
+        print(f"--- AGENT: Chose to call tool '{function_name}' ---")
+
+        # Execute the chosen tool
+        tool_output = search_web(query=function_args.get("query"))
+
+        print("\n--- AGENT: Final Output (Raw Tool Result) ---")
+        print(tool_output)
+    else:
+        # The model might answer from its own knowledge if it doesn't choose a tool.
+        print("\n--- AGENT: Final Output (Direct Answer) ---")
+        print(response_message.get('content', "No response generated."))
+
+# --- Main execution block ---
+if __name__ == "__main__":
+    user_goal = "What is the current weather in Paris?"
+    run_acting_only_agent(user_goal)
+```
+
+Output:
+
+```sh
+--- GOAL: What is the current weather in Paris? ---
+--- PLAN: Asking LLM to select an action directly... ---
+--- AGENT: Chose to call tool 'search_web' ---
+--- ACTION: Executing search for 'current weather in Paris' ---
+
+--- AGENT: Final Output (Raw Tool Result) ---
+
+[{"title": "Paris , Ville de Paris , France Weather Forecast | AccuWeather", "href": "https://www.accuweather.com/en/fr/paris/623/weather-forecast/623", "body": "9:57 AM. Paris Weather Radar. Paris Weather Radar. Static Radar Temporarily Unavailable. Thank you for your patience as we work to get everything up and running again."}, {"title": "14-day weather forecast for Paris . - BBC Weather", "href": "https://www.bbc.com/weather/2988507", "body": "Search for a location. Paris - Weather warnings issued. 14-day forecast."}, {"title": "Paris France Weather | ten day weather forecast | Euronews", "href": "https://www.euronews.com/weather/europe/france/paris", "body": "Weather Forecast for Paris | euronews, previsions for Paris , France (temperature, wind, rainfall\u2026)."}]
+```
+
+## The Synthesis: ReAct = Reason + Act
+
+The ReAct framework combines the strengths of both approaches. It creates a synergistic loop where the model interleaves **reasoning** (creating a thought) and acting (executing a tool).
+
+The process follows a simple, powerful cycle: **Thought** -> **Action** -> **Observation**.
+
+**1. Thought:** the LLM analyzes the goal and its **current state**. It forms a thought about what it needs to do next to get closer to the solution. This is its internal monologue, its plan of attack.
+
+In that context, the current state refers to all the information the LLM has accumulated at that specific moment.
+
+It includes:
+
+- The original goal (the user's initial question).
+- All the Thoughts it has generated so far.
+- All the Actions (tools) it has already executed.
+- All the Observations (results) it has received from those tools.
+
+Essentially, the LLM is stopping to "look at its notes" before deciding what to do next.
+
+**2. Action:** based on its thought, the LLM decides to take an action. This action involves calling one of its available tools with specific arguments.
+
+**3. Observation:** the tool is executed in the external environment (e.g., a search is performed), and the result is returned to the LLM. This result is called an observation.
+
+The LLM then takes this new observation, forms a new Thought, takes another Action, gets an Observation, and so on. This loop continues until the LLM concludes in its Thought step that it has enough information to give a final answer.
+
+Let's trace a multi-hop question: *"What is the primary currency used in the country where the tallest building in the world is located?"*
+
+**Thought 1:** First, I need to identify the tallest building in the world and find out which country it is in.
+
+**Action 1:** `search_web(query="location of the tallest building in the world")`
+
+**Observation 1:** "The Burj Khalifa is the tallest building in the world, located in Dubai, United Arab Emirates."
+
+**Thought 2:** Okay, the tallest building is in the United Arab Emirates. Now I need to find the official currency of that country.
+
+**Action 2:** `search_web(query="currency of United Arab Emirates")`
+
+**Observation 2:** "The currency of the United Arab Emirates is the UAE dirham (AED)."
+
+**Thought 3:** I have found the location of the building and the currency of the country. I now have all the information needed to form the final answer.
+
+**Final Answer:** The primary currency used in the country where the tallest building is located (the United Arab Emirates) is the UAE dirham.
+
+This explicit thought process makes the agent's behavior transparent, debuggable, and more reliable.
+
+Let's understand it with a code example.
+
+## Requirements
+To run the code example, you'll need the following:
+- [Python 3.9+](https://www.python.org/downloads/)
+- [Ollama is installed and running](https://ollama.com/)
+- A local LLM with function-calling support: We'll use [qwen3:latest](https://ollama.com/library/qwen3:latest)
+
+By leveraging Ollama, you can build and test these powerful patterns privately and cost-effectively on your hardware.
+
+I use Visual Studio Code to type code, and its installed extensions already satisfy the needs for working with Python.
+
+If you don’t know how to run the code examples, we have a session to guide you through it after the code is presented.
+
+## Code Example
+
+This code simulates the ReAct loop. It forces the agent to make one tool call at a time and feeds the observation back, demonstrating the step-by-step nature of the framework.
+
+```python
+# agent.py
+import json
+import ollama
+from ddgs import DDGS
+
+# --- 1. Tool Definition ---
+def search_web(query: str) -> str:
+    """Performs a web search using DuckDuckGo."""
+    print(f"--- ACTION: Executing search for '{query}' ---")
+    with DDGS() as ddgs:
+        results = list(ddgs.text(query=query, max_results=3))
+    return json.dumps(results) if results else "[]"
+
+# --- 2. The ReAct Agent Logic ---
+def run_react_agent(goal: str):
+    print(f"--- GOAL: {goal} ---")
+
+    # Define the tool available to the agent
+    tools = [{
+        "type": "function",
+        "function": {
+            "name": "search_web",
+            "description": "Searches the web for information.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "The search query."
+                        }},
+                    "required": ["query"]
+                }
+            }
+    }]
+
+    # Map tool names to the functions
+    available_tools = {"search_web": search_web}
+
+    # Start the conversation with the initial user goal
+    messages = [{
+        "role": "user",
+        "content": f"Goal: {goal}. Think step-by-step. You must use the search_web tool to find information. Do not answer from your own knowledge. One tool call per turn."
+    }]
+
+    # The ReAct loop
+    for i in range(5): # Limit iterations to prevent infinite loops
+        print(f"\n--- REFLECTION (Cycle {i + 1}) ---")
+
+        # 1. REASON: The LLM thinks about what to do next
+        response = ollama.chat(
+            model="qwen3:latest",
+            messages=messages,
+            tools=tools
+        )
+        response_message = response['message']
+        messages.append(response_message)
+
+        if response_message.get("content"):
+            print(f"THOUGHT: {response_message.get('content')}")
+
+        # 2. ACT: Check if the LLM decided to use a tool
+        if not response_message.get("tool_calls"):
+            print("--- INFO: Model decided to provide the final answer. ---")
+            break
+
+        tool_call = response_message['tool_calls'][0]
+        function_name = tool_call['function']['name']
+        function_args = tool_call['function']['arguments']
+
+        print(f"ACTION: Calling tool '{function_name}' with args: {function_args}")
+
+        # Execute the tool
+        function_to_call = available_tools[function_name]
+        tool_output = function_to_call(**function_args)
+
+        # 3. OBSERVE: Provide the tool's output back to the model
+        print(f"OBSERVATION: {tool_output[:200]}...") # Print only the first 200 characters for brevity
+
+        messages.append({
+            "role": "tool",
+            "tool_call_id": tool_call.get('id', f"tool_call_{i}"),
+            "name": function_name,
+            "content": tool_output,
+        })
+
+    print("\n--- AGENT: Final Answer ---")
+    final_answer = messages[-1].get('content', "The agent did not produce a final answer.")
+    print(final_answer)
+
+# --- Main execution block ---
+if __name__ == "__main__":
+    user_goal = "What is the primary currency used in the country where the tallest building in the world is located?"
+    run_react_agent(user_goal)
+```
+## How to Run the Examples
+
+### Step 1: Download the Local Models
+
+Open your terminal and pull the models we’ll be using from Ollama’s registry. The qwen3:latest for using the LLM model with support for tools, and llama3 is our chat model. You can use the Visual Studio Code Terminal to do it.
+
+```sh
+ollama pull qwen3:latest
+```
+
+You can use other models instead of Qwen; you just need to pay attention to using a model with supports using tools. You can find them in this link: [ollama/search?c=tools](https://ollama.com/search?c=tools).
+
+### Step 2: Create a Project Folder and Virtual Environment
+
+It’s good practice to isolate your project’s dependencies. Virtual Env will help us isolate it. On your open terminal, type the following commands (one by one, please):
+
+```sh
+mkdir ai-agent-sql
+cd ai-agent-sql
+python -m venv venv
+source venv/bin/activate  # On Windows, use `venv\Scripts\activate`
+```
+### Step 3: Install Required Libraries
+
+On your terminal, run the following:
+
+```
+pip install ollama ddgs
+```
+
+Step 4: Run the Code
+
+```sh
+python agent.py
+```
+
+Example output:
+
+```sh
+(venv) ➜  llm-react-example python agent.py
+
+--- GOAL: What is the primary currency used in the country where the tallest building in the world is located? ---
+
+--- REFLECTION (Cycle 1) ---
+THOUGHT: <think>
+Okay, let's tackle this step by step. The user wants to know the primary currency of the country where the tallest building in the world is located. First, I need to figure out which country has the tallest building. I remember that the Burj Khalifa in Dubai is the tallest, but I'm not entirely sure. To be accurate, I should use the search_web tool to confirm that.
+
+So, my first step is to search for "tallest building in the world" to get the current information. Once I find out the name and location of the tallest building, I can note the country. Then, I'll need to find out the primary currency of that country. For example, if the building is in Dubai, the currency is the UAE Dirham. But since I can't rely on my existing knowledge, I'll have to use the search tool again to verify the currency. Wait, the user said to use one tool call per turn, so maybe I can combine these steps. Let me first check the location of the tallest building. Once I have that, I can search for the currency of that specific country. Let me start with the first search.
+</think>
+
+
+ACTION: Calling tool 'search_web' with args: {'query': 'tallest building in the world'}
+--- ACTION: Executing search for 'tallest building in the world' ---
+OBSERVATION: [{"title": "Tallest building in the world", "href": "https://en.wikipedia.org/wiki/Tallest_building_in_the_world", "body": "This is a list of the tallest buildings. Tall buildings, such as skyscrapers...
+
+--- REFLECTION (Cycle 2) ---
+THOUGHT: <think>
+Okay, so the user wants to know the primary currency of the country where the tallest building is located. Let me start by figuring out which country has the tallest building. From the search results, it mentions that the Burj Khalifa in the United Arab Emirates (UAE) is the current record-holder. The link also says that Taipei 101 was the tallest until 2009, when the Burj Khalifa took over. So the tallest building is in the UAE.
+
+Now, I need to find the primary currency of the UAE. The user specified to use the search_web tool again. Since the previous search already told me the location is the UAE, I should search for the currency of the UAE. Let me check if there's any mention of currency in the previous results, but looking at the tool responses, there's no info on currency. So I need to make a new search query for the UAE's currency. The correct query would be "primary currency of the United Arab Emirates" or similar. Let me execute that search.
+</think>
+
+
+ACTION: Calling tool 'search_web' with args: {'query': 'primary currency of the United Arab Emirates'}
+--- ACTION: Executing search for 'primary currency of the United Arab Emirates' ---
+OBSERVATION: [{"title": "United Arab Emirates dirham", "href": "https://en.wikipedia.org/wiki/United_Arab_Emirates_dirham", "body": "AED is the official currency of the United Arab Emirates . The dirham is subdivi...
+
+--- REFLECTION (Cycle 3) ---
+THOUGHT: <think>
+Okay, let me wrap this up. The user asked about the primary currency where the tallest building is located. First, I checked the tallest building, which is the Burj Khalifa in the UAE. Then I looked up the UAE's currency and found it's the Dirham (AED). All the search results confirm that the UAE uses the Dirham as its official currency. So the answer should be UAE Dirham (AED).
+</think>
+
+The primary currency used in the United Arab Emirates, where the Burj Khalifa (the tallest building in the world) is located, is the **UAE Dirham (AED)**.
+--- INFO: Model decided to provide the final answer. ---
+
+--- AGENT: Final Answer ---
+<think>
+Okay, let me wrap this up. The user asked about the primary currency where the tallest building is located. First, I checked the tallest building, which is the Burj Khalifa in the UAE. Then I looked up the UAE's currency and found it's the Dirham (AED). All the search results confirm that the UAE uses the Dirham as its official currency. So the answer should be UAE Dirham (AED).
+</think>
+
+The primary currency used in the United Arab Emirates, where the Burj Khalifa (the tallest building in the world) is located, is the **UAE Dirham (AED)**.
+```
+
+## Conclusion
+
+The ReAct framework is more than just a technique; it's a fundamental shift in how we design AI systems. By enabling LLMs to reason about their actions and learn from their observations, we create agents that are:
+
+- More Reliable: They can verify information and correct their course, significantly reducing hallucinations.
+- More Transparent: The explicit "thought" process allows us to understand why an agent made a particular decision, making it easier to debug and trust.
+- More Capable: They can tackle complex, multi-step problems that are impossible to solve with a single query.
+
+Mastering the ReAct pattern is the first step toward building sophisticated autonomous agents. Frameworks like LangChain and LangGraph have powerful, production-ready implementations of ReAct that manage the loop for you, allowing you to focus on defining the tools and goals for even more advanced applications.
+
+## References
+
+- [Chain-of-Thought Prompting Elicits Reasoning in Large Language Models](https://arxiv.org/abs/2201.11903)
+- [Towards Understanding Chain-of-Thought Prompting: An Empirical Study of What Matters](https://arxiv.org/pdf/2212.10001)
+- [ReAct: Synergizing Reasoning and Acting in Language Models](https://arxiv.org/pdf/2210.03629)
