@@ -1,0 +1,228 @@
+---
+title: "Level Up Your AI Agent: An Introduction to the Reflexion Framework"
+description: "Go beyond basic agents. Discover how the Reflexion framework equips your AI agents with memory and the capacity to learn from their mistakes, enhancing their robustness and intelligence."
+pubDate: "Tue Jul 29 18:00:00 2025 +0200"
+published: true
+tags: ["llm", "ai-agents", "ollama"]
+---
+
+## Introduction
+
+In our previous article, we did a [deep dive into the ReAct framework](/posts/understanding-the-react-framework-for-ai-agents/), the foundational pattern that allows an agent to **Reason** and **Act**. But what happens when an agent's action fails? A standard ReAct agent might try the same failed approach again, getting stuck in a loop. It lacks memory and the ability to learn from its mistakes.
+
+This is where the next evolution in agent architecture comes in: **Reflexion**. Proposed by researchers in 2023, the Reflexion framework enhances a ReAct agent's ability to perform self-reflection, enabling it to analyze its failures and adapt its strategy for subsequent attempts.
+
+This article will guide you through the principles of Reflexion and provide a hands-on code example using Python and Ollama to build an agent that doesn't just act, but learns while it acts.
+
+## From ReAct to Reflexion: The Power of Self-Correction
+
+A standard ReAct agent is powerful but fundamentally stateless between independent runs. If you give it a task and it fails, running the same task again will likely produce the same failure. It has no memory of what it tried before.
+
+The Reflexion framework solves this by wrapping the ReAct agent in a "learning loop" that consists of three key components:
+
+1. **Actor (The "Doer")**: This is our standard ReAct agent. Its job is to try and accomplish a task by executing a sequence of `Thought -> Action -> Observation` as well.
+
+2. **Evaluator (The "Judge")**: After the Actor completes a trial, the Evaluator analyzes the outcome. It determines if the task was completed or if it was a failure. This is often a simple LLM call that returns a binary `SUCCESS` or `FAILURE` score.
+
+3. **Self-Reflection (The "Learner")**: If the Evaluator signals a `FAILURE`, the agent enters a self-reflection phase. It uses an LLM to analyze the log of its failed attempt (the sequence of thoughts and actions) and generates a short, memorable "reflection." This reflection is a piece of advice for its future self, like a lesson learned. For example: *"The initial search query was too generic and returned irrelevant results; I should try a more specific query next time."*
+
+These reflections are stored in a memory buffer. In the next trial, the Actor is given the original goal plus its past reflections, allowing it to start with a more informed strategy.
+
+This creates a new, powerful meta-loop: **Act** -> **Evaluate** -> **Reflect** -> **Repeat**.
+
+## Requirements
+
+## Code Example
+
+To demonstrate Reflexion, we need a task where the agent might fail initially. Our goal will be: **"Who is the founder of the company that publishes the best Python book of all time, the 'Fluent Python'?"**
+
+A naive agent might search for `"Fluent Python"` founder and incorrectly conclude that the author, Luciano Ramalho, is the founder. A successful agent needs to realize it must first find the publisher (O'Reilly Media) and then find its founder (Tim O'Reilly).
+
+```python
+# agent.py
+import json
+import ollama
+from ddgs import DDGS
+
+# --- Memory to store reflections ---
+reflections_memory = []
+
+# --- Tool Definition ---
+def search_web(query: str) -> str:
+    """Performs a web search using DuckDuckGo."""
+    print(f"--- ACTION: Executing search for '{query}' ---")
+    with DDGS() as ddgs:
+        results = list(ddgs.text(query=query, max_results=3))
+    return json.dumps(results) if results else "[]"
+
+# --- 1. The Actor (A basic ReAct Agent) ---
+def run_actor_agent(goal: str, reflections: list[str]) -> list[dict]:
+    """The 'doer' part of the agent, runs a ReAct loop."""
+    tools = [{"type": "function", "function": {"name": "search_web", "description": "Searches the web.", "parameters": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}}}]
+    available_tools = {"search_web": search_web}
+
+    # Augment the prompt with past reflections
+    reflection_str = "\n".join(f"- {r}" for r in reflections)
+    prompt = f"Goal: {goal}.\n\nYou have already tried and failed. Here are reflections from past attempts:\n{reflection_str}\n\nBased on these reflections, please retry the task. Think step-by-step."
+
+    messages = [{"role": "user", "content": prompt}]
+
+    # Simple ReAct loop (can be expanded for more complex tasks)
+    for _ in range(3): # Limit to 3 steps per trial
+        response = ollama.chat(model="qwen3:latest", messages=messages, tools=tools)
+        response_message = response['message']
+        messages.append(response_message)
+
+        if not response_message.get("tool_calls"):
+            break
+
+        tool_call = response_message['tool_calls'][0]
+        tool_output = available_tools[tool_call['function']['name']](**tool_call['function']['arguments'])
+        messages.append({
+            "role": "tool",
+            "name": tool_call['function']['name'],
+            "content": tool_output
+        })
+
+    return messages
+
+# --- 2. The Evaluator ---
+def evaluate_success(conversation_log: list[dict], goal: str) -> bool:
+    """Judges if the agent's final answer meets the goal."""
+    print("--- EVALUATOR: Evaluating the actor's performance... ---")
+    final_answer = conversation_log[-1].get('content', '')
+
+    eval_prompt = f"Goal: {goal}\n\nHere is the agent's final answer: '{final_answer}'.\n\nDid the agent successfully and accurately achieve the goal? Answer with only 'YES' or 'NO'."
+
+    response = ollama.chat(model="qwen3:latest", messages=[{"role": "user", "content": eval_prompt}])
+    evaluation = response['message']['content'].strip().upper()
+
+    print(f"--- EVALUATOR's verdict: {evaluation} ---")
+    return "YES" in evaluation
+
+# --- 3. The Self-Reflection Component ---
+def generate_reflection(conversation_log: list[dict], goal: str) -> str:
+    """Generates a reflection on a failed trial."""
+    print("--- REFLECTOR: Generating a reflection on the failure... ---")
+    log_str = json.dumps(conversation_log, indent=2)
+
+    reflection_prompt = f"Goal: {goal}\n\nThe agent failed to achieve the goal. Here is the conversation log:\n{log_str}\n\nPlease provide a short, concise, and actionable piece of advice for the agent to use in its next attempt. What was the core mistake and how should it be corrected? (e.g., 'The search query was too broad', 'I should have searched for X instead of Y')."
+
+    response = ollama.chat(model="qwen3:latest", messages=[{"role": "user", "content": reflection_prompt}])
+    reflection = response['message']['content']
+
+    print(f"--- New Reflection: {reflection} ---")
+    return reflection
+
+# --- The Main Reflexion Loop ---
+def run_reflexion_agent(goal: str, max_trials: int = 3):
+    print(f"--- GOAL: {goal} ---")
+
+    for trial in range(1, max_trials + 1):
+        print(f"\n--- TRIAL #{trial} ---")
+
+        # 1. ACT
+        conversation_log = run_actor_agent(goal, reflections_memory)
+
+        # 2. EVALUATE
+        is_success = evaluate_success(conversation_log, goal)
+
+        if is_success:
+            print("\n--- Agent successfully completed the goal! ---")
+            print(f"Final Answer: {conversation_log[-1].get('content')}")
+            return
+
+        print("\n--- Agent failed to complete the goal. ---")
+
+        # 3. REFLECT
+        reflection = generate_reflection(conversation_log, goal)
+        reflections_memory.append(reflection)
+
+    print(f"\n--- Agent failed to achieve the goal after {max_trials} trials. ---")
+
+if __name__ == "__main__":
+    user_goal = "Who is the founder of the company that publishes the best Python book of all time, the ‘Fluent Python’?"
+    run_reflexion_agent(user_goal)
+```
+
+The output of this code is:
+
+```sh
+--- GOAL: Who is the founder of the company that publishes the best Python book of all time, the ‘Fluent Python’? ---
+
+--- TRIAL #1 ---
+--- ACTION: Executing search for 'publisher of Fluent Python' ---
+--- ACTION: Executing search for 'founder of O'Reilly Media' ---
+--- EVALUATOR: Evaluating the actor's performance... ---
+--- EVALUATOR's verdict: <THINK>
+OKAY, LET ME CHECK IF THE AGENT'S ANSWER IS CORRECT. THE USER ASKED FOR THE FOUNDER OF THE COMPANY THAT PUBLISHES "FLUENT PYTHON," WHICH IS O'REILLY MEDIA. THE AGENT'S ANSWER STATES THAT TIM O'REILLY IS THE FOUNDER.
+
+LOOKING AT THE SOURCES PROVIDED:
+
+1. THE FIRST WIKIPEDIA RESULT SAYS O'REILLY MEDIA WAS ESTABLISHED BY TIM O'REILLY.
+2. THE TRADERS UNION ENTRY ALSO MENTIONS TIM O'REILLY AS THE FOUNDER.
+3. THE STANFORD ECORNER SOURCE CONFIRMS HE IS THE FOUNDER AND CEO.
+
+ALL THREE SOURCES AGREE. SO THE ANSWER IS CORRECT. THE AGENT'S ANSWER IS ACCURATE, SO THE ANSWER SHOULD BE YES.
+</THINK>
+
+YES ---
+
+--- Agent successfully completed the goal! ---
+Final Answer: <think>
+Okay, so the user is asking for the founder of the company that publishes the best Python book, which is "Fluent Python." From the previous steps, we determined that the publisher is O'Reilly Media. Now, the task is to find the founder of O'Reilly Media.
+
+Looking at the tool responses, the first result from Wikipedia states that O'Reilly Media, Inc. was established by Tim O'Reilly. The second result from Traders Union mentions Tim O'Reilly as the founder. The third result from Stanford eCorner also confirms that Tim O'Reilly is the founder and CEO of O'Reilly Media. All three sources consistently point to Tim O'Reilly as the founder. Therefore, the answer should be Tim O'Reilly.
+</think>
+
+The founder of O'Reilly Media, the publisher of *Fluent Python*, is **Tim O'Reilly**.
+
+He established the company in 1993, and it has since become a leading publisher of technical and professional books, including many acclaimed Python resources.
+```
+
+## How to Run the Examples
+
+### Step 1: Download the Local Models
+
+Open your terminal and pull the models we’ll be using from Ollama’s registry. The qwen3:latest for using the LLM model with support for tools, and llama3 is our chat model. You can use the Visual Studio Code Terminal to do it.
+
+```sh
+ollama pull qwen3:latest
+```
+
+You can use other models instead of Qwen; you just need to pay attention to using a model with supports using tools. You can find them in this link: [ollama/search?c=tools](https://ollama.com/search?c=tools).
+
+### Step 2: Create a Project Folder and Virtual Environment
+
+It’s good practice to isolate your project’s dependencies. Virtual Env will help us isolate it. On your open terminal, type the following commands (one by one, please):
+
+```sh
+mkdir ai-agent-sql
+cd ai-agent-sql
+python -m venv venv
+source venv/bin/activate  # On Windows, use `venv\Scripts\activate`
+```
+
+### Step 3: Install Required Libraries
+
+On your terminal, run the following:
+
+```
+pip install ollama ddgs
+```
+
+Step 4: Run the Code
+
+```sh
+python agent.py
+```
+
+## Conclusion
+
+The Reflexion framework is a powerful mental model for building agents that are more than just simple executors. By adding a meta-loop of evaluation and self-correction, we create systems that can learn, adapt, and overcome complex challenges. This is a crucial step towards building truly autonomous and reliable AI agents.
+
+While we implemented the memory as a simple list, more advanced systems can use vector databases to store and retrieve a large number of reflections based on relevance. The next frontier in agent architecture, such as Language Agent Tree Search (LATS), builds on these ideas to allow agents to not just reflect on the past, but to proactively plan and explore multiple future paths simultaneously.
+
+## References
+
+- [Reflexion: Language Agents with Verbal Reinforcement Learning](https://arxiv.org/abs/2303.11366)
