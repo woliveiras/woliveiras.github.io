@@ -1,0 +1,239 @@
+---
+title: "Beyond Solo Agents: The Power of Collaborative AI Teams Using CrewAI"
+description: "From solo problem-solvers to orchestrated teams. This guide explores the 'why' and 'how' of multi-agent architectures, demonstrating how a team of specialized AI agents can solve complex problems more effectively than a single agent ever could."
+pubDate: "Wed Jul 30 18:00:00 2025 +0200"
+published: true
+tags: ["llm", "ai-agents", "ollama"]
+---
+
+## Introduction
+
+In our journey so far, we have engineered increasingly sophisticated single agents. We began with the foundational [ReAct framework](/posts/understanding-the-react-framework-for-ai-agents/), enabled our agent to learn from experience with [Reflexion](/posts/introduction-to-the-reflexion-framework/), and finally gave it strategic foresight using planning algorithms like [ToT and LATS](/posts/exploring-tree-of-thoughts-tot-and-language-agent-tree-search-lats/). We have successfully built a highly capable, autonomous problem-solver.
+
+But even the most intelligent expert has limits. A single agent, no matter how advanced, faces a "cognitive load" when tasked with problems that require deep, multifaceted expertise. Asking a single LLM to be a world-class researcher, a brilliant creative writer, and a meticulous code reviewer all at once will inevitably lead to diluted, suboptimal results.
+
+To break through this complexity barrier, we must embrace the same strategy humans have used for millennia: **teamwork**. This article introduces the next paradigm in agentic design: **multi-agent architectures**. We will explore why orchestrating a team of specialized AI agents is a game-changer and build our own "veterinary diagnostic crew" to see the concept in action.
+## The Specialist Imperative: Why Teams Outperform Individuals
+
+Imagine walking into a hospital with a complex medical issue. You wouldn't expect a single general practitioner to perform your heart surgery, analyze your MRI scans, and design your physical therapy regimen. You would be treated by a team of specialists: a cardiologist, a radiologist, and a physiotherapist, all collaborating on your case.
+
+A multi-agent system applies this exact **"divide and conquer"** strategy to AI. Instead of creating one monolithic "do-it-all" agent, we design a team of specialists. Each agent is given a specific:
+
+- **Role**: What is their job title? (e.g., "Kitten Health Specialist").
+- **Goal**: What is their primary objective? (e.g., "Diagnose health issues specific to cats under 1 year old").
+- **Backstory**: A persona that helps the LLM embody its role more effectively. (e.g., "A caring veterinarian with decades of experience in pediatric feline medicine.").
+- **Tools**: A limited set of tools relevant to their job.
+
+This approach offers several profound advantages:
+
+1. **Depth of Expertise**: Each agent can be prompted with a highly focused context, allowing it to reason with greater depth and accuracy within its narrow domain.
+1. **Modularity and Maintainability**: It is far easier to debug, test, and upgrade a small, specialized agent than a massive, complex one.
+1. **Reduced Cognitive Load**: By focusing only on its specific task, each agent avoids the "context clutter" of irrelevant information, leading to more efficient and reliable performance.
+
+To manage this collaboration, we use an orchestration framework. For our example, we'll use **CrewAI**, a popular framework designed to coordinate role-playing agents in a structured, process-oriented way. Think of it as the "head nurse" who ensures the right patient information gets to the right specialist at the right time.
+
+## Code Example: The Veterinary Diagnostic Crew
+
+Let's build a crew to tackle a common, yet potentially complex, veterinary problem.
+
+**The scenario**: a concerned pet owner reports: *"My 9-month-old cat, Whiskers, has been very lethargic and hasn't eaten anything for a day. What could be wrong?"*
+
+This symptom is ambiguous. The cause could be drastically different for a kitten versus a senior cat. Our crew will consist of three specialists who must collaborate to provide a sound initial diagnosis.
+
+Our Crew:
+
+1. **Triage Vet**: The first point of contact. Their job is to analyze the initial request and delegate it to the correct age-specific specialist.
+1. **Kitten Care Vet**: An expert on felines under 1 year old.
+1. **Adult & Senior Care Vet**: An expert on adult and elderly cats.
+
+```python
+# vet_crew_main_v2.py
+from crewai import Agent, Task, Crew, Process
+from langchain_ollama import ChatOllama
+from crewai.tools import BaseTool
+from ddgs import DDGS
+
+# Tool for web search related to veterinary information
+class SearchTools(BaseTool):
+    name: str = "Web Search Tool"
+    description: str = "A tool to search the web for veterinary information. Use it to find potential causes for symptoms."
+
+    def _run(self, query: str) -> str:
+        print(f"--- TOOL: Searching for '{query}' ---")
+        with DDGS() as ddgs:
+            results = [r for r in ddgs.text(query, max_results=5)]
+        return str(results) if results else "No results found."
+
+# --- Instantiate the tool ---
+search_tool = SearchTools()
+
+# Initialize the local LLM with Ollama provider
+ollama_model = ChatOllama(model="qwen3:latest")
+
+# Define the veterinary agents
+triage_vet = Agent(
+    role='Triage Veterinarian',
+    goal="Analyze the initial pet health query, determine the cat's life stage (kitten, adult, or senior), and delegate to the appropriate specialist.",
+    backstory="You are an experienced vet who is the first point of contact at a busy clinic. Your strength is quickly assessing a situation and getting the case to the right expert.",
+    verbose=True,
+    allow_delegation=True,
+    llm=ollama_model
+)
+
+kitten_vet = Agent(
+    role='Pediatric Feline Veterinarian',
+    goal='Diagnose and provide initial advice for health issues in kittens (cats under 1 year old).',
+    backstory='You are a world-renowned specialist in kitten health, known for your ability to spot subtle signs of developmental or infectious diseases in young cats.',
+    verbose=True,
+    allow_delegation=False,
+    tools=[search_tool],
+    llm=ollama_model
+)
+
+adult_senior_vet = Agent(
+    role='Adult and Geriatric Feline Veterinarian',
+    goal='Diagnose and provide initial advice for health issues in adult and senior cats (1 year and older).',
+    backstory='You have decades of experience treating adult and senior cats, with deep knowledge of age-related diseases like kidney failure, hyperthyroidism, and dental disease.',
+    verbose=True,
+    allow_delegation=False,
+    tools=[search_tool],
+    llm=ollama_model
+)
+
+# Define the diagnostic tasks for the crew
+triage_task = Task(
+    description="Analyze the user's query: '{query}'. Your first job is to determine the cat's life stage from the query. Based on the age, you MUST delegate the diagnostic task to either the 'Pediatric Feline Veterinarian' or the 'Adult and Geriatric Feline Veterinarian'. Do not try to diagnose yourself.",
+    expected_output="A delegation action to the correct specialist with all the necessary context from the query.",
+    agent=triage_vet
+)
+
+diagnostic_task = Task(
+    description="A pet owner is concerned about their cat. The Triage Vet has passed this case to you. Analyze the full context of the query and provide a differential diagnosis. What are the most likely causes of the symptoms described? Use your search tool if needed. Conclude with clear advice on whether this is an emergency and what the owner's next steps should be.",
+    expected_output="A detailed report with 2-3 likely diagnoses, an explanation for each, and clear, actionable advice for the pet owner.",
+)
+
+# Assemble and run the crew
+crew = Crew(
+    agents=[triage_vet, kitten_vet, adult_senior_vet],
+    tasks=[triage_task, diagnostic_task],
+    process=Process.hierarchical,
+    manager_llm=ollama_model
+)
+
+def main():
+    print("--- Starting the Veterinary Crew ---")
+    user_query = "My 9-month-old cat, Whiskers, has been very lethargic and hasn't eaten anything for a day. What could be wrong?"
+    result = crew.kickoff(inputs={'query': user_query})
+
+    print("\n--- Crew Finished ---")
+    print("\nFinal Diagnostic Report:")
+    print(result)
+
+if __name__ == "__main__":
+    main()
+```
+
+Output:
+
+```sh
+--- Starting the Veterinary Crew ---
+
+╭── 🤖 Agent Started
+│
+│  Agent: Pediatric Feline Veterinarian
+│  Task: Analyze the cat's symptoms of lethargy and anorexia, determine potential causes, and recommend next steps.
+│
+╰───────────────────────
+
+--- TOOL: Searching for 'lethargy and anorexia in 9-month-old kitten possible causes' ---
+
+╭── 🔧 Agent Tool Execution
+│
+│  Agent: Pediatric Feline Veterinarian
+│  Thought: <think>
+│  Okay, let's tackle this. The user is a coworker asking about a 9-month-old cat named Whiskers showing lethargy and anorexia for 24 hours.
+│  The owner is worried. First, I need to figure out the possible causes. Since the cat is in the pediatric stage, developmental or
+│  infectious issues could be factors.
+│  Lethargy and anorexia in kittens can have various causes. Common ones include viral infections like feline panleukopenia, which is
+│  serious. Also, other viruses like herpesvirus or calicivirus might be involved. Then there's the possibility of gastrointestinal issues,
+│  such as parasites or infections. Maybe even something like feline leukemia or immunodeficiency virus. But since the cat is 9 months old,
+│  maybe it's a more recent infection.
+│  Wait, the user mentioned using the Web Search Tool. So I should use that to find potential causes. Let me check the tool's description.
+│  The tool can search for veterinary info based on symptoms. The query should be about the symptoms in a 9-month-old cat.
+│  So the action would be to use the Web Search Tool with the query "lethargy and anorexia in 9-month-old kitten possible causes". Then,
+│  based on the search results, I can list the possible causes and recommend next steps.
+│  But I need to make sure the search terms are accurate. Maybe include terms like "differential diagnosis" or "common causes". Also,
+│  considering the time frame (24 hours), maybe it's an acute issue. The search should cover both infectious and non-infectious causes.
+│  Once the search results come back, I can synthesize the information into a comprehensive answer for the coworker, listing the possible
+│  causes and suggesting immediate actions like veterinary consultation, checking for other symptoms, and possible tests.
+│  </think>
+│  Thought: I need to use the Web Search Tool to find potential causes for lethargy and anorexia in a 9-month-old kitten.
+│
+│  Using Tool: Web Search Tool
+│
+╰───────────────────────
+
+╭───── Tool Input
+│
+│  "{\"query\": \"lethargy and anorexia in 9-month-old kitten possible causes\"}"
+│
+╰───────────────────────
+
+╭──── Tool Output
+│
+│  [{'title': 'PetMD Lethargic Cats: Causes, Symptoms, and What To Do | PetMD', 'href':
+│  'https://www.petmd.com/cat/symptoms/why-my-cat-lethargic', 'body': 'October 29, 2021 - For example, cats that have just been vaccinated
+│  are often lethargic for 24–48 hours. This happens because vaccines make their immune system work harder , which can temporarily cause cats  │
+│  to feel tired, achy, and generally unwell.'}, {'title': 'JustAnswer Help! My 9 Week Old Kitten Seems Sick and Lethargic', 'href':
+│  'https://www.justanswer.com/cat-health/2tq8a-help-week-old-kitten-seems-sick-lethargic.html', 'body': 'Knowing that this is a young, small  │
+│  kitten - anorexia such as this can quickly develop problems such as dehydration and a low blood sugar - I would recommend seeing a
+│  veterinarian as soon as possible - going to the local ER if your veterinarian is not open at this hour.'}, {'title': 'PetMD Fading Kitten
+│  Syndrome | PetMD', 'href': 'https://www.petmd.com/cat/conditions/fading-kitten-syndrome', 'body': 'December 2, 2024 - Dr. Katie Ryan
+│  discusses fading kitten syndrome , including what causes this difficult condition and what can be done to prevent or treat it.'},
+│  {'title': 'Vetster Lack, Loss, or Decreased Appetite (Dysrexia, Anorexia, and Hyporexia) in Cats - Causes, Treatment and Associated
+│  Symptoms - Vetster', 'href': 'https://vetster.com/en/symptoms/cat/lack-loss-or-decreased-appetite', 'body': 'April 7, 2024 - Decreased
+│  appetite in cats describes reduced caloric intake (eating) even when sufficient food is available. This symptom can be further
+│  characterized into three types: hyporexia, anorexia , and dysrexia.'}, {'title': 'VCA Animal Hospitals Anorexia in Cats | VCA Animal
+│  Hospitals', 'href': 'https://vcahospitals.com/know-your-pet/anorexia-in-cats', 'body': 'Anorexia is a decrease or loss of appetite for
+│  food. While hunger is physiologically driven, appetite is psychologically driven. There are two types of anorexia : true anorexia and
+│  “pseudo- anorexia .”'}]
+│
+╰───────────────────────
+
+╭─────── ✅ Agent Final Answer
+│
+│  Agent: Pediatric Feline Veterinarian
+│
+│  Final Answer:
+│  Whiskers' symptoms of lethargy and anorexia over 24 hours could stem from various causes, including vaccine reaction, viral infections
+│  (e.g., feline panleukopenia, herpesvirus, calicivirus), gastrointestinal upset, dehydration, low blood sugar, or more serious conditions
+│  like fading kitten syndrome. Since kittens in the pediatric stage (up to 1 year) are particularly vulnerable to rapid dehydration and
+│  metabolic imbalances, immediate veterinary attention is critical. The owner should monitor for additional symptoms (e.g., vomiting,
+│  diarrhea, fever, or weakness) and seek urgent care to address potential dehydration, infection, or systemic illness. A veterinarian will
+│  likely perform a physical exam, check for dehydration, run blood tests, and assess for infectious agents or other underlying issues. Do
+│  not delay treatment, as anorexia in kittens can progress quickly to life-threatening complications.
+│
+╰───────────────────────
+
+
+--- Crew Finished ---
+
+Final Diagnostic Report:
+Based on the Pediatric Feline Veterinarian's analysis, the most likely diagnoses for Whiskers are: 1. **Viral Infection** (e.g., feline panleukopenia, herpesvirus, or calicivirus): These viruses commonly affect young cats, causing lethargy, anorexia, and systemic symptoms. Kittens are highly susceptible to severe complications from these infections. 2. **Dehydration and Hypoglycemia**: Prolonged anorexia in kittens can lead to rapid fluid loss and low blood sugar, which can cause lethargy and require immediate intervention. 3. **Gastrointestinal Upset or Obstruction**: Dietary indiscretion or a blockage in the digestive tract could explain the lack of appetite and lethargy, especially if Whiskers has been vomiting or showing discomfort.
+
+The owner must act quickly, as anorexia in kittens is a medical emergency. Next steps include: 1. **Seek immediate veterinary care** to assess dehydration, run bloodwork, and identify infectious agents. 2. **Monitor for worsening symptoms** such as vomiting, diarrhea, weakness, or fever. 3. **Provide small amounts of water or electrolyte solution** (if the vet approves) to prevent further dehydration. Do not delay—kittens can deteriorate rapidly without treatment. The veterinarian will determine the exact cause and initiate appropriate treatment, which may include fluids, antiviral medications, or supportive care.
+```
+
+## Conclusion
+
+The shift from single-agent to multi-agent architectures represents a leap in our ability to solve complex, real-world problems. By creating teams of specialized agents, we emulate the collaborative power of human experts, allowing us to build systems that are more robust, more accurate, and more capable.
+
+Frameworks like CrewAI provide the essential scaffolding to orchestrate these AI crews, managing the flow of information and ensuring that each specialist contributes effectively to the final goal. Mastering this "divide and conquer" strategy is a fundamental skill for anyone looking to move beyond simple automation and build truly intelligent systems.
+
+## References
+
+- [A Survey on Multi-Generative Agent System: Recent Advances and New Frontiers](https://arxiv.org/abs/2412.17481)
+- [Autogen: Enabling Next-Gen LLM Applications via Multi-Agent Conversation](https://arxiv.org/abs/2308.08155)
+- [CrewAI Official Documentation](https://docs.crewai.com/en/introduction)
+
+
