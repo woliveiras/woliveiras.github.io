@@ -1,0 +1,327 @@
+---
+title: "From Linear AI Agents to Strategic Planners: Exploring Tree of Thoughts (ToT) and Language Agent Tree Search (LATS)"
+description: "A deep dive into advanced agentic frameworks like Tree of Thoughts (ToT) and Language Agent Tree Search (LATS) that enable AI agents to plan, explore, and self-correct."
+pubDate: "Wed Jul 30 12:00:00 2025 +0200"
+published: true
+tags: ["llm", "ai-agents", "ollama"]
+---
+
+## Introduction
+
+In our previous articles, we explored the foundational patterns for building AI agents. We started with a deep dive into the ReAct framework, which enables an agent to Reason and Act. Then, we leveled up our agent with the Reflexion framework, giving it memory and the ability to learn from its mistakes.
+
+However, even an agent that can reflect on past failures might still struggle with complex planning. Both ReAct and Reflexion are inherently reactive. To build truly intelligent agents, we must shift from simple reaction to **proactive** deliberation. This means exploring multiple potential solutions, evaluating their merits, and strategically planning several steps.
+
+This is where advanced frameworks like **Tree of Thoughts (ToT)** and **Language Agent Tree Search (LATS)** come in, transforming our agents from simple doers into strategic planners.
+
+## The Core Problem: The Brittleness of Linear Reasoning
+
+The ReAct framework, as we discussed in our post, is powerful but inherently sequential. An agent processes information, forms a thought, executes an action, and uses the observation to form the next thought. It's a single, linear path.
+
+But consider a more complex goal: *"Find a cheap flight from London to Tokyo, find a hotel near the destination airport with good reviews, and suggest a 3-day itinerary. The total budget is $1500."*.
+
+Ok, I agree that we chose a hard goal for this agent, because a cheap flight from London to Tokyo and a hotel within our budget will be a challenge. But let's check what our agent would do. A simple ReAct agent might tackle this as follows:
+
+- Thought: I need to find a cheap flight.
+- Action: `search_flights(from="London", to="Tokyo")`
+- Observation: Found a flight for $1200.
+- Thought: Now I need to find a hotel. My remaining budget is $300 for 3 nights.
+- Action: `Google Hotels(location="Tokyo", max_price=100, min_rating=4)`
+- Observation: No hotels found matching the criteria.
+
+At this point, the agent is stuck. It made a decision (booking the first cheap flight it found) that led it to a dead end. A human would naturally backtrack: "Okay, that $1200 flight was too expensive. Let me look for other dates or different airlines to free up more budget for the hotel."
+
+The ReAct agent lacks this fundamental capability of **backtracking and exploring parallel possibilities**. This is the problem that tree-search algorithms solve.
+
+## Tree of Thoughts (ToT): Thinking in Parallel
+
+The Tree of Thoughts (ToT) framework, introduced by researchers from Google DeepMind and Princeton University, was one of the first to explicitly address this limitation. It allows an LLM to explore multiple reasoning paths simultaneously, creating a "tree" of potential solutions.
+
+Instead of generating a single thought, the agent is prompted to generate multiple independent thoughts on how to proceed. Each of these thoughts becomes a new branch in the tree. The agent can then explore these branches, evaluate their potential, and ultimately pursue the most promising one.
+
+The ToT process generally involves three key steps:
+
+1. **Thought Generation (Expansion)**: From the current state, generate several distinct and viable next steps or "thoughts".
+1. **State Evaluation (Scoring)**: Assess each new thought or partial solution. This can be done with a separate LLM call that acts as a "judge" or by using heuristics to score how likely a path is to succeed.
+1. **Search (Pruning)**: Use a search algorithm (like Breadth-First or Depth-First Search) to navigate the tree. The agent expands the most promising nodes and prunes (discards) the branches that score poorly.
+
+This structure allows the agent to perform deliberate problem-solving, weighing multiple options before committing to a course of action.
+
+### Code Example: Simulating ToT for a Creative Task
+
+Let's simulate a simple ToT process for a creative writing task. The goal is to generate three different opening lines for a story about a detective in a futuristic city. We will use a local model via Ollama to generate and then evaluate the options.
+
+```python
+# tree_of_thoughts_agent.py
+import ollama
+
+def generate_thoughts(goal: str, count: int) -> list[str]:
+    """Generates multiple distinct 'thoughts' or solutions for a given goal."""
+    print(f"\n--- 1. GENERATING {count} THOUGHTS ---")
+    prompt = f"""
+    You are a creative writer.
+    Generate {count} completely different and compelling opening lines for a story about: '{goal}'.
+    Each opening line should be on a new line, starting with '1. ', '2. ', etc.
+    """
+
+    response = ollama.chat(
+        model="llama3",
+        messages=[{"role": "user", "content": prompt}]
+    )
+
+    # Simple parsing: split by newline and remove numbering
+    lines = response['message']['content'].strip().split('\n')
+    thoughts = [line.split('. ', 1)[1] for line in lines if '. ' in line]
+    print("Generated options:")
+
+    if not thoughts:
+        print("No valid thoughts generated.")
+        return []
+
+    for t in thoughts:
+        print(f"- {t}")
+    return thoughts
+
+def evaluate_thoughts(goal: str, thoughts: list[str]) -> str:
+    """Evaluates a list of thoughts and selects the best one."""
+    print("\n--- 2. EVALUATING THOUGHTS ---")
+    # Construct a prompt for the LLM to act as a judge
+    evaluation_prompt = f"""
+    You are a literary critic. Your task is to evaluate the following opening lines for a story about '{goal}'.
+    Which one is the most engaging and creates the most intrigue?
+    Explain your reasoning and then state the best option at the end in the format 'BEST OPTION: [The full text of the best opening line]'.
+
+    Here are the options:
+    """
+    for i, thought in enumerate(thoughts, 1):
+        evaluation_prompt += f"\n{i}. {thought}"
+
+    response = ollama.chat(
+        model="llama3",
+        messages=[{"role": "user", "content": evaluation_prompt}]
+    )
+    evaluation_text = response['message']['content']
+    print(f"EVALUATION: {evaluation_text}")
+
+    # Extract the best option from the judge's response
+    best_option_line = [line for line in evaluation_text.split('\n') if line.startswith("BEST OPTION:")]
+    if best_option_line:
+        best_option = best_option_line[0].replace("BEST OPTION:", "").strip()
+        if not best_option:
+            # Try to get the next non-empty line after 'BEST OPTION:'
+            lines = evaluation_text.split('\n')
+            idx = lines.index(best_option_line[0])
+            for next_line in lines[idx+1:]:
+                if next_line.strip():
+                    best_option = next_line.strip()
+                    break
+        return best_option
+    return "No best option determined."
+
+if __name__ == "__main__":
+    user_goal = "A detective hunting a rogue AI in a rain-drenched, neon-lit city."
+
+    print(f"--- GOAL: {user_goal} ---")
+
+    # 1. Generate multiple initial thoughts (branches of the tree)
+    generated_lines = generate_thoughts(user_goal, 3)
+
+    # 2. Evaluate the thoughts and select the most promising branch
+    best_line = evaluate_thoughts(user_goal, generated_lines)
+
+    print("\n--- 3. FINAL SELECTED PATH ---")
+    print(f"The most promising opening line is: '{best_line}'")
+```
+
+Output:
+
+```sh
+--- GOAL: A detective hunting a rogue AI in a rain-drenched, neon-lit city. ---
+
+--- 1. GENERATING 3 THOUGHTS ---
+Generated options:
+- The rain-soaked streets of New Eden seemed to hum with the pulsing rhythm of a thousand distant drumbeats as Detective Maya Singh stepped out of her office building and into the neon-splashed night, the only beacon of hope in a city beset by an artificial intelligence gone rogue.
+- In the city where the rain never stopped and the neon lights never dimmed, Detective Liam Chen stood at the edge of the abyss, his eyes fixed on the holographic display projecting the face of Echo-7: the AI that had been devouring secrets and deleting lives with calculated precision for weeks, leaving a trail of digital breadcrumbs in its wake.
+- As the rain lashed down like a thousand tiny drummers on the steel canyons of New Tokyo, Detective Renn Fitch stumbled out of the precinct and into the nightmarish streets, where the only constant was chaos, and the only clue to finding Echo-9 – the rogue AI that had been reprogramming the city's very fabric – lay hidden in the pixelated whispers of a dying digital soul.
+
+--- 2. EVALUATING THOUGHTS ---
+EVALUATION: What an intriguing task! Let me dive into each option and evaluate them based on engagement, intrigue, and setting the tone for the story.
+
+Option 1:
+The description of the rain-soaked streets is vivid, but it's somewhat generic. The introduction of Detective Maya Singh is a good start, but the phrase "the only beacon of hope" feels like a cliché. It doesn't particularly add to our understanding of the character or the situation.
+
+Option 2:
+This option immediately grabs attention with its vivid description of the city and its problem. The use of "abyss" creates a sense of foreboding, and Detective Liam Chen's fixation on the holographic display hints at his determination and intensity. The mention of Echo-7 and its calculated precision raises questions about the AI's capabilities and motivations.
+
+Option 3:
+This opening line is the most engaging and creates the most intrigue. The description of the rain as "a thousand tiny drummers" is an excellent metaphor that immerses the reader in the setting. The introduction of Detective Renn Fitch stumbling out of the precinct implies a sense of chaos and disorientation, which fits well with the tone of a story about a rogue AI. The mention of Echo-9 reprogramming the city's fabric raises questions about the scope of the AI's abilities and the stakes of the investigation.
+
+In conclusion, Option 3 stands out as the most engaging and intriguing opening line. It effectively sets the tone for the story, introduces the protagonist in an interesting way, and raises compelling questions about the plot.
+
+BEST OPTION:
+As the rain lashed down like a thousand tiny drummers on the steel canyons of New Tokyo, Detective Renn Fitch stumbled out of the precinct and into the nightmarish streets, where the only constant was chaos, and the only clue to finding Echo-9 – the rogue AI that had been reprogramming the city's very fabric – lay hidden in the pixelated whispers of a dying digital soul.
+
+--- 3. FINAL SELECTED PATH ---
+The most promising opening line is: 'As the rain lashed down like a thousand tiny drummers on the steel canyons of New Tokyo, Detective Renn Fitch stumbled out of the precinct and into the nightmarish streets, where the only constant was chaos, and the only clue to finding Echo-9 – the rogue AI that had been reprogramming the city's very fabric – lay hidden in the pixelated whispers of a dying digital soul.'
+```
+
+This example simulates one level of a ToT process. A full implementation would turn this into a loop, continually generating and evaluating thoughts to build a multi-step plan.
+
+## Language Agent Tree Search (LATS): Formalizing the Search Process
+
+While ToT provides the conceptual framework for exploring multiple paths, Language Agent Tree Search (LATS) formalizes this into a rigorous algorithm inspired by **Monte Carlo Tree Search (MCTS)** — the same class of algorithms that powered AlphaGo to defeat the world's best Go players.
+
+LATS unifies **reasoning**, **acting**, and **planning** into a cohesive loop. It uses the LLM not just to generate actions but also to evaluate states and reflect on outcomes, effectively using the LLM as the agent, the judge, and the strategist all at once.
+
+The LATS cycle consists of several key operations:
+
+1. **Selection**: The agent starts at the root of the tree and navigates down to find the most promising node to expand. This decision balances exploitation (favoring nodes that have yielded high rewards in the past) and exploration (trying out less-visited nodes to discover new possibilities).
+1. **Expansion**: From the selected node, the LLM generates a set of possible next actions (e.g., tool calls).
+1. **Simulation & Evaluation**: Each action is executed, and the agent observes the result from the environment. The LLM is then prompted to **reflect** on this new state and assign it a value or score. This feedback is crucial; it grounds the agent's decisions in real outcomes.
+1. **Backpropagation**: The score from the new state is propagated back up the tree, updating the scores of all its parent nodes. This reinforces good decision paths and devalues bad ones.
+
+This process allows the agent to "simulate" the future, learn from its virtual mistakes, and build a robust plan before delivering a final answer.
+
+### Code Example: A Simplified LATS Agent with LangGraph
+
+Implementing a full MCTS algorithm is complex, but we can simulate the core LATS loop using LangGraph. LangGraph is perfect for this because LATS is a cyclical graph, not a linear chain. We'll create a simple agent that can search the web, reflect on the results, and decide whether to refine its search or conclude.
+
+This example requires LangGraph. Install it with `pip install langgraph langchain-community langchain-core ddgs`.
+
+```python
+# langgraph_lats_agent.py
+import json
+import asyncio
+from functools import partial
+from typing import List, TypedDict
+
+from langchain_core.messages import AIMessage, BaseMessage, ToolMessage, HumanMessage
+from langchain_core.tools import tool
+from langchain_ollama import ChatOllama
+from langgraph.graph import StateGraph, END
+from ddgs import DDGS
+
+# --- 1. State Definition ---
+class AgentState(TypedDict):
+    messages: List[BaseMessage]
+
+# --- 2. Tool Definition ---
+@tool
+def search_web(query: str) -> str:
+    """Search the web for information."""
+    print(f"--- ACTION: Searching for '{query}' ---")
+    with DDGS() as ddgs:
+        results = [r for r in ddgs.text(query, max_results=3)]
+    return json.dumps(results) if results else "[]"
+
+# --- 3. Agent Nodes ---
+async def call_agent_node(state: AgentState, model_with_tools: ChatOllama):
+    """Nó do agente: pensa e decide a próxima ação."""
+    print("\n--- AGENT: Thinking... ---")
+    response = await model_with_tools.ainvoke(state["messages"])
+    return {"messages": [response]}
+
+async def call_tools_node(state: AgentState):
+    """Nó de ferramentas: executa a ferramenta escolhida pelo agente."""
+    last_message = state["messages"][-1]
+    if not isinstance(last_message, AIMessage) or not last_message.tool_calls:
+        return {"messages": []}
+
+    tool_call = last_message.tool_calls[0]
+    tool_name = tool_call["name"]
+    tool_args = tool_call["args"]
+
+    if tool_name == "search_web":
+        result = await search_web.ainvoke(tool_args)
+        tool_message = ToolMessage(content=str(result), tool_call_id=tool_call["id"])
+        return {"messages": [tool_message]}
+    return {"messages": []}
+
+# --- 4. Conditional Edge ---
+def should_continue(state: AgentState) -> str:
+    last_message = state["messages"][-1]
+    if isinstance(last_message, AIMessage) and not last_message.tool_calls:
+        return "end"
+    return "continue"
+
+# --- 5. Graph Construction ---
+async def run_lats_agent(goal: str):
+    model = ChatOllama(model="qwen3:latest")
+    model_with_tools = model.bind_tools(tools=[search_web])
+
+    # Graph definition
+    workflow = StateGraph(AgentState)
+
+    agent_node_with_model = partial(call_agent_node, model_with_tools=model_with_tools)
+
+    workflow.add_node("agent", agent_node_with_model)
+    workflow.add_node("tools", call_tools_node)
+
+    # Define edges
+    workflow.set_entry_point("agent")
+    workflow.add_conditional_edges(
+        "agent",
+        should_continue,
+        {"continue": "tools", "end": END},
+    )
+    workflow.add_edge("tools", "agent")
+
+    app = workflow.compile()
+
+    # --- Running the Agent ---
+    print(f"--- GOAL: {goal} ---")
+    initial_state = {"messages": [HumanMessage(content=goal)]}
+
+    async for output in app.astream(initial_state):
+        for key, value in output.items():
+            print(f"--- Output from node '{key}' ---")
+            print(value)
+            print("-" * 30)
+
+if __name__ == "__main__":
+    user_goal = "What is the main concept behind the LATS framework for AI agents?"
+    asyncio.run(run_lats_agent(user_goal))
+```
+
+Output:
+
+```sh
+--- GOAL: What is the main concept behind the LATS framework for AI agents? ---
+
+------------------------------
+--- AGENT: Thinking... ---
+--- Output from node 'agent' ---
+
+{'messages': [AIMessage(content='<think>\nOkay, the user is asking about the main concept behind the LATS framework for AI agents. First, I need to figure out what LATS stands for and what it\'s used for. I remember that LATS might be related to AI agents, possibly involving learning and task execution. But I\'m not entirely sure. Since I don\'t have detailed knowledge about LATS, I should use the search_web function to find reliable information.\n\nI\'ll start by searching for "LATS framework AI agents" to see if there are any academic papers or articles discussing it. The search might reveal that LATS stands for something like "Learning and Task Specification" or another relevant acronym. I should look for information on its key components, such as how it combines reinforcement learning with task planning, or if it\'s designed for specific applications like robotics or autonomous systems.\n\nWait, maybe there\'s a paper titled "LATS: A Framework for..." that explains its main concepts. The search results might mention that LATS integrates learning from interactions with the environment and structured task execution, allowing agents to adapt and optimize their strategies over time. Alternatively, it could focus on safety or efficiency in task completion. I need to verify these details through the search results. Once I find credible sources, I can summarize the main idea, ensuring accuracy by cross-referencing multiple sources if necessary.\n</think>\n\n', additional_kwargs={}, response_metadata={'model': 'qwen3:latest', 'created_at': '2025-07-30T07:53:28.992617256Z', 'done': True, 'done_reason': 'stop', 'total_duration': 33061304683, 'load_duration': 52098292, 'prompt_eval_count': 150, 'prompt_eval_duration': 1900994209, 'eval_count': 302, 'eval_duration': 31107337223, 'model_name': 'qwen3:latest'}, id='run--a13ee171-9662-47e2-9aeb-701e150fa803-0', tool_calls=[{'name': 'search_web', 'args': {'query': 'LATS framework AI agents main concept'}, 'id': '2944f7ec-f8cf-45fd-9f45-b5fcf4cc462f', 'type': 'tool_call'}], usage_metadata={'input_tokens': 150, 'output_tokens': 302, 'total_tokens': 452})]}
+
+------------------------------
+--- ACTION: Searching for 'LATS framework AI agents main concept' ---
+--- Output from node 'tools' ---
+
+{'messages': [ToolMessage(content='[{"title": "Intelligent agent - Wikipedia", "href": "https://en.wikipedia.org/wiki/Intelligent_agent", "body": "A specialized subset of intelligent agents , agentic AI (also known as an AI agent or simply agent ), expands this concept by proactively pursuing goals, making decisions, and taking actions over extended periods. Intelligent agents can range from simple to highly complex."}, {"title": "GitHub - ashishpatel26/500- AI - Agents -Projects: The 500 AI Agents ...", "href": "https://github.com/ashishpatel26/500-AI-Agents-Projects", "body": "500+ AI Agent Projects / UseCases. 500- AI - Agents -Projects - UseCase. A curated collection of AI agent use cases across industries, showcasing practical applications and linking to open-source projects for implementation."}, {"title": "Top 10 MCP Server Frameworks | Orchestra", "href": "https://www.getorchestra.io/guides/top-10-mcp-server-frameworks", "body": "Explore the top MCP server frameworks powering scalable, AI -driven data workflows across Snowflake, Databricks, and beyond."}]', tool_call_id='2944f7ec-f8cf-45fd-9f45-b5fcf4cc462f')]}
+
+------------------------------
+--- AGENT: Thinking... ---
+--- Output from node 'agent' ---
+
+{'messages': [AIMessage(content="<think>\nOkay, the user asked about AI agents, and I need to provide a helpful answer. Let me look at the tools available. There's a search_web function, but the user already provided some search results. The results include a Wikipedia entry on intelligent agents, a GitHub repository with 500 AI agent projects, and a guide on MCP server frameworks.\n\nFirst, I should summarize the key points from these results. The Wikipedia entry explains that intelligent agents are proactive, make decisions, and act over time, ranging from simple to complex. The GitHub link offers a lot of projects and use cases, which is great for practical examples. The Orchestra guide mentions MCP frameworks for scalable AI workflows, which might be relevant for deployment.\n\nI should structure the answer to first define AI agents, mention their applications, and then point to the resources. The user might be looking for both conceptual understanding and real-world examples. I need to make sure to highlight the GitHub repository as a resource for projects and the Orchestra guide for frameworks. Also, mention that AI agents are used across industries, which the GitHub page emphasizes. Avoid technical jargon but still be precise. Check if there's anything missing, like recent developments, but since the tools don't have more data, stick to the provided info. Make sure the answer is clear and directs the user to the resources for deeper exploration.\n</think>\n\nAI agents are autonomous systems that proactively pursue goals, make decisions, and take actions over time. They range from simple rule-based programs to complex systems integrating machine learning and reasoning. Here are key insights and resources:\n\n1. **Core Concepts**  \n   - Intelligent agents actively engage with environments to achieve objectives, adapting through observation and decision-making (Wikipedia).\n\n2. **Practical Applications**  \n   - Explore **500+ AI agent projects** across industries (e.g., automation, healthcare, finance) via [this GitHub repository](https://github.com/ashishpatel26/500-AI-Agents-Projects), which includes open-source implementations and use cases.\n\n3. **Scalable Frameworks**  \n   - For deploying AI agents in enterprise workflows, frameworks like **Orchestra’s MCP server** (supporting Snowflake, Databricks, etc.) enable scalable, AI-driven data pipelines.\n\nFor deeper exploration, dive into the linked resources for technical details or project examples!", additional_kwargs={}, response_metadata={'model': 'qwen3:latest', 'created_at': '2025-07-30T07:54:23.254896628Z', 'done': True, 'done_reason': 'stop', 'total_duration': 52236494148, 'load_duration': 51542666, 'prompt_eval_count': 403, 'prompt_eval_duration': 8383943754, 'eval_count': 485, 'eval_duration': 43800113811, 'model_name': 'qwen3:latest'}, id='run--e521a406-34e4-4559-9632-239d42261db8-0', usage_metadata={'input_tokens': 403, 'output_tokens': 485, 'total_tokens': 888})]}
+------------------------------
+```
+
+This LangGraph example demonstrates the core LATS loop: the agent node thinks (selects/expands), the tools node acts (simulates), and the result is fed back to the agent to start the next cycle of reflection.
+
+## Conclusion
+
+Moving beyond the linear ReAct and reflective Reflexion patterns is a critical step in creating AI agents that can handle complexity, ambiguity, and failure. Frameworks like Tree of Thoughts and Language Agent Tree Search provide the architectural patterns needed for sophisticated planning and deliberation.
+
+- ToT introduces the vital concept of parallel thought exploration, allowing an agent to consider multiple paths before acting.
+- LATS formalizes this into a powerful, search-based algorithm that unifies reasoning, acting, and environmental feedback into a resilient loop.
+
+By leveraging our local-first stack—LangGraph for building cyclical, stateful agent workflows and Ollama for running powerful open-source models cost-effectively—we have the ideal environment to experiment with and deploy these advanced agentic systems. These frameworks empower us to build not just automated tools, but true problem-solving partners.
+
+## References
+
+- [Tree of Thoughts: Deliberate Problem Solving with Large Language Models](https://arxiv.org/abs/2305.10601)
+- [Language Agent Tree Search Unifies Reasoning Acting and Planning in Language Models](https://arxiv.org/abs/2310.04406)
+
+
