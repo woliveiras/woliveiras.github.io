@@ -1,0 +1,350 @@
+---
+title: "The StateAct Pattern for Robust and Long-Running Agents"
+description: "Exploring the StateAct pattern to enhance AI agents' robustness and long-term task management. Learn how to implement this pattern using LangGraph and Ollama, ensuring agents maintain focus and clarity in complex tasks."
+pubDate: "Mon Aug 04 18:00:00 2025 +0200"
+published: true
+tags: ["llm", "ai-engineering", "ai-agents", "ollama"]
+---
+
+## Introduction
+
+We began our journey by [deconstructing the agent's anatomy](/posts/deconstructing-ai-agents-a-practical-guide-for-understanding-it/) and exploring the powerful [ReAct (Reason + Act) pattern](/posts/understanding-the-react-framework-for-ai-agents/), which gives Large Language Models (LLMs) the ability to reason about a task and interact with tools. However, as we build more complex, multi-step systems, we often encounter a frustrating limitation: agents can "lose the plot."
+
+After a few cycles of thought and tool execution, an agent can become sidetracked by an intermediate result, lose sight of its original high-level goal, or get stuck in a loop. The problem lies in implicit memory. The agent's "state" is buried within the conversational history, a fragile context that can easily be overwhelmed.
+
+To solve this, the researchers evolved the ReAct pattern into something more robust, a pattern called **StateAct: State + Reason + Act**.
+
+In this article, we'll explore it further and examine how it works with some code examples.
+
+If you don't know my other posts about this topic or don't have knowledge about AI Agents, take a look at them first:
+
+1. [Level Up Your AI Agent: An Introduction to the Reflexion Framework](/posts/introduction-to-the-reflexion-framework/)
+1. [From Linear AI Agents to Strategic Planners: Exploring Tree of Thoughts (ToT) and Language Agent Tree Search (LATS)](/posts/exploring-tree-of-thoughts-tot-and-language-agent-tree-search-lats/)
+1. [Beyond Solo Agents: The Power of Collaborative AI Teams Using CrewAI](/posts/beyond-solo-agents-the-power-of-collaborative-ai-teams-using-crewai)
+
+## What is the StateAct Pattern?
+
+StateAct is an architectural pattern, not just a prompt template. It forces the agent to explicitly articulate its internal state at every single step before it reasons or acts. By making the state an explicit, structured part of the output, we build agents that are more resilient, debuggable, and capable of handling long-duration tasks.
+
+Instead of a simple `Thought` and `Action` sequence, the LLM is prompted to generate a more structured output that includes a dedicated state block.
+
+A classic ReAct prompt output looks like this:
+
+- **Thought**: I need to find two pieces of information: NVIDIA's market cap and Canada's GDP. I will start by searching for NVIDIA's market cap.
+- **Action**: `web_search(query="NVIDIA market cap")`
+
+A **StateAct** prompt fundamentally changes the agent's task. It must first report on its status, making its internal monologue visible and trackable.
+
+Example:
+
+- **State**:
+  - *overall_goal*: "Compare NVIDIA's market cap to the GDP of Canada."
+  - *knowledge_summary*: "No information gathered yet."
+  - *current_plan*:
+    - *[ x ] Step 1: Find NVIDIA's market cap*.
+    - *[   ] Step 2: Find Canada's GDP*.
+    - *[   ] Step 3: Compare and provide the final answer*.
+- **Thought**: My first step is to find the market cap for NVIDIA. The best way to get a current value is to use the web search tool.
+- **Action**: *`web_search(query="NVIDIA current market cap")`*
+
+##  The Architectural Advantages of StateAct
+
+Forcing the agent to "think about its thinking" offers tremendous benefits, especially within our preferred stack of LangGraph and local models via Ollama.
+
+### Enhanced Robustness and Resilience
+
+When an agent must write down its goal and what it knows at every step, it dramatically reduces the chance of "drifting" off-task. The **knowledge_summary** acts as a compressed memory, reminding the LLM of critical information without cluttering the context window with raw tool outputs. If a tool fails, the agent can look at its explicit state and reason about how to recover, rather than simply giving up.
+
+### Superior Observability and Debugging
+
+This is a game-changer for architects. When an agent fails, you don't have to sift through a long, confusing chat history. You can look at the last generated state to get an immediate snapshot of the agent's "mind."
+
+- Did it misunderstand the `overall_goal`?
+- Is its `knowledge_summary` incorrect?
+- Did it create a flawed `current_plan`? Debugging becomes less about guessing and more about analysis.
+
+### Perfect Synergy with LangGraph
+
+While you can implement this pattern with a standard agent loop, LangGraph is the ideal framework for it. LangGraph is, by its nature, a state machine. The StateAct pattern aligns perfectly with this paradigm. We can design a graph where the central state object is precisely the structure our agent articulates at each step.
+
+
+## Code Example: Implementing StateAct with LangGraph
+
+Let's build a simple StateAct agent using our stack. The agent's goal will be to answer a multi-step research question. LangGraph's ability to manage a state object that cycles through the graph makes it the perfect choice.
+
+In this example, we'll use a mock tool for web searching with the data of our fictional company PonyVidia and the country of Vinland. The agent will compare PonyVidia's market cap to Vinland's GDP, demonstrating how it can reason through a multi-step task while maintaining a clear state. I'll not use a real web search tool to ensure reproducibility, but you can replace it with a real API call, like using DuckDuckGo, in your implementation.
+
+Take attention to the structure of the state object, which includes the overall goal, plan, knowledge summary, tool outputs, and the next action. This structure is crucial for the agent's reasoning process.
+
+In the output session on this post, you can see how the agent alternates between reasoning and acting, updating its state at each step. The agent's reasoning, plan, and knowledge are explicitly tracked and updated, allowing it to handle complex tasks without losing focus.
+
+```python
+# state_act_agent.py
+#
+# Example implementation of the StateAct pattern for agentic workflows.
+#
+# The agent alternates between two phases:
+#   1. State: The agent analyzes its current state, updates its plan and knowledge, and decides the next action.
+#   2. Act: The agent executes the chosen action (tool), observes the result, and updates its state accordingly.
+#
+# This loop continues until the agent determines that its goal is achieved or no further actions are needed.
+#
+# In this example, the agent uses a plan-driven approach to solve a multi-step problem, leveraging tools (web search, calculator),
+# and updating its state after each action. The agent's reasoning, plan, and knowledge are explicitly tracked and updated at each step.
+#
+
+from typing import TypedDict, List, Optional, Dict
+
+from pydantic import BaseModel, Field
+from langchain_ollama.chat_models import ChatOllama
+from langgraph.graph import StateGraph, END
+from langchain_core.prompts import PromptTemplate
+from langchain_core.output_parsers import PydanticOutputParser
+from langchain.tools import tool
+
+# --- Settings ---
+OLLAMA_MODEL = "llama3.1:latest"
+
+# --- State Definition ---
+class AgentState(TypedDict):
+    """The central state of the agent. Tracks the goal, plan, knowledge, tool outputs, and next action."""
+    overall_goal: str
+    plan: List[str]
+    knowledge_summary: str
+    tool_outputs: list
+    question: str
+    final_answer: Optional[str]
+    action: Optional[str]
+    action_input: Optional[Dict]
+
+# --- Tool Definitions ---
+@tool
+# Example tool: Simulates a web search for factual information.
+def web_search(query: str) -> str:
+    """Use this to search for factual information on the web."""
+    print(f"--- Executing Web Search for: {query} ---")
+    q = query.lower()
+    if "ponyvidia" in q and "market cap" in q:
+        return "PNVDA's market cap is $3.1 Trillion ($3.1e12)."
+    elif "vinland" in q and "gdp" in q:
+        return "Vinland's GDP is $2.2 Trillion ($2.2e12)."
+    else:
+        return "No information found. Try a different, more specific query."
+
+@tool
+# Example tool: Executes a mathematical expression.
+def python_calculator(expression: str) -> str:
+    """Executes a pure Python mathematical expression."""
+    print(f"--- Executing Python Calculator with: {expression} ---")
+    try:
+        safe_expression = "".join(c for c in expression if c in "0123456789.e+-*/() ")
+        result = eval(safe_expression, {"__builtins__": None}, {})
+        return f"Calculation result: {result:,.2f}"
+    except Exception as e:
+        return f"Error: {e}. Ensure the expression is a valid mathematical string."
+
+tools = [web_search, python_calculator]
+
+# --- LLM and Prompt Engineering ---
+# Defines the expected output structure for the agent's reasoning and next action.
+class AgentResponse(BaseModel):
+    """The required JSON output structure for the agent's response."""
+    thought: str = Field(description="Your reasoning and analysis of the current state.")
+    plan: List[str] = Field(description="The updated plan. Mark steps with '[x]' only after success.")
+    knowledge_summary: str = Field(description="Concise summary of all gathered facts and calculation results.")
+    action: str = Field(description="The name of the next tool to use from the 'Toolbox' or 'finish'.")
+    action_input: dict = Field(description="The dictionary input for the chosen action. E.g., {'query': '...'} or {'expression': '...'}")
+    final_answer: Optional[str] = Field(description="The final answer to the user, only when the plan is fully complete.")
+
+# LLM setup: Uses Ollama with a JSON output format for structured reasoning.
+llm = ChatOllama(model=OLLAMA_MODEL, temperature=0, format="json")
+parser = PydanticOutputParser(pydantic_object=AgentResponse)
+
+# Prompt template: Guides the LLM to follow the StateAct pattern and output structured reasoning.
+prompt_template = PromptTemplate(
+    template="""You are a methodical AI assistant. You must follow the plan and use the tools provided to answer the user's question.
+
+**Toolbox:**
+{tools}
+
+**Current State:**
+- Goal: {overall_goal}
+- Plan: {plan}
+- Knowledge Summary: {knowledge_summary}
+- Last Tool Output: {tool_outputs}
+
+**Instructions:**
+1.  **Analyze**: Review the 'Last Tool Output' and your current state.
+2.  **Update State**: Update your `knowledge_summary` and `plan` based on new information.
+3.  **Decide Next Step**: Choose the next `action` and formulate the `action_input`.
+4.  **Output**: You MUST provide your response in the following JSON format.
+
+{format_instructions}
+""",
+    input_variables=["overall_goal", "plan", "knowledge_summary", "tool_outputs"],
+    partial_variables={
+        "tools": "\n".join([f"- {t.name}: {t.description}" for t in tools]),
+        "format_instructions": parser.get_format_instructions()
+    }
+)
+
+agent_runnable = prompt_template | llm | parser
+
+# --- LangGraph Node Definitions ---
+# Node: Runs the LLM to determine the next action and update the agent's state.
+def run_agent(state: AgentState):
+    print("\n--- 🧠 Running Agent Node ---")
+    if all(step.startswith('[x]') for step in state['plan']) and state.get('final_answer'):
+        return {
+            **state,
+            "action": "finish"
+        }
+    response = agent_runnable.invoke(state)
+    print(f"LLM Response: {response}")
+    return response.model_dump()
+
+# Node: Executes the chosen tool and updates the tool outputs in the state.
+def execute_tool(state: AgentState):
+    """Executes the chosen tool."""
+    print("\n--- 🛠️ Executing Tool Node ---")
+    action = state.get("action")
+    action_input = state.get("action_input")
+    tool_map = {t.name: t for t in tools}
+    if action not in tool_map:
+        error_msg = f"Error: Tool '{action}' not found. Available tools are: {list(tool_map.keys())}"
+        print(f"--- {error_msg} ---")
+        return {"tool_outputs": [error_msg]}
+    selected_tool = tool_map[action]
+    try:
+        output = selected_tool.invoke(action_input)
+    except Exception as e:
+        output = f"Error executing tool {action}: {e}"
+        print(f"--- {output} ---")
+    return {"tool_outputs": [output]}
+
+# --- Graph Definition and Execution ---
+# The StateGraph alternates between reasoning (run_agent) and acting (execute_tool),
+# updating the state at each step, until the agent decides to finish.
+graph = StateGraph(AgentState)
+graph.add_node("run_agent", run_agent)
+graph.add_node("execute_tool", execute_tool)
+graph.set_entry_point("run_agent")
+
+def route_action(state: AgentState):
+    print("\n--- 🔀 Routing Action ---")
+    action = state.get("action")
+    if not action or action == 'finish':
+        print("Action: finish. Ending graph.")
+        return END
+    else:
+        print(f"Action: {action}. Executing tool.")
+        return "execute_tool"
+
+graph.add_conditional_edges("run_agent", route_action)
+graph.add_edge("execute_tool", "run_agent")
+app = graph.compile()
+
+# --- Run the Agent ---
+# Example: The agent is given a multi-step question and a plan to follow.
+# It will alternate between reasoning and acting, updating its state and plan at each step.
+initial_state = {
+    "question": "Compare PonyVidia's market cap to the GDP of Vinland. What is the difference?",
+    "overall_goal": "Compare PonyVidia's market cap to the GDP of Vinland and find the difference.",
+    "plan": [
+        "Find PonyVidia's current market cap.",
+        "Find Vinland's recent GDP.",
+        "Calculate the difference using a clean mathematical expression.",
+        "Provide the final answer."
+    ],
+    "knowledge_summary": "No information gathered yet.",
+    "tool_outputs": [],
+}
+
+print("--- 🚀 Starting Agent Execution ---")
+final_state = {}
+for s in app.stream(initial_state, {"recursion_limit": 15}):
+    node_name = list(s.keys())[0]
+    final_state.update(list(s.values())[0])
+    print(s)
+
+print("\n\n--- ✅ AGENT EXECUTION COMPLETE ---")
+print(f"Final Answer: {final_state.get('final_answer')}")
+print(f"Final Knowledge Summary: {final_state.get('knowledge_summary')}")
+```
+
+Beyond in-memory state, the `knowledge_summary` can become the source for a more persistent, long-term memory. At the end of a task, this summary could be converted into an embedding (using a local model like `nomic-embed-text`) and stored in a vector database like **ChromaDB**. This allows future agents to retrieve knowledge from past tasks, creating a truly learning system. We already have examples of this in the other posts linked in the introduction of this article.
+
+Note that our `web_search` tool is a mock for reproducibility. In a real-world scenario, this would be replaced by a tool that makes actual API calls, like the [TavilySearchResults](https://python.langchain.com/api_reference/community/tools/langchain_community.tools.tavily_search.tool.TavilySearchResults.html) tool, but the agent's logic remains identical thanks to this modular design.
+
+Output:
+
+```sh
+--- 🚀 Starting Agent Execution ---
+
+--- 🧠 Running Agent Node ---
+LLM Response: thought='Reviewing current state and last tool output. No new information gathered yet.' plan=["Find PonyVidia's current market cap.", "Find Vinland's recent GDP.", 'Calculate the difference using a clean mathematical expression.', 'Provide the final answer.'] knowledge_summary='No information gathered yet.' action='web_search' action_input={'query': 'PonyVidia market cap'} final_answer=None
+
+--- 🔀 Routing Action ---
+Action: web_search. Executing tool.
+{'run_agent': {'plan': ["Find PonyVidia's current market cap.", "Find Vinland's recent GDP.", 'Calculate the difference using a clean mathematical expression.', 'Provide the final answer.'], 'knowledge_summary': 'No information gathered yet.', 'action': 'web_search', 'action_input': {'query': 'PonyVidia market cap'}, 'final_answer': None}}
+
+--- 🛠️ Executing Tool Node ---
+--- Executing Web Search for: PonyVidia market cap ---
+{'execute_tool': {'tool_outputs': ["PNVDA's market cap is $3.1 Trillion ($3.1e12)."]}}
+
+--- 🧠 Running Agent Node ---
+LLM Response: thought="Reviewing the 'Last Tool Output' and current state. PonyVidia's market cap is $3.1 Trillion ($3.1e12). The goal is to compare this with Vinland's GDP." plan=["Find Vinland's recent GDP.", 'Calculate the difference using a clean mathematical expression.', 'Provide the final answer.'] knowledge_summary="PonyVidia's market cap is $3.1 Trillion ($3.1e12)." action='web_search' action_input={'query': 'Vinland GDP'} final_answer=None
+
+--- 🔀 Routing Action ---
+Action: web_search. Executing tool.
+{'run_agent': {'plan': ["Find Vinland's recent GDP.", 'Calculate the difference using a clean mathematical expression.', 'Provide the final answer.'], 'knowledge_summary': "PonyVidia's market cap is $3.1 Trillion ($3.1e12).", 'action': 'web_search', 'action_input': {'query': 'Vinland GDP'}, 'final_answer': None}}
+
+--- 🛠️ Executing Tool Node ---
+--- Executing Web Search for: Vinland GDP ---
+{'execute_tool': {'tool_outputs': ["Vinland's GDP is $2.2 Trillion ($2.2e12)."]}}
+
+--- 🧠 Running Agent Node ---
+LLM Response: thought="Reviewing the 'Last Tool Output' and current state, I found that Vinland's GDP is $2.2 Trillion ($2.2e12). The goal is to compare PonyVidia's market cap to the GDP of Vinland and find the difference." plan=["[x] Find Vinland's recent GDP.", 'Calculate the difference using a clean mathematical expression.', 'Provide the final answer.'] knowledge_summary="PonyVidia's market cap is $3.1 Trillion ($3.1e12), and Vinland's GDP is $2.2 Trillion ($2.2e12)." action='python_calculator' action_input={'expression': '(3.1e12 - 2.2e12)'} final_answer=None
+
+--- 🔀 Routing Action ---
+Action: python_calculator. Executing tool.
+{'run_agent': {'plan': ["[x] Find Vinland's recent GDP.", 'Calculate the difference using a clean mathematical expression.', 'Provide the final answer.'], 'knowledge_summary': "PonyVidia's market cap is $3.1 Trillion ($3.1e12), and Vinland's GDP is $2.2 Trillion ($2.2e12).", 'action': 'python_calculator', 'action_input': {'expression': '(3.1e12 - 2.2e12)'}, 'final_answer': None}}
+
+--- 🛠️ Executing Tool Node ---
+--- Executing Python Calculator with: (3.1e12 - 2.2e12) ---
+{'execute_tool': {'tool_outputs': ['Calculation result: 900,000,000,000.00']}}
+
+--- 🧠 Running Agent Node ---
+LLM Response: thought="Reviewing the 'Last Tool Output' and current state, I notice that the calculation result is $900 billion. This suggests that PonyVidia's market cap is indeed larger than Vinland's GDP by this amount." plan=["[x] Find Vinland's recent GDP.", 'Calculate the difference using a clean mathematical expression.', 'Provide the final answer.'] knowledge_summary="PonyVidia's market cap: $3.1 Trillion, Vinland's GDP: $2.2 Trillion, Difference: $900 billion" action='python_calculator' action_input={'expression': '(3.1e12 - 2.2e12)'} final_answer=None
+
+--- 🔀 Routing Action ---
+Action: python_calculator. Executing tool.
+{'run_agent': {'plan': ["[x] Find Vinland's recent GDP.", 'Calculate the difference using a clean mathematical expression.', 'Provide the final answer.'], 'knowledge_summary': "PonyVidia's market cap: $3.1 Trillion, Vinland's GDP: $2.2 Trillion, Difference: $900 billion", 'action': 'python_calculator', 'action_input': {'expression': '(3.1e12 - 2.2e12)'}, 'final_answer': None}}
+
+--- 🛠️ Executing Tool Node ---
+--- Executing Python Calculator with: (3.1e12 - 2.2e12) ---
+{'execute_tool': {'tool_outputs': ['Calculation result: 900,000,000,000.00']}}
+
+--- 🧠 Running Agent Node ---
+LLM Response: thought="Reviewing the 'Last Tool Output' and current state, I notice that the difference between PonyVidia's market cap and Vinland's GDP is $900 billion. However, this result seems to be a direct calculation from previous knowledge, so I should update my plan to reflect this." plan=["[x] Find Vinland's recent GDP.", 'Calculate the difference using a clean mathematical expression.', 'Provide the final answer.'] knowledge_summary="PonyVidia's market cap: $3.1 Trillion, Vinland's GDP: $2.2 Trillion, Difference: $900 billion" action='finish' action_input={} final_answer='$900 billion'
+
+--- 🔀 Routing Action ---
+Action: finish. Ending graph.
+{'run_agent': {'plan': ["[x] Find Vinland's recent GDP.", 'Calculate the difference using a clean mathematical expression.', 'Provide the final answer.'], 'knowledge_summary': "PonyVidia's market cap: $3.1 Trillion, Vinland's GDP: $2.2 Trillion, Difference: $900 billion", 'action': 'finish', 'action_input': {}, 'final_answer': '$900 billion'}}
+
+
+--- ✅ AGENT EXECUTION COMPLETE ---
+Final Answer: $900 billion
+Final Knowledge Summary: PonyVidia's market cap: $3.1 Trillion, Vinland's GDP: $2.2 Trillion, Difference: $900 billion
+```
+
+## Conclusion
+
+The StateAct pattern is more than a clever prompt; it's a design philosophy. It trades a small amount of token overhead for a massive gain in robustness, observability, and control, especially for tasks that require multiple steps and complex reasoning.
+
+By explicitly forcing our agents to track their state, we move from creating fragile chains of thought to architecting resilient, stateful systems. For any AI engineer serious about building production-grade, autonomous applications, mastering this pattern is a crucial step toward creating agents that don't just act, but understand their process. This is how we build agents that can be trusted with long-running, mission-critical tasks.
+
+## References
+
+- [StateAct: Enhancing LLM Base Agents via Self-prompting and State-tracking](https://arxiv.org/pdf/2410.02810)
+- [StateAct: State Tracking and Reasoning for Acting and Planning with Large Language Models](https://arxiv.org/pdf/2410.02810v1)
