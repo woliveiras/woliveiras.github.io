@@ -1,0 +1,236 @@
+---
+title: "The Agentic Prompt: A Blueprint for Crafting High-Performance LLM Instructions"
+description: "Learn how to create precise, structured prompts for AI agents using the CO-STAR framework, enhancing reliability and performance in LLM applications."
+pubDate: "Sat Aug 09 12:00:00 2025 +0200"
+published: true
+tags: ["llm", "ai-engineering", "ai-agents", "ollama"]
+---
+
+By building AI Agents, we've moved beyond simply "chatting" with Large Language Models. We build autonomous components in the software architecture: specialized workers designed to execute tasks with precision and reliability. But the effectiveness of any AI agent hinges entirely on the quality of its instructions. Vague, conversational prompts create **unpredictable**, **"lazy"**, and **ultimately useless** agents.
+
+The principle of "garbage in, garbage out" has never been more critical. The worse our work with the AI Agent, the greater the chance of hallucinations or vague answers that have nothing to do with what we asked.
+
+The difference between a toy agent and an industrial-grade one lies in its ability to produce predictable, structured, and reproducible results. After all, we need to be able to reproduce the result of running an AI Agent when a bug appears in production. This isn't achieved with clever prompt "hacks," but with solid engineering principles.
+
+This article provides a blueprint for structuring prompts for AI agents based on my studies in this area and the practices I'm seeing working well in production today. We will build upon the well-regarded **CO-STAR framework**, enhancing it with architectural insights to maximize performance. Our entire stack will be open-source and run locally: Python, LangChain, Ollama, and `llama3:latest` model.
+## From Conversation Chatbots to Work Instructions for an AI Agent
+A prompt for a chatbot aims to elicit an interesting or helpful response, while a prompt for an agent is a set of specifications for a task. This distinction is not merely semantic; it represents a fundamental shift in purpose and required precision. Let's break it down.
+### The Chatbot Prompt: A Conversation Starter
+
+The goal of a chatbot prompt is to initiate or continue a dialogue. The interaction is fluid, exploratory, and often forgiving of ambiguity.
+- **Primary Goal**: Engagement and information exchange in a conversational format.
+
+- **Nature of Interaction**: It's a two-way street. The user might have a vague idea, and the conversation helps refine it. The context is built collaboratively over several turns.
+
+- **Expected Output**: Natural language that is coherent and helpful. The structure of the response is secondary to its conversational quality.
+
+- **Analogy**: It’s like talking to a knowledgeable librarian. You can start with "Tell me about space," and through a back-and-forth, you narrow your focus.
+
+
+### The Agent Prompt: A Work Order
+
+The goal of an agent prompt is to trigger a specific, reliable, and often automated action. The interaction is transactional and demands absolute clarity from the start.
+
+- **Primary Goal**: Task execution and the generation of a predictable, structured result.
+
+- **Nature of Interaction**: It's a one-way command. The prompt must contain all the necessary information for the agent to complete its job in a single pass, without needing to ask for clarification.
+
+- **Expected Output**: A well-defined, often machine-readable output. A JSON object, a formatted list, or a piece of code that can be passed to the next step in a process. The format is paramount.
+
+- **Analogy**: It’s like a function call in a program: `generate_report(data, format='pdf', audience='executives')`. It's a detailed work order handed to a specialist: all specifications are provided upfront, and the deliverable is precisely defined.
+
+This shift in mindset is fundamental. With agents, we are not chatting with a model; we are engineering its behavior. This means every agent prompt we design must satisfy three core requirements:
+
+1. **Precision**: The agent must understand the exact goal without ambiguity. There is no room for misinterpretation when an agent is tasked with summarizing a financial report or generating production-ready code.
+
+1. **Reproducibility**: Given the same inputs, the agent should produce a consistent output. While LLMs have inherent stochasticity, a well-structured prompt dramatically reduces undesirable variance.
+
+1. **Structured Output**: Agents don't just display text; they often pass their output to other software components. A reliable agent must deliver data in a parsable format, like JSON or Markdown, every single time.
+
+## The Blueprint: The CO-STAR Framework
+
+The CO-STAR framework is an excellent mnemonic for the essential components of a high-quality prompt. It was created by [Sheila Teo](https://www.linkedin.com/in/sheila-teo), who used it to win Singapore's GPT-4 prompt engineering competition in 2023. The framework serves as a practical strategy that simplifies and consolidates more extensive research on effective prompting.
+There is an excellent article about CO-STAR in the publication Towards Data Science to understand it deeper, *[How I Won Singapore’s GPT-4 Prompt Engineering Competitio](https://towardsdatascience.com/how-i-won-singapores-gpt-4-prompt-engineering-competition-34c195a93d41/)*, but I'll try to summarize it here:
+- **C - Context**: This is the universe of the task. It's all the background information, data, and constraints the LLM needs to understand the scenario. For an agent, this might include [user data](/posts/how-connect-an-ai-agent-to-sql-database/), system state, or documents retrieved via [RAG](/posts/understanding-rag-llm/).
+
+- **O - Objective**: This is the core directive. It should be a single, clear instruction defining the agent's primary goal. What is the one thing you want the agent to *do*?
+
+- **S - Style**: This defines the writing style of the response. Should it be technical, academic, journalistic, or simple and direct? This shapes the texture of the output.
+
+- **T - Tone**: This sets the emotional or attitudinal quality of the response. Is it formal, empathetic, neutral, urgent, or cautionary?
+
+- **A - Audience**: For whom is the agent generating this response? An explanation for a senior engineer is vastly different from one for a non-technical product person. Defining the audience is crucial for tailoring the complexity and vocabulary.
+
+- **R - Response Format**: This is a non-negotiable for agentic workflows. It specifies the **exact structure** of the output. This could be a JSON object with a predefined schema, a Markdown table, or a numbered list.
+
+The part of the Response Format is also very important when we're working with a [multiple-agents architecture](/posts/beyond-solo-agents-the-power-of-collaborative-ai-teams-using-crewai/), where an AI Agent depends on the other AI Agent's output to work correctly.
+
+## The Secret Sauce: Optimal Component Ordering
+
+LLMs are sophisticated next-token predictors. It's all only mathematics, bro.
+
+The order in which you present information significantly influences their reasoning path. Placing the final instruction at the end, after the model has processed all the preparatory information, is the most effective strategy.
+
+**The Golden Rule**: Load the model with all necessary background knowledge first, then deliver the final command.
+This leads to our optimized blueprint structure:
+```
+### BLUEPRINT OVERVIEW ###
+
+# 1. SETUP: Provide all background information first.
+
+[CONTEXT]
+
+[AUDIENCE]
+
+[STYLE]
+
+[TONE]
+
+# 2. EXECUTION: Give the final, clear instruction last.
+
+[OBJECTIVE]
+
+[RESPONSE FORMAT]
+```
+
+By structuring prompts this way, we guide the LLM to "get in character" and absorb the scenario *before* it knows what the final task is, leading to a much more focused and accurate result.
+## Practical Implementation: From Bad Prompts to Blueprint
+
+Let's prove this with code.
+**Scenario**: Our AI Agent's job is to read a technical git commit message and generate a summary for a non-technical Product Manager.
+First, let's set up our Python environment to run the examples.
+```python
+# agent.py
+import os
+
+from langchain_community.chat_models import ChatOllama
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.prompts import ChatPromptTemplate
+
+# --- 1. Set up our Local LLM ---
+# Make sure Ollama is running with `llama3:latest` pulled
+# Command: ollama run llama3:latest
+llm = ChatOllama(model="llama3:latest")
+
+# --- 2. Define the technical content to be summarized ---
+technical_log = """
+feat(api): migrate user endpoint to new auth middleware
+
+Refactored the primary user data endpoint (/api/v2/user) to use the new JWT-based authentication middleware (auth-v3).
+This change deprecates the legacy session-based validation logic. The new middleware enforces stricter scope validation
+(read:user, write:user) and integrates with the global rate-limiting service.
+Key changes include updating the request handler signature, removing the dependency on `express-session`, and adding
+`authV3.verifyToken()` to the route's middleware stack. All related integration tests were updated and are passing.
+"""
+
+def run_agent_prompt(prompt_template, content):
+    """A simple function to run our agent with a given prompt template."""
+    prompt = prompt_template.format_prompt(log_content=content).to_messages()
+
+    # Simple chain: prompt -> llm -> output_parser
+    chain = llm | StrOutputParser()
+
+    print("--- AGENT PROMPT ---")
+    print(prompt[0].content)
+    print("\n--- AGENT RESPONSE ---")
+    response = chain.invoke(prompt)
+    print(response)
+    print("-" * 20)
+```
+
+Now, let's test our prompts.
+
+### The Bad Prompt
+
+Here's a typical, low-effort prompt. It's vague and gives the model no guidance.
+```python
+# --- 3. The BAD Prompt: Vague and Unstructured ---
+bad_prompt_template = ChatPromptTemplate.from_template(
+    "Summarize the following update log for my manager: {log_content}"
+)
+
+# Run the agent with the bad prompt
+print("RUNNING BAD PROMPT...")
+run_agent_prompt(bad_prompt_template, technical_log)
+```
+
+**Expected Bad Response**
+
+The output will likely be a technically-focused paraphrase, missing the strategic importance and failing to adopt the correct tone for a manager.
+
+```
+--- AGENT RESPONSE ---
+
+Here's a summary of the update log that you can share with your manager:
+
+"We've successfully migrated our user endpoint (/api/v2/user) to use the new JWT-based authentication middleware (auth-v3). This change replaces the legacy session-based validation logic, introduces stricter scope validation (read:user, write:user), and integrates with global rate-limiting. The update includes changes to the request handler signature, removal of express-session dependency, and addition of `authV3.verifyToken()` to the route's middleware stack. All related integration tests have been updated and are now passing."
+```
+
+This summary is not *wrong*, but it's a terrible summary for a Product Manager. It's filled with jargon (`JWT`, `middleware`, `authV3`) and fails to explain the *business impact*.
+
+### The Blueprint Prompt
+
+Now, let's use our enhanced CO-STAR blueprint. Notice how we load the model with all the context and desired persona before giving the final instruction.
+```python
+# --- 4. The BLUEPRINT Prompt: Precise and Structured ---
+blueprint_prompt_template = ChatPromptTemplate.from_template(
+    """
+### CONTEXT ###
+You are an expert engineering lead communicating with a non-technical Product Manager.
+You need to translate technical software updates into clear, impact-oriented business language.
+Avoid jargon. Focus on the "so what?". The following is a git commit log for a recent update.
+
+Technical Log:
+"{log_content}"
+
+### AUDIENCE ###
+The audience is a Product Manager who is not a software developer. They care about product stability, security, and future capabilities, not implementation details.
+
+### STYLE & TONE ###
+Your style should be clear, concise, and professional. The tone should be informative and confident, assuring the manager that the change is positive.
+
+### OBJECTIVE & RESPONSE FORMAT ###
+Your objective is to summarize the technical log for the Product Manager.
+You MUST respond to a Markdown-formatted list with the following three headers exactly:
+- **What's New:** (A one-sentence, high-level summary of the change.)
+- **Business Impact:** (Explain the benefits, such as improved security or performance, in 2-3 bullet points.)
+- **Action Required:** (State if the manager needs to do anything. If not, state "None.")
+    """
+)
+
+# Run the agent with the blueprint prompt
+print("\nRUNNING BLUEPRINT PROMPT...")
+run_agent_prompt(blueprint_prompt_template, technical_log)
+```
+
+**Blueprint Response:**
+
+The difference is night and day.
+
+```
+--- AGENT RESPONSE ---
+
+Here is the response:
+
+**What's New:**
+
+We have updated our user endpoint to use a new authentication middleware, providing improved security and scope validation.
+
+**Business Impact:**
+
+    * The update ensures stricter validation of user requests, reducing the risk of unauthorized access.
+    * It also integrates with our global rate-limiting service, helping to prevent abuse and overload.
+    * By removing legacy session-based logic, we have reduced technical debt and paved the way for future improvements.
+
+**Action Required:**
+
+None.
+```
+
+This output is perfect. It's accurate, tailored to the audience, uses the right tone, and most importantly for our agentic system, it's in a predictable, parsable Markdown format.
+
+## Conclusion: Build Reliable Agents, Not Gambling Machines
+
+Prompt engineering for AI agents is not the art of finding magic words. It is a software engineering discipline focused on specification, clarity, and structure. By abandoning vague, conversational requests and adopting a robust blueprint like the enhanced CO-STAR framework, you fundamentally change what you are building. You move from a system that might give you what you want to an engineered component that reliably executes its task.
+
+Adopt this blueprint. Adapt it. Make it the foundation of every agent you build. You will see an immediate increase in the reliability and performance of your AI systems.
