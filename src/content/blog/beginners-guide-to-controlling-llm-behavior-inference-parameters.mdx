@@ -1,0 +1,362 @@
+---
+title: "A Beginner's Guide to Controlling LLM Behavior with Inference Parameters"
+description: "Learn how to effectively control the behavior of Large Language Models (LLMs) using inference parameters like temperature, top-p, and more. This guide provides practical examples with Python and LangChain."
+pubDate: "Sun Aug 10 12:00:00 2025 +0200"
+published: true
+tags: ["llm", "ai-engineering", "ai-agents", "ollama"]
+---
+
+Today's topic is fundamental to effectively working with Large Language Models (LLMs). The raw generative power of an LLM is impressive, but without precise control, its potential can be misdirected or underutilized. The key to harnessing this power lies in understanding and manipulating its **configuration parameters**.
+
+These parameters function as a control panel for the model's behavior during the text generation process, which we call **inference**. By adjusting these settings, we can guide the model's output, shaping its *"personality"* and *"discipline"*. For instance, we can instruct the model to be a highly creative brainstorming partner or a deterministic, fact-checking assistant.
+
+Mastering this process, known as **inference-time tuning** or **parameter adjustment**, is the most direct and efficient method for shaping the behavior of your AI systems at the moment of generation. In this article, we will explore the most critical of these parameters. We'll examine their theoretical function and then apply them practically using Python with the `LangChain` framework to interact with a locally-running `llama3` model served by `Ollama`.
+
+## Setup and Prerequisites
+
+Before we begin, you need to have the following set up:
+
+- [Ollama](https://ollama.com/): Ensure Ollama is installed and running on your machine
+- An Ollama Model: Pull a model to work with. We will use `llama3` for its versatility.
+
+    ```sh
+    ollama pull llama3
+    ```
+
+- Run the Model: Start the model locally. This command will run the `llama3` model.
+
+    ```sh
+    ollama run llama3
+    ```
+
+- Python Libraries: You'll need langchain and its community package for Ollama. Install them using pip, poetry, or uv:
+
+    ```sh
+    pip install langchain langchain_community langchain-ollama
+    ```
+
+## The Foundation: Connecting to Your Local LLM
+First, ensure your Ollama service is running with the desired model (e.g., `ollama run llama3`). Our Python examples will use the `ChatOllama` class from `langchain_ollama` to interact with it. All parameters can be passed during the model's instantiation or at runtime using the `.invoke()` method with `bind_options`.
+
+Here is the basic setup for running the LLM without settings:
+
+```python
+# agent.py
+
+from langchain_ollama import ChatOllama
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.output_parsers import StrOutputParser
+
+# 1. Initialize the LLM
+# This connects to the Ollama service running on your local machine
+llm = ChatOllama(model="llama3:latest")
+
+# 2. Create a Prompt Template
+# This defines the input structure for the model
+prompt = ChatPromptTemplate.from_messages([
+    ("system", "You are a helpful assistant that provides clear and concise answers."),
+    ("user", "{input}")
+])
+
+# 3. Create a simple chain
+# This links the prompt and the model together
+chain = prompt | llm | StrOutputParser()
+
+# Example of how to run the chain
+# print(chain.invoke({"input": "What is the capital of France?"}))
+```
+
+With our setup complete, let's explore the parameters.
+
+## Temperature: Controlling Randomness
+
+**What is it?**
+
+Temperature controls the randomness of the model's output. It influences which token (word or part of a word) the model will choose next.
+
+**How does it affect the output?**
+
+- **Low Temperature (e.g., 0.0 - 0.2)**: The model becomes more deterministic and conservative. It will almost always choose the token with the highest probability. This is ideal for tasks requiring factual, predictable answers.
+- **High Temperature (e.g., 0.8 - 1.2)**: The model takes more risks, considering less likely tokens. This leads to more diverse, creative, and sometimes surprising outputs. It's great for brainstorming, story writing, or creating variations.
+
+Let's ask the model to complete a sentence, first with low temperature for a predictable answer, then with high temperature for a creative one.
+
+Low temperature example:
+
+```python
+# A creative prompt
+question = "Describe, in one short, poetic phrase, the feeling of the first sip of 'Nebula Roast' coffee on a quiet morning."
+
+print(f"PROMPT: {question}\n" + "="*30)
+
+# Low temperature -> predictable and safe
+llm_low_temp = ChatOllama(model="llama3", temperature=0.0)
+response_low = llm_low_temp.invoke(question)
+print(f"Low Temp Tagline: {response_low.content}")
+
+print("-"*30)
+
+# High temperature -> creative and surprising
+llm_high_temp = ChatOllama(model="llama3", temperature=2.0)
+response_high = llm_high_temp.invoke(question)
+print(f"High Temp Tagline: {response_high.content}")
+```
+
+Output:
+
+```sh
+PROMPT: Describe, in one short, poetic phrase, the feeling of the first sip of 'Nebula Roast' coffee on a quiet morning.
+==============================
+Low Temp Tagline: "Stellar whispers unfold on the tongue."
+------------------------------
+High Temp Tagline: "Stardust whispers on tongue, transporting morning's silence to cosmic hush."
+```
+
+## Top-p (Nucleus Sampling): Controlling the Vocabulary Pool
+
+**What it is**
+Top-p, or nucleus sampling, provides an alternative way to control randomness. Instead of considering all possible tokens, the model considers only the smallest set of tokens whose cumulative probability exceeds the `top_p` value.
+- **Low Top-p (e.g., 0.1)**: The model considers a very small, high-probability set of tokens. The output is highly predictable and less diverse.
+- **High Top-p (e.g., 0.9)**: The model considers a wider range of tokens, allowing for more creativity while still cutting off the "long tail" of very unlikely (and often nonsensical) tokens.
+
+Many engineers prefer `top_p` over `temperature` because it creates variety without letting truly bizarre tokens into the mix. **Best practice is to use either Temperature or Top-p, but not both**.
+
+Example:
+
+```python
+# Using top_p to get a creative but coherent answer
+# We are creating a 'nucleus' of the most likely tokens that add up to 90% probability
+top_p_llm = ChatOllama(model="llama3:latest", top_p=0.9)
+
+response = top_p_llm.invoke("The future of artificial intelligence is ")
+print(f"Top-p (0.9) Response: {response.content}")
+```
+
+Output:
+
+```sh
+Top-p (0.9) Response: A question that sparks curiosity and excitement! The future of artificial intelligence (AI) is vast, complex, and rapidly evolving. Here are some potential developments that could shape the future of AI:
+
+1. **Advancements in Machine Learning**: AI will continue to learn from its own experiences and improve with minimal human intervention. This could lead to more accurate predictions, better decision-making, and enhanced problem-solving capabilities.
+2. **Edge AI**: With the proliferation of IoT devices, edge AI will become increasingly important. This involves processing data closer to where it's generated, reducing latency and improving real-time decision-making in applications like autonomous vehicles or smart cities.
+3. **Explainability and Transparency**: As AI becomes more pervasive, there will be a growing need for explainable AI (XAI) that provides transparency into its decision-making processes. This is crucial for building trust between humans and machines.
+4. **Multi-Agent Systems**: AI systems will increasingly interact with each other, giving rise to complex multi-agent systems that can coordinate efforts, negotiate, and make collective decisions.
+5. **Natural Language Processing (NLP)**: AI-powered NLP will continue to improve human-computer interactions through advanced chatbots, voice assistants, and language translation capabilities.
+6. **Computer Vision**: AI-driven computer vision will enable applications like facial recognition, object detection, and autonomous vehicles to perceive their environments more accurately and efficiently.
+7. **Robotics and Human-Robot Collaboration**: AI-powered robots will become more sophisticated, enabling seamless collaboration with humans in various industries, such as manufacturing, healthcare, and logistics.
+8. **Autonomous Systems**: AI will drive the development of self-driving cars, drones, and other autonomous systems that can operate safely and efficiently without human intervention.
+9. **Quantum Computing**: The intersection of AI and quantum computing could lead to significant breakthroughs in areas like optimization, cryptography, and machine learning.
+10. **Ethics and Governance**: As AI becomes more pervasive, there will be a growing need for ethical frameworks, regulations, and guidelines to ensure the responsible development and deployment of AI systems that benefit humanity.
+11. **Biotechnology and Medicine**: AI-powered biotech and medicine will revolutionize healthcare by enabling personalized diagnosis, treatment planning, and disease prevention.
+12. **Education and Training**: AI will transform education by providing adaptive learning platforms, intelligent tutoring systems, and personalized content recommendations.
+13. **Creative Industries**: AI-generated art, music, and literature will become increasingly popular, blurring the lines between human creativity and machine-driven innovation.
+14. **Cybersecurity**: As AI becomes more widespread, cybersecurity will play a critical role in protecting against AI-powered attacks, ensuring the integrity of data and systems.
+15. **Virtual Reality (VR) and Augmented Reality (AR)**: AI-powered VR/AR will enhance immersive experiences, improve training simulations, and revolutionize industries like gaming, entertainment, and education.
+
+These predictions are not exhaustive, but they give you an idea of the exciting possibilities that lie ahead in the future of artificial intelligence.
+```
+
+As you experiment with these parameters, you might notice that generating text using `temperature` feels slightly faster and uses fewer of your computer's resources (less heat) than using `top_p`. This is an excellent observation, and there's a clear computational reason for it.
+
+The short answer is: **Top-p sampling is inherently more complex because it requires an expensive sorting step for the model's entire vocabulary**, while temperature sampling does not.
+Let's break down the computational steps to understand why.
+
+An Analogy: Choosing a Movie
+
+The Temperature Method: You look at the rating of every movie. Based on your "mood" (the temperature), you slightly increase or decrease the appeal of each one. Then, you randomly pick a movie based on this new, adjusted appeal. The process is quick and straightforward.
+
+The Top-p Method: First, you must create a ranked list of all 50,000 movies from most popular to least popular. This is a lot of work. Then, you draw a line, deciding to only consider the top 10% most popular films. Finally, you randomly pick a movie only from that smaller, elite list. The initial task of ranking the entire catalog is the heavy lifting that slows you down.
+
+When an LLM generates the next token, it goes through a similar process.
+
+**How Temperature Sampling Works (The Lighter Path)**
+
+- Calculate Logits: The model computes a raw "score" for every possible token in its vocabulary (e.g., ~32,000 tokens for Llama 3).
+- Simple Mathematical Adjustment: It takes each score and simply divides it by the temperature value. This is a very fast, parallelizable mathematical operation.
+- Convert to Probabilities: It converts these adjusted scores into a new probability distribution using a softmax function.
+- Sample: It randomly selects one token based on this final probability distribution.
+
+The computational overhead is minimal—just a single division operation per token in the vocabulary.
+
+**How Top-p Sampling Works (The Heavier Path)**
+
+- Calculate Logits: Same as above.
+- Convert to Probabilities: Same as above.
+- The Expensive Step: Sorting: The model must now sort the entire vocabulary (all ~32,000 tokens) in descending order based on their probabilities. Sorting a list of this size is a computationally intensive task with a complexity of roughly O(n log n).
+- Calculate the Nucleus: It iterates through the newly sorted list, adding up probabilities until it reaches the top_p threshold (e.g., 0.9). This smaller set of tokens is the "nucleus."
+- Filter and Re-normalize: All tokens outside the nucleus are discarded. The probabilities of the remaining tokens are recalculated so they sum to 100%.
+- Sample: It randomly selects one token from this much smaller, filtered set.
+
+The **sorting** step is the primary bottleneck. It requires significantly more CPU/GPU cycles, which translates directly into longer processing times and higher energy consumption (generating more heat).
+
+**Practical Takeaway**
+
+For most applications, the performance difference might be negligible. However, if you are building a highly latency-sensitive system or deploying on resource-constrained hardware, choosing `temperature` over `top_p` can be a valid micro-optimization.
+Use `temperature` as your default for its efficiency and effectiveness. Reserve `top_p` for situations where you specifically need its unique ability to cut off the "long tail" of low-probability tokens, and you are willing to pay the slight performance cost.
+
+## Max Length (or num_predict in Ollama): Controlling Output Size
+
+**What it is**
+
+This parameter sets a hard limit on the number of tokens the model can generate in its response. It's a crucial safeguard to control costs (in API-based systems) and, in our local setup, to manage performance and prevent runaway, overly verbose outputs. In the context of `ChatOllama`, this parameter is often named `num_predict`.
+
+Here, we'll ask for a summary but limit the output to a very small number of tokens.
+
+```python
+# Using bind_options to apply parameters at runtime
+# num_predict=-1 means no limit, a positive integer sets the token limit.
+# For Ollama, pass num_predict directly to the constructor.
+limited_llm = ChatOllama(model="llama3:latest", num_predict=15)
+
+response = limited_llm.invoke("Summarize the concept of Retrieval-Augmented Generation (RAG) in one paragraph.")
+print(f"Limited Response (15 tokens): {response.content}")
+# Expected output will be cut off abruptly after about 15 tokens.
+```
+
+Output:
+
+```sh
+Limited Response (15 tokens): Retrieval-Augmented Generation (RAG) is a novel approach to
+```
+
+Perceive that the response is "unfinished", but it's exactly what we requested by limiting the max length.
+
+Let's increase it and see what happens.
+
+```python
+limited_llm = ChatOllama(model="llama3:latest", num_predict=50)
+
+response = limited_llm.invoke("Summarize the concept of Retrieval-Augmented Generation (RAG) in one paragraph.")
+print(f"Limited Response (50 tokens): {response.content}")
+```
+
+Output:
+
+```sh
+Limited Response (50 tokens): Retrieval-Augmented Generation (RAG) is a language processing technique that combines both generation and retrieval capabilities to generate coherent and informative text. In RAG, a model is trained to first retrieve relevant pieces of information from a large corpus or database
+```
+
+**When should you use it?**
+
+Use it to ensure responses are concise, to prevent the model from generating excessively long or runaway text, and to manage computational resources. A value of `-1` (the default) means **no limit**.
+
+## Stop Sequences: Controlling an Agent’s Boundaries
+
+**What it is**
+
+This is one of the most important parameters for building reliable multi-agent systems. It's a list of strings that, when generated by the model, will immediately halt the generation process.
+
+This is essential for preventing an agent from hallucinating a conversation turn (e.g., generating User: or Assistant:). In a [ReAct (Reasoning and Acting) agent](/posts/understanding-the-react-framework-for-ai-agents/), you would use a stop sequence like "Observation:" to force the model to stop generating text and wait for a tool's output.
+
+**How does it affect the output?**
+
+When the model generates any of the specified stop sequences, it will immediately stop generating further text. This is crucial for controlling the flow of conversation and ensuring that the model does not produce unwanted or nonsensical outputs.
+
+For example, if you want the model to stop generating text when it reaches a certain phrase or format, you can specify that phrase in the stop sequences.
+
+Let's simulate a chat where we want the model to stop before it pretends to be the user.
+
+```python
+# We want the agent to stop generating as soon as it thinks of writing "User:"
+stop_llm = ChatOllama(
+    model="llama3:latest",
+    stop=["User:", "\n\nHuman:"] # A list of stop sequences
+)
+
+# A prompt that might tempt the model to continue the conversation
+chat_prompt = "You are a helpful AI assistant. Complete your answer and nothing more.\n\nHuman: What is LangChain?\nAssistant:"
+response = stop_llm.invoke(chat_prompt)
+print(response.content)
+# The output should stop cleanly without adding a fake "User:" turn.
+```
+
+Output:
+
+```sh
+LangChain is an open-source AI framework designed to facilitate the development of large-scale language models, such as those used for natural language processing (NLP) tasks like text generation, question answering, and dialogue systems. It allows developers to build and train their own language models using various architectures and techniques, enabling the creation of more accurate and context-aware AI applications.
+```
+
+## Frequency & Presence Penalty: Controlling Repetition
+
+**What is it?**
+
+This parameter helps prevent the model from repeating itself.
+
+- **Frequency Penalty (e.g., 0.0 to 2.0)**: This penalizes tokens based on how frequently they have *already appeared* in the generated text. A higher value will discourage the model from repeating the same words or phrases, leading to more varied language.
+- **Presence Penalty (e.g., 0.0 to 2.0)**: This applies a one-time penalty to *any* token that has appeared at least once in the output. It more aggressively encourages the model to introduce new concepts and vocabulary.
+
+
+**How does it affect the output?**
+
+A value of **1.0** means no penalty.
+
+A value **greater than 1.0 (e.g., 1.2)** increases the penalty for tokens that have already appeared in the output, making the model less likely to use them again. This encourages more varied language.
+
+A value less than 1.0 encourages repetition.
+
+Let's ask the model to write a long text about a single topic and see how these penalties help reduce repetition.
+
+Example without penalties:
+
+```python
+# Without penalties, the model might get stuck in a loop
+repetitive_llm = ChatOllama(model="llama3:latest", temperature=0.5)
+response = repetitive_llm.invoke("Write a long paragraph about the benefits of open-source software.")
+print(f"Without Penalty:\n{response.content}\n")
+```
+
+Output:
+
+```sh
+Without Penalty:
+
+The use of open-source software has numerous benefits that make it an attractive option for individuals and organizations alike. One of the most significant advantages is the freedom to modify and customize the code to meet specific needs, which can be particularly valuable in industries where customization is crucial, such as healthcare or finance. Additionally, open-source software is often more secure than proprietary alternatives, as the community of developers working on the project can quickly identify and fix vulnerabilities, reducing the risk of cyber attacks. Furthermore, open-source software is typically free to use and distribute, which can be a significant cost savings for organizations with limited budgets. The transparency of open-source code also allows users to understand exactly how their data is being processed and stored, which can be particularly important in industries where data privacy is a top concern. Moreover, the collaborative nature of open-source development ensures that new features and updates are constantly being added, as developers from around the world contribute to the project. This leads to rapid innovation and improvement, making it easier for users to stay up-to-date with the latest advancements. Another significant benefit is the community-driven support, where users can turn to online forums and communities for help and guidance, rather than relying on expensive proprietary support services. Overall, the benefits of open-source software make it an attractive option for anyone looking to take control of their technology choices, reduce costs, and stay ahead of the curve in a rapidly changing digital landscape.
+```
+
+Example with penalties:
+
+```python
+# With frequency and presence penalties to encourage new ideas
+less_repetitive_llm = ChatOllama(
+    model="llama3:latest",
+    temperature=0.5,
+    # Ollama uses 'repeat_penalty', which combines aspects of both
+    # A value > 1.0 penalizes repetition.
+    repeat_penalty=1.5
+)
+response_penalized = less_repetitive_llm.invoke("Write a long paragraph about the benefits of open-source software.")
+print(f"With Penalty:\n{response_penalized.content}")
+# Expected output should be more varied and less repetitive.
+```
+
+Output:
+
+```sh
+With Penalty:
+
+The use of open-source software has numerous advantages that have revolutionized the way we work, communicate, and share information in today's digital age. One significant benefit is cost-effectiveness - since anyone can access and modify source code for free or at minimal costs, individuals and organizations no longer need to worry about expensive licensing fees associated with proprietary solutions. This democratization of software development has empowered a community-driven approach where developers from diverse backgrounds collaborate on projects that are often more robustly tested than their commercial counterparts due to the sheer number of contributors involved in testing processes. Additionally, open-source platforms foster innovation by allowing users and experts alike to contribute new features or improvements based solely upon meritocratic principles rather than financial motivations - resulting in software tailored specifically for various industries' unique needs without compromising on quality control measures that proprietary companies often prioritize over user satisfaction. Furthermore, the transparency of source code allows developers with varying levels expertise to learn from each other's experiences and adapt solutions more efficiently by leveraging collective knowledge shared within open-source communities; this leads not only improved problem-solving skills but also a heightened sense responsibility among contributors as they collectively strive for excellence in their collaborative endeavors - ultimately benefiting end-users through better software quality, increased security features, and reduced maintenance costs.
+```
+
+*Note: The specific parameter name can differ. Ollama's `repeat_penalty` is a common implementation, but in other systems, you might see `frequency_penalty` and `presence_penalty` as separate controls.*
+
+## A Systematic Approach to Inference Tuning
+
+There is no single "best" configuration. The optimal settings depend entirely on your specific task. Follow this systematic process:
+1. **Start with the Defaults**: Run your task with no custom parameters to establish a baseline.
+1. **Identify the Problem**: Analyze the output. Is it too boring? Too chaotic? Too repetitive? Too long?
+1. **Select the Right Parameter**:
+- For **boring/uncreative** output, increase `temperature` or `top_p`.
+- For **chaotic/nonsensical** output, decrease `temperature` or `top_p`.
+- For **repetitive** output, increase `repeat_penalty`.
+- For output that is **too long/short**, set `num_predict`.
+- For output that **doesn't stop correctly**, define `stop` sequences.
+1. **Adjust and Iterate**: Make small adjustments to one parameter at a time and observe the effect.
+By mastering these parameters, you gain fine-grained control over your LLMs, enabling you to build more sophisticated, reliable, and effective AI applications.
+
+## Conclusion: From Control Knobs to Conscious Design
+
+Mastering the inference parameters of a Large Language Model is the first true step toward graduating from being a user of AI to an architect or an engineer of AI-powered systems. The techniques we've covered are the fundamental building blocks of reliable and effective agent behavior.
+
+There is no "magic formula" or single best configuration. The ideal setup is a direct reflection of your goal. A creative writing assistant will thrive with high temperature, while a deterministic code-generation agent will demand a temperature of zero. The key is not to memorize settings, but to adopt the **systematic approach** we outlined: establish a baseline, identify the behavioral problem, select the right parameter to address it, and iterate.
+
+By understanding not only what these knobs do but also their computational cost, you gain the ability to make conscious design trade-offs between performance and behavior. You are now equipped to move beyond simply prompting an LLM and begin deliberately engineering its responses, ensuring your applications are not just powerful but also predictable, efficient, and perfectly aligned with the task at hand. The control is now in your hands.
