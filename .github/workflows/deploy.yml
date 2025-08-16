@@ -19,6 +19,9 @@ jobs:
       - name: Checkout your repository using git
         uses: actions/checkout@v4
 
+      - name: Install Playwright Browsers
+        run: npx playwright install
+
       - name: Install, build, and upload your site
         uses: withastro/action@v4
 
