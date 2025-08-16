@@ -13,7 +13,6 @@
     "format": "prettier --write ."
   },
   "dependencies": {
-    "@ascorbic/bluesky-loader": "^0.0.3",
     "@astro-community/astro-embed-utils": "^0.1.3",
     "@astrojs/check": "^0.9.4",
     "@astrojs/mdx": "^4.3.0",

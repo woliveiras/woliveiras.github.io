@@ -47,13 +47,6 @@ const blog = defineCollection({
   }),
 });
 
-import { authorFeedLoader } from "@ascorbic/bluesky-loader";
-import { BLUESKY_IDENTIFIER } from "./config.json";
-
-const posts = defineCollection({
-  loader: authorFeedLoader({
-    identifier: BLUESKY_IDENTIFIER,
-  }),
-});
+const posts = defineCollection({});
 
 export const collections = { blog, posts };
