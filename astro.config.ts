@@ -3,6 +3,8 @@ import { defineConfig } from "astro/config";
 import { resolve } from "path";
 import remarkMath from "remark-math";
 import rehypeMathjax from "rehype-mathjax";
+import rehypeMermaid from "rehype-mermaid";
+import addMermaidClass from "./add-mermaid-classname";
 
 import mdx from "@astrojs/mdx";
 import sitemap from "@astrojs/sitemap";
@@ -72,7 +74,7 @@ export default defineConfig({
       wrap: true,
     },
     remarkPlugins: [remarkMath],
-    rehypePlugins: [rehypeMathjax],
+    rehypePlugins: [addMermaidClass, rehypeMermaid, rehypeMathjax],
   },
   prefetch: {
     prefetchAll: true,
