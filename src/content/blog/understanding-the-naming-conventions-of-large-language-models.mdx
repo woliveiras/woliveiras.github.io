@@ -1,0 +1,204 @@
+---
+title: "Understanding the Naming Conventions of Large Language Models"
+description: "A guide to deciphering model names for better AI Engineering decisions"
+pubDate: "Wed Aug 20 18:00:00 2025 +0200"
+published: true
+tags: ["llm", "ai-engineering", "ai-agents", "ollama"]
+---
+
+As a software engineer entering the world of AI Engineering, you’ve likely come across a dizzying array of model names on platforms like Hugging Face or Ollama. What do all these abbreviations and numbers mean? Understanding these naming conventions is very good for selecting the right model for your application.
+
+For example, in the case of the guides I'm writing about [AI Agents](/tags/ai-agents), we're using local models to run all the code snippets. So, it's good if we select the best model for our own computer performance or even for the needs of the Agent we're creating.
+
+This guide will demystify the common parameters you'll see in the model names, using a few examples to illustrate. We'll use the `google/gemma-3` family as our reference.
+
+## 1. The Publisher or Organization
+
+The first part of the name, often separated by a slash **/**, indicates the organization or individual that released the model.
+- **google**`/gemma-3-270m`
+- **unsloth**`/gemma-3-270m-it-GGUF`
+
+In this case, `google` represents the original creators of the Gemma model family. `unsloth` is a well-known group in the open-source community that specializes in fine-tuning and optimizing models for local use. This prefix helps you identify the source and the potential purpose of the model (e.g., an official release vs. a community-optimized version).
+## 2. The Model Name
+
+This is the base name of the model architecture.
+
+Example: `gemma-3-270m`
+
+`gemma-3` signifies the third iteration of the Gemma model family. Model families often have different versions as the architecture is improved or new foundational datasets are used for training.
+
+## 3. The Size Parameter
+
+
+This is arguably the most critical number in the model name, as it indicates the model's size in terms of parameters. A parameter is a value within the neural network that the model learns during training.
+
+Example: `google/gemma-3-270m` - **270 million parameters**
+
+
+The size is typically expressed in millions (`m`), billions (`b`), or sometimes trillions (`t`). A general rule of thumb is: **more parameters equals greater performance, but it requires more computational resources (CPU, GPU, and RAM)**. For local development with tools like Ollama, a smaller model (e.g., 7B or 13B) might be perfect for your laptop, while a larger model (e.g., 70B) would require a more powerful machine or even a cloud-based GPU. This is a fundamental trade-off to consider when building applications.
+
+## 4. The Fine-Tuning or Instruction Flag
+
+This part of the name tells you how the model was trained after its initial pre-training phase.
+
+Example: `google/gemma-3-270m-it`
+
+The `-it` stands for **"Instruction Tuned"**.
+
+This is a crucial distinction:
+
+- **Base Models (gemma-3-270m)**: Trained on a massive, general dataset to predict the next word. They are excellent for text generation and completion tasks, but often need more specific instructions.
+- **Instruction-Tuned Models (gemma-3-270m-it)**: Fine-tuned on a dataset of human-model conversations and instructions. This makes them much better at following commands, answering questions, and acting as a chatbot. **For most applications, especially chat-based agents, you should choose the instruction-tuned version.**
+
+## 5. Quantization and Format
+
+
+This is where the magic for local development happens. Quantization is a technique to reduce the size and memory footprint of a model by converting its weights from a high-precision format (like 16-bit floats) to a lower-precision format (like 4-bit integers).
+Let's understand it with these two examples:
+- `unsloth/gemma-3-270m-it-GGUF`
+- `google/gemma-3-270m-it-qat-q4_0-unquantized`
+
+**GGUF:** This is a file format created for the llama.cpp project, which is a C++ port of the LLaMA model that runs on CPUs. Ollama uses this format extensively. Models in GGUF format are designed to be run locally with minimal hardware requirements.
+
+**q4_0:** This indicates a specific quantization level. q4_0 means the model weights have been quantized to 4-bit integers. There are many different quantization levels (q2_k, q5_k, q8_0, etc.), each offering a different balance between file size, speed, and performance. A lower number means a smaller file and faster inference, but can sometimes result in a slight loss of accuracy.
+
+**qat:** Stands for "Quantization-Aware Training." This is a technique where the model is trained with the quantization process in mind, helping to mitigate the accuracy loss that can occur when converting to a lower-precision format.
+
+**unquantized:** This term is a bit of a misnomer in this context. It typically means a model that has not undergone an additional round of post-training quantization (like q4_0). A model might be "unquantized" but still in a compressed format, or it might be a full-size version ready for further quantization.
+
+**fp16:** This refers to the 16-bit floating point format (float16). Models in fp16 format use half the precision of standard 32-bit floats, resulting in reduced memory usage and faster inference, especially on modern GPUs. While fp16 models are more efficient, they may have a slight reduction in accuracy compared to full-precision models, but for most practical applications, this difference is negligible.
+
+## Code Example
+
+Let's run a code example to understand it better.
+
+First of all, you'll need to download if you don't have it yet:
+
+- [Ollama](https://ollama.com/)
+- [Python 3.8+](https://www.python.org/downloads/)
+
+Pull the models we'll use to test:
+
+```sh
+ollama pull gemma3:270m
+
+ollama pull gemma3:270m-it-qat
+
+ollama pull gemma3:270m-it-fp16
+```
+
+Now, copy and paste this code to a .py file:
+
+```python
+# agent.py
+from langchain_ollama import OllamaLLM
+import time
+
+def run_model_test(model_name: str, prompt: str):
+    """
+    Runs a test on a specified Ollama model, measuring performance.
+
+    Args:
+        model_name (str): The name of the model to test (e.g., 'llama3:latest').
+        prompt (str): The prompt to send to the model.
+    """
+    print(f"--- Testing Model: {model_name} ---")
+
+    try:
+        # Initialize the Ollama model
+        llm = OllamaLLM(model=model_name)
+
+        # Start timer
+        start_time = time.time()
+
+        # Generate the response
+        response = llm.invoke(prompt)
+
+        # End timer
+        end_time = time.time()
+
+        # Calculate performance metrics
+        total_time = end_time - start_time
+        num_tokens = llm.get_num_tokens(response)
+        tokens_per_second = num_tokens / total_time
+
+        print(f"\nPrompt: {prompt}\n")
+        print(f"Response:")
+        print("--------------------------------------------------")
+        print(response)
+        print("--------------------------------------------------")
+        print(f"Time Taken: {total_time:.2f} seconds")
+        print(f"Tokens Generated: {num_tokens}")
+        print(f"Tokens/Second: {tokens_per_second:.2f} tokens/s")
+
+    except Exception as e:
+        print(f"An error occurred with model {model_name}: {e}")
+    print("-" * 50 + "\n")
+
+if __name__ == "__main__":
+    test_prompt = "Explain the concept of Retrieval-Augmented Generation (RAG) in two simple sentences."
+
+    # Run tests
+    run_model_test("gemma3:270m", test_prompt)
+    run_model_test("gemma3:270m-it-fp16", test_prompt)
+    run_model_test("gemma3:270m-it-qat ", test_prompt)
+
+    # Suggestions for further exploration:
+    # Try different prompts to compare model behavior and quality, such as:
+    #
+    # "Summarize the main differences between supervised and unsupervised learning."
+    # "Write a short story about a robot learning to paint."
+    # "List three practical applications of large language models in healthcare."
+    # "Translate the following sentence to Spanish: 'Artificial Intelligence is transforming the world.'"
+    # "What are the ethical considerations when deploying AI agents in real-world scenarios?"
+```
+
+Run it with the command:
+
+```sh
+python agent.py
+```
+
+And the result should be something like this:
+
+| Model | Time Taken (s) | Tokens Generated | Tokens/Second |
+|-------|----------------|------------------|---------------|
+| gemma3:270m | 0.17 | 22 | 130.53 |
+| gemma3:270m-it-fp16 | 0.20 | 26 | 128.81 |
+| gemma3:270m-it-qat | 0.18 | 33 | 186.24 |
+
+I ran it in my computer three times to check the difference because of the nature of the imprevisibility of using inference with LLMs.
+
+
+| Model | Time Taken (s) | Tokens Generated | Tokens/Second |
+|-------|----------------|------------------|---------------|
+| gemma3:270m | 0.17 | 22 | 129.81 |
+| gemma3:270m-it-fp16 | 0.26 | 31 | 119.91 |
+| gemma3:270m-it-qat | 0.25 | 59 | 231.75 |
+
+
+| Model | Time Taken (s) | Tokens Generated | Tokens/Second |
+|-------|----------------|------------------|---------------|
+| gemma3:270m | 0.15 | 19 | 123.25 |
+| gemma3:270m-it-fp16 | 0.25 | 33 | 133.10 |
+| gemma3:270m-it-qat | 0.28 | 69 | 243.67 |
+
+
+| Model | Time Taken (s) | Tokens Generated | Tokens/Second |
+|-------|----------------|------------------|---------------|
+| gemma3:270m | 0.19 | 25 | 134.75 |
+| gemma3:270m-it-fp16 | 0.22 | 27 | 123.28 |
+| gemma3:270m-it-qat | 0.30 | 73 | 245.05 |
+
+
+## Conclusion
+
+For developers focused on building multi-agent systems, understanding these parameters is fundamental. When you’re selecting a model to use with Ollama, for example, you'll want to look for one that fits your local machine's constraints.
+
+We can follow this mental flow to select the best model for each case:
+
+1. **Start with an Instruction-Tuned Model:** Always prefer a model with `-it` or similar suffixes if you are building an agent that needs to follow commands.
+1. **Choose a Reasonable Size:** A `7b` or `13b` model is a great starting point for most laptops.
+1. **Leverage Quantization:** The `-GGUF` format with a `q4_0` or `q5_k` quantization level is an excellent choice for balancing performance and memory usage, making it ideal for CPU-based inference with Ollama.
+
+By paying attention to these simple naming conventions, you can quickly identify a model's purpose and performance profile, paving the way for a more efficient and productive development workflow.

@@ -19,8 +19,11 @@ jobs:
       - name: Checkout your repository using git
         uses: actions/checkout@v4
 
+      - name: Remove Playwright cache
+        run: rm -rf ~/.cache/ms-playwright
+
       - name: Install Playwright Browsers
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install --with-deps chromium firefox webkit
 
       - name: Install Playwright system dependencies
         run: npx playwright install-deps
