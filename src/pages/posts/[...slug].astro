@@ -57,6 +57,9 @@ if (replacedHero && !images[replacedHero])
         <div class="flex gap-x-2 flex-wrap">
           {post.data.tags?.map((tag: string) => <Tag {tag} />)}
         </div>
+        <a href={`https://github.com/woliveiras/woliveiras.github.io/blob/main/src/content/blog/${post.id}.mdx`} target="_blank" rel="noopener">
+          Edit this article on GitHub
+        </a>
       </div>
 
     </BlogPost>
