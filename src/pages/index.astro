@@ -11,6 +11,7 @@ const total = Math.ceil((await getBlogPosts()).length / POSTS_PER_PAGE);
 ---
 
 <PostList {posts} totalPages={total} currentPage={1} showFeatured>
+  <h1 class="sr-only">Welcome to {NAME}</h1>
   <Content />
 
   <div class="flex justify-center items-center gap-x-6 md:order-2">
@@ -237,6 +238,6 @@ const total = Math.ceil((await getBlogPosts()).length / POSTS_PER_PAGE);
   </div>
 
   <div class="border-t pt-8 mt-8">
-    <h1>Latest notes</h1>
+    <h2>Latest notes</h2>
   </div>
 </PostList>

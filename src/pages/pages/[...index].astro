@@ -28,8 +28,8 @@ const total = Math.ceil((await getBlogPosts()).length / POSTS_PER_PAGE);
   currentPage={index}
   showFeatured={index === 1}
 >
-  <h1>
+  <h2>
     All blog posts
     {total > 0 ? ` - Page ${index}` : ""}
-  </h1>
+  </h2>
 </PostList>
