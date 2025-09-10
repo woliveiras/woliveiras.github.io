@@ -40,8 +40,7 @@
 		"@biomejs/biome": "^2.2.4",
 		"@sveltejs/vite-plugin-svelte": "^5.1.1",
 		"@tailwindcss/typography": "^0.5.16",
-		"pagefind": "^1.4.0",
-		"playwright": "^1.55.0"
+		"pagefind": "^1.4.0"
 	},
 	"license": "MIT"
 }
