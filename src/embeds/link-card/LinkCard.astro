@@ -1,36 +1,36 @@
 ---
-import { parseOpenGraph } from "./lib";
 import type { HTMLAttributes } from "astro/types";
+import { parseOpenGraph } from "./lib";
 
 export type Props = HTMLAttributes<"a"> & {
-  showMedia?: boolean;
-  showDescription?: boolean;
-  showTitle?: boolean;
-  showDomain?: boolean;
+	showMedia?: boolean;
+	showDescription?: boolean;
+	showTitle?: boolean;
+	showDomain?: boolean;
 
-  showGradient?: boolean;
+	showGradient?: boolean;
 
-  blurMedia?: boolean;
+	blurMedia?: boolean;
 
-  id?: string;
+	id?: string;
 
-  title?: string;
-  description?: string;
+	title?: string;
+	description?: string;
 };
 
 const {
-  href,
-  id,
-  class: className,
-  showDescription = false,
-  showTitle = true,
-  showDomain = true,
-  showMedia = true,
-  showGradient = true,
-  target = "_blank",
-  title,
-  description,
-  ...props
+	href,
+	id,
+	class: className,
+	showDescription = false,
+	showTitle = true,
+	showDomain = true,
+	showMedia = true,
+	showGradient = true,
+	target = "_blank",
+	title,
+	description,
+	...props
 } = Astro.props;
 
 const meta = await parseOpenGraph((href ?? id)?.toString() ?? "");

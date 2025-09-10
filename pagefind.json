@@ -1,4 +1,4 @@
 {
-  "site": "dist",
-  "vite_plugin_pagefind": {}
+	"site": "dist",
+	"vite_plugin_pagefind": {}
 }

@@ -1,17 +1,16 @@
 ---
 import {
-  BASE,
-  MANUAL_DARK_MODE,
-  SEARCH_ENABLED,
-  SITE_FAVICON,
-  SITE_NAME,
+	BASE,
+	MANUAL_DARK_MODE,
+	SEARCH_ENABLED,
+	SITE_FAVICON,
+	SITE_NAME,
 } from "../config.json";
-import ThemeToggle from "./ThemeToggle.astro";
-import HeaderLink from "./HeaderLink.astro";
 import CodeCopyButton from "./CodeCopyButton.astro";
-
+import HeaderLink from "./HeaderLink.astro";
 import CommandPalette from "./search/CommandPalette.svelte";
 import Search from "./search/Search.svelte";
+import ThemeToggle from "./ThemeToggle.astro";
 
 const { active } = Astro.props;
 ---

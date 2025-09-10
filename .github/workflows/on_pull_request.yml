@@ -13,15 +13,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Cache Node.js modules
+      - name: Install pnpm
+        run: corepack enable && corepack prepare pnpm@latest --activate
+      - name: Cache pnpm modules
         uses: actions/cache@v3
         with:
-          path: ~/.npm
-          key: ${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json') }}
+          path: ~/.pnpm-store
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: |
-            ${{ runner.os }}-npm-
+            ${{ runner.os }}-pnpm-
       - name: install dependencies
-        run: npm ci
+        run: pnpm install
       - uses: oke-py/npm-audit-action@v2
         with:
           github_token: ${{ secrets.AUTH_GITHUB_TOKEN }}
@@ -46,5 +48,5 @@ jobs:
             ${{ runner.os }}-npm-
       - name: install dependencies
         run: npm ci
-      - name: npm prettier:check
-        run: npm run prettier:check
+      - name: biome lint
+        run: pnpm run lint

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { showSearch } from "./CommandPaletteStore";
+import { showSearch } from "./CommandPaletteStore";
 </script>
 
 <button

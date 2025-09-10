@@ -1,102 +1,99 @@
 <script lang="ts">
-  import { BASE } from "../../config.json";
+import { fade, slide } from "svelte/transition";
+import { BASE } from "../../config.json";
+import { showSearch } from "./CommandPaletteStore";
 
-  import { fade, slide } from "svelte/transition";
-  import { showSearch } from "./CommandPaletteStore";
+export let showResults = true;
 
-  export let showResults = true;
+export let placeholder = "Search...";
 
-  export let placeholder = "Search...";
+export let results: { title: string; content: string; href: string }[] = [
+	{
+		title: "Title",
+		content:
+			"This is some longer content that will probably have to be cut at some point, because it just wont fit but such is life, what can you do? nothing. i mean i guess you could scroll? but that would look ugly",
+		href: "/",
+	},
+	{ title: "Title", content: "Content", href: "/" },
+];
 
-  export let results: { title: string; content: string; href: string }[] = [
-    {
-      title: "Title",
-      content:
-        "This is some longer content that will probably have to be cut at some point, because it just wont fit but such is life, what can you do? nothing. i mean i guess you could scroll? but that would look ugly",
-      href: "/",
-    },
-    { title: "Title", content: "Content", href: "/" },
-  ];
+export let noResults = "No results found";
 
-  export let noResults = "No results found";
+let currentSelection = 0;
 
-  let currentSelection = 0;
+let search = async () => {
+	if (value.trim() === "") return;
 
-  let search = async () => {
-    if (value.trim() == "") return;
+	const search = await pagefind.debouncedSearch(value);
+	if (!search) return;
 
-    const search = await pagefind.debouncedSearch(value);
-    if (!search) return;
+	showResults = true;
+	results = [];
 
-    showResults = true;
-    results = [];
+	let newResults = [];
 
-    let newResults = [];
+	for (let i = 0; i < search.results.length && i < 5; i++) {
+		let result = await search.results[i].data();
 
-    for (let i = 0; i < search.results.length && i < 5; i++) {
-      let result = await search.results[i].data();
+		let excerpt = result.excerpt;
+		// replace <mark> tags with <span class="bg-pink-600/10">
+		excerpt = excerpt.replaceAll(
+			"<mark>",
+			'<span class="bg-accent-500/20 rounded-md p-0.5">',
+		);
+		excerpt = excerpt.replaceAll("</mark>", "</span>");
 
-      let excerpt = result.excerpt;
-      // replace <mark> tags with <span class="bg-pink-600/10">
-      excerpt = excerpt.replaceAll(
-        "<mark>",
-        '<span class="bg-accent-500/20 rounded-md p-0.5">'
-      );
-      excerpt = excerpt.replaceAll("</mark>", "</span>");
+		newResults[i] = {
+			title: result.meta.title,
+			content: excerpt,
+			href: result.url,
+		};
+	}
 
-      newResults[i] = {
-        title: result.meta.title,
-        content: excerpt,
-        href: result.url,
-      };
-    }
+	results = Object.values(newResults);
+};
 
-    results = Object.values(newResults);
-  };
+export let value: string = "";
 
-  export let value: string = "";
+export const show = () => {
+	$showSearch = true;
+	setTimeout(() => {
+		input.focus();
+	}, 200);
+};
 
-  export const show = () => {
-    $showSearch = true;
-    setTimeout(() => {
-      input.focus();
-    }, 200);
-  };
+// biome-ignore lint/suspicious/noExplicitAny: usage of 'any' required for dynamic data
+let pagefind: any;
+async function setupSearch() {
+	try {
+		pagefind = await import(/* @vite-ignore */ `${BASE}/pagefind/pagefind.js`);
+	} catch (error) {
+		console.error("Pagefind module not found, will retry after build");
+	}
+}
 
-  let pagefind: any;
-  async function setupSearch() {
-    try {
-      // @ts-ignore
-      pagefind = await import(/* @vite-ignore */
-        BASE + "/pagefind/pagefind.js"
-      );
-    } catch (error) {
-      console.error("Pagefind module not found, will retry after build");
-    }
-  }
+if (import.meta.env.PROD) {
+	setupSearch();
+}
 
-  if (import.meta.env.PROD) {
-    setupSearch();
-  }
+let input: HTMLInputElement;
 
-  let input: HTMLInputElement;
+$: if (value.trim() === "") {
+	results = [];
+	showResults = false;
+} else {
+	search();
+}
 
-  $: if (value.trim() == "") {
-    results = [];
-    showResults = false;
-  } else {
-    search();
-  }
+$: if ($showSearch) {
+	currentSelection = 0;
 
-  $: if ($showSearch) {
-    currentSelection = 0;
-
-    setTimeout(() => {
-      input.focus();
-    }, 200);
-  } else {
-    value = "";
-  }
+	setTimeout(() => {
+		input.focus();
+	}, 200);
+} else {
+	value = "";
+}
 </script>
 
 <svelte:window

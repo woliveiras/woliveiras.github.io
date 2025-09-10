@@ -1,28 +1,27 @@
 ---
-import { SITE_TITLE, SITE_DESCRIPTION } from "../config.json";
-
+import BigBlogEntry from "$components/BigBlogEntry.astro";
+import BlogEntry from "$components/BlogEntry.astro";
 import Footer from "$components/Footer.astro";
 import Header from "$components/Header.astro";
-import BaseLayout from "$layouts/BaseLayout.astro";
-import BlogEntry from "$components/BlogEntry.astro";
-
 import Pagination from "$components/Pagination.astro";
+import BaseLayout from "$layouts/BaseLayout.astro";
+import { SITE_DESCRIPTION, SITE_TITLE } from "../config.json";
 import ProseWrapper from "./ProseWrapper.astro";
-import BigBlogEntry from "$components/BigBlogEntry.astro";
 
 type Props = {
-  posts: Array<any>;
-  totalPages: number;
-  currentPage: number;
-  tag?: string;
-  showFeatured?: boolean;
+	// biome-ignore lint/suspicious/noExplicitAny: false positive
+	posts: Array<any>;
+	totalPages: number;
+	currentPage: number;
+	tag?: string;
+	showFeatured?: boolean;
 };
 
 const { posts, totalPages, currentPage, tag, showFeatured } = Astro.props;
 
 if (currentPage < 1 || currentPage > totalPages) {
-  // Render nothing for out-of-range pages (Astro will use 404 fallback if configured)
-  return null;
+	// Render nothing for out-of-range pages (Astro will use 404 fallback if configured)
+	return null;
 }
 ---
 

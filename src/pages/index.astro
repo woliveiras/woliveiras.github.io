@@ -1,9 +1,8 @@
 ---
-import { POSTS_PER_PAGE } from "../config.json";
 import { getBlogPosts } from "src/utils";
-import PostList from "$layouts/PostList.astro";
 import { Content } from "$content/info/intro.mdx";
-import { BASE, NAME, SOCIAL_LINKS } from "../config.json";
+import PostList from "$layouts/PostList.astro";
+import { BASE, NAME, POSTS_PER_PAGE, SOCIAL_LINKS } from "../config.json";
 
 const posts = (await getBlogPosts()).splice(0, POSTS_PER_PAGE);
 

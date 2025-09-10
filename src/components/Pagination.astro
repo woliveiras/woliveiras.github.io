@@ -3,64 +3,64 @@ import { BASE } from "../config.json";
 import PaginationNumber from "./PaginationNumber.astro";
 
 type Props = {
-  total: number;
-  current: number;
-  tag?: string;
+	total: number;
+	current: number;
+	tag?: string;
 };
 
 const { total, current, tag } = Astro.props;
 
 function getVisiblePages(total: number, current: number): Array<number | null> {
-  if (total < 1) {
-    throw new Error("Total pages must be at least 1.");
-  }
-  if (current < 1 || current > total) {
-    throw new Error("Current page must be within the range of total pages.");
-  }
+	if (total < 1) {
+		throw new Error("Total pages must be at least 1.");
+	}
+	if (current < 1 || current > total) {
+		throw new Error("Current page must be within the range of total pages.");
+	}
 
-  const pages = new Set<number>();
+	const pages = new Set<number>();
 
-  // Always include first two pages
-  pages.add(1);
-  if (total >= 2) {
-    pages.add(2);
-  }
+	// Always include first two pages
+	pages.add(1);
+	if (total >= 2) {
+		pages.add(2);
+	}
 
-  // Always include last two pages
-  if (total > 2) {
-    pages.add(total - 1);
-  }
-  pages.add(total);
+	// Always include last two pages
+	if (total > 2) {
+		pages.add(total - 1);
+	}
+	pages.add(total);
 
-  // Include current, one before and one after
-  pages.add(current);
-  if (current - 1 >= 1) {
-    pages.add(current - 1);
-  }
-  if (current + 1 <= total) {
-    pages.add(current + 1);
-  }
+	// Include current, one before and one after
+	pages.add(current);
+	if (current - 1 >= 1) {
+		pages.add(current - 1);
+	}
+	if (current + 1 <= total) {
+		pages.add(current + 1);
+	}
 
-  // Convert set to sorted array
-  const sortedPages = Array.from(pages).sort((a, b) => a - b);
+	// Convert set to sorted array
+	const sortedPages = Array.from(pages).sort((a, b) => a - b);
 
-  const result: Array<number | null> = [];
-  let previousPage: number | null = null;
+	const result: Array<number | null> = [];
+	let previousPage: number | null = null;
 
-  for (const page of sortedPages) {
-    if (previousPage !== null) {
-      if (page - previousPage === 1) {
-        // Consecutive page, no gap
-      } else {
-        // Gap detected, insert null
-        result.push(null);
-      }
-    }
-    result.push(page);
-    previousPage = page;
-  }
-  // reverse order
-  return result;
+	for (const page of sortedPages) {
+		if (previousPage !== null) {
+			if (page - previousPage === 1) {
+				// Consecutive page, no gap
+			} else {
+				// Gap detected, insert null
+				result.push(null);
+			}
+		}
+		result.push(page);
+		previousPage = page;
+	}
+	// reverse order
+	return result;
 }
 ---
 

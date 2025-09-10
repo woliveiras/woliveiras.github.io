@@ -19,8 +19,10 @@ jobs:
       - name: Checkout your repository using git
         uses: actions/checkout@v4
 
+      - name: Install pnpm
+        run: corepack enable && corepack prepare pnpm@latest --activate
       - name: Install dependencies
-        run: npm install
+        run: pnpm install
 
       - name: Install Playwright system dependencies
         run: npx playwright install-deps

@@ -1,11 +1,11 @@
 ---
 import { BASE, SHOW_IMAGES } from "../config.json";
 import FormattedDate from "./FormattedDate.astro";
-import Tag from "./Tag.astro";
 import HeroImage from "./HeroImage.astro";
+import Tag from "./Tag.astro";
 
 const { title, description, pubDate, slug, heroImage, tags, noImage } =
-  Astro.props;
+	Astro.props;
 ---
 
 <article class="relative isolate flex flex-col gap-8 md:flex-row group">

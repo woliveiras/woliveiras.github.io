@@ -3,16 +3,16 @@ import { Image } from "astro:assets";
 
 const { image } = Astro.props;
 const images = import.meta.glob<{ default: ImageMetadata }>(
-  "/src/assets/**/*.{jpeg,jpg,png,gif}"
+	"/src/assets/**/*.{jpeg,jpg,png,gif}",
 );
 
 // replace ../.. with src in image
 let replacedImage = image.replace("../..", "/src");
 
 if (!images[replacedImage])
-  throw new Error(
-    `"${replacedImage}" does not exist in glob: "src/assets/**/*.{jpeg,jpg,png,gif}"`
-  );
+	throw new Error(
+		`"${replacedImage}" does not exist in glob: "src/assets/**/*.{jpeg,jpg,png,gif}"`,
+	);
 ---
 
 <Image
