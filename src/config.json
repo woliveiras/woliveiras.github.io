@@ -24,5 +24,6 @@
     "BLUESKY_URL": "https://bsky.app/profile/1ilhas.bsky.social",
     "SHOW_RSS": true
   },
-  "BLUESKY_IDENTIFIER": "1ilhas.bsky.social"
+  "BLUESKY_IDENTIFIER": "1ilhas.bsky.social",
+  "G_TAG": ""
 }

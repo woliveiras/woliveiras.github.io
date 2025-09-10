@@ -1,5 +1,5 @@
 ---
-import { BASE, SITE_FAVICON } from "../config.json";
+import { BASE, SITE_FAVICON, G_TAG } from "../config.json";
 
 interface Props {
   title: string;
@@ -52,13 +52,17 @@ const { title, description, image = "main.png" } = Astro.props;
 />
 
 <!-- Google tag (gtag.js) -->
-<script async is:inline src="https://www.googletagmanager.com/gtag/js?id=G-RBHTWKJ9LC"
-></script>
-<script is:inline>
-  window.dataLayer = window.dataLayer || [];
-  function gtag() {
-    dataLayer.push(arguments);
-  }
-  gtag("js", new Date());
-  gtag("config", "G-RBHTWKJ9LC");
-</script>
+{G_TAG &&
+  <script
+    async
+    is:inline
+    src={`https://www.googletagmanager.com/gtag/js?id=${G_TAG}`}></script>
+  <script is:inline>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() {
+      dataLayer.push(arguments);
+    }
+    gtag("js", new Date());
+    gtag("config", "{G_TAG}");
+  </script>
+}
