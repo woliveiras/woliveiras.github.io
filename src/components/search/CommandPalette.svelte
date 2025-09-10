@@ -2,7 +2,6 @@
   import { BASE } from "../../config.json";
 
   import { fade, slide } from "svelte/transition";
-  import type { Pagefind } from "vite-plugin-pagefind/types";
   import { showSearch } from "./CommandPaletteStore";
 
   export let showResults = true;
@@ -64,7 +63,7 @@
     }, 200);
   };
 
-  let pagefind: Pagefind;
+  let pagefind: any;
   async function setupSearch() {
     try {
       // @ts-ignore
@@ -76,7 +75,9 @@
     }
   }
 
-  setupSearch();
+  if (import.meta.env.PROD) {
+    setupSearch();
+  }
 
   let input: HTMLInputElement;
 
