@@ -1,0 +1,600 @@
+---
+title: "Dependency Management Challenges in the JavaScript Ecosystem"
+description: "Exploring the complexities of dependency management in JavaScript, including version conflicts, security vulnerabilities, and best practices for maintaining healthy projects."
+pubDate: "Wed Sep 17 13:00:00 2025 +0200"
+published: true
+tags: []
+---
+
+
+The modern JavaScript ecosystem is built on a big foundation of reusable code. Tools like NPM (the Node Package Manager) democratized access to millions of packages, permitting us, developers or not, to create complex applications with incredible velocity. However, this quantity of third-party dependencies introduced a new class of equally complex problems. To understand this complexity, we need to do a deeper analysis of it. We need to understand how these packages are installed in our applications, how it is stored and resolved, the evolution of the `node_modules` folder, and the philosophical competition between the main package managers (NPM, Yarn, and PNPM).
+
+## The node_modules folder evolution
+
+The `node_modules` folder is the "physical" manifestation of the dependency tree of a project. And its architecture evolved significantly over the years, with each interaction trying to solve the problems created before, introducing new challenges and new ways of doing our job.
+
+### In the beginning, there was NPM 2 and earlier
+
+NPM is the most widely used package manager and a pioneer in the JavaScript world, coming pre-installed with Node.js. It operates as a dual functionality: an online platform for publishing and sharing packages (npmjs.com) and a command-line tool for managing dependencies. NPM provides a vast repository of over two million packages, making it the largest software registry in the world.
+
+However, in its early versions, NPM had notable limitations that prompted the creation of alternatives. Its sequential installation methodology resulted in slow installation times. More significantly, its approach to storing dependencies led to excessive package duplication. If a developer had, for example, 100 different projects using the same dependency, NPM would create 100 complete copies of that dependency on disk, one for each project. This redundancy consumed a considerable amount of space, exacerbating the `node_modules` folder problem.
+
+Initially, NPM (in versions 2 and earlier) employed a logically pure and direct approach for dependency resolution: the nested structure. In this model, each package installed on the `node_modules` folder of our project had its own subfolder `node_modules` with its respective dependencies.
+
+Let's clarify it with an example. Imagine every package you install carries its own backpack (`node_modules`). Inside that backpack, it puts all the tools (dependencies) it needs. If one of its tools also requires its own smaller tools, it places them in a separate, smaller backpack within the *main backpack*.
+
+If our project depends on `package-a`, and `package-a` depends on `package-b`, the file structure would look like this:
+
+```
+project/
+├── node_modules/
+│   └── package-a/          <-- direct dependency
+│       ├── index.js
+│       ├── package.json
+│       └── node_modules/   <-- package-a's own dependencies
+│           └── package-b/
+│               ├── index.js
+│               └── package.json
+└── package.json
+```
+
+This process continued recursively for every single dependency, creating a deep and nested tree of folders.
+
+When we ran `npm install` in npm v2, it followed these steps:
+**Read** `package.json`: It looks at the `dependencies` in the project's `package.json`.
+**Install Direct Dependencies**: For each dependency (like `package-a`), it downloads and places it in the root `node_modules` folder.
+**Install Sub-Dependencies Recursively**: It then looks at `package-a's` `package.json` and installs *its* dependencies (like `package-b`) into a new `node_modules` folder located at `project/node_modules/package-a/node_modules/`.
+**Repeat**: This process repeats for every sub-dependency, going deeper and deeper down the tree.
+
+Although simple and robust for isolating modules (one package only could see its own direct dependencies), this approach proved impractical in real-world, large-scale applications. The main issue was the massive duplication of packages. If two of your direct dependencies, such as `express` and `request`, both depend on the exact same version of the `debug` package, NPM v2 would download and save two separate copies of the `debug` package.
+
+Example:
+
+```
+project/
+└── node_modules/
+    ├── express/
+    │   └── node_modules/
+    │       └── debug/      <-- Copy #1 of 'debug'
+    └── request/
+        └── node_modules/
+            └── debug/      <-- Copy #2 of 'debug'
+```
+
+Now, think of a real-world scenario where a simple project could have thousands of dependencies. The storage space for storing it was huge, and the time for installing the dependencies was really long. Furthermore, this nesting depth frequently exceeds the compression limit in Windows, making entire projects unused.
+
+> Windows has a limit on how long a file path can be (historically around 260 characters). Complex projects would often exceed this limit, causing `npm install` to fail with cryptic errors.
+
+### The transition to the plain structure (NPM 3+)
+
+To address these limitations, NPM v3 introduced a significant change to its architecture: the **plain structure**, a flat `node_modules` directory that installs dependencies at the top level of the `node_modules` folder, avoiding the deep, nested dependency trees of earlier versions. Direct dependencies are installed in the root node_modules folder, and if different major versions of the same dependency are required, the conflicting version is nested within the package that requires it. This plain structure was designed to reduce dependency hell and install packages more efficiently.
+
+The key mechanism behind npm v3's flat structure is called **hoisting**. Instead of nesting a dependency inside the package that requires it, npm v3 "hoists" that dependency up to the top-level `node_modules` directory.
+
+It analyzes the entire dependency tree and attempts to install every single package directly in the root `node_modules` folder, making them shareable across all other packages in the project.
+
+For example, imagine a project that depends on `package-a` and `package-b`, and both of them depend on the **same version** of `lodash`.
+
+Instead of the nested npm v2 structure:
+
+```
+- project/
+  - node_modules/
+    - package-a/
+      - node_modules/
+        - lodash/      <-- Copy 1
+    - package-b/
+      - node_modules/
+        - lodash/      <-- Copy 2
+```
+
+Npm v3 hoists lodash to the top, resulting in a clean, flat structure:
+
+```
+- project/
+  - node_modules/
+    - package-a/      <-- Depends on lodash, but doesn't contain it
+    - package-b/      <-- Also depends on lodash
+    - lodash/         <-- One shared copy for everyone!
+```
+
+This immediately resolves the duplication problem, saving disk space and speeding up the installation process.
+
+The nested structure will only be used as a fallback in case of version conflicts. If B depends on C@1.0.0 and D depends on C@2.0.0, NPM would install one of them (usually the first version found) on the root level and the conflicting version into the `node_modules` of the other package.
+
+Let's explore another example: What happens if `package-a` requires `lodash@4.0` but `package-b` requires `lodash@3.0`?
+
+It hoists the version of the dependency required by the first package it encounters (e.g., `lodash@4.0` from `package-a`) to the top level.
+When it gets to `package-b` and sees it needs a different version (`lodash@3.0`), it can't place it at the top level because `lodash@4.0` is already there.
+So, it falls back to the old npm v2 behavior **only for the conflicting package**. It installs `lodash@3.0` inside `package-b's` own nested `node_modules` folder.
+
+The resulting structure would look like this:
+
+```
+- project/
+  - node_modules/
+    - package-a/
+    - package-b/
+      - node_modules/
+        - lodash/      <-- Nested copy of lodash@3.0 for package-b
+    - lodash/          <-- Hoisted copy of lodash@4.0 for package-a
+```
+
+This approach brought three main advantages: reduced duplication, faster installation, and solved path length issues on Windows.
+
+## The collateral effect of the evolution: Phantom Dependencies
+
+While the evolution from nested folders to plain structure was very good, it introduced a new problem: the "phantom dependencies". By hoisting transitive dependencies to the root level, NPM exposed all such packages to the main project code, regardless of whether or not they were declared in the `package.json` file.
+
+For example, if the project depends on `package-a`, and `package-a` depends on `package-b`, the plain structure places both `package-a` and `package-b` under the root `node_modules` node. It permits the developer of the main project to require the `package-b` and the code works, even though `package-b` was not a direct dependency of the project.
+
+Let's say your `package.json` only lists one dependency, `express`:
+
+```json
+{
+  "name": "my-app",
+  "version": "1.0.0",
+  "dependencies": {
+    "express": "4.17.1"
+  }
+}
+```
+
+The `express` package itself depends on many other packages, including one called `debug`. With hoisting, your `node_modules` folder will look something like this:
+
+```
+- project/
+  - node_modules/
+    - express/       <-- Your direct dependency
+    - debug/         <-- A sub-dependency of express, hoisted to the top
+    - accepts/       <-- Another hoisted sub-dependency
+    - ... and many others
+```
+
+Because `debug` is now in the top-level `node_modules`, you could write the following code in your project and it would work perfectly, even though you never ran `npm install debug`:
+
+```JavaScript
+// We are importing 'debug', a package that is NOT in our package.json
+import debug from 'debug';
+
+const log = debug('app:startup');
+log('Application is starting...'); // This code works!
+```
+
+This implicit coupling is **extremely dangerous**. The project now relies on an implementation detail of one of its dependencies. If, in a future update, library A decides to remove its dependency on B or update it to a version with breaking changes, the core project will break unexpectedly and will often be difficult to diagnose. This problem undermines the predictability and robustness of dependency management, trading architectural correctness for space optimization.
+
+This evolution reveals a fundamental trade-off in design philosophy. The transition from **nested** to **flat** structures represented a conscious decision to prioritize **convenience** (deduplication, shortest paths, installation performance) over **correctness** (strict dependency isolation). The community, at the time, was more concerned with the practical and immediate problems of bloated `node_modules` and Windows incompatibility.
+
+But this decision, however, created a vacuum, an ecological niche for a new approach that didn't require such a compromise. It was in this context that alternatives like Yarn and PNPM emerged, which represent not just an incremental improvement but a direct philosophical rejection of hoisting and its side effects.
+
+## The first answer to the NPM problems: Yarn
+
+Yarn (Yet Another Resource Negotiator) was developed and maintained by Facebook (now Meta) in 2016. Yarn was a direct answer to the consistency and performance issues of NPM in that epoch. Its introduced a lot of innovations that turned to standard in our JavaScript industry (and also in the software engineering industry):
+
+- **Parallel Installation**:  Yarn process the installing operations in parallel, resulting in significatively reduced time to installing dependencies in comparison to older NPM versions
+- **Offline Cache**: Yarn stores each downloaded package in a cache, permitting it to make even faster installs in the future, and even without internet connection, this approach increases the confiability of the builds
+- **Deterministic Installations**: Yarn introduced the `yarn.lock` package; this file fix the exactly version of each dependency and sub dependency ensuring that each developer in the team and each build environment (like continuous integration environments) install exacly the same tree of dependencies ("it works on my machine" was not a possible excuse for avoid that bug task)
+
+Let's explore it deeper.
+
+### Parallel Installation
+
+Older versions of NPM installed packages one by one, in a sequence. If package A depended on B, and B on C, it would wait for C to finish before starting B, and so on. Yarn does as much as possible at the same time.
+
+- Old NPM (Sequential): Imagine a supermarket with only one checkout counter open. Even if you only have one item, you have to wait for the entire line of people with full shopping carts to go through before you. It's slow and inefficient.
+
+- Yarn (Parallel): Now, imagine the same supermarket opening 10 checkout counters simultaneously. People spread out, and the whole process becomes much faster. Yarn does this with your dependencies: it downloads and processes several at once, dramatically speeding up yarn install.
+
+### Offline Cache
+
+Once Yarn downloads a package from the internet, it saves a copy in a special location on your computer (the "cache"). The next time you need that same package, it grabs it from the cache instead of downloading it again.
+
+If you have Yarn installed on your computer, let's try this example:
+
+Start a project for the example:
+
+```shell
+mkdir online-sandbox
+cd online-sandbox
+```
+
+Run the command:
+
+```shell
+# Adds the 'express' library to the project
+yarn add express
+```
+
+Yarn downloads `express` from the internet and saves it to your computer's global cache.
+
+Now, start another project to work offline:
+
+```shell
+mkdir offline-sandbox
+cd offline-sandbox
+```
+
+Please, disconnect from the internet and run the same command to add `express` to your offline-sandbox:
+
+```shell
+# Adds the 'express' library to the new project, even without internet
+yarn add express
+```
+
+The command works perfectly! Yarn detects there's no internet, looks for `express` in its cache, finds the copy it saved earlier, and installs it in your new project. This makes installations faster and more reliable since they don't always depend on an active connection.
+
+### Deterministic Installations
+
+This is perhaps the most critical feature. It solves the famous "but it works on my machine!" problem. The `yarn.lock` file ensures that every member of the team uses the exact same versions of all dependencies.
+
+The Problem (Without a lock file):
+
+- Your `package.json` says the project needs `lodash` version `^4.17.0`. The `^` means *"version 4.17.0 or any newer minor version, but not 5.0.0"*.
+- Developer A installs the project on Monday and gets version `4.17.15`.
+- On Tuesday, the authors of `lodash` release version `4.17.21` to fix a bug.
+- Developer B joins the project on Wednesday and, upon installing, gets the newest version, `4.17.21`.
+- The Result: Now, the two developers have **different versions of the same package**. A bug might appear in Developer B's environment that doesn't exist in Developer A's, causing confusion and wasting time.
+
+The Solution (With yarn.lock):
+
+- When Developer A runs `yarn install` for the first time, Yarn creates a `yarn.lock` file. Inside it, it writes something like this (in a simplified format):
+
+```yml
+# This is a simplified example of what yarn.lock looks like
+"lodash@^4.17.0":
+  version: "4.17.15"  # The EXACT version that was installed
+  resolved: "https://registry.yarnpkg.com/lodash/-/lodash-4.17.15.tgz#a1...checksum" # The exact download link
+```
+- This file is committed to the repository (Git).
+- When Developer B clones the project and runs `yarn install`, Yarn reads the `yarn.lock` file and, instead of looking for the newest version, it installs **exactly** `4.17.15`, guaranteeing both environments are identical.
+
+
+Yarn also had an evolution. And its evolved in a two main lines: Yarn Classic (v1) and Modern (v2+). The Yarn Modern is also know as Berry. The modern approach introduced a radical approach Plug'n'Play (PnP) thats eliminate the `node_modules` folder and creates a single file `.pnp.cjs` mapping all the dependencies names to its Yarn cache location. It results in an almost instantaneous installations and resolve the issues with phantom dependencies. However, that approach can break older tools that depends on the `node_modules` structure to work, creating a compatibility barrier.
+
+Traditional File Structure (with node_modules):
+
+```sh
+my-project/
+├── node_modules/
+│   ├── express/
+│   ├── lodash/
+│   └── ... (thousands of other folders)
+├── package.json
+└── yarn.lock
+```
+
+File Structure with Yarn PnP:
+
+```sh
+my-project/
+├── .yarn/
+│   └── cache/
+│       ├── express-npm-4.17.1-a1b2c3d4.zip  # Packages are stored as .zip files
+│       └── lodash-npm-4.17.15-e5f6g7h8.zip
+├── .pnp.cjs  # The "map" that replaces node_modules
+├── package.json
+└── yarn.lock
+```
+
+## The best of the both worlds: pnpm (performant npm)
+
+PNPM takes an architectural approach that is, in many ways, the **best of both worlds**: the *disk efficiency* and *speed* of PnP, with the **compatibility** of the `node_modules` folder. Its core innovation lies in its use of content-addressable global storage and intelligent file system handling through *hard links* and *symlinks*.
+
+This approach directly solves the duplication problem. If a developer works on 100 projects that use the same dependency, PNPM stores a single copy and shares it among all of them, eliminating 99 redundant copies. This results in disk space savings of up to 80% in projects with many dependencies according to its researches, making it an ideal solution for developers managing multiple repositories or monorepos.
+
+PNPM's granularity is another critical aspect. When a new version of a dependency is installed, and that version has only a minor change to one of its 100 files, PNPM is intelligent enough to add only **that new file** to its store. It doesn't clone the entire dependency just for a single change, which contributes to faster installations and even more efficient disk usage in update operations.
+
+The way PNPM connects packages from the content-addressable store to each project's `node_modules` directory is the essence of its innovation. This connection is achieved through a combination of hard links and symbolic links (symlinks).
+
+Hard links are used to reference the physical package files from the global store. A hard link is a direct reference to the location of data on the file system. PNPM uses these links so that even though the package files appear to be in the project's `node_modules` folder, they are actually being referenced from a single, centralized copy. This approach consumes "no additional disk space" for each project, as there is no data duplication. Although it is the same physical copy, Node.js treats hard links as separate files, which is fundamental for compatibility with the ecosystem.
+
+Meanwhile, symbolic links (symlinks) are used to build the `node_modules` directory structure. They point a project's direct dependencies to their location in the content-addressable store, ensuring that only explicitly declared dependencies are accessible in the `node_modules` root directory. Indirect dependencies are nested in their respective locations, resulting in a `node_modules` structure that is non-flat and stricter, unlike with NPM or Yarn Classic.
+
+The PNPM installation process occurs in three stages:
+
+**Dependency Resolution**: All required dependencies are identified and downloaded to a single, global store on the user's disk (usually in `~/.pnpm-store`). Each version of each package is stored only once
+**Directory Structure Calculation**: The `node_modules` structure is calculated based on the dependencies
+**Linking Dependencies**: Instead of copying package files from the cache to the project's `node_modules`, PNPM creates hard links from the global store to the project's `node_modules` directory
+
+
+PNPM's **non-flat** `node_modules` structure solves the phanthom dependencies problem elegantly and robustly. By using symbolic links to point only to direct dependencies, PNPM enforces strict discipline. A package can only access what has been explicitly declared in its `package.json`, which "helps to avoid bugs" and ensures strict and secure dependency resolution. This approach also eliminates another known problem called "NPM doppelgangers," where multiple copies of the same version of a package are installed, causing slowness, increased bundle sizes, and problems with singletons.
+
+The architecture of PNPM represents a paradigm shift. While NPM and Yarn Classic sought convenience by simplifying the `node_modules` structure (which resulted in inconsistencies), PNPM adopted a more principled approach, following the mathematically correct model of the dependency graph. Its fundamentally different and more efficient architecture is what best aligns with the demands of modern, scalable development, elevating the security and reliability of large-scale projects.
+
+The rise of PNPM reflects a maturation of the JavaScript ecosystem. The developer community, having experienced the consequences of hoisting and phantom dependencies, began to value robustness and predictability as much as, or even more than, initial convenience. pnpm demonstrated that it is not necessary to sacrifice architectural correctness for performance; on the contrary, a more correct architecture can actually lead to superior performance.
+
+## Comparative Analysis of Package Managers: NPM, Yarn, and PNPM
+
+| Characteristic                        | npm (v7+)                | Yarn (Classic & Modern/PnP)                | pnpm                                   |
+|---------------------------------------|--------------------------|--------------------------------------------|----------------------------------------|
+| Structure                            | Flat with Hoisting       | Classic: Flat with Hoisting - Modern: Plug'n'Play (no node_modules) | Symbolic / Semi-nested - (Isolated node_modules) |
+| Cache/Storage Mechanism               | Global cache             | Shared global cache                        | Content-addressable global store       |
+| Performance (Clean Install)           | Moderate                 | Fast (parallelization)                     | Very Fast (download + linking)         |
+| Performance (With Cache)              | Fast                     | Very Fast (offline cache)                  | Extremely Fast (linking only)          |
+| Disk Efficiency                       | Low (duplication across projects) | Moderate (Classic) / Very High (PnP)      | Very High (no duplication)             |
+| Handling of "Phantom Dependencies"    | Vulnerable by design     | Resolved with PnP, vulnerable in Classic mode | Resolved by design                     |
+| Monorepo Support (Workspaces)         | Good                     | Very Good                                  | Excellent (more efficient in disk and speed) |
+
+## The Challenge on Performance and Disk Space Efficiency
+
+In modern software development, speed is not a luxury, but a **necessity**. The time a development team spends waiting for dependencies to install or CI/CD pipelines to execute is a direct **cost** that impacts productivity and deliverability. The choice of package manager, therefore, transcends technical preference and becomes a decision with direct implications for the operational and economic efficiency of a project or organization. Quantitative analysis of installation performance and resource efficiency reveals striking differences between npm, Yarn, and pnpm.
+
+The performance of a package manager can be evaluated in two main dimensions: the time required to install dependencies and the disk space consumed by the result of that installation.
+
+### Time required to install dependencies
+
+Independent benchmarks and those published by projects themselves consistently demonstrate a performance hierarchy. In "clean install" scenarios, where there is no pre-existing cache or `node_modules` directory, PNPM tends to be the fastest, followed closely by Yarn, with NPM usually in third place. Yarn gains an advantage over NPM due to its ability to download packages in parallel.
+
+The true performance disparity, however, becomes evident in subsequent installations (which are the most common scenario in a developer's day-to-day work).
+
+When a developer clones a repository and installs dependencies for the first time, both Yarn and PNPM significantly outperform NPM. Yarn's offline cache avoids re-downloading previously viewed packages, while PNPM goes a step further. If the required packages already exist in its global storage (downloaded by another project), PNPM can skip the download phase **entirely** and proceed directly to linking, which is a nearly instantaneous operation. On large projects, **PNPM can be up to two to three times faster** than its competitors in these scenarios.
+
+## The Disk Space Efficiency
+
+Disk space optimization is another area where architectural differences become clear. The `node_modules` directory is notoriously large, and in environments where multiple projects coexist, duplicating dependencies can consume gigabytes of space unnecessarily.
+
+**NPM and Yarn Classic**: Both of these managers create a full copy of each dependency inside every project's `node_modules` folder. If ten projects use the same version of React, there will be ten copies of React on the disk, resulting in a massive waste of space.
+
+**PNPM**: pnpm's content-addressable global store architecture completely eliminates this redundancy. Each version of each package is physically stored only once on the disk. All projects that use that package simply get hard links to these files, consuming no additional space. Benchmarks show that the total size of files installed by PNPM is consistently smaller than that of NPM and Yarn. In a scenario with many projects, the savings can reach several gigabytes.
+
+## Security of the packages
+
+Another thing I would like to add to our analysis is related to the security issues we have every years related to Supply Chain Attack in the NPM platform. While NPM is the owner of the tool that install the packages and the platform storing it, they cannot respond faster than the PNPM team in the last attacks (2025).
+
+The last week before the writing of this article, we faced these news:
+
+- [Hackers hijack npm packages with 2 billion weekly downloads in supply chain attack](https://www.bleepingcomputer.com/news/security/hackers-hijack-npm-packages-with-2-billion-weekly-downloads-in-supply-chain-attack/), Sep 8, 2025
+- [Massive npm supply chain attack hits 18 popular packages with 2B weekly downloads](https://www.csoonline.com/article/4053725/massive-npm-supply-chain-attack-hits-18-popular-packages-with-2b-weekly-downloads.html), Sep 9, 2025
+- [Self-Replicating Worm Hits 180+ NPM Packages to Steal Credentials in Latest Supply Chain Attack](https://thehackernews.com/2025/09/40-npm-packages-compromised-in-supply.htm), Sep 16, 2025
+- [CrowdStrike npm Packages Compromised in Ongoing Supply Chain Attack](https://cybersecuritynews.com/npm-supply-chain-attack-crowdstrike/), Sep 16, 2025
+
+A few days after the big hijack related to the phishing attack on the OSS maintainer, the PNPM team already released a version addressing this kind of issue:
+
+> There have been several incidents recently where popular packages were successfully attacked. To reduce the risk of installing a compromised version, we are introducing a new setting that delays the installation of newly released dependencies. In most cases, such attacks are discovered quickly and the malicious versions are removed from the registry within an hour.
+>
+> The new setting is called minimumReleaseAge. It specifies the number of minutes that must pass after a version is published before pnpm will install it. For example, setting minimumReleaseAge: 1440 ensures that only packages released at least one day ago can be installed.
+>
+> (12 Sep, 2025)
+>
+> [pnpm@v10.16.0](https://github.com/pnpm/pnpm/releases/tag/v10.16.0)
+
+While NPM has an [open issue since 2022](https://github.com/npm/rfcs/issues/646) without resolution.
+
+So, I feel like, if you want to be safe when installing a dependency, you should use PNPM.
+
+## The impact of the package manager in the software development lifecycle
+
+### Pipelines de CI/CD
+
+In the Continuous Integration and Continuous Delivery (CI/CD) environments, every second counts. Build pipelines typically begin with a clean installation of dependencies. The superior speed of PNPM and Yarn can drastically reduce the total execution time of these pipelines. A reduction of, for example, **one minute** per build, in an organization that runs hundreds or thousands of builds per day, translates into **hours** of compute time saved and, consequently, a significant reduction in cloud infrastructure costs. Also, the time to release/delivery some new feature or bug fix is even better. Furthermore, the ability to operate from a cache (offline mode) increases the resilience of builds, making them less susceptible to network failures or package registry unavailability.
+
+### Developer Experience (DX)
+
+For the individual developer, package manager performance directly impacts productivity and workflow. Shorter installation times mean less waiting when starting a new project, switching branches, or simply running `install` after an update. These micro-optimizations add up over the course of a day, resulting in a more agile and less frustrating development cycle. PNPM's disk efficiency is also a practical benefit, especially for developers with limited storage on their laptops.
+
+In a company with hundreds of projects and thousands of daily builds, saving seconds per operation translates into hours of engineering productivity and substantial infrastructure cost savings. For example, a company with 200 developers, each of whom triggers an average of five builds per day, performs 1,000 builds daily. If adopting a tool like PNPM saves an average of 60 seconds per build, this represents a savings of 60,000 seconds, or more than **16 hours** of compute/wait time, saved every day.
+
+This calculation demonstrates that investing in migrating and training to a more performant tool can have a clear and measurable return on investment (ROI). The choice of package manager moves from being an individual design decision to becoming a core component of the engineering platform and a lever for operational efficiency at scale.
+
+## Scalability in Large Projects: The Monorepo Paradigm
+
+
+As software organizations grow, the complexity of managing multiple code repositories (multirepos) can become a significant bottleneck. Coordinating changes between projects, sharing code, and maintaining consistency across the codebase become logistical challenges. In response, many large technology companies, such as Google and Meta, have adopted the monorepository (monorepo) architecture, where multiple projects and libraries coexist within a single Git repository. While this approach offers significant advantages, it also exacerbates dependency management challenges, requiring an ecosystem of specialized tools to be viable at scale.
+
+Centralizing code in a monorepo promises to simplify dependency management, but in practice, it introduces a new set of complexities.
+
+### Advantages
+
+The main advantage of a monorepo is the ability to have a single source of truth for dependencies. It's possible to enforce that all projects within the repository use the same version of a shared library, such as React or Lodash, ensuring consistency and facilitating large-scale refactorings. Changing an API in a shared library and updating all its consumers can be done in a **single atomic commit**, something extremely difficult in a multirepo architecture.
+
+In the multirepo architecture, a change on the shared library dispatch the necessity of updating all the other repos. What is close to impossible. We always have repositories with the old version of something that should be updated have yars.
+
+### Challenges
+
+While we have the advantage of managing dependencies with monorepo, we have some challenges too:
+
+**Version Consistency**: While it's possible to have a single version of each dependency, it's not always practical. Different projects may have conflicting requirements or different update cycles. Managing these **exceptions** and ensuring overall consistency becomes a complex governance issue.
+
+**Tooling Performance**: In a monorepo with hundreds of packages, a simple `install` at the root can take prohibitively long, as it attempts to install all project dependencies at once. Git operations, such as `git blame`, can also become slow due to the vast history and large number of files.
+
+**"Phantom Dependencies" in Monorepos**: The problem of phantom dependencies is particularly dangerous in monorepos that use hoisting. Because all package dependencies are "hoisted" to a `node_modules` directory at the root. You need to choose a tool that avoid this issue.
+
+## Tool Ecosystem for Monorepos: The Synergy between Workspaces  Modern Package Managers
+
+To mitigate the monorepo challenges, an ecosystem of specialized tools has evolved last years, operating at different layers to optimize the workflow in monorepos.
+
+We'll have a dedicated article to explore these tools. Here, I would like to focus on the dependency management topic. But we need to talk about them a bit because it enters on the DX, performance and disk efficiency topics.
+
+### Workspaces (Yarn & NPM)
+
+Both Yarn and npm offer a native feature called **workspaces**. This feature allows the package manager to recognize that a repository contains multiple interrelated packages. Workspaces offer two main optimizations:
+
+- **Centralized Hoisting**: Dependencies from all workspace packages are installed in a single `node_modules` directory at the monorepo's root, maximizing deduplication.
+- **Local Linking**: If a package A within the workspace depends on a package B from the same workspace, the package manager creates a symlink from A/node_modules/B to B's source directory. This allows the packages to use each other as if they were published, without the need for a publish and install cycle.
+
+### PNPM Workspaces
+
+PNPM elevates the concept of workspaces to a new level of efficiency. As its fundamental architecture already avoids package duplication through the global store and hard links, applying this model to a monorepo is naturally more performant. Installations are faster and disk consumption is minimal. More importantly, PNPM's isolated and non-flat `node_modules` structure natively solves the phantom dependency problem at the workspace level. Each package within the monorepo can only access the dependencies it declares itself, making development more robust and predictable.
+
+In essence, while the workspace feature in any modern package manager is the baseline for a functional monorepo, the underlying architecture dictates the true level of efficiency and reliability.
+
+## The Software Supply Chain Under Attack: Security in the JavaScript Ecosystem
+
+The strength of the JavaScript ecosystem, its vast library of open-source packages, is also its greatest vulnerability. Every third-party dependency added to our project represents a **potential attack vector**, a channel through which malicious code can be introduced into an application's codebase.
+
+Software supply chain attacks, which aim to compromise an application by exploiting vulnerabilities in its components, have become one of the most significant threats to modern cybersecurity. The NPM ecosystem, due to its size and its culture of distributed trust, has been a particularly fertile target for such attacks.
+
+### Modern Attack Vectors
+
+A software supply chain attack exploits the trust relationship between software consumers and producers. Instead of attacking the end target directly, the attacker compromises one of the upstream components the target relies on. In the context of JavaScript, this means injecting malicious code into an npm package that will subsequently be downloaded and executed by thousands of developers and countless build systems. Installing an average NPM package introduces implicit trust in dozens of third-party packages and their respective maintainers, creating a surprisingly large attack surface.
+
+#### Typosquatting
+
+Typosquatting is a social engineering technique that exploits common typing errors. Attackers publish malicious packages to the registry with names that are spelling variations of popular, legitimate packages (e.g., `lodash` vs. `lodahs`, or `react` vs. `raect`). A developer who incorrectly types the package name during installation (`npm install lodahs`) can inadvertently download and execute the malicious code. These malicious packages are often nearly identical copies of the original package, with the addition of a post-install script that executes the attack's payload, such as credential theft or installing malware.
+
+### Dependency Confusion
+
+"Dependency confusion" is a more targeted and sophisticated attack vector. It exploits the way package managers interact with multiple package registries (public and private). Many organizations use private registries to host their own internal packages. The attack occurs when a malicious actor discovers the name of an organization's internal package (e.g., `acme-internal-lib`) and publishes a package with the same name to the public registry.
+
+If the package manager in the developer's build environment or CI/CD pipeline is configured to check the public registry first, or if it prefers the highest version number regardless of origin, it can become "confused" and download the malicious public version instead of the legitimate internal one. This allows the attacker to execute arbitrary code inside the target organization's secure infrastructure.
+
+### Maintainer Account Hijacking
+
+Perhaps the most dangerous attack vector is the hijacking of a maintainer's account for a legitimate and popular package. Attackers can gain access to these accounts through various techniques, such as phishing, using passwords compromised in other breaches, or registering expired email domains that were associated with the maintainer's npm account. Once control of the account is obtained, the attacker can publish a new version of the trusted package, now containing a backdoor or other malicious code. Millions of users and automated systems that trust the package will then download the malicious update, believing it to be a legitimate update from the original maintainer.
+
+## Case Studies and Lessons Learned
+
+Two high-profile incidents vividly illustrate the devastating impact of these attacks and provide crucial lessons for the future.
+
+### The `event-stream` Case
+
+`event-stream` was a popular NPM package, with millions of weekly downloads. In 2018, the original maintainer, overwhelmed with maintenance, transferred ownership of the package to another user who offered to help.  This new "maintainer" was actually a malicious actor. They added a malicious dependency to event-stream, which in turn contained obfuscated code designed to steal cryptocurrency from specific digital wallets on developer machines. The attack was subtle and targeted, and was only discovered months later.
+
+This case exposed the fragility of the trust model in open source: the transfer of ownership of a critical package can occur without scrutiny, and a maintainer's goodwill can be exploited for malicious purposes. I would like to say that this case also expose how the biggest companies in the world, who uses a lot of these packages aren't supporting the community.
+
+[NPM - Details about the event-stream incident](https://blog.npmjs.org/post/180565383195/details-about-the-event-stream-incident).
+
+### The `ua-parser-js` Case
+
+In October 2021, the ua-parser-js package, a ubiquitous library used to parse browser user-agent strings, with over 7 million weekly downloads, was compromised. The maintainer's NPM account was hijacked, and the attackers published malicious versions of the package. These versions contained scripts that installed a cryptocurrency miner and a credential stealer on Windows and Linux systems. The attack was short-lived (about four hours) but the impact was enormous due to the package's popularity. Many applications and other libraries transitively depend on `ua-parser-js`, propagating malware throughout the supply chain.
+
+[portswigger - Popular NPM package `ua-parser-js` poisoned with cryptomining password stealing malware](https://portswigger.net/daily-swig/popular-npm-package-ua-parser-js-poisoned-with-cryptomining-password-stealing-malware).
+
+### The `left-pad` Case
+
+This case does not involve malware but is a landmark event in npm's history that exposed the fragility of the open-source ecosystem and how NPM as a company could abandon the package maintainers at its own risk.
+
+In March 2016, a developer unpublished all of his packages from the NPM registry in protest over a naming dispute with the company Kik. Among the removed packages was `left-pad`, a tiny, 11-line utility that padded strings. Unbeknownst to most, this tiny package was a transitive dependency for thousands of projects, including major ones like Babel and React.
+
+Its removal caused a cascade of build failures across the web, effectively "breaking the internet" for many developers. The situation was so severe that NPM.Inc. took the unprecedented step of forcibly republishing the package to restore the ecosystem. The incident serves as a stark lesson on the risks of micro-dependencies and how critical software infrastructure can rely on unsupported, trivial-seeming packages maintained by a single person.
+
+[TheRegister - NPM `left-pad` Chaos](https://www.theregister.com/2016/03/23/npm_left_pad_chaos/)
+
+### The `colors.js` and `faker.js` Case
+
+In January 2022, the maintainer of two immensely popular libraries, `colors.js` and `faker.js` (with tens of millions of weekly downloads), deliberately sabotaged his own work. He introduced an infinite loop into `colors.js` that would spam users' consoles with garbage text and corrupted the `faker.js` package.
+
+This was not an external attack but an act of protest. The maintainer was frustrated that multi-billion dollar corporations were extensively using his free, volunteer work without providing any financial support (and I agree with him).
+
+The incident introduced the term "protestware" to the mainstream developer community, exposing the reality of **maintainer burnout** and the imbalance between the value open-source creators provide and the support they receive. It demonstrated that the ecosystem is vulnerable not just to outside attackers, but also to the actions of its own disillusioned creators.
+
+[The Verge - Developer corrupts your own open source libraries](https://www.theverge.com/2022/1/9/22874949/developer-corrupts-open-source-libraries-projects-affected).
+
+### Crucial Lessons Learned
+
+These and similar incidents reveal systemic vulnerabilities in the JavaScript ecosystem. The security cannot be a mere afterthought. The lessons learned include:
+
+- **The Critical Importance of Lock Files**: Using and versioning a `package-lock.json` or `yarn.lock` is a first line of defense. It prevents unexpected updates, including malicious ones, from being installed automatically.
+- **Continuous Auditing**: Tools like `npm audit` should be integrated into development and CI/CD workflows to check dependencies against databases of known vulnerabilities.
+- **Healthy Distrust**: Immediately updating to the latest version of a package can be dangerous. Policies such as waiting a certain period (for example, 21 days, as recommended by Snyk) before adopting a new version can mitigate recently-executed account hijacking attacks.
+- **Strengthening the Ecosystem**: Package registries, like NPM, have a responsibility to implement more robust security measures, such as mandatory two-factor authentication (2FA) for maintainers of popular packages and verification of expired email domains.
+
+JavaScript supply chain attacks are not isolated failures, but rather an exploitation of the ecosystem's fundamental characteristic: its implicit and distributed trust model. The system operates on the premise that thousands of maintainers, many of whom are anonymous or volunteers, are well-intentioned and competent in security. The attacks demonstrate that this premise is dangerously fragile. The weak point is not necessarily the code, but the name resolution process and the trust placed in a package name as a security identifier.
+
+The long-term solution requires a paradigm shift to a "zero trust" or "verifiable trust" model, where security is incorporated into the dependency resolution process itself through practices like using private registries, package scopes (`@org/package`), and ideally, cryptographic signature verification for packages.
+
+## Proactive Strategies for Update Management
+
+Dependency management is an ongoing process that spans the entire lifecycle of a project. Ignoring dependency updates is a way to accumulate technical debt that will eventually take its toll in the form of security vulnerabilities, incompatibilities, and a massive and risky upgrade effort in the future. Therefore, a proactive and systematic approach to managing updates is not only a best practice, but a necessity for the health and longevity of any software project.
+
+### The Upgrade Dilemma: Managing "Breaking Change", Technical Debt, and the Cost of Inertia
+
+Keeping dependencies up to date presents a constant dilemma: balancing **current stability** with **future sustainability**. Every update, especially a *MAJOR* version, carries the risk of introducing breaking changes (incompatible changes that require modifications to the application code).
+
+#### "Breaking Changes"
+
+A MAJOR version update (e.g., from 4.x.x to 5.0.0) is an explicit signal, according to SemVer, that the new version is not backward-compatible. Handling these updates is an engineering task that cannot be trivially automated. It requires developers to carefully read the CHANGELOGs and release notes to understand the nature and scope of the changes. The migration may involve refactoring significant parts of the code that interact with the updated dependency. The cost of ignoring these updates is high. The project gets stuck on old versions that may no longer receive security fixes and becomes increasingly difficult to maintain, as the technological gap between the version in use and the latest version widens.
+
+To minimize the risk and effort associated with updates containing breaking changes, teams can adopt several strategies:
+
+- **Incremental Updates**: Instead of letting dependencies become outdated for years and then attempting a "big bang" update, it is much safer and more manageable to update dependencies incrementally and frequently. Tackling one MAJOR update at a time allows teams to isolate problems and test the impact more effectively.
+- **Comprehensive Testing**: A robust test suite (including unit, integration, and end-to-end tests) is the most important safety net when updating dependencies. Automated tests can quickly verify if the new version of the dependency has broken any existing functionality in the application.
+- **Feature Flags**: In complex systems, the code changes required to adapt to a MAJOR update can be wrapped in feature flags. This allows the new code to be deployed to production in a disabled state, then gradually activated for a subset of users while monitoring the impact before a full rollout.
+
+### Towards Continuous Maintenance
+
+The only sustainable way to manage the constant flow of dependency updates is to adopt a continuous maintenance mindset, supported by automation and well-defined processes.
+
+#### Update Automation
+
+Tools like Dependabot (integrated into GitHub) and Renovate have revolutionized update management. These tools continuously monitor a project's dependencies and, when a new version is released, automatically create a pull request (PR) to update the `package.json` and `package-lock.json`. These automated PRs provide a clear starting point for the update process. They often include links to the CHANGELOG and release notes, and they trigger the execution of the project's test suite in the CI pipeline. This transforms dependency updating from a manual, reactive task into a proactive and continuous workflow.
+
+[How to schedule Dependabot checks to keep our dependencies updated](/posts/how-to-schedule-dependabot-to-keep-dependencies-updated/).
+
+#### Regular Security Audits
+
+**Security can't wait for a manual update cycle**. It's essential to integrate security audits into your daily workflow. Commands like `npm audit` and `yarn audit` compare the versions of your project's dependencies against a database of known vulnerabilities and alert you to any issues found. Running these commands should be a mandatory step in your CI/CD pipeline, configured to fail the build if high- or critical-severity vulnerabilities are detected.
+
+[How to secure a software project with GitHub Actions: dependency vulnerability scanning](/posts/how-to-secure-project-github-actions-dependency-vulnerability-scanning/).
+
+#### Best Practices
+
+To create a robust dependency management regime, the following practices should be adopted:
+
+- **Establish a Schedule**: In addition to automated updates for patches and minor versions, the team should allocate time on a regular schedule (e.g., every sprint or every month) to review and address MAJOR version updates and overall dependency health.
+- **Pin Dependencies**: Always commit the lock file (`package-lock.json` or `yarn.lock`) to version control to ensure deterministic installs. Updates should be a deliberate act, not an accidental side effect of a new installation.
+- **Minimize the Attack Surface**: Every dependency is a maintenance liability and a security risk. Before adding a new dependency, the team should critically evaluate its necessity. Is it possible to implement the functionality with simple in-house code? Is the package well-maintained and trustworthy? Reducing the total number of dependencies is the most effective way to reduce complexity and the attack surface.
+- **Documentation**: Keep project documentation updated, listing critical dependencies and the justification for their inclusion. This helps the team make informed decisions in the future.
+
+Effective dependency management requires a fundamental mindset shift: from a "set it and forget it" approach to one of "continuous and proactive maintenance." Dependencies should not be seen as static assets that are added to a project once and then ignored. They are a continuous stream of third-party code entering your codebase, bringing with them new features and bug fixes, but also potential vulnerabilities and breaking changes.
+
+Treating dependency maintenance as a first-class engineering activity, with allocated time and resources, is crucial. Automation with tools like Dependabot is not a luxury, but a necessity for implementing this practice at scale, transforming a problem that could become paralyzing into a series of small, manageable maintenance tasks.
+
+## Conclusion
+
+The journey through the JavaScript dependency landscape reveals a compelling story of evolution, trade-offs, and maturation. What began with the simple but inefficient nested `node_modules` of NPM v2 gave way to a pragmatic, yet flawed, hoisted structure that prioritized convenience over correctness. This decision, while solving immediate performance issues, opened the door to a new class of problems, from the subtle bugs of phantom dependencies to the severe threats of supply chain attacks.
+
+The rise of tools like PNPM signifies more than just a technical improvement; it represents a philosophical shift. The ecosystem has learned that architectural integrity and security are not luxuries to be traded for speed, but prerequisites for building scalable and resilient software. The modern package manager is no longer just an installer but a critical component of a project's security posture and operational efficiency.
+
+Ultimately, effective dependency management is less about a specific tool and more about a fundamental change in mindset. It demands that we move from a "set it and forget it" mentality to one of continuous, proactive maintenance. By treating our dependencies as a living part of our codebase (with the same rigor we apply to our own code) we can harness the power of the open-source community while safeguarding our applications for the future.
+
+Also: please, support open source maintainers.
+
+## References
+
+- [How NPM 3 Works](https://npm.github.io/how-npm-works-docs/npm3/how-npm3-works.html)
+- [PNPM vs NPM](https://pnpm.io/pnpm-vs-npm)
+- [PNPM Motivation](https://pnpm.io/pt/motivation)
+- [PNPM benchmarks](https://pnpm.io/benchmarks)
+- [PNPM vs NPM and Yarn (Refine Blog)](https://refine.dev/blog/pnpm-vs-npm-and-yarn/)
+- [Yarn vs NPM vs PNPM: Which is Best? (Medium)](https://medium.com/devmap/yarn-vs-npm-vs-pnpm-which-is-best-for-your-project-1e4073efa3e5)
+- [A Batalha dos Gerenciadores de Pacotes: NPM vs Yarn vs PNPM (TabNews)](https://www.tabnews.com.br/Heimsk/a-batalha-dos-gerenciadores-de-pacotes-npm-vs-yarn-vs-pnpm)
+- [NPM vs Yarn vs PNPM vs NPX: A Complete Comparison (Medium)](https://medium.com/@lahiruudayakumara/npm-vs-yarn-vs-pnpm-vs-npx-a-complete-comparison-for-javascript-typescript-developers-2ed19e6adfa9)
+- [PNPM vs NPM vs Yarn: Key Differences and Which One You Should Use in 2025 (Prateeksha)](https://prateeksha.com/blog/pnpm-vs-npm-vs-yarn-key-differences-and-which-one-you-should-use-in-2025)
+- [NPM vs Yarn vs PNPM: Which Package Manager Should You Use in 2025? (Dev.to)](https://dev.to/hamzakhan/npm-vs-yarn-vs-pnpm-which-package-manager-should-you-use-in-2025-2f1g)
+- [Dependency Hell (Wikipedia)](https://en.wikipedia.org/wiki/Dependency_hell)
+- [Google Cloud: Managing Dependencies](https://cloud.google.com/software-supply-chain-security/docs/dependencies?hl=pt-br)
+- [What is a Diamond Dependency Conflict? (JLBP)](http://jlbp.dev/what-is-a-diamond-dependency-conflict)
+- [The Dreaded Diamond Dependency Problem (Well-Typed)](https://www.well-typed.com/blog/2008/04/the-dreaded-diamond-dependency-problem/)
+- [The Diamond Dependency Problem (Copado)](https://docs.copado.com/articles/copado-methodology-temp/the-diamond-dependency-problem)
+- [Best Practices for Managing Frontend Dependencies (PixelFreeStudio)](https://blog.pixelfreestudio.com/best-practices-for-managing-frontend-dependencies/)
+- [Difference Between Tilde and Caret in package.json (GeeksforGeeks)](https://www.geeksforgeeks.org/javascript/difference-between-tilde-and-caret-in-package-json/)
+- [Difference Between Tilde and Caret in package.json (BetterStack)](https://betterstack.com/community/questions/difference-between-tilde-and-caret-in-package-json/)
+- [NPM Package Tilde & Caret (Michael Soo Lee)](https://michaelsoolee.com/npm-package-tilde-caret/)
+- [Semver, Tilde and Caret (NodeSource)](https://nodesource.com/blog/semver-tilde-and-caret)
+- [O que é monorepo](https://woliveiras.com.br/posts/o-que-e-monorepo)
+- [Quais as vantagens e desvantagens de monorepos? (woliveiras.com.br)](https://woliveiras.com.br/posts/quais-vantagens-desvantagens-monorepos)
+- [How to Easily Manage Dependencies in a JS Monorepo (Bitsrc)](https://blog.bitsrc.io/how-to-easily-manage-dependencies-in-a-js-monorepo-6216bd6621ea)
+- [Google Cloud: Supply Chain Attack Vectors](https://cloud.google.com/software-supply-chain-security/docs/attack-vectors?hl=pt-br)
+- [What is a Supply Chain Attack? (Cloudflare)](https://www.cloudflare.com/pt-br/learning/security/what-is-a-supply-chain-attack/)
+- [Software Supply Chain Security (Palo Alto Networks)](https://www.paloaltonetworks.com.br/cortex/cloud/software-supply-chain-security)
+- [NPM Security: Preventing Supply Chain Attacks (Snyk)](https://snyk.io/blog/npm-security-preventing-supply-chain-attacks/)
+- [Stopping Software Supply Chain Attacks (Imperva)](https://www.imperva.com/br/stopping-software-supply-chain-attacks/)
+- [Dependency Confusion and Typosquatting (SLSA)](https://slsa.dev/blog/2024/08/dep-confusion-and-typosquatting)
+- [OWASP Top 10 CI/CD Security Risks: Dependency Chain Abuse](https://owasp.org/www-project-top-10-ci-cd-security-risks/CICD-SEC-03-Dependency-Chain-Abuse)
+- [Threats and Mitigations (npmjs.com)](https://docs.npmjs.com/threats-and-mitigations/)
+- [In-depth Analysis: Supply Chain Poisoning of Popular NPM Packages (Rescana)](https://www.rescana.com/post/in-depth-analysis-supply-chain-poisoning-of-popular-npm-packages-exploiting-event-stream-ua-parser)
+- [UAParser.js NPM Package Supply Chain Attack: Impact and Response (Truesec)](https://www.truesec.com/hub/blog/uaparser-js-npm-package-supply-chain-attack-impact-and-response)
+- [Malware Discovered in Popular NPM Package ua-parser-js (CISA)](https://www.cisa.gov/news-events/alerts/2021/10/22/malware-discovered-popular-npm-package-ua-parser-js)
+- [NPM Library ua-parser-js Hijacked: What You Need to Know (Rapid7)](https://www.rapid7.com/blog/post/2021/10/25/npm-library-ua-parser-js-hijacked-what-you-need-to-know/)
+- [A Tale of Two Configurations: How Package Managers Influence the JavaScript Ecosystem (CMU)](https://www.cs.cmu.edu/~ckaestne/pdf/tosem21.pdf)
+- [Open Source Security Risk Analysis (Black Duck)](https://www.blackduck.com/resources/analyst-reports/open-source-security-risk-analysis.html)
+- [Open Source Trends: OSSRA Report (Black Duck Blog)](https://www.blackduck.com/blog/open-source-trends-ossra-report.html)
+- [PhD Thesis: Open Source Software Security (Javan Jafari Bojnordi, Concordia University, 2024)](https://spectrum.library.concordia.ca/id/eprint/993232/1/Javan%20Jafari%20Bojnordi_PhD_S2024.pdf)
+- [PhD Thesis: Software Supply Chain Security (Mujahid, Concordia University, 2022)](https://spectrum.library.concordia.ca/id/eprint/989947/1/Mujahid_PhD_S2022.pdf)
+- [PeerJ Computer Science: Article cs-849](https://peerj.com/articles/cs-849/)
+- [ACM: On the Security Risks of OSS Dependencies (2020)](https://dl.acm.org/doi/abs/10.1145/3372297.3417232)
+- [ACM: Dependency Management in Component-Based Development (2008)](https://dl.acm.org/doi/abs/10.1145/1368088.1368122)
+- [SINTEF: Software Supply Chain Security Report](https://sintef.brage.unit.no/sintef-xmlui/handle/11250/2644833)
+- [CSO Online: The State of Application Security](https://www.csoonline.com/article/569717/the-state-of-application-security-what-the-statistics-tell-us.html)
+- [HackerOne: Supply Chain Attacks – Impact, Examples, and Preventive Measures](https://www.hackerone.com/knowledge-center/supply-chain-attacks-impact-examples-and-6-preventive-measures)
