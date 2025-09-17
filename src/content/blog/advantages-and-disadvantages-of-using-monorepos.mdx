@@ -1,0 +1,130 @@
+---
+title: "What are the advantages and disadvantages of using monorepos in your projects?"
+description: "An in-depth analysis of the advantages and disadvantages of using monorepos in software development, exploring their impact on collaboration, code sharing, dependency management, and scalability."
+pubDate: "Wed Sep 17 22:00:00 2025 +0200"
+published: true
+tags: ["engineering", "javascript", "dependency-management", "monorepos",]
+---
+
+Choosing between using polyrepos or monorepos is a complicated task. We need to carefully evaluate the advantages and disadvantages of each technology, which is why in this article I have laid out the pros and cons of using monorepos.
+
+
+Whenever we have to choose to use a new technology, approach, or architecture, we need to list its advantages and disadvantages. After all, we can make decisions that lead to the success of a project or its total failure. And there are advantages and disadvantages to using monorepos. Let's get to know them here.
+
+## What are monorepos
+
+Monorepos are an architectural model where we have all parts of our application (or even the entire company's source code) in a single repository, in isolation. In other words, even though the code is all in one place, it doesn't mean it isn't logically separated and can even be published without interfering with each other. To learn more, including historical context and practical examples, read this article: [Introduction to Monorepos: Managing Large-Scale Codebases Efficiently](/posts/introduction-to-monorepos-managing-large-scale-codebases-efficiently/).
+
+## Advantages of using monorepos
+
+To facilitate our work in analyzing the advantages and disadvantages of using monorepos, I will share them in a list format in this section and then elaborate on each topic below to make it clearer.
+
+Some of the advantages of using monorepos:
+
+- Ease of sharing code
+- Ease of dependency management
+- Atomic commits
+- Rapid organizational-level refactoring
+- Facilitating collaboration between teams via inner source
+- Fast onboarding of new members to the codebase
+- Visibility of the company's or community's code
+- Unified CI/CD/Configurations
+- Collaboration between teams
+
+### Ease of sharing code
+
+Sharing code today is not difficult; you can easily create a library, export it to a registry (like NPM, pip, Ruby Gems), and import it into another project. However, with monorepos, it becomes easier, without the need for a package manager or a new deployment for all projects to have access to the new code when we make a change. Using monorepos, we can simply write the code for the new module and import it into all applications with a single PR. It would not be necessary to deploy that module to a registry, install it in an application, and only then be able to use it.
+
+
+### Dependency management
+
+When we have many projects scattered across a company or community, at some point we will face the challenge of updating dependencies in all these repositories. And most of the time, due to this effort, projects are running with different versions of the same library. This may not seem like a big problem, but when we are in large-scale teams and projects, this lack of consistency creates difficulties in debugging, information security problems, and inconsistent user flows.
+
+In a monorepo, we have a single source of truth that controls the versions of the libraries installed in our project, and these versions are installed everywhere. By upgrading a library's version in the repository, all applications begin to use this new version.
+
+### Atomic commits
+
+When we need to change something common across projects, such as a new convention, a new pattern, or even dependency management, the biggest challenge in large teams is having to notify all the teams or go into each repository to make the change. Atomic commits are these large changes made all at once. Since we have access to the entire codebase of all teams, we can perform a quick refactoring, changing everything at once. This allows for rapid organizational-level refactoring. Any change that needs to happen across the entire company can be done at once, and often, by an IDE or command line.
+
+
+### Facilitating collaboration between teams via inner source
+
+Another challenge in large teams is encouraging inner source. That is, encouraging people from other teams to make PRs or changes to our code. Usually, team A does not send PRs to team B or does not perform refactoring due to lack of time or lack of standards between projects. As all the code is in one place and truly standardized through automations that ensure consistency, the problem of trying to help and not knowing what is happening in that code is greatly reduced.
+
+
+### Fast onboarding of new members to the code base
+
+A barrier to entry for new people on a team is repository governance. We usually receive access to some of our team's repositories and then need to request access to others, such as the location of scripts for Terraform or other infrastructure-as-code resources. It's not just about access to important repositories, but the fact that a single team with multiple projects has many repositories is a challenge. A person searches for a piece of code in one web service and when they understand what they are looking for, that piece is in another web service in another repository. This challenge increases the friction of joining new teams. Since the code architected in a monorepo is all in one place, we can find anything we need with a CTRL + F.
+
+### Visibility of the company's or community's code
+
+Just as with onboarding new members, viewing conventions or debugging in scattered repositories is a challenge. We often find ourselves in the search bar of tools like GitHub, looking for a piece of code across our entire organization to understand an implementation, for example. The problem arises when we don't have access to the correct repository with that implementation. In the case of monorepos, everything is a search away via a text editor/IDE/Terminal.
+
+### Unified CI/CD/Configurations
+
+Even with a lot of discussion, documentation, and training on how to perform certain procedures, over time, projects lose their initial consistency. This is because team members change, and bugs occur that require a workaround. The CI and CD process suffers from these inconsistencies. With a monorepo, we have a single configuration for all projects, and therefore we can ensure that all applications are going through the same pipeline for quality, security, performance, and so on. It is possible to modify something for just one application or another. However, this is not encouraged and is less necessary, since any problem you are facing in your project, several other people will also experience and/or will be looking at it in the codebase to help you.
+
+
+### Collaboration between teams
+
+It is very difficult to get teams to collaborate with each other across scattered repositories, since the day-to-day context consumes our time and we can't step out of our delivery flow to support other teams. Often, we can't even do this within our own tribe/line/business unit. The fact that all of the company's applications are your responsibility increases the need to collaborate with other teams/projects. It is also simpler to see code duplication, lack of standards, and the like when we start debugging application dependencies and the applications themselves, and we can immediately resolve it with a refactoring without needing to ask for permission, because all the code is truly everyone's responsibility.
+
+## Disadvantages of using monorepos
+
+Following the same process as the advantages section, let's list the disadvantages of using monorepos and then delve into each topic.
+
+Some of the disadvantages of using monorepos:
+
+- Performance issues with the standard workflow of code versioning
+- The risk of breaking the master/main and blocking the company
+- High volume of commits or pull requests per day
+- Longer deployment time
+- Much longer repository download time
+- The difficulty of collaboration in open source
+- Security risk if the codebase is stolen
+
+
+### Versioning performance issues
+
+Working on projects that receive many modifications, we notice that the number of versions scales quickly. You've probably encountered code that has been modified many times, causing the `git blame` command to take a long time to execute. Switching branches becomes a challenge. Now imagine all the teams creating multiple versions every day, all day long. Working with the conventional versioning model becomes complicated, which is why it's necessary to learn new ways to manage repositories when we start working with monorepos. Many people encourage the use of trunk-based development because of this performance problem. The trunk-based model is not only used for monorepos, far from it. However, it is encouraged by people who use monorepos because doing a `git checkout` can wipe out your productive hours of the day.
+
+### The risk of breaking the main
+
+When we are developing our code, most of the time, we break our projects. That's a fact. The risk of breaking a build and taking a long time to fix it when a team's repository has a problem is simple to manage. The challenge in monorepos is to ensure that no one will break the monorepo's build, blocking the deployments of the entire company or community. To prevent this, integration tests and automations are used heavily and expressively to ensure that you cannot push without everything working correctly. But, even if it's a controlled risk, it's still a risk.
+
+
+### The high volume of commits and pull requests per day
+
+In a small team, it's common to review 3-5 pull requests per day. Additionally, you can do a `git pull` and download dozens of commits at once. If a conflict occurs, it will be a lot of work. In the case of monorepos, the number of open pull requests can reach the thousands per day. A great deal of governance work will be necessary to ensure that everything is being reviewed and merged in time so as not to delay any team's delivery.
+
+### The delay in downloading the repository
+
+A major challenge we had when using Microsoft Teams Foundation before it became part of Azure and started using Git was the delay in downloading a repository with many files, several branches, or many commits. Git solved this masterfully. But in monorepos, the number of files is very large, just as it was in MS Foundation, so the download time will scale according to the number of files and the Git history.
+
+### Deployment time
+
+To deploy an application in a monorepo, many integration tests will be performed, which take longer to run but are extremely necessary to ensure that a change does not break all other applications, and therefore the deployment time will increase. By using caching processes in CI/CD tools, we can significantly reduce deployment time. Monorepo management tools can also cache changes and therefore perform procedures only for what has actually been altered. However, a repository with a lot of code will indeed take a long time to pass through the CI/CD pipeline.
+
+### The difficulty of contributing to open source monorepos
+
+You probably use some library or package that receives thousands of contributions per day. These teams go through all the work I've mentioned so far regarding repository governance. This includes standardizing source code, ensuring conventions, reviewing thousands of pull requests, etc.. Our biggest challenge when we want to contribute to a project in a monorepo is the fact that you can't just fork the piece of code you'd like to work on. You will have to go through all the problems I've mentioned so far regarding download time, the risk of breaking other packages, and versioning performance issues.
+
+### The security risk of a stolen codebase
+
+You may have heard of a case where a developer was hacked, losing control of their operating system, and this spread to the company. When something like this happens, if we are in controlled and scattered teams, the stolen codebase might only be related to a small part of the application. But in monorepos, the source code of the entire company is available to the developer, and now to the person who stole it. There are several application security practices we use so that this type of problem does not affect an entire organization, such as using secrets separated from the repository in solutions like Vault, the need to use a VPN for anything related to the organization, and so on, but the code itself will now be in the hands of someone outside the organization.
+
+## A monorepo is not just about repositories
+
+When you choose a technology to work with in teams, the choice is not just about technology. This choice will influence the entire company or community that works on that code. There is a very important quote that we follow in software engineering, which is Conway's Law.
+
+> "Any organization that designs a system will produce a design whose structure is a copy of the organization's communication structure." - Melvin E. Conway
+
+Using monorepos changes the way the entire company works. It changes how hiring happens, onboarding flows, build and deploy tools, and much more.
+
+## Conclusion
+
+With all the pros and cons of using monorepos, I feel it is easier to manage a codebase in a single repository than to manage teams, stakeholder expectations, and align deadlines to perform a refactoring or something similar. Perhaps, upon studying the scenarios, you will arrive at the solution of using both mono and polyrepos, or not using monorepos at all, or only using monorepos. It will be a decision that needs to be based on a lot of information, as we learned by considering that this choice is not just about technology, but about everything within the organization.
+
+## References
+
+Originally published at [woliveiras.com.br](https://woliveiras.com.br/posts/quais-vantagens-desvantagens-monorepos).
