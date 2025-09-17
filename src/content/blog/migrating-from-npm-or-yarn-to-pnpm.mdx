@@ -1,0 +1,173 @@
+---
+title: "Migrating from NPM or Yarn to PNPM"
+description: "An in-depth guide on why and how to transition from NPM or Yarn to PNPM, highlighting performance benefits, command differences, migration strategies, and compatibility considerations."
+pubDate: "Wed Sep 17 20:00:00 2025 +0200"
+published: true
+tags: ["engineering", "javascript", "npm", "yarn", "pnpm", "dependency-management"]
+---
+
+To understand the technical necessity of PNPM, it's crucial to analyze the historical and architectural context of its predecessors. The evolution of package management in the JavaScript ecosystem reveals a number of local optimizations that inadvertently created deeper systemic problems, problems that PNPM was specifically designed to solve. You can understand it in this post:  [Dependency Management Challenges in the JavaScript Ecosystem](/posts/dependency-management-challenges-in-the-javascript-ecosystem/), where I passed through this point.
+
+In this article, I would like to focus on why and how we can move from NPM or Yarn (classic) to PNPM. Let's start with the why. After that, we'll check the difference between some commands, and in the end, we can check how to migrate. You can jump directly to the section you need if you want.
+
+## Why Migrate to PNPM
+
+The superior architectural design of PNPM translates into measurable advantages in terms of installation velocity and disk space usage. We can check some benchmarks to understand it better.
+
+The following table, based on the public PNPM benchmarks, illustrates the differences in performance in seconds for a large number of files and folders.
+
+| Action  | Cache | Lockfile | node_modules | npm (s) | pnpm (s) | Yarn Classic (s) | Yarn PnP (s) |
+|---------|-------|----------|--------------|---------|----------|------------------|--------------|
+| install |       |          |              | 32.9    | 8.9      | 7.1              | 3.5          |
+| install | ✔     | ✔        | ✔            | 1.3     | 0.753    | 5.1              | n/a          |
+| install | ✔     | ✔        |              | 8.0     | 2.4      | 5.3              | 1.3          |
+| install | ✔     |          |              | 12.6    | 6.1      | 7.2              | 3.0          |
+| install |       | ✔        |              | 11.1    | 5.3      | 5.3              | 1.3          |
+| update  | n/a   | n/a      | n/a          | 6.8     | 3.4      | 5.7              | 3.1          |
+
+### Results
+
+Clean Installs: In a fresh installation (with no cache, lockfile, or node_modules), PNPM is significantly faster than NPM and competitive with Yarn Classic. Although Yarn PnP is often the fastest in this specific scenario, PNPM's performance is a crucial factor for CI environments where caches may not be present.
+
+Subsequent Installs: PNPM's performance stands out in subsequent installations. In scenarios that leverage a populated cache and a lockfile—the most common use case for local developers and CI pipelines—PNPM is consistently one of the fastest, if not the fastest. Its storage and linking architecture avoids redundant downloads and file I/O operations, resulting in substantial speed gains.
+
+Disk Space: This is PNPM's most significant and undeniable advantage. By storing each package version only once globally, it drastically reduces disk usage compared to NPM and Yarn, which duplicate dependencies across projects. The savings can reach up to 80% on machines with many projects.
+
+
+## CLI and Developer Experience
+
+
+PNPM was designed as a "drop-in replacement" from a CLI perspective, minimizing the learning curve. The most significant changes for a developer are not in the commands they type daily, but in the underlying structure that these commands create.
+
+The command-line syntax is quite similar among the three managers for most essential commands, which makes the transition easier. Yarn and PNPM offer enhanced commands for monorepo management, such as `pnpm --filter` and `yarn workspaces foreach`.
+
+
+### Cheatsheet
+
+| Action                        | NPM                              | Yarn                        | PNPM                              |
+|-------------------------------|----------------------------------|-----------------------------|-----------------------------------|
+| Initialize a project          | npm init                         | yarn init                   | pnpm init                         |
+| Install all dependencies      | npm install                      | yarn install                | pnpm install                      |
+| Adding a new package          | npm install [pkg]                | yarn add [pkg]              | pnpm add [pkg]                    |
+| Adding a developer dependency | npm install --save-dev [pkg]     | yarn add [pkg] --dev        | pnpm add -D [pkg]         |
+| Removing a package            | npm uninstall [pkg]              | yarn remove [pkg]           | pnpm remove [pkg]                 |
+| Update packages               | npm update                       | yarn upgrade                | pnpm update                       |
+| Run some script               | npm run [script]                 | yarn [script]               | pnpm [script]                     |
+
+According to its documentaion: "When an unknown command is used, pnpm will search for a script with the given name, so `pnpm run lint` is the same as `pnpm lint`. If there is no script with the specified name, then pnpm will execute the command as a shell script, so you can do things like `pnpm eslint`" - check it here: [PNPM CLI Documentation](https://pnpm.io/pnpm-cli).
+
+You can also install some package directly from the store without access to the internet by using the command `pnpm i --offline`.
+
+We can install an optional package with `pnpm add -O [pkg]`, and we can also install a package globally with `pnpm add -g [pkg]`.
+
+## Specific Cases
+
+Performance is not a universal win in every case. Analyses of GitHub issues reveal that in certain scenarios, particularly on macOS, file copying (Yarn's strategy) can be marginally faster than creating many hard links (PNPM's strategy), especially for installations with a lockfile. Additionally, PNPM's own installation method can influence performance; the standalone script version tends to be faster for executing commands than the version installed via NPM, due to module-loading overhead.
+
+PNPM's performance profile is optimized for the economic realities of modern software development: developers working on multiple projects locally and running frequent installations in CI/CD pipelines. The massive disk space savings are a constant benefit, while the speed advantages translate directly into shorter build times and reduced storage costs.
+
+## PNPM's Native Support for Monorepos
+
+PNPM's first-class support for monorepos (workspaces) is a critical feature for large-scale application development. Its architecture is uniquely suited for this paradigm, where the benefits of its storage and `node_modules` structure are amplified.
+
+### Setting Up a PNPM Workspace
+Setting up a PNPM monorepo is declarative and centers around the `pnpm-workspace.yaml` file. This file, located in the project root, uses glob patterns to define which directories contain the workspace's packages. Common dependencies can be hoisted to the root `package.json` to be shared by all packages.
+### The `workspace` Protocol
+A key feature for ensuring monorepo integrity is the `workspace` protocol. Using `"my-internal-pkg": "workspace:*"` in a `package.json` instructs PNPM to resolve this dependency from another package within the workspace, rather than searching for it in the public registry. This effectively prevents "version drift," a common problem where a package might accidentally use a published version of an internal dependency instead of the latest source code, which is notoriously difficult to debug.
+
+### Advanced Workspace Commands
+
+PNPM provides a powerful CLI for managing workspaces:
+
+- **Recursive Commands**: The `-r` (or `--recursive`) flag allows you to run scripts in all workspace packages (e.g., `pnpm -r build`).
+- **Filtering**: The `--filter` flag allows you to target specific subsets of packages for commands, based on their name, location, or dependency relationships (e.g., `pnpm --filter <package_name>... test`). This is crucial for efficient CI, allowing you to build only the packages affected by a change.
+
+### Comparison with NPM and Yarn Workspaces
+
+While all three package managers support workspaces, PNPM's implementation is inherently more robust. The combination of its strict, non-flat `node_modules` structure with the `workspace` protocol provides a less error-prone environment. NPM and Yarn workspaces still use a "hoisting" model, which can lead to phantom dependency issues even within a monorepo, where one package can improperly access another's dependencies. PNPM's design philosophy aligns perfectly with the principles of monorepo development: explicitness, efficiency, and integrity.
+
+## Migration Strategies and Command-Line Proficiency
+
+PNPM adoption is designed to be a low-friction process, with dedicated tools to ease the transition and a CLI that maintains familiarity for NPM and Yarn users.
+
+### Installing PNPM
+
+The recommended methods for installing PNPM are via **Corepack**, which is included with modern versions of Node.js, or by using the standalone installation script. Avoiding a global installation via NPM (`npm i -g pnpm`) can prevent potential version conflicts and performance issues related to Node.js startup overhead.
+
+### Migrating from NPM or Yarn
+
+PNPM provides an essential tool for migration: the `pnpm import` command. This command reads an existing `package-lock.json` or `yarn.lock` and generates an equivalent `pnpm-lock.yaml` file, preserving the dependency resolution from the previous package manager and ensuring a smooth transition.
+
+The step-by-step migration process is as follows:
+
+Install PNPM using the recommended method [here](https://pnpm.io/cli/install).
+If it's a monorepo, create the `pnpm-workspace.yaml` file.
+Run `pnpm import` to convert the existing lock file.
+Remove the old lock file (`package-lock.json` or `yarn.lock`) and the `node_modules` folder.
+Run `pnpm install` to install dependencies using the new structure.
+
+To ensure consistency across the team, a `"preinstall": "npx only-allow pnpm"` script can be added to `package.json`, which will prevent developers from accidentally using NPM or Yarn.
+
+## Compatibility, Limitations, and Strategic Solutions
+
+A critical evaluation of PNPM requires acknowledging its limitations, which primarily stem from its divergence from the conventions established by NPM. However, PNPM provides strategic solutions to ensure compatibility within the broader ecosystem.
+
+### The Core Challenge: Symlink Compatibility
+
+The root of most compatibility issues lies in PNPM's symlinked `node_modules` structure. Older or poorly implemented tools that do not correctly follow the Node.js module resolution standard may fail when encountering this structure. Notable examples include:
+
+- **React Native**: Historically, it has struggled with symlinks and often requires a flat structure to work correctly.
+- **Serverless Environments**: Some cloud providers, such as AWS Lambda, do not support symlinks in deployment packages. This requires the application to be bundled before deployment or to use a flat structure.
+- **Legacy Packages**: Packages that implement their own module resolution logic or incorrectly assume the presence of a flat `node_modules` structure may encounter errors.
+
+### The "Escape Hatch": `node-linker=hoisted`
+
+For cases where compatibility is a blocker, PNPM offers a pragmatic "escape hatch." The configuration option `node-linker=hoisted`, set in an `.npmrc` file, instructs PNPM to create a flat `node_modules` structure, identical to that of NPM and Yarn Classic.
+
+Using this setting involves a trade-off: it sacrifices PNPM's primary benefit, namely, strictness and the prevention of phantom dependencies. However, it retains the speed and disk efficiency benefits of the content-addressable store. It is a compromise that enables compatibility where it is strictly necessary.
+
+### Other Limitations
+**Lock Files**: PNPM cannot natively read `package-lock.json` or `yarn.lock` for an installation; they must first be converted with `pnpm import`.
+
+**Peer Dependencies**: PNPM is stricter in resolving peer dependencies than NPM v7+, which may require developers to explicitly install dependencies that were previously auto-installed. While this can be seen as a point of friction, it actually enforces correctness and explicitness, which is a positive feature in itself.
+
+PNPM's main limitation is not a flaw in its own design, but rather a consequence of the ecosystem's historical assumptions, built around NPM's flawed design. PNPM adheres more strictly to the formal Node.js module resolution standard, whereas many tools were implicitly coded against the de facto standard of a flat `node_modules`.
+
+
+## The Future of PNPM: A Roadmap Focused on Security and Developer Experience
+
+PNPM's trajectory, inferred from its recent developments, indicates an evolution beyond a simple package manager, positioning it as a forward-looking tool that continues to innovate in security and developer experience.
+
+### A Proactive Stance on Supply Chain Security
+
+Recent features demonstrate a growing focus on security. The `minimumReleaseAge`setting, introduced in pnpm@10.16, allows teams to delay the installation of newly published package versions. This acts as a safeguard against malicious packages, which are often identified and removed from the registry shortly after their publication. This is a direct response to the growing threat of supply chain attacks in the JavaScript ecosystem.
+
+### Enhancing the Developer Experience
+
+**Integrated Runtime Management**: PNPM can now manage the installation of the JavaScript runtime itself (Node.js, Deno, Bun) via the `devEngines.runtime` field in `package.json`. This further simplifies project setup and ensures consistency between developer environments and CI.
+
+**Continuous Optimization**: Features like `cleanupUnusedCatalogs` show a continued commitment to efficiency and clean state management.
+
+### Vision and Trajectory
+
+The project's direction points toward PNPM becoming a comprehensive, secure, and highly efficient orchestrator for the entire JavaScript development environment, managing not only packages but also the runtimes and the security policies that govern them. While NPM has a public roadmap, PNPM's roadmap is best understood through its rapid release cycle and the nature of its implemented features, which consistently prioritize performance, correctness, and now, security.
+
+PNPM is evolving from a "package manager" to a "project orchestrator." By taking on responsibilities that traditionally belonged to other tools (such as NVM or Volta) or were managed manually, it reduces toolchain complexity and enables a more holistic and declarative definition of a project's environment. This positions PNPM not just as a faster NPM, but as a strategically more powerful and integrated tool for ensuring reproducible and secure builds.
+
+## Conclusion
+
+PNPM represents a significant advancement in Node.js dependency management, not just for its incremental improvements, but for a fundamentally more efficient and robust approach. Its architecture, based on a content-addressable store and the intelligent use of hard and symbolic links, solves the most persistent problems of the ecosystem, including excessive disk consumption and dependency insecurity.
+
+The report demonstrates PNPM's superiority across three essential pillars: speed (blazing fast installs), efficiency (minimal disk usage), and reliability (strict dependency rules). Its benefits are validated by benchmark data and by its growing adoption by leading projects and companies in the industry.
+
+Although PNPM is not (yet) the default tool, its innovative architecture and proven benefits position it as the most logical and modern choice for most new projects and for teams seeking to optimize their development workflow. For any developer concerned with performance at scale, resource efficiency, and the integrity of their codebase, PNPM deserves serious consideration as the package manager for the future.
+
+## References
+
+- [PNPM vs NPM](https://pnpm.io/pnpm-vs-npm)
+- [PNPM benchmarks](https://pnpm.io/benchmarks)
+- [PMPM CLI](https://pnpm.io/pnpm-cli)
+- [PNPM Workspaces](https://pnpm.io/pnpm-workspace_yaml)
+- [PNPM features](https://pnpm.io/workspaces)
+- [NPM vs PNPM vs Yarn](https://rushjs.io/pages/maintainer/package_managers/)
+- [PNPM import](https://pnpm.io/cli/import)
