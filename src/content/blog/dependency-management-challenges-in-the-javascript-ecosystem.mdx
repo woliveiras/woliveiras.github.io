@@ -280,7 +280,7 @@ my-project/
 
 PNPM takes an architectural approach that is, in many ways, the **best of both worlds**: the *disk efficiency* and *speed* of PnP, with the **compatibility** of the `node_modules` folder. Its core innovation lies in its use of content-addressable global storage and intelligent file system handling through *hard links* and *symlinks*.
 
-This approach directly solves the duplication problem. If a developer works on 100 projects that use the same dependency, PNPM stores a single copy and shares it among all of them, eliminating 99 redundant copies. This results in disk space savings of up to 80% in projects with many dependencies according to its researches, making it an ideal solution for developers managing multiple repositories or monorepos.
+This approach directly solves the duplication problem. If a developer works on 100 projects that use the same dependency, PNPM stores a single copy and shares it among all of them, eliminating 99 redundant copies. This results in disk space savings of up to 80% in projects with many dependencies according to its researches, making it an ideal solution for developers managing multiple repositories or [monorepos](/posts/introduction-to-monorepos-managing-large-scale-codebases-efficiently/).
 
 PNPM's granularity is another critical aspect. When a new version of a dependency is installed, and that version has only a minor change to one of its 100 files, PNPM is intelligent enough to add only **that new file** to its store. It doesn't clone the entire dependency just for a single change, which contributes to faster installations and even more efficient disk usage in update operations.
 
