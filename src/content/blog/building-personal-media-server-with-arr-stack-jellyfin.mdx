@@ -1,0 +1,672 @@
+---
+title: "Building a Personal Media Server with the *ARR Stack and Jellyfin: Breaking Free from Streaming Services"
+description: "A comprehensive guide on how I built my own automated media server using Radarr, Sonarr, Prowlarr, Jellyfin, and other open-source tools to create a personal streaming platform and reduce dependency on commercial streaming services."
+pubDate: "Tue Nov 11 16:00:00 2025 +0100"
+published: true
+tags: ["self-hosting", "docker", "automation", "open-source", "media-server"]
+---
+
+The rise of streaming services promised unlimited entertainment at our fingertips. However, as content becomes increasingly fragmented across multiple platforms, subscription costs pile up, and shows disappear without notice, many are reconsidering their relationship with these services. This is my journey of building a personal media server that gives me full control over my entertainment library.
+
+## Why Build Your Own Media Server?
+
+Before diving into the technical details, let me share why I decided to invest time in building this infrastructure:
+
+### The Streaming Fragmentation Problem
+
+What started as Netflix being "everything you need" has evolved into a landscape where:
+
+- Content is split across 5-10 different platforms
+- Monthly costs can exceed $100 when subscribing to multiple services
+- Shows and movies disappear from platforms without warning
+- Licensing agreements mean content availability varies by country
+- **You never truly "own" anything you're paying for**
+
+### Benefits of Self-Hosting
+
+By building my own media server, I gained:
+
+- **Complete ownership** of my media library
+- **No recurring costs** beyond electricity and storage
+- **Unified interface** for all content
+- **Offline access** - no internet dependency
+- **Privacy** - no tracking of viewing habits
+- **Learning opportunity** - deep dive into Docker, networking, and automation
+
+### Challenges of Self-Hosting
+
+Of course, self-hosting isn't without its challenges:
+
+- Initial setup time and learning curve
+- Ongoing maintenance and updates
+- Ensuring legal compliance with content acquisition
+- Hardware requirements (though modest for basic setups)
+- Network configuration for remote access
+- Backup strategies to prevent data loss
+- Security considerations to protect the server
+
+There's no perfect solution, but the benefits far outweigh the drawbacks for me.
+
+## The *ARR Stack and Jellyfin
+
+After researching various tools and solutions, I learned about the *ARR family of applications (Radarr, Sonarr, Lidarr, Prowlarr, Bazarr) combined with Jellyfin for media streaming and qBittorrent as a torrent client. Together, this stack provides a powerful, automated media management system.
+
+All these applications are open-source, actively maintained, and have vibrant communities. They work together to automate the process of finding, downloading, organizing, and streaming media content.
+
+And we can run it all using Docker containers for easy deployment and management in an old computer, old smartphone, a NAS server, or a dedicated media server.
+
+- Radarr: Movie management and automation
+- Sonarr: TV series management and automation
+- Lidarr: Music management and automation
+- Prowlarr: Indexer management for all *ARR apps
+- Bazarr: Subtitle management
+- Jellyfin: Media streaming server
+- Jellyseerr: User-friendly request interface
+- qBittorrent: Torrent client for downloading media
+
+## How I Started
+
+Today I have this `dream setup` running it on a NAS server. I'm using a dedicated server because I also have a lot of game rooms for emulation and retro gaming, so having a separate machine makes sense for me because of the storage and performance needs. But you can run this on any computer that supports Docker, including an old laptop, smartphone, or desktop.
+
+I started by using the Docker Compose files provided in this article to set up the entire stack on my laptop. After saving money for a while, I invested in a dedicated NAS server to host everything 24/7.
+
+My current setup includes:
+
+- **Hardware**: this [UGREEN NASync DXP4800 Plus](https://amzn.to/4hRBJc9) with 4 bays, Intel Pentium Gold 8505, 8GB DDR5, 128GB SSD, 10GbE & 2,5GbE networking
+- **Storage**: 2x 2TB [WD Red Plus](https://amzn.to/4hRBQV7)
+- **Operating System**: UGREEN UGOS Pro (Linux-based)
+- **Docker & Docker Compose**: For container management
+- **Network**: Wired Ethernet connection for stability
+- **Tailscale VPN**: For secure remote access
+
+The UGREEN NASync DXP4800 Plus is expensive because this hardware is very extensible and has great performance for a NAS device, which means I'll be using it for many years to come. If you're looking for more budget-friendly options, consider these alternatives:
+
+- [UGREEN NASync DXP2800](https://amzn.to/4nKW7gp) - 2 bays, CPU Intel N100, 8GB DDR5, 2,5 GbE networking
+- [UGREEN NASync DH2300](https://amzn.to/3LEdFgC) - 2 bays, ARM RK3576, 4GB RAM, 1GbE networking
+- [Synology DS223](https://amzn.to/4hZnGkS) - 2 bays, CPU Realtek RTD1619B, 2 GB RAM DDR4
+- [Synology DS124](https://amzn.to/3JOaemY) - 1 bay, 	CPU Realtek RTD1619B, 1 GB RAM DDR4
+
+## The Stack*RR Project
+
+As I'm using Docker and Docker Compose to manage all these services, I wanted to create a reproducible and easy-to-deploy solution for others interested in building their own media server. To simplify deployment and configuration, I created an open-source project called [Stack*RR](https://github.com/woliveiras/stack-rr).
+
+Stack*RR provides a complete, automated media server setup. The project offers two configurations:
+
+1. **Simple Stack**: Basic setup without VPN
+2. **VPN Stack**: Enhanced privacy with integrated VPN routing
+
+Let me walk you through the architecture and how the components work together.
+
+## Core Components
+
+### The *ARR Applications Suite
+
+The backbone of my media server automation comes from the *ARR family of applications:
+
+#### Radarr - Movie Management
+
+Radarr is your intelligent movie manager that monitors for new movie releases and searches indexers automatically when movies become available. Once it finds what you're looking for, it sends download requests to your torrent client, then organizes and renames files consistently while updating metadata for your media server. It's like having a personal assistant dedicated exclusively to managing your movie collection.
+
+#### Sonarr - TV Series Management
+
+Sonarr works similarly to Radarr but is specialized for TV series. It tracks TV show schedules and automatically downloads new episodes when they air, managing everything from season packs to individual episode collections. The tool handles series naming conventions automatically and monitors show statuses, whether they're continuing, ended, or on hiatus.
+
+#### Lidarr - Music Management
+
+For music enthusiasts, Lidarr brings the same automation philosophy to your music collection. It manages artists and albums, monitors for new releases, and integrates with music indexers to automatically download and organize your music library by artist and album structure.
+
+#### Prowlarr - The Indexer Manager
+
+Prowlarr is the central hub that makes everything work seamlessly. Instead of configuring indexers separately for each *ARR application, Prowlarr manages all your indexers (torrent sites, Usenet, and more) in one place and automatically syncs them to Radarr, Sonarr, Lidarr, and LazyLibrarian. This provides a unified search across all sources and dramatically simplifies your setup.
+
+> What is an indexer?
+>
+> An indexer is a service that catalogs and indexes media content available on torrent or Usenet sites.
+> It allows applications like Radarr and Sonarr to search for specific movies or TV shows across multiple sources quickly and efficiently.
+> By using indexers, these applications can automate the process of finding and downloading media content without manual searching.
+> Examples of popular indexers include 1337x, The Pirate Bay, RARBG, and NZBGeek.
+
+#### Bazarr - Subtitle Management
+
+Often overlooked but incredibly valuable, Bazarr automatically downloads subtitles for your movies and TV shows in multiple languages. It integrates directly with Radarr and Sonarr and even synchronizes subtitles with video timing to ensure perfect playback.
+
+### Media Streaming and Requests
+
+#### Jellyfin - Your Personal Netflix
+
+Jellyfin is the heart of your streaming experience, providing a beautiful, modern user interface accessible from apps on all platforms including Web, iOS, Android, Smart TVs, and Roku. It supports multiple user profiles with viewing restrictions, hardware transcoding for optimal streaming, and DLNA support for legacy devices. Jellyfin scans your organized media folders, fetches metadata, and presents your library, making it easy to find and enjoy your content.
+
+#### Jellyseerr - The Request Interface
+
+Jellyseerr is a game-changer for family and shared servers. With its beautiful Plex/Overseerr-style interface, users can request movies and TV shows without needing to understand how the system works. You can approve or deny requests (perfect for parental control), and the system shows request status and availability while notifying users when content is ready. It integrates seamlessly with Radarr, Sonarr, and Lidarr.
+
+### Download Management
+
+#### qBittorrent
+
+qBittorrent serves as your download client with a web-based interface supporting the BitTorrent protocol. It offers category-based organization, integrates seamlessly with all *ARR apps, and can be routed through VPN for privacy, making it the perfect solution for your automated downloads.
+
+### Privacy Layer (VPN Stack)
+
+#### Gluetun - VPN Gateway
+
+For the VPN-enabled stack, Gluetun provides comprehensive privacy protection with support for over 60 VPN providers using both WireGuard and OpenVPN protocols. It includes kill switch functionality and port forwarding support, routing all traffic from *ARR apps and qBittorrent through the VPN. It even provides an HTTP proxy on port 8888 for additional flexibility.
+
+#### FlareSolverr - Cloudflare Bypass
+
+Many indexers use Cloudflare protection to prevent automated access. FlareSolverr elegantly bypasses CAPTCHA and JavaScript challenges, integrating with Prowlarr and running through VPN for additional privacy. This ensures your automated searches work smoothly even with protected indexers.
+
+## How It All Works Together
+
+Here's the complete automation workflow:
+
+```
+1. User Request
+   ↓
+2. Request added via Jellyseerr or directly in Radarr/Sonarr
+   ↓
+3. Radarr/Sonarr queries Prowlarr for sources
+   ↓
+4. Prowlarr searches all configured indexers
+   ↓
+5. FlareSolverr bypasses Cloudflare protection if needed
+   ↓
+6. Results returned to Radarr/Sonarr
+   ↓
+7. Best match sent to qBittorrent as download
+   ↓
+8. qBittorrent downloads (via VPN if configured)
+   ↓
+9. Upon completion, files moved to media folder
+   ↓
+10. Radarr/Sonarr renames and organizes files
+   ↓
+11. Jellyfin scans folder and adds to library
+   ↓
+12. Bazarr automatically downloads subtitles
+   ↓
+13. Content available in Jellyfin for streaming
+```
+
+### Network Architecture
+
+#### Simple Stack (No VPN)
+
+All services run on a Docker bridge network named `media`:
+
+```
+Docker Network: "media"
+├── Radarr (7878)
+├── Sonarr (8989)
+├── Lidarr (8686)
+├── LazyLibrarian (5299)
+├── Prowlarr (9696)
+├── Bazarr (6767)
+├── qBittorrent (8081)
+├── Jellyfin (8096)
+└── Jellyseerr (5055)
+```
+
+It’s straightforward and efficient for local network access.
+
+#### VPN Stack Architecture
+
+The VPN stack uses a more sophisticated setup:
+
+```
+Gluetun VPN Gateway
+├── Services routed through VPN:
+│   ├── qBittorrent (anonymous torrenting)
+│   ├── Prowlarr (hidden indexer requests)
+│   ├── FlareSolverr (bypass detection)
+│   ├── Radarr, Sonarr, Lidarr
+│   └── LazyLibrarian, Bazarr
+│
+└── Local Bridge Network:
+    ├── Jellyfin (fast local streaming)
+    └── Jellyseerr (local web interface)
+```
+
+This architecture ensures that torrent traffic remains always anonymous while indexer searches are hidden from your ISP. Meanwhile, streaming stays fast on your local network without any VPN overhead for media playback, giving you the best of both worlds: privacy where you need it and performance where it matters.
+
+### Storage Structure
+
+The project uses a centralized directory structure:
+
+```
+$ARRPATH (e.g., /media/)
+├── config/              # Persistent app configurations
+│   ├── radarr/
+│   ├── sonarr/
+│   ├── lidarr/
+│   ├── lazylibrarian/
+│   ├── bazarr/
+│   ├── prowlarr/
+│   ├── qbittorrent/
+│   ├── jellyfin/
+│   ├── jellyseerr/
+│   ├── gluetun/         # VPN stack only
+│   └── flaresolverr/    # VPN stack only
+│
+├── data/                # Media content
+│   ├── downloads/       # qBittorrent download folder
+│   ├── movies/          # Processed by Radarr
+│   ├── tvshows/         # Processed by Sonarr
+│   ├── music/           # Processed by Lidarr
+│   └── books/           # Processed by LazyLibrarian
+│
+└── backup/              # Application backups
+    ├── radarr/
+    ├── sonarr/
+    └── prowlarr/
+```
+
+## Getting Started
+
+If you're interested in setting up your own media server using the Stack*RR project, here's a step-by-step guide to get you started.
+
+### Prerequisites
+
+You'll need:
+
+- A computer/server running Linux, macOS, or Windows
+- Docker and Docker Compose installed
+- At least 2-4GB RAM for the containers
+- Sufficient disk space for media and configurations
+- Stable internet connection
+
+### Installation Steps
+
+1. **Clone the repository**:
+
+```bash
+git clone https://github.com/woliveiras/stack-rr.git
+cd stack-rr
+```
+
+2. **Choose your stack**:
+
+For the basic setup:
+```bash
+cd simple
+```
+
+For VPN-enabled setup:
+```bash
+cd vpn
+```
+
+3. **Configure environment variables**:
+
+```bash
+cp .env.example .env
+vim .env
+```
+
+Essential variables to configure:
+
+```env
+# Project configuration
+COMPOSE_PROJECT_NAME=serverr
+
+# Base path (IMPORTANT: must end with /)
+ARRPATH=/media/
+
+# Timezone (find yours at https://www.timeanddate.com/time/map/)
+TZ=America/Sao_Paulo
+
+# User permissions
+PUID=1000  # Run: id -u
+PGID=1000  # Run: id -g
+UMASK=002
+```
+
+For VPN stack, also configure:
+
+```env
+VPN_SERVICE_PROVIDER=nordvpn  # or your provider
+VPN_TYPE=wireguard
+WIREGUARD_PRIVATE_KEY=your_private_key
+WIREGUARD_PUBLIC_KEY=your_public_key
+VPN_PORT_FORWARDING=on
+```
+
+You'll need to get your WireGuard keys from your VPN provider. Some providers also support OpenVPN if you prefer that.
+
+
+4. **Create directory structure**:
+
+```bash
+mkdir -p /media/{config,data,backup}
+mkdir -p /media/data/{downloads,movies,tvshows,music,books}
+```
+
+5. **Start the stack**:
+
+```bash
+docker-compose up -d
+```
+
+6. **Verify services are running**:
+
+```bash
+docker-compose ps
+```
+
+### Initial Configuration
+
+#### 1. qBittorrent Setup
+
+For getting the qBittorrent password, you'll need to check the logs:
+
+```bash
+docker-compose logs qbittorrent
+```
+
+Access `http://localhost:8081`:
+
+- Login with the credentials from the logs (default username: `admin`, password: from logs)
+- Change password immediately: Tools → Options → Web UI
+
+#### 2. Prowlarr - Configure Indexers
+
+Access `http://localhost:9696`:
+
+1. Add indexers: Indexers → Add Indexer
+2. Search for popular public indexers (1337x, The Pirate Bay, RARBG, etc.)
+3. For private trackers, enter your credentials
+4. Configure FlareSolverr (VPN stack):
+   - Settings → Indexers → FlareSolverr Tags
+   - URL: `http://flaresolverr:8191`
+
+5. Connect *ARR apps:
+   - Settings → Apps → Add Application
+   - Add Radarr: `http://radarr:7878`
+   - Add Sonarr: `http://sonarr:8989`
+   - Add Lidarr: `http://lidarr:8686`
+   - Get API keys from each app: Settings → General → API Key
+
+#### 3. Radarr - Movie Library Setup
+
+Access `http://localhost:7878`:
+
+1. Settings → Media Management → Add Root Folder: `/data/movies`
+2. Settings → Download Clients → Add → qBittorrent:
+   - Host: `qbittorrent`
+   - Port: `8081`
+   - Username: `admin`
+   - Password: (your changed password)
+3. Indexers should auto-populate from Prowlarr
+4. Add your first movie: Movies → Add New
+
+#### 4. Sonarr - TV Series Setup
+
+Access `http://localhost:8989`:
+
+1. Settings → Media Management → Add Root Folder: `/data/tvshows`
+2. Settings → Download Clients → Add → qBittorrent:
+   - Host: `qbittorrent`
+   - Port: `8081`
+   - Username: `admin`
+   - Password: (your password)
+3. Add your first series: Series → Add New
+
+#### 5. Bazarr - Subtitle Configuration
+
+Access `http://localhost:6767`:
+
+1. Settings → Languages: Add your preferred languages
+2. Settings → Providers: Add subtitle providers (OpenSubtitles, etc.)
+3. Settings → Radarr:
+   - Address: `http://radarr:7878`
+   - API Key: (from Radarr)
+4. Settings → Sonarr:
+   - Address: `http://sonarr:8989`
+   - API Key: (from Sonarr)
+
+#### 6. Jellyfin - Media Server Setup
+
+Access `http://localhost:8096`:
+
+1. Complete initial setup wizard
+2. Create admin account
+3. Add media libraries:
+   - Movies: `/data/movies`
+   - TV Shows: `/data/tvshows`
+   - Music: `/data/music` (if using Lidarr)
+4. Configure metadata providers
+5. Set up users and profiles
+
+#### 7. Jellyseerr - Request System
+
+Access `http://localhost:5055`:
+
+1. Sign in with Jellyfin admin account
+2. Connect to Jellyfin:
+   - URL: `http://jellyfin:8096`
+3. Connect to Radarr:
+   - URL: `http://radarr:7878`
+   - API Key: (from Radarr)
+   - Root Folder: `/data/movies`
+   - Quality Profile: Any
+4. Connect to Sonarr:
+   - URL: `http://sonarr:8989`
+   - API Key: (from Sonarr)
+   - Root Folder: `/data/tvshows`
+   - Quality Profile: Any
+5. Configure notification settings (optional)
+
+## Advanced Topics
+
+### Backup Strategy
+
+The Stack*RR project includes backup directories for critical configurations. Here's a proper backup approach using a script:
+
+```bash
+#!/bin/bash
+# backup-stack-rr.sh - Backup all *ARR configurations
+
+BACKUP_DIR="/media/backup"
+DATE=$(date +%Y%m%d)
+
+# Backup configurations
+docker exec radarr tar czf /data/backup/radarr-${DATE}.tar.gz -C /config .
+docker exec sonarr tar czf /data/backup/sonarr-${DATE}.tar.gz -C /config .
+docker exec prowlarr tar czf /data/backup/prowlarr-${DATE}.tar.gz -C /config .
+docker exec lidarr tar czf /data/backup/lidarr-${DATE}.tar.gz -C /config .
+docker exec bazarr tar czf /data/backup/bazarr-${DATE}.tar.gz -C /config .
+
+# Cleanup backups older than 7 days
+find ${BACKUP_DIR}/radarr-* -mtime +7 -delete 2>/dev/null
+find ${BACKUP_DIR}/sonarr-* -mtime +7 -delete 2>/dev/null
+find ${BACKUP_DIR}/prowlarr-* -mtime +7 -delete 2>/dev/null
+find ${BACKUP_DIR}/lidarr-* -mtime +7 -delete 2>/dev/null
+find ${BACKUP_DIR}/bazarr-* -mtime +7 -delete 2>/dev/null
+
+echo "Backup completed: $(date)"
+```
+
+Make the script executable and schedule it with cron:
+
+```bash
+chmod +x backup-stack-rr.sh
+
+# Add to crontab (runs daily at 3 AM)
+# crontab -e
+# 0 3 * * * /path/to/backup-stack-rr.sh >> /var/log/stack-rr-backup.log 2>&1
+```
+
+### Updating Services
+
+Keep your stack up to date:
+
+```bash
+# Pull latest images
+docker-compose pull
+
+# Recreate containers with new images
+docker-compose up -d
+
+# Remove old images
+docker image prune -a
+```
+
+### Performance Optimization
+
+#### Hardware Transcoding in Jellyfin
+
+For Intel systems with Quick Sync:
+
+```yaml
+jellyfin:
+  devices:
+    - /dev/dri:/dev/dri  # Intel Quick Sync
+```
+
+For NVIDIA GPUs:
+
+```yaml
+jellyfin:
+  runtime: nvidia
+  environment:
+    - NVIDIA_VISIBLE_DEVICES=all
+```
+
+#### Storage Recommendations
+
+- **SSD for configs**: Faster database operations
+- **HDD for media**: Cost-effective large storage
+- **RAID setup**: For data redundancy (not backup!)
+
+## Troubleshooting
+
+### Common Issues
+
+#### Permission Errors
+
+If you see permission errors:
+
+```bash
+# Find your user ID and group ID
+id -u  # Should be 1000 typically
+id -g  # Should be 1000 typically
+
+# Update PUID and PGID in .env
+# Recreate containers
+docker-compose down && docker-compose up -d
+```
+
+#### Services Can't Reach Each Other
+
+Check they're on the same network:
+
+```bash
+docker network inspect media
+```
+
+Use container names, not `localhost`:
+- ✅ `http://radarr:7878`
+- ❌ `http://localhost:7878`
+
+#### Downloads Not Moving to Media Folder
+
+Check qBittorrent settings:
+- Default Save Path: `/downloads`
+- Category paths properly configured in Radarr/Sonarr
+
+#### VPN Connection Issues
+
+Verify VPN credentials:
+
+```bash
+docker-compose logs gluetun | grep -i error
+```
+
+Test VPN connection:
+
+```bash
+docker-compose exec gluetun curl ifconfig.me
+# Should show VPN provider IP, not your home IP
+```
+
+#### Indexers Not Working
+
+For Cloudflare-protected indexers:
+- Ensure FlareSolverr is running
+- Add FlareSolverr tag to indexers in Prowlarr
+- Check FlareSolverr logs
+
+### Useful Docker Commands
+
+```bash
+# View logs
+docker-compose logs -f radarr
+
+# Restart a service
+docker-compose restart sonarr
+
+# Enter container shell
+docker-compose exec prowlarr /bin/bash
+
+# Check resource usage
+docker stats
+
+# Remove everything and start fresh
+docker-compose down -v
+```
+
+## Legal Considerations
+
+### Important Disclaimer
+
+This article describes technology for managing a personal media library. It's crucial to understand the legal implications:
+
+**Legal Uses**:
+- Backing up media you legally own (DVDs, Blu-rays)
+- Accessing public domain content
+- Content with Creative Commons licenses
+- Personal recordings and home videos
+
+**Demonstration**:
+The Stack*RR repository includes examples using public domain content:
+- Public domain films from Archive.org
+- Creative Commons licensed content
+- Open-source documentaries
+
+**Your Responsibility**:
+- Understand copyright laws in your jurisdiction
+- Only download content you have the right to access
+- Respect content creators and support them when possible
+- Use VPN services in compliance with their terms of service
+
+## Future Enhancements
+
+### Planned Additions
+
+I'm considering adding:
+
+1. **Tdarr**: Automated transcoding to save space
+2. **Overseerr**: Alternative to Jellyseerr with more features
+3. **Notifiarr**: Advanced notification system
+4. **Nginx Proxy Manager**: Easier reverse proxy management
+5. **Portainer**: Docker management GUI
+6. **Homarr**: Dashboard for all services
+
+### Community Contributions
+
+The [Stack*RR project](https://github.com/woliveiras/stack-rr) is open source and welcomes contributions:
+- Feature requests
+- Bug reports
+- Documentation improvements
+- Alternative configurations
+- Integration examples
+
+## Conclusion
+
+Building a personal media server with the *ARR stack and Jellyfin has fundamentally transformed how I consume media. The initial time investment has paid off tremendously through significant cost savings by eliminating multiple streaming subscriptions, the convenience of having everything centralized in one place, and complete ownership of my content without any external dependencies.
+
+Beyond the practical benefits, I've gained invaluable technical skills in Docker orchestration, networking, and system administration, while enjoying the peace of mind that comes from knowing my viewing habits aren't being tracked or monetized. Perhaps most importantly, I never have to worry about content suddenly disappearing from my library due to licensing changes or platform decisions.
+
+If you've been frustrated with the fragmentation and cost of streaming services, I encourage you to explore self-hosting your own media server. The Stack*RR project provides everything you need to get started, and the open-source community is there to help along the way.
+
+Happy streaming!
