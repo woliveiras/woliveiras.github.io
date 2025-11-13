@@ -22,7 +22,7 @@
     "@astrojs/tailwind": "^6.0.2",
     "@shikijs/transformers": "^3.12.2",
     "@tailwindcss/forms": "^0.5.10",
-    "astro": "^5.13.8",
+    "astro": "^5.15.6",
     "astro-custom-embeds": "^0.0.1",
     "astro-og-canvas": "^0.7.0",
     "astro-pagefind": "^1.8.5",
