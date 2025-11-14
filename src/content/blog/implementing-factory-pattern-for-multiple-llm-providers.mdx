@@ -1,0 +1,777 @@
+---
+title: "How to Implement Multiple LLM Providers in AI Applications Using the Factory Pattern"
+description: "A deep dive into building a scalable, environment-driven architecture for integrating multiple LLM providers using the Factory pattern. Learn how to abstract provider differences, manage configurations, and build production-ready AI applications that can switch between OpenAI, Anthropic, Google Gemini, and local models without code changes."
+pubDate: "Thu Nov 13 21:57:50 2025 +0100"
+published: true
+tags: ["engineering", "architecture", "python", "ai-engineering", "llm", "langchain", "design-patterns"]
+---
+
+While building AI applications, we need to integrate with large language model (LLM) providers. As the ecosystem of LLMs has expanded, and the companies offering them have proliferated, we start to be able to choose between multiple providers based on cost, performance, and capabilities. However, this choice introduces complexity in application architecture. Each provider has its own client libraries, configuration requirements, and operational characteristics.
+
+I'm recently working on building a medical pre-screening assistant that needed to support five different LLM providers: OpenAI, Anthropic, Google Gemini, Groq, and local Ollama deployments. The application needed to switch between these providers based purely on environment configuration, without requiring code changes or redeployment. This requirement led me to implement a Factory pattern architecture that has proven robust in production use.
+
+The challenge was not merely technical integration. Each provider has different authentication mechanisms, configuration requirements, and client libraries. OpenAI uses API keys with straightforward initialization. Anthropic requires specific model versioning patterns. Google Gemini has unique token limit configurations. Ollama runs entirely locally with base URL requirements. Managing these differences while maintaining a consistent interface for the application layer required careful architectural consideration.
+
+In this article, I will walk through the complete architecture of this multi-provider LLM system. We will explore the Factory pattern implementation, examine how environment-driven configuration enables zero-downtime provider switching, and discuss the production considerations that make this approach valuable for real-world applications.
+
+If you don't have experience with some design patterns here, I would recommend reading the [refactoring.guru design patterns catalog](https://refactoring.guru/design-patterns/abstract-factory) and the book [Patterns of Enterprise Application Architecture](https://amzn.to/3LDcMVH) by Martin Fowler after this article.
+
+## The Problem Space: Provider Heterogeneity in LLM Integration
+
+Before diving into the solution, we must understand the specific challenges that arise when integrating multiple LLM providers. Unlike traditional API integrations where HTTP clients and REST conventions provide reasonable uniformity, LLM providers exhibit significant differences in their client implementations, even when using a common abstraction layer like LangChain.
+
+Consider the initialization requirements across providers. OpenAI's `ChatOpenAI` requires an API key and model name, with optional parameters for temperature and token limits. The client handles authentication through headers automatically. Anthropic's `ChatAnthropic` uses a similar pattern but employs different model naming conventions and has distinct token counting behaviors. Google's `ChatGoogleGenerativeAI` requires not just an API key but also has different defaults for safety settings and generation parameters. Groq (this is not the same as Grok), while using the OpenAI API specification, requires different base URLs and has varying model availability. Ollama, running locally, needs base URL configuration and has no API key requirement at all.
+
+These differences extend beyond initialization. Error handling varies significantly between providers. OpenAI returns structured error responses with specific error codes. Anthropic has different rate limiting behaviors and error formats. Gemini may throw exceptions for safety filter violations that other providers would handle differently. Ollama can fail with connection errors if the local service is not running, a failure mode that cloud providers never exhibit.
+
+Configuration management becomes complex when parameters have different meanings across providers. Temperature values, while nominally standardized between zero and one, behave differently across models. Token limits are specified differently, with some providers counting input and output tokens separately and others combining them. Some providers support streaming by default, while others require explicit configuration.
+
+The business requirement compounds these technical challenges. In development, we want to use local Ollama deployments to avoid API costs and enable offline development. In staging, we might use Groq for its generous free tier and fast inference. In production, we need the flexibility to choose between the providers for cost optimization. The application code should remain identical across these environments, with only configuration changing.
+
+This is precisely the problem the Factory pattern addresses. We need a creation mechanism that encapsulates the conditional logic of provider instantiation, a uniform interface that hides provider-specific details from the application layer, and a configuration system that drives provider selection without code changes.
+
+## Designing the Abstract Base Provider
+
+The foundation of our multi-provider architecture is an abstract base class that defines the contract all providers must fulfill. This contract must be sufficiently generic to accommodate the differences between providers while providing enough structure to make the providers interchangeable from the application's perspective.
+
+Our BaseLLMProvider uses Python's ABC (Abstract Base Class) module to enforce this contract. The abstraction centers on a single critical method: `get_llm()`, which returns a LangChain-compatible chat model instance. This design decision help us because it pushes provider-specific complexity down to the concrete implementations while giving the application layer a consistent interface.
+
+Let's examine the base class implementation:
+
+```python
+from abc import ABC, abstractmethod
+from typing import Any
+
+
+class BaseLLMProvider(ABC):
+    """Abstract base class for LLM providers."""
+
+    def __init__(self, **kwargs):
+        """Initialize the provider with configuration."""
+        self.config = kwargs
+
+    @abstractmethod
+    def get_llm(self) -> Any:
+        """
+        Get the LangChain-compatible LLM instance.
+
+        Returns:
+            LangChain LLM instance (ChatOpenAI, ChatGoogleGenerativeAI, etc.)
+        """
+        pass
+
+    @property
+    @abstractmethod
+    def provider_name(self) -> str:
+        """Return the provider name."""
+        pass
+
+    @property
+    def supports_streaming(self) -> bool:
+        """Return whether this provider supports streaming."""
+        return True
+```
+
+The constructor accepts arbitrary keyword arguments and stores them in a config dictionary. This flexibility is essential because each provider requires different configuration parameters. By accepting `**kwargs`, we push the responsibility for parameter validation down to concrete implementations where it belongs.
+
+The `get_llm()` method returns `Any` rather than a specific type because LangChain's provider implementations do not share a common base class in their type system. In practice, all providers return instances that implement the `BaseChatModel` protocol, but typing this explicitly would require complex Protocol definitions that provide little practical value. The critical point is that all returned instances are compatible with LangChain's message-based invocation pattern.
+
+The `provider_name` property enables logging, debugging, and monitoring. When troubleshooting issues in production, knowing which provider handled a particular request is essential. This property also enables runtime provider listing and discovery, which we will examine later.
+
+The `supports_streaming` property has a default implementation that returns True, reflecting the reality that most modern LLM providers support streaming responses. Concrete implementations can override this if needed, though in practice, streaming support is ubiquitous enough that the default suffices.
+
+This abstraction is deliberately minimal. Earlier iterations included methods for token counting, cost estimation, and rate limit handling. These proved to be premature optimizations that added complexity without corresponding value. Token counting varies so dramatically between providers that a unified interface provided little benefit. Cost estimation requires provider-specific pricing data that changes frequently. Rate limiting is best handled by the providers' own client libraries, which implement exponential backoff and retry logic specific to each service.
+
+So, maybe, in the future we could extend the base class with additional methods if a common need arises. For now, however, the simplicity of this interface is its strength. It provides just enough structure to enable polymorphism without overcomplicating the design.
+
+The strength of this base class is its restraint. It defines the minimum contract necessary for provider interchangeability without attempting to abstract away all differences. Some differences, like model-specific capabilities or provider-specific features, should remain explicit in the application layer rather than hidden behind a leaky abstraction.
+
+## Implementing Concrete Providers
+
+With our abstract interface defined, we can implement concrete providers for each LLM service. Each implementation follows the same pattern: validate required configuration, initialize provider-specific parameters, and return a configured LangChain client. The implementations reveal both the consistency enabled by our abstraction and the necessary divergence required by each provider's unique characteristics.
+
+Let us examine the Gemini provider implementation as a representative example:
+
+```python
+from langchain_google_genai import ChatGoogleGenerativeAI
+from src.providers.base import BaseLLMProvider
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+class GeminiProvider(BaseLLMProvider):
+    """Google Gemini provider."""
+
+    def __init__(
+        self,
+        api_key: str,
+        model: str = "gemini-2.5-flash",
+        temperature: float = 0.7,
+        max_tokens: int = 1024,
+        **kwargs
+    ):
+        """
+        Initialize Gemini provider.
+
+        Args:
+            api_key: Google AI API key
+            model: Model name (e.g., 'gemini-2.5-flash', 'gemini-2.5-pro')
+            temperature: Sampling temperature
+            max_tokens: Maximum tokens to generate
+            **kwargs: Additional configuration
+
+        Raises:
+            ValueError: If api_key is empty or invalid
+        """
+        if not api_key or not api_key.strip():
+            raise ValueError("Gemini API key is required and cannot be empty")
+
+        super().__init__(
+            api_key=api_key,
+            model=model,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            **kwargs
+        )
+        logger.info(f"Initializing Gemini provider with model: {model}")
+
+    def get_llm(self) -> ChatGoogleGenerativeAI:
+        """Get Gemini LLM instance."""
+        return ChatGoogleGenerativeAI(
+            api_key=self.config["api_key"],
+            model=self.config["model"],
+            temperature=self.config["temperature"],
+            max_tokens=self.config["max_tokens"]
+        )
+
+    @property
+    def provider_name(self) -> str:
+        """Return provider name."""
+        return "gemini"
+```
+
+If you don't understand the models settings and inference parameters, check these articles:
+
+- [Understanding the Naming Conventions of Large Language Models](/posts/understanding-the-naming-conventions-of-large-language-models/)
+- [A Beginner's Guide to Controlling LLM Behavior with Inference Parameters](/posts/beginners-guide-to-controlling-llm-behavior-inference-parameters/)
+
+The constructor signature explicitly declares required and optional parameters. This explicitness serves multiple purposes. It provides IDE autocomplete and type checking during development. It generates clear documentation through docstrings. Most importantly, it enables validation at the provider boundary, failing fast with meaningful error messages rather than propagating configuration errors deeper into the application.
+
+The API key validation demonstrates defensive programming appropriate for production systems. We check not just for the presence of the parameter but also for meaningful content, catching configuration errors like accidentally setting the API key to an empty string or whitespace. The error message is specific and actionable, immediately pointing developers to the configuration problem. We coud also validate the key format with regex, but that would risk false negatives if the provider changes key formats in the future, making the validation brittle and the need for refactoring.
+
+After validation, we delegate to the parent constructor, passing all configuration as keyword arguments. This preserves the configuration in `self.config` for use in `get_llm()`. The separation between construction and LLM instantiation is deliberate. Construction happens once during application startup, while `get_llm()` might be called multiple times if the application needs to create fresh instances. This pattern also facilitates testing, as we can instantiate providers without triggering potentially expensive or side-effect-laden LLM client creation.
+
+The `get_llm()` method pulls configuration from the stored dictionary and instantiates the LangChain client. The method is pure, meaning it has no side effects and can be called repeatedly. LangChain clients are lightweight and do not maintain persistent connections in most cases, so creating new instances is inexpensive.
+
+The OpenAI provider follows an identical pattern with minor variations:
+
+```python
+from langchain_openai import ChatOpenAI
+from src.providers.base import BaseLLMProvider
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+class OpenAIProvider(BaseLLMProvider):
+    """OpenAI provider."""
+
+    def __init__(
+        self,
+        api_key: str,
+        model: str = "gpt-5-mini",
+        temperature: float = 0.7,
+        max_tokens: int = 1024,
+        **kwargs
+    ):
+        """
+        Initialize OpenAI provider.
+
+        Args:
+            api_key: OpenAI API key
+            model: Model name (e.g., 'gpt-5-mini', 'gpt-5.1', 'gpt-5-nano')
+            temperature: Sampling temperature
+            max_tokens: Maximum tokens to generate
+            **kwargs: Additional configuration
+
+        Raises:
+            ValueError: If api_key is empty or invalid
+        """
+        if not api_key or not api_key.strip():
+            raise ValueError("OpenAI API key is required and cannot be empty")
+
+        super().__init__(
+            api_key=api_key,
+            model=model,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            **kwargs
+        )
+        logger.info(f"Initializing OpenAI provider with model: {model}")
+
+    def get_llm(self) -> ChatOpenAI:
+        """Get OpenAI LLM instance."""
+        return ChatOpenAI(
+            api_key=self.config["api_key"],
+            model=self.config["model"],
+            temperature=self.config["temperature"],
+            max_tokens=self.config["max_tokens"]
+        )
+
+    @property
+    def provider_name(self) -> str:
+        """Return provider name."""
+        return "openai"
+```
+
+The similarity is intentional and beneficial. When providers share structure, code review becomes easier, maintenance burden decreases, and developer cognitive load reduces. The differences that do exist, primarily in default model names and the imported LangChain class, are necessary and meaningful.
+
+The Ollama provider demonstrates how the abstraction accommodates fundamentally different providers:
+
+```python
+from langchain_ollama import ChatOllama
+from src.providers.base import BaseLLMProvider
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+class OllamaProvider(BaseLLMProvider):
+    """Ollama provider for local LLM inference."""
+
+    def __init__(
+        self,
+        model: str = "deepseek-r1:8b",
+        base_url: str = "http://localhost:11434",
+        temperature: float = 0.7,
+        **kwargs
+    ):
+        """
+        Initialize Ollama provider.
+
+        Args:
+            model: Model name (e.g., 'deepseek-r1', 'mistral', 'neural-chat')
+            base_url: Ollama server URL
+            temperature: Sampling temperature
+            **kwargs: Additional configuration
+        """
+        super().__init__(
+            model=model,
+            base_url=base_url,
+            temperature=temperature,
+            **kwargs
+        )
+        logger.info(f"Initializing Ollama provider with model: {model}")
+
+    def get_llm(self) -> ChatOllama:
+        """Get Ollama LLM instance."""
+        return ChatOllama(
+            model=self.config["model"],
+            base_url=self.config["base_url"],
+            temperature=self.config["temperature"],
+        )
+
+    @property
+    def provider_name(self) -> str:
+        """Return provider name."""
+        return "ollama"
+```
+
+Notice that Ollama has no API key parameter. It requires a base_url instead, defaulting to the standard local Ollama service address. The constructor does not perform API key validation because none is needed. This demonstrates how our abstraction accommodates both cloud-based API providers and local deployment scenarios without forcing unnecessary parameters.
+
+The validation strategy also differs. For cloud providers, we validate API keys eagerly at construction time because invalid keys are unambiguous failures. For Ollama, we cannot validate connectivity at construction time without introducing network I/O and timing dependencies. Instead, we rely on the ChatOllama client to fail explicitly when invoked if the service is unavailable. This is appropriate because Ollama availability may change during application runtime as users start and stop the local service.
+
+Each provider implementation is self-contained, importing only its specific LangChain integration and depending only on the base class. This modularity means we can add new providers without modifying existing ones, adhering to the open-closed principle. When someone adds a LangChain integration, we can add support by creating a new provider class without touching existing code.
+
+## Building the Factory Function
+
+With our provider implementations complete, we need a creation mechanism that selects and instantiates the appropriate provider based on configuration. This is where the Factory pattern manifests explicitly through a factory function that encapsulates provider selection logic.
+
+The factory implementation uses a provider registry, which is simply a dictionary mapping provider names to their corresponding classes. This registry provides a single source of truth for available providers and enables runtime discovery of capabilities:
+
+```python
+from typing import Dict, Type
+from src.providers.base import BaseLLMProvider
+from src.providers.ollama import OllamaProvider
+from src.providers.gemini import GeminiProvider
+from src.providers.openai import OpenAIProvider
+from src.providers.anthropic import AnthropicProvider
+from src.providers.groq import GroqProvider
+import logging
+
+logger = logging.getLogger(__name__)
+
+# Registry of available providers
+PROVIDER_REGISTRY: Dict[str, Type[BaseLLMProvider]] = {
+    "ollama": OllamaProvider,
+    "gemini": GeminiProvider,
+    "openai": OpenAIProvider,
+    "anthropic": AnthropicProvider,
+    "groq": GroqProvider,
+}
+
+
+def get_llm_provider(provider_name: str, **kwargs) -> BaseLLMProvider:
+    """
+    Factory function to get an LLM provider instance.
+
+    Args:
+        provider_name: Name of the provider (ollama, gemini, openai, anthropic, groq)
+        **kwargs: Provider-specific configuration
+
+    Returns:
+        BaseLLMProvider instance
+
+    Raises:
+        ValueError: If provider is not supported
+
+    Examples:
+        >>> # Ollama (local)
+        >>> provider = get_llm_provider("ollama", model="deepseek-r1:8b")
+
+        >>> # Gemini (cloud API)
+        >>> provider = get_llm_provider("gemini", api_key="key", model="gemini-2.5-flash")
+
+        >>> # OpenAI (cloud API)
+        >>> provider = get_llm_provider("openai", api_key="key", model="gpt-5-mini")
+    """
+    provider_name = provider_name.lower()
+
+    if provider_name not in PROVIDER_REGISTRY:
+        available = ", ".join(PROVIDER_REGISTRY.keys())
+        raise ValueError(
+            f"Provider '{provider_name}' is not supported. "
+            f"Available providers: {available}"
+        )
+
+    provider_class = PROVIDER_REGISTRY[provider_name]
+    provider = provider_class(**kwargs)
+
+    logger.info(f"Created {provider.provider_name} provider")
+
+    return provider
+```
+
+The registry uses class objects as values, not instances. This is important because class instantiation happens at the call site of `get_llm_provider`, not at module import time. If we stored instances in the registry, we would need to initialize them during module loading, requiring configuration to be available at import time and making testing significantly more complex.
+
+The factory function performs some important operations. First, it normalizes the provider name to lowercase, eliminating a common source of configuration errors where someone specifies "OpenAI" instead of "openai". This defensive approach recognizes that configuration often comes from environment variables or YAML files where case consistency is not enforced.
+
+Second, it validates that the requested provider exists in the registry. The error message is designed for operator comprehension, listing all available providers. When a configuration error occurs at 3 AM during an incident, clear error messages accelerate remediation. The message tells the operator not just that something is wrong but specifically what valid options exist. But be careful with exposing too much information in error messages in production systems, as it could lead to **security vulnerabilities**.
+
+Third, it retrieves the provider class from the registry and instantiates it with the provided keyword arguments. This instantiation may fail if required parameters are missing, but that failure happens at the provider level with provider-specific error messages. The factory does not attempt to validate provider-specific parameters because doing so would require duplicating the validation logic already present in each provider's constructor.
+
+Finally, it logs the creation event at the info level. This logging is valuable for debugging configuration issues and monitoring provider usage patterns in production. The log message includes the provider's self-reported name rather than the input parameter, which serves as an additional verification that instantiation succeeded correctly.
+
+The factory function is pure from an external perspective. It has no module-level state beyond the immutable registry. It can be called multiple times with the same arguments and will create independent provider instances each time. This purity simplifies testing and makes the behavior predictable.
+
+One might ask why we use a simple dictionary registry rather than a more sophisticated plugin system with automatic discovery. The answer lies in the principle of appropriate complexity. Our system has five providers, all of which are known at development time. A plugin discovery system would add complexity for dynamic loading, error handling in the discovery process, and ordering or priority resolution. None of these provide value for our use case. When the set of providers is known and stable, explicit registration is clearer and more maintainable than implicit discovery.
+
+The registry also enables additional utility functions for introspection. We can implement a function that lists all available providers with their metadata:
+
+```python
+def list_providers() -> Dict[str, Dict[str, any]]:
+    """
+    List all available providers with their metadata.
+
+    Returns:
+        Dictionary mapping provider names to their metadata
+    """
+    providers = {}
+    for name, provider_class in PROVIDER_REGISTRY.items():
+        # Create a temporary instance to get metadata
+        try:
+            if name == "ollama":
+                temp_provider = provider_class()
+            else:
+                # Skip providers requiring API keys for listing
+                continue
+
+            providers[name] = {
+                "name": temp_provider.provider_name,
+                "supports_streaming": temp_provider.supports_streaming,
+            }
+        except Exception:
+            # If we can't instantiate, provide basic info
+            providers[name] = {
+                "name": name,
+                "supports_streaming": True,
+            }
+
+    return providers
+```
+
+This function powers an admin interface showing which providers are available and their capabilities. The implementation is careful about providers that require API keys, only instantiating Ollama which has no such requirement. For other providers, it falls back to default metadata. This demonstrates how the registry pattern enables functionality beyond simple instantiation.
+
+## Environment-Driven Configuration with Pydantic Settings
+
+The factory function handles provider instantiation, but we still need a mechanism for determining which provider to use and what parameters to pass. This is where environment-driven configuration becomes essential. The configuration system must read environment variables, validate them, provide sensible defaults, and expose them to the application in a type-safe manner.
+
+Pydantic Settings provides an elegant solution to these requirements. It combines environment variable parsing, type validation, and default value management in a single declarative interface. Let's examine the settings implementation on which our application relies:
+
+```python
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from functools import lru_cache
+from typing import List, Literal
+
+
+class Settings(BaseSettings):
+    """Application settings."""
+
+    # Environment
+    environment: str = "development"
+
+    # LLM Provider Configuration
+    llm_provider: Literal["ollama", "gemini", "openai", "anthropic", "groq"] = "ollama"
+    llm_model: str = "deepseek-r1:8b"
+    llm_temperature: float = 0.7
+    llm_max_tokens: int = 1024
+
+    # Ollama
+    ollama_base_url: str = "http://localhost:11434"
+
+    # Gemini
+    gemini_api_key: str = ""
+    gemini_model: str = "gemini-2.5-flash"
+
+    # OpenAI
+    openai_api_key: str = ""
+    openai_model: str = "gpt-5-mini"
+
+    # Agent
+    max_conversation_turns: int = 20
+    session_timeout_minutes: int = 60
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False
+    )
+
+
+@lru_cache()
+def get_settings() -> Settings:
+    """Get cached settings instance."""
+    return Settings()
+```
+
+Learn more about Pydantic Settings in the [official documentation](https://docs.pydantic.dev/latest/concepts/pydantic_settings/).
+
+The `llm_provider` field uses Pydantic's `Literal` type to constrain valid values to the exact set of supported providers. This provides compile-time checking in type-aware IDEs and runtime validation that rejects invalid provider names. If someone sets `LLM_PROVIDER=gpt4` in their environment variables, Pydantic will reject it at application startup with a clear error message listing valid options. This fail-fast behavior prevents misconfiguration from propagating into production.
+
+Each provider has dedicated configuration fields. The Gemini provider needs `gemini_api_key` and `gemini_model`. OpenAI needs `openai_api_key` and `openai_model`. The pattern continues for all providers. This might seem redundant since only one provider runs at a time, but it provides important benefits. First, it makes configuration self-documenting. Someone examining the settings can immediately see what each provider requires. Second, it simplifies environment management across deployments. A single `.env` file can contain configuration for all providers, and the application selects the relevant subset based on `llm_provider`. Third, it enables rapid provider switching without configuration file editing.
+
+The shared parameters, `llm_model`, `llm_temperature`, and `llm_max_tokens`, serve as overrides when specified. This design supports both global defaults and provider-specific customization. If `llm_model` is set, it overrides the provider-specific default. This is particularly useful when experimenting with different models within the same provider family.
+
+The `model_config` specifies that Pydantic should read from a `.env` file and treat environment variable names case-insensitively. The case insensitivity is pragmatic. Environment variables are conventionally uppercase in Unix systems, but the Pydantic fields are lowercase Python identifiers. Case-insensitive matching bridges this gap transparently.
+
+The `get_settings()` function uses `functools.lru_cache` to ensure settings are loaded only once during application lifetime. This is both a performance optimization and a consistency guarantee. Settings are read from environment variables and the `.env` file once at first invocation, then cached for all subsequent calls. This prevents expensive I/O on every settings access and ensures all parts of the application see identical configuration even if environment variables somehow change during runtime.
+
+The caching has important implications for testing. Tests that modify environment variables must clear the cache to see their changes. This is typically done with `get_settings.cache_clear()` in test fixtures. While this adds slight complexity to testing, it is preferable to the performance cost of reloading settings on every access in production.
+
+Now we can examine how the application uses these settings to instantiate the appropriate provider:
+
+```python
+from src.config.settings import get_settings
+from src.providers.factory import get_llm_provider
+
+def _build_provider_config(settings) -> dict:
+    """Build configuration for the selected provider."""
+    base_config = {
+        "temperature": settings.llm_temperature,
+        "max_tokens": settings.llm_max_tokens,
+    }
+
+    config_builders = {
+        "ollama": lambda: {
+            **base_config,
+            "model": settings.llm_model or "deepseek-r1:8b",
+            "base_url": settings.ollama_base_url,
+        },
+        "gemini": lambda: {
+            **base_config,
+            "api_key": settings.gemini_api_key,
+            "model": settings.llm_model or settings.gemini_model,
+        },
+        "openai": lambda: {
+            **base_config,
+            "api_key": settings.openai_api_key,
+            "model": settings.llm_model or settings.openai_model,
+        },
+        "anthropic": lambda: {
+            **base_config,
+            "api_key": settings.anthropic_api_key,
+            "model": settings.llm_model or settings.anthropic_model,
+        },
+        "groq": lambda: {
+            **base_config,
+            "api_key": settings.groq_api_key,
+            "model": settings.groq_model or settings.groq_model,
+        },
+    }
+
+    builder = config_builders.get(settings.llm_provider)
+    if not builder:
+        raise ValueError(f"Unsupported provider: {settings.llm_provider}")
+
+    return builder()
+
+
+# Usage in LLM service initialization
+settings = get_settings()
+provider_config = _build_provider_config(settings)
+provider = get_llm_provider(settings.llm_provider, **provider_config)
+llm = provider.get_llm()
+```
+
+The `_build_provider_config` function maps from the flat settings structure to provider-specific configuration dictionaries. Each provider has a builder function that combines base configuration with provider-specific parameters. The model selection logic demonstrates the override pattern: `settings.llm_model or settings.gemini_model` uses the global model setting if present, otherwise falls back to the provider-specific default.
+
+This configuration building approach centralizes the logic for translating environment variables into provider parameters. When providers have different parameter names or requirements, this function handles the mapping. It is the only place in the application that knows about these provider-specific details. The rest of the application works with the abstract provider interface.
+
+The environment-driven configuration approach provides powerful deployment flexibility. A developer can run the application locally with Ollama by setting `LLM_PROVIDER=ollama` in their `.env` file. The same codebase deployed to staging with `LLM_PROVIDER=groq` uses the Groq API. Production with `LLM_PROVIDER=openai` uses OpenAI. No code changes, no build differences, just configuration.
+
+## Integration with the Application Layer
+
+With our factory, providers, and configuration system in place, we can examine how the application layer integrates with this architecture. The application should be completely agnostic about which provider is running. It should work with an abstract LLM interface, making the provider implementation a pure deployment concern.
+
+In our medical assistant application, an LLMService class serves as the primary integration point:
+
+```python
+from src.agents.medical_agent import MedicalAgent
+from langchain_core.messages import HumanMessage, AIMessage
+from src.config.settings import get_settings
+from src.providers.factory import get_llm_provider
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+class LLMService:
+    """Service for interacting with the medical agent LLM."""
+
+    def __init__(self):
+        """Initialize the LLM service with the medical agent."""
+        settings = get_settings()
+
+        # Build provider configuration based on selected provider
+        provider_config = self._build_provider_config(settings)
+
+        # Get LLM provider
+        provider = get_llm_provider(
+            settings.llm_provider,
+            **provider_config
+        )
+
+        # Initialize agent with provider's LLM
+        self.agent = MedicalAgent(llm=provider.get_llm())
+
+        logger.info(f"LLM service initialized with provider: {settings.llm_provider}")
+
+    def _build_provider_config(self, settings) -> dict:
+        """Build configuration for the selected provider."""
+        # Configuration building logic as shown earlier
+        pass
+
+    async def generate_response(
+        self,
+        user_message: str,
+        session_id: str,
+        user_id: str,
+        conversation_history: list[dict],
+        language: str = "en"
+    ) -> tuple[str, bool, bool]:
+        """
+        Generate agent response.
+
+        Args:
+            user_message: Current user message
+            session_id: Session identifier
+            user_id: User identifier
+            conversation_history: List of previous messages
+            language: Language code (en, pt, es)
+
+        Returns:
+            Tuple of (response_text, has_alarm_sign, should_end)
+        """
+        try:
+            # Build message history
+            messages = []
+            for msg in conversation_history:
+                if msg["role"] == "user":
+                    messages.append(HumanMessage(content=msg["content"]))
+                elif msg["role"] == "assistant":
+                    messages.append(AIMessage(content=msg["content"]))
+
+            # Add current user message
+            messages.append(HumanMessage(content=user_message))
+
+            # Run agent
+            result = await self.agent.run(state)
+
+            # Extract response
+            assistant_message = result["messages"][-1]
+            response_text = assistant_message.content
+
+            return response_text, result.get("has_alarm_sign", False), result.get("should_end", False)
+
+        except Exception as e:
+            logger.error(f"Error in LLM service: {e}", exc_info=True)
+            return (
+                "I apologize, but I encountered an error. Please try again.",
+                False,
+                False
+            )
+```
+
+The LLMService constructor handles all provider initialization. It loads settings, builds provider configuration, instantiates the provider, and creates the agent with the provider's LLM instance. From this point forward, the service knows nothing about which provider is active. The `generate_response` method works entirely with LangChain message abstractions and agent interfaces.
+
+This separation of concerns is architecturally significant. The business logic of the medical assistant, the symptom collection flow, the alarm sign detection, the conversation management, all of this exists independently of the LLM provider. We can change providers, swap models, or even change the underlying framework without touching the business logic.
+
+The error handling in `generate_response` demonstrates another benefit of this architecture. Errors from any provider are caught uniformly and handled consistently. We do not need provider-specific error handling because the LangChain abstraction layer normalizes most failure modes. Rate limiting, API errors, network failures, they all manifest as exceptions that we catch and handle generically.
+
+The logging shows which provider is active at service initialization. This creates an audit trail in application logs showing exactly which LLM processed each request. In production environments with multiple deployments or canary releases, this logging is invaluable for correlating behavior with provider configuration.
+
+The MedicalAgent that receives the LLM instance is completely provider-agnostic. It uses the LangChain BaseChatModel interface, which all our providers satisfy:
+
+```python
+from langchain_core.language_models import BaseChatModel
+from langchain_core.prompts import ChatPromptTemplate
+
+
+class MedicalAgent:
+    """Medical pre-screening agent."""
+
+    def __init__(self, llm: BaseChatModel):
+        """Initialize with a LangChain-compatible LLM."""
+        self.llm = llm
+        self.graph = self._build_graph()
+
+    def _generate_response(self, state: AgentState) -> AgentState:
+        """Generate response using the LLM."""
+        system_prompt = load_system_prompt(state.get("language", "en"))
+
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", system_prompt),
+            ("human", "{user_message}")
+        ])
+
+        chain = prompt | self.llm
+        response = chain.invoke({"user_message": user_message})
+
+        # Process response
+        return state
+```
+
+The agent uses the LLM through LangChain's chain abstraction. The `|` operator creates a processing pipeline where the prompt template feeds into the LLM. This works identically whether the LLM is ChatOpenAI, ChatGoogleGenerativeAI, ChatAnthropic, or any other LangChain-compatible model.
+
+This architecture also simplifies testing. Unit tests can inject mock LLM instances without dealing with API keys, network calls, or provider-specific behaviors. Integration tests can use Ollama with small models for fast, cost-free validation. Production uses whatever provider is configured. The test, staging, and production code paths are identical.
+
+## Production Considerations and Operational Insights
+
+Implementing the Factory pattern for LLM providers is architecturally satisfying, but production deployment reveals practical considerations that influence the design's success. These considerations span configuration management, error handling, cost monitoring, and operational observability.
+
+Configuration management in multi-environment deployments requires careful organization. The `.env.example` file serves as the canonical documentation of all configuration options. This file should contain every environment variable the application recognizes, with comments explaining their purpose and showing example values:
+
+```bash
+# ============================================
+# LLM PROVIDER CONFIGURATION
+# ============================================
+# Choose your LLM provider: ollama, gemini, openai, anthropic, groq
+LLM_PROVIDER=ollama
+
+# Model configuration (overrides provider defaults)
+LLM_MODEL=deepseek-r1:8b
+LLM_TEMPERATURE=0.7
+LLM_MAX_TOKENS=1024
+
+# ============================================
+# OLLAMA
+# ============================================
+# Run locally: curl -fsSL https://ollama.com/install.sh | sh
+# Install model: ollama pull deepseek-r1:8b
+OLLAMA_BASE_URL=http://localhost:11434
+
+# ============================================
+# GEMINI
+# ============================================
+# Get API key: https://https://aistudio.google.com
+# Models: gemini-2.5-flash, gemini-2.5-pro
+GEMINI_API_KEY=your-gemini-api-key-here
+GEMINI_MODEL=gemini-2.5-flash
+
+# Additional providers follow same pattern...
+```
+
+This documentation serves multiple audiences. Developers reference it when setting up local environments. DevOps engineers use it when configuring deployment pipelines. The comments about free tiers and usage limits help teams make cost-conscious provider selections.
+
+In production environments managed by orchestration platforms like Kubernetes, environment variables come from `ConfigMaps` and `Secrets` rather than `.env` files. The application code remains unchanged because Pydantic Settings reads from the process environment regardless of how variables are set. This consistency across configuration sources is valuable.
+
+Error handling requires attention to provider-specific failure modes despite our abstraction. While LangChain normalizes many errors, providers exhibit distinct behaviors under failure conditions. OpenAI's rate limiting returns specific error codes that enable exponential backoff retry strategies. Anthropic has different rate limit windows. Gemini may trigger safety filters that other providers do not implement. Ollama can fail if the local service stops.
+
+The application should implement graceful degradation for transient provider failures. A retry mechanism with exponential backoff handles temporary network issues or rate limiting. More sophisticated implementations might maintain a fallback provider configuration, automatically switching from a primary provider to a backup if the primary experiences sustained failures.
+
+Cost monitoring becomes critical when using multiple paid providers. Each provider has different pricing models. OpenAI charges per token with different rates for input and output. Anthropic has similar token-based pricing but different rate schedules. Gemini offers free tiers with rate limits, then charges beyond those limits. Understanding actual costs requires tracking token usage and applying provider-specific pricing.
+
+We can extend the base provider class to include cost estimation:
+
+```python
+class BaseLLMProvider(ABC):
+    """Abstract base class for LLM providers."""
+
+    @abstractmethod
+    def estimate_cost(self, input_tokens: int, output_tokens: int) -> float:
+        """
+        Estimate cost in USD for a given token usage.
+
+        Args:
+            input_tokens: Number of input tokens
+            output_tokens: Number of output tokens
+
+        Returns:
+            Estimated cost in USD
+        """
+        pass
+```
+
+Each concrete provider implements this based on their pricing model. Application middleware can then track cumulative costs across requests, enabling cost monitoring dashboards and budget alerts. This is particularly important when running experiments comparing different models or providers.
+
+Observability extends beyond cost tracking. Latency monitoring reveals provider performance characteristics. OpenAI typically responds in seconds. Groq advertises exceptionally fast inference. Ollama's performance depends on local hardware. By logging provider name and response latency for each request, we build empirical understanding of provider performance under real workloads.
+
+Structured logging provides rich operational data:
+
+```python
+logger.info(
+    "LLM request completed",
+    extra={
+        "provider": provider.provider_name,
+        "model": settings.llm_model,
+        "session_id": session_id,
+        "latency_ms": latency,
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "estimated_cost": cost,
+    }
+)
+```
+
+This structured data feeds monitoring systems like Datadog or Prometheus, enabling dashboards showing request volume by provider, average latency per provider, cost trends over time, and error rates per provider. These metrics inform decisions about provider selection and model choice.
+
+The architecture also facilitates A/B testing of providers. By randomly assigning sessions to different providers while maintaining consistent session affinity, we can compare provider quality empirically. User satisfaction metrics, conversation completion rates, and response quality assessments can be correlated with provider to identify optimal configurations.
+
+Model versioning requires attention. Provider-specific model names change as new versions release. OpenAI deprecated older models, requiring migration to newer versions. Anthropic releases new dated versions of Claude. The configuration system should make model versions explicit rather than relying on provider defaults. When a provider deprecates a model, explicit version configuration makes the breakage visible immediately in logs rather than silently degrading.
+
+## Conclusion
+
+The Factory pattern itself is thoroughly documented in the classic Gang of Four Design Patterns book. While the examples are in C++ and Java, the principles translate directly to Python. For Python-specific implementations, [Python Design Patterns by Chetan Giridhar](https://amzn.to/4oI3QNu) provides modern examples using current Python idioms.
+
+Implementing the Factory pattern for multiple LLM providers in a Python application involves defining a common interface, creating concrete provider classes, building a factory function for instantiation, and integrating with environment-driven configuration. This architecture achieves flexibility, maintainability, and scalability in managing diverse LLM providers.
+
+**Key benefits:**
+
+- **Environment flexibility**: Use Ollama locally, cost-effective providers in staging, and commercial providers in production—same codebase everywhere
+- **Easy scaling**: Add new providers without restructuring existing code
+- **Provider-specific optimizations**: Implement streaming, retries, or custom logic per provider without affecting others
+- **Future-proof**: As the LLM landscape evolves, treating provider selection as configuration makes changes manageable
+
+This pattern applies beyond LLMs to any scenario requiring multiple implementations behind a common interface—vector databases, observability platforms, cloud services. The combination of abstract interfaces, factory instantiation, and environment-driven configuration provides a robust foundation for managing provider diversity while maintaining code quality.
+
