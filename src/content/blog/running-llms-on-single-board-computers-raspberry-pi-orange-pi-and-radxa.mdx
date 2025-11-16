@@ -1,0 +1,324 @@
+---
+title: "Running LLMs on Single Board Computers: Raspberry Pi, Orange Pi, and Radxa"
+description: "A comprehensive guide to running Large Language Models locally on affordable single-board computers, exploring hardware options, performance benchmarks, and practical setup for private and cost-effective AI."
+pubDate: "Sun Nov 16 08:00:00 2025 +0200"
+published: true
+tags: ["llm", "ai-engineering", "hardware", "edge-ai", "ollama"]
+---
+
+One of my pains in running large language models (LLMs) locally is how my computer seems like a space heater during inference. Not only do the fans spin up loudly and the temperature rise, but the operating system becomes sluggish as the CPU struggles to keep up. The main bottleneck has always been the hardware requirements. Most capable models demand powerful GPUs with substantial VRAM, making local deployment expensive and inaccessible for many enthusiasts and developers. However, recent advancements in model optimization and the rise of affordable single-board computers (SBCs) have opened new possibilities that I would like to explore.
+
+Another thing that is always on my mind is about paying for platforms that I don't fully believe in their privacy policies or data handling practices and the price of using these kind of services can grow significantly over the time like we have seen with the streaming services launching premim plus, and premium ultra, and premium ultra mega, and premium plus mega ultra super plans eveyrtime like we consumers are just dumb enough to pay for that (OK, we are, but let's be optimistic).
+
+A growing community is discovering that affordable boards like Raspberry Pi, Orange Pi, and Radxa can run smaller models with surprisingly useful performance, offering complete privacy, minimal operating costs, and total autonomy without depending on internet connection.
+
+The proposal may seem ambitious at first glance. How can devices costing between `$50` and `$200` run AI technology that normally requires powerful GPUs? The answer lies in the convergence of three factors: advances in **model quantization** that drastically reduce memory requirements, development of frameworks optimized specifically for ARM architecture like **llama.cpp**, and the emergence of **smaller but surprisingly capable models** with 1 to 3 billion parameters that rival larger models from previous generations.
+
+## Why run LLMs locally on compact boards
+
+The motivation to run language models locally goes far beyond the simple technical fascination that I have with single-board computers or the hate I have for the modern pricing policies of the big companies. For many of us, privacy represents the primary reason. When you process confidential documents, personal conversations, or sensitive health data through cloud APIs, that information travels through third-party servers, and we cannot guarantee its security (even if the provider claims otherwise). With local inference, your data never leaves your personal network.
+
+The financial aspect also deserves attention. While commercial APIs charge per generated token, a Raspberry Pi 5 consumes **8 watts** continuously (how much does it cost in electricity in your region?). Even processing millions of tokens monthly, the operating cost remains negligible. For people massively using LLMs, this economic predictability is liberating.
+
+Operational autonomy complements these benefits. Systems running locally work without internet, crucial for embedded applications, IoT devices in remote locations, or simply to maintain functionality during connection outages. Developers also appreciate total control over model versions, inference parameters, and customizations that would be impossible with closed APIs.
+
+The dedicated server architecture brings significant practical advantages for home or small office use. Keeping an SBC running AI models completely frees your personal computer for other tasks. While your laptop or desktop processes videos, compiles code, or runs games, the small server nearby responds to AI queries without competing for resources. I like the approach of having a small server for specific tasks in my home lab, because it keeps my computer free for productivity and my software experiments isolated.
+
+The user experience improves dramatically when you add a modern web interface like OpenWebUI to the stack. Instead of interacting via command line or basic scripts, you get an elegant interface accessible from any browser on the network. OpenWebUI offers conversation history, support for different models, chat sharing, and visual experience comparable to ChatGPT, but running entirely on your local infrastructure.
+
+## Technical fundamentals of LLMs on compact devices
+
+Running language models on limited hardware requires understanding some fundamental technical realities. LLMs are essentially **massive** neural networks that predict the next token based on previous context. A model with 7 billion parameters in full precision (FP16) occupies about 14 GB of memory. More than the total RAM available on most SBCs. The solution lies in quantization.
+
+Quantization reduces the numerical precision of model weights from 16 bits (FP16) to 8, 4, or even 2 bits, drastically decreasing model size with surprisingly small quality loss. A 7B model in Q2_K quantization, like `mistral:7b-instruct-q2_K`, occupies only 4.4GB, a ~70% reduction.
+
+RAM memory requirements follow a rule of thumb: you need approximately twice the model file size in available RAM. A 4 GB model works comfortably in a system with 8 GB of RAM, leaving space for the operating system and context cache. When the model exceeds physical memory, the system resorts to swap (virtual memory on disk), which is really slower. The difference between 5 tokens per second and 0.5 tokens per second may just be in how much the system is using swap.
+
+Inference performance on ARM CPUs depends heavily on SIMD optimizations (Single Instruction, Multiple Data) like `NEON`, `SVE`, and extensions like `i8mm` (integer 8-bit matrix multiplication). Modern frameworks like `llama.cpp` incorporate manually optimized kernels that exploit these specialized instructions. On Raspberry Pi 5, enabling advanced ARM optimizations can double performance compared to generic builds.
+
+The key metric to evaluate usability on this case is the **number of tokens per second**. Humans read about 3-5 words per second (approximately 4-7 tokens), so systems generating 5-10 tokens/second feel responsive and natural. Below 2 tokens/second, the experience starts to feel slow. Above 15 tokens/second, the response feels practically instantaneous.
+
+> **About human reading speed:** Research in cognitive psychology shows that average adult reading speed ranges from 200-300 words per minute during silent reading, which translates to approximately 3-5 words per second ([Rayner et al., 2016](https://pubmed.ncbi.nlm.nih.gov/26769745/)).
+
+## Raspberry Pi: the reference standard
+
+The Raspberry Pi remains the best-known and best-supported SBC on the market, and for LLM execution, the difference between generations 4 and 5 is absolutely.
+
+The [Raspberry Pi 4](https://amzn.to/448bgB9) uses the BCM2711 SoC with ARM Cortex-A72 quad-core CPU at 1.5 GHz. With 1, 2, 4 or 8 GB LPDDR4-3200 RAM options and official prices starting on `~$40`, it seems like a tempting budget option. However, for LLMs, **the Pi 4 simply doesn't have enough computational power** (not yet).
+
+Real tests reveal the limitation: models like Llama 2-7B in Q4 quantization produce only 0.83 tokens per second on Pi 4, essentially unusable for real-time interaction. The Pi 4 is suitable only if you already own one and want to experiment with batch processing where speed isn't critical.
+
+The [Raspberry Pi 5](https://amzn.to/4nYTkQH) represents a genuine generational leap. The new BCM2712 SoC brings ARM Cortex-A76 quad-core CPU at 2.4 GHz with 2 MB shared L3 cache, offering **2-3x** superior performance to Pi 4. RAM options include 2, 4, 8, and 16 GB, but the best option for us could be start with the 8 GB model, that starts on `~$90`.
+
+For LLMs, the Pi 5 with 8 GB has become the community favorite. Stratosphere laboratory benchmarks testing multiple models reveal impressive performance: Gemma3-1B reaches 15.5 tokens/second, Llama3.2-1B hits 12.3 t/s, and Qwen2.5-1.5B produces 10.8 t/s. These numbers represent genuinely responsive user experience, comparable to using ChatGPT.
+
+Even 7 billion models like Llama2-7B or Mistral-7B are technically viable on Pi 5 with 8 GB, producing 2-3 tokens per second. This speed is slow but functional for use cases where superior quality justifies the wait.
+
+The great advantage of Raspberry Pi continues to be the software ecosystem. Ollama installation is literally one command (`curl -fsSL https://ollama.com/install.sh | sh`), after which you can download and run models with `ollama run llama3.2:1b`. Documentation is abundant, tutorials cover practically any imaginable scenario, and the community in forums like [r/LocalLLaMA](https://www.reddit.com/r/LocalLLaMA/) is always ready to help.
+
+## Orange Pi: raw performance with learning curve
+
+The Orange Pi 5 family is based on the powerful Rockchip RK3588/RK3588S SoC, offering on-paper specifications that surpass Raspberry Pi. The standard Orange Pi 5 uses the RK3588S with octa-core CPU combining 4 Cortex-A76 cores at 2.4 GHz and 4 Cortex-A55 cores at 1.8 GHz in big.LITTLE configuration. The Mali-G610 MP4 GPU supports OpenGL ES 3.2 and Vulkan 1.2, but the highlight is the **6 TOPS NPU** capable of INT4/INT8/INT16/FP16 operations.
+
+Memory options are generous: 4 GB, 8 GB, 16 GB, and up to 32 GB of LPDDR4X RAM at 3200 MHz.
+
+The Orange Pi 5 Plus elevates specifications with the complete RK3588 (not the S variant), adding dual 2.5 Gigabit Ethernet, PCIe 3.0 x4 support for NVMe (M.2 2280 format), and better overall I/O. Prices start at `$99` for 4 GB, rising to `$141` with 16 GB and `$179` with 32 GB.
+
+The Orange Pi 5B fills an intermediate niche adding WiFi 6 and Bluetooth 5.3 integrated via AP6275P module, plus onboard eMMC storage (32/64/128/256 GB). Prices vary by configuration, with 16 GB + 128 GB eMMC models costing about `$150-160`.
+
+LLM performance of the Orange Pi 5 series is where things get interesting. Using traditional frameworks like `llama.cpp` purely on CPU, results are comparable to Pi 5: TinyLlama reaches 11.3 tokens/second, Phi-3 Mini about 6-7 t/s, and 1-2B models achieve 10+ t/s.
+
+However, when leveraging GPU acceleration via MLC-LLM (Machine Learning Compilation), performance improves noticeably. Llama-3-8B reaches 2.3 t/s, Llama2-7B produces 2.5 t/s.
+
+The real promise lies in the 6 TOPS NPU, but here complications begin. The Rockchip RKLLM framework allows NPU-accelerated inference, with official benchmarks showing TinyLlama at 17.67 t/s and Phi-3 at 6 t/s. However, using the NPU requires converting models to RKLLM format on a separate x86 machine, using special Ubuntu builds, and dealing with limited model support.
+
+The biggest disadvantage of Orange Pi is definitely the **software ecosystem**. While distributions like Armbian offer reasonable support, documentation is often partially in Chinese, tutorials are scarcer, and the community is a fraction of Raspberry Pi's size. But, for users comfortable with Linux and willing to experiment, Orange Pi offers superior specifications for similar or lower price.
+
+## Radxa: the middle ground with NPU acceleration
+
+Radxa boards, less known than Raspberry Pi or Orange Pi in the Western market, deserve serious attention for LLM workloads. The Rock 5 series uses the same Rockchip RK3588/RK3588S SoCs as Orange Pi, offering similar performance and features but with subtle differences in design and community support.
+
+The Radxa Rock 5A adopts a Raspberry Pi 4-compatible form factor, measuring 85×56mm and using a similar 40-pin GPIO header. Based on RK3588S, it offers octa-core CPU (4×A76 + 4×A55), Mali-G610 MP4 GPU, and 6 TOPS NPU. RAM options include 4/8/16/32 GB LPDDR4x at 3200 MHz. Official prices starting on `$69` for 4 GB, rising to `$159` with 16 GB.
+
+The Radxa Rock 5B represents the flagship, using the complete RK3588 with expanded specifications. The M.2 M-key slot supports PCIe Gen 3 x4 for NVMe, allowing SSDs at 2000+ MB/s. Connectivity includes 2.5 Gigabit Ethernet with PoE support (via HAT), full-size HDMI 2.1 with additional HDMI input up to 4K@60fps.
+
+LLM performance of Radxa boards mirrors Orange Pi, as they share the same silicon. Using RKLLM with NPU acceleration, official benchmarks show TinyLlama at 17.67 t/s, Phi-3 (3.8B) at 6 t/s, Qwen 1.8B at 14.18 t/s, and ChatGLM3-6B at 3.67 t/s.
+
+The advantage of Radxa boards lies in slightly better community support than Orange Pi. Radxa's official documentation is more complete in English, the wiki is well-maintained, and the community forum is more active. The RKLLM toolkit is officially maintained and documented by Radxa, with clear examples and active GitHub repositories.
+
+## Detailed comparison table
+
+| Model |  NPU | Tokens/s (1-2B) | Tokens/s (3B) | Tokens/s (7B) | Viable Models | Recommendation |
+|-------|-----|-----------------|---------------|---------------|---------------|--------------|
+| **Raspberry Pi 4 8GB** | No | 1-2 t/s | 0.5-1 t/s | 0.1-0.8 t/s | Up to 2B Q4 | **Not recommended for LLM** |
+| **Raspberry Pi 5 8GB** | No | 12-15 t/s | 5-6 t/s | 2-3 t/s | Up to 7B Q4 (with swap) | Best ease of use |
+| **Raspberry Pi 5 16GB** | No | 12-15 t/s | 5-6 t/s | 2-3 t/s | Up to 7B Q4 comfortable | Great for 7B |
+| **Orange Pi 5 8GB** | 6 TOPS | 11-15 t/s (CPU) 17+ t/s (NPU) | 6-7 t/s | 2.5 t/s (GPU) | Up to 7B Q4 (with NPU) | Good value, complex setup |
+| **Orange Pi 5 16GB** | 6 TOPS | 11-15 t/s (CPU) 17+ t/s (NPU) | 6-7 t/s | 2.5 t/s | Up to 7B Q4, 13B possible | Best specifications |
+| **Orange Pi 5 Plus 16GB** | 6 TOPS | 11-15 t/s 17+ t/s (NPU) | 6-7 t/s | 2.5 t/s | Up to 7B Q4 | Best I/O |
+| **Radxa Rock 5A 16GB** | 6 TOPS | 11-15 t/s 17+ t/s (NPU) | 6 t/s | 2-3 t/s | Up to 7B Q4 | Good balance |
+| **Radxa Rock 5B+ 16GB** | 6 TOPS | 11-15 t/s 17+ t/s (NPU) | 6 t/s | 3 t/s | Up to 7B Q4 | Best value/performance |
+
+**Notes:**
+- Tokens/s vary significantly with specific model and quantization
+- NPU requires RKLLM framework and model conversion
+- Power measured during active inference
+- Viable models assume **Q4_K_M quantization**
+
+## Setting up and running LLMs in practice
+
+The journey of getting an LLM working on your SBC starts with fundamental operating system choices. For Raspberry Pi, Raspberry Pi OS 64-bit (Bookworm or newer) is the natural choice, offering hardware-specific optimizations and maximum compatibility. The Lite version, without desktop environment, frees approximately 800 MB of RAM that would be consumed by graphical interface.
+
+Framework installation ideally begins with Ollama for beginners. After setting up your operating system and connecting via SSH or terminal, a single command installs everything necessary:
+
+```bash
+curl -fsSL https://ollama.com/install.sh | sh
+```
+
+The script automatically detects ARM architecture, downloads appropriate binaries, configures systemd service, and in minutes you can run `ollama run llama3.2:1b` to download and start your first model.
+
+For advanced users wanting maximum control and optimized performance, llama.cpp is superior. Compilation requires some steps but unlocks crucial optimizations:
+
+```bash
+# Install build dependencies
+sudo apt install build-essential cmake git
+
+# Clone repository
+git clone https://github.com/ggerganov/llama.cpp
+cd llama.cpp
+
+# Compile with ARM optimizations
+cmake -B build -DGGML_BLAS=ON -DGGML_BLAS_VENDOR=OpenBLAS \
+  -DGGML_NATIVE=OFF -DGGML_CPU_ARM_ARCH=armv8.2-a+fp16+dotprod
+
+cmake --build build --config Release -j$(nproc)
+```
+
+These flags enable ARM-specific instructions like fp16 and dotprod that can double performance.
+
+Swap configuration is absolutely critical for running models that approach or exceed your physical RAM. Create a generous swap file:
+
+```bash
+sudo fallocate -l 8G /swapfile
+sudo chmod 600 /swapfile
+sudo mkswap /swapfile
+sudo swapon /swapfile
+```
+
+Make it permanent by adding `/swapfile none swap sw 0 0` to `/etc/fstab`. For boards with 4 GB RAM, consider 8-12 GB swap; for 8 GB RAM, 4-8 GB should be sufficient.
+
+OS optimizations also free valuable resources:
+
+```bash
+# Disable desktop environment
+sudo systemctl set-default multi-user.target
+
+# Disable unnecessary services
+sudo systemctl disable bluetooth
+sudo systemctl disable cups
+
+# Configure kernel parameters
+echo "vm.swappiness=10" | sudo tee -a /etc/sysctl.conf
+echo "vm.vfs_cache_pressure=50" | sudo tee -a /etc/sysctl.conf
+sudo sysctl -p
+```
+
+For Raspberry Pi specifically, reduce GPU memory allocation by editing `/boot/config.txt`:
+
+```
+gpu_mem=16
+```
+
+Model selection makes huge difference in experience. For boards with 4 GB RAM, restrict to models up to 2 billion parameters: TinyLlama 1.1B, Phi-2 2.7B, Gemma 2B, Qwen2.5-1.5B, all in `Q4_K_M` quantization. With 8 GB RAM, you can comfortably run 3-4 billion models like Phi-3 Mini (3.8B), Llama 3.2 3B, or Qwen2.5-3B.
+
+## Realistic expectations and limitations
+
+Understanding limitations avoids frustrations and allows evaluating if SBCs meet your real needs. The most fundamental restriction is model size. Frontier models with up to hundreds of billions of parameters require professional GPU clusters. Your reality with SBCs are 1-7 billion models, occasionally 13 billion with aggressive quantization on 32 GB boards.
+
+This size limitation impacts capability. Modern 1-3 billion models like Qwen2.5-3B or Gemma2-2B are surprisingly capable for basic conversation, answering factual questions, writing simple code, or structured analysis tasks. However, complex multi-step reasoning, deep specialized knowledge, or consistency in long contexts suffer compared to massive cloud models.
+
+Inference speed, even in best scenarios, doesn't rival dedicated powerful hardware. Cloud APIs with their expensive GPUs deliver **40-80 tokens/second**. Your best result on SBC is **15-17 t/s** on tiny 1B models with NPU acceleration, falling to **5-6 t/s** on more capable 3B models. For personal interactive use, 5-6 t/s is acceptable, because the responses appear smoothly without frustration.
+
+Heavy quantization introduces subtle but real quality degradation. `Q4_K_M` is generally excellent, but in tasks requiring extreme precision (advanced mathematics, complex logical reasoning), the difference versus FP16 or Q8 appears. Q2 or Q3 present more obvious problems: repetition, incoherence, or "misunderstanding" of complex prompts.
+
+Boards are not suitable for fine-tuning or training. Even efficient techniques like LoRA that train only subset of parameters are extremely slow on ARM CPU. A LoRA epoch taking minutes on GPU may take hours or days on SBC. Inference is the focus, training should occur on appropriate hardware. Don't try to train models on SBCs or you'll be really disappointed.
+
+## Choosing the right board for you
+
+If you're new to Linux and SBCs, value stability, want to start quickly, and don't plan extreme optimizations, the Raspberry Pi 5 with 8 GB is a good choice. The minimal premium versus competitors buys you vastly superior ecosystem. You'll install models in minutes, not hours. Problems you encounter will have documented solutions. The community will provide fast support.
+
+If you have Linux experience, comfort debugging kernel and driver problems, and want maximum performance for fixed budget, the Radxa Rock 5B+ with 16 GB offers exceptional value. 6 TOPS NPU, dual M.2 PCIe, and 16 GB RAM surpass Pi 5 in pure specifications. You'll pay in configuration time and occasionally resolve software incompatibilities, but the hardware delivers more raw capability.
+
+For applications prioritizing maximum energy efficiency and silent 24/7 operation, the Raspberry Pi 5 with 8 GB again stands out. Although RK3588 boards have comparable efficiency, Pi's mature software support means fewer stability concerns for always-on deployments.
+
+For the majority of readers probably interested in experimenting with local LLMs for the first time, my recommendation is clear: start with Raspberry Pi 5 with 8 GB. Establish baseline experience with simple setup and models like Gemma or Qwen. After mastering fundamentals, if you find performance limitations, you can expand to RK3588 board for specific workloads while keeping the Pi for development.
+
+## Conclusion: The future of local AI on affordable hardware
+
+The ability to run language models locally on `$80-200` hardware represents a big change in AI accessibility. Just a few years ago, LLM inference was exclusive domain of expensive servers or cloud services. Today, a modest Raspberry Pi 5 can generate text with respectable quality at 15 tokens per second while consuming less power than a light bulb, processing everything locally with absolute privacy and control on your budget.
+
+The numbers reveal genuine viability: 1-2 billion parameter models achieve 12-17 tokens/second offering responsive user experience. 3 billion models deliver 5-7 t/s with significantly improved capabilities. Even 7 billion models are functional at 2-3 t/s on boards with 16 GB RAM.
+
+The differences between platforms matter, but not as much as initially appears. Raspberry Pi 5 compensates NPU absence with incomparable software ecosystem and ease of use that saves hours of frustration. Orange Pi and Radxa compensate smaller communities with superior hardware specifications and NPU that unlocks higher performance in specific use cases (maybe we can be the community that they need).
+
+The trajectory is exciting: models continue getting smaller and more capable, quantization more sophisticated, and ARM hardware more powerful. Frameworks like llama.cpp optimize aggressively for ARM. The convergence of these trends means capabilities available on SBCs will only grow.
+
+For those who value data privacy, operational autonomy, predictable costs, or simply satisfaction of understanding and controlling their AI stack, investing in SBC for LLMs makes pragmatic sense. It doesn't replace access to GPT-XX or Claude for tasks requiring frontier capabilities, but covers surprisingly wide range of practical applications.
+
+The fundamentals are established. The technology works. The cost is affordable. Now the question isn't whether it's possible to run LLMs on SBCs, but whether it's which model you'll experiment with first.
+
+## Related Articles
+
+Want to learn more about running AI locally and working with LLMs?
+
+**Getting Started with Local AI:**
+
+- [How to Use LLM for Free (LM Studio)](/posts/how-to-use-llm-for-free-using-lm-studio/) - Run LLMs on your desktop
+- [Run Copilot-Style AI in VS Code](/posts/how-to-run-a-copilot-style-ai-in-vs-code-for-free/) - Local AI coding assistant
+- [Implementing Factory Pattern for Multiple LLM Providers](/posts/implementing-factory-pattern-for-multiple-llm-providers/) - Manage different LLM APIs
+
+**Build AI Agents:**
+
+- [Deconstructing AI Agents: A Practical Guide](/posts/deconstructing-ai-agents-a-practical-guide-for-understanding-it/) - Understand AI agents
+- [How to Connect an AI Agent to the Internet](/posts/how-connect-local-ai-agent-to-the-internet/) - Give agents web search
+- [Building an AI Agent for PDF Q&A](/posts/building-ai-agent-pdf-question-answering-langchain-ollama/) - Work with documents
+
+**Understanding LLMs:**
+
+- [Understanding the Naming Conventions of Large Language Models](/posts/understanding-the-naming-conventions-of-large-language-models/) - Decode model names
+- [Beginner's Guide to Controlling LLM Behavior: Inference Parameters](/posts/beginners-guide-to-controlling-llm-behavior-inference-parameters/) - Fine-tune outputs
+- [The Agentic Prompt Blueprint](/posts/the-agentic-prompt-blueprint-for-high-performance-llm-instructions/) - Write better prompts
+
+## References
+
+### Documentation and Frameworks
+
+1. **llama.cpp - LLM inference in C/C++**
+   GitHub: https://github.com/ggml-org/llama.cpp
+   Optimized framework for LLM inference on CPUs, especially ARM
+
+2. **Ollama - Get up and running with large language models**
+   Website: https://ollama.com
+   Simplifies running LLMs locally with one-command installation
+
+3. **Arm Learning Paths - Raspberry Pi 5 LLM Guide**
+   https://learn.arm.com/learning-paths/embedded-and-microcontrollers/raspberry-pi-smart-home/1-overview/
+
+4. **OpenWebUI - User-friendly WebUI for LLMs**
+   GitHub: https://github.com/open-webui/open-webui
+
+### Research and Benchmarks
+
+5. **An Evaluation of LLMs Inference on Popular Single-board Computers**
+   arXiv: https://arxiv.org/html/2511.07425v1
+
+6. **Stratosphere IPS Laboratory - LLM Performance on Raspberry Pi 5**
+   https://www.stratosphereips.org/blog/2025/6/5/how-well-do-llms-perform-on-a-raspberry-pi-5
+
+7. **Ominous Industries - LLM Performance Test Between Raspberry Pi 5 and Orange Pi 5**
+   https://ominousindustries.com/blogs/ominous-industries/llm-performance-test-between-raspberry-pi-5-and-orange-pi-5
+
+### Hardware Information
+
+8. **Raspberry Pi 5 Official Product Page**
+   https://www.raspberrypi.com/products/raspberry-pi-5/
+
+9. **Orange Pi 5 Official Specifications**
+   http://www.orangepi.org/html/hardWare/computerAndMicrocontrollers/details/Orange-Pi-5.html
+
+10. **Radxa Rock 5B Official Product Page**
+    https://radxa.com/products/rock5/5b/
+
+### Quantization and Optimization
+
+11. **LLM Quantization: All You Need to Know**
+    Cloudthrill: https://cloudthrill.ca/llm-quantization-all-you-need-to-know
+
+12. **How to Run LLMs Larger than RAM**
+    Ryan A. Gibson: https://ryanagibson.com/posts/run-llms-larger-than-ram/
+
+13. **Optimization of Armv9 architecture LLM inference performance**
+    arXiv: https://arxiv.org/html/2406.10816v1
+
+### NPU and Rockchip Acceleration
+
+14. **Rockchip RKLLM Toolkit - NPU-accelerated LLMs**
+    CNX Software: https://www.cnx-software.com/2024/07/15/rockchip-rkllm-toolkit-npu-accelerated-large-language-models-rk3588-rk3588s-rk3576/
+
+15. **ezrknn-llm - Easier usage of LLMs in Rockchip's NPU**
+    GitHub: https://github.com/Pelochus/ezrknn-llm
+
+16. **GPU-Accelerated LLM on a $100 Orange Pi**
+    MLC.AI Blog: https://blog.mlc.ai/2024/04/20/GPU-Accelerated-LLM-on-Orange-Pi
+
+### Practical Tutorials
+
+17. **Running Local LLMs and VLMs on the Raspberry Pi**
+    Towards Data Science: https://towardsdatascience.com/running-local-llms-and-vlms-on-the-raspberry-pi-57bd0059c41a/
+
+18. **You can run LLMs locally on your Raspberry Pi using Ollama**
+    XDA Developers: https://www.xda-developers.com/run-llms-on-raspberry-pi/
+
+19. **I Ran 9 Popular LLMs on Raspberry Pi 5; Here's What I Found**
+    It's FOSS: https://itsfoss.com/llms-for-raspberry-pi/
+
+### System Software
+
+22. **Armbian Linux for SBCs**
+    https://www.armbian.com/
+
+23. **Ollama Model Library**
+    https://ollama.com/library
+
+24. **Hugging Face - The Bloke's Quantized Models**
+    https://huggingface.co/TheBloke
+
+### Additional Resources
+
+25. **Local LLM Hardware Guide 2025: Pricing & Specifications**
+    Introl: https://introl.com/blog/local-llm-hardware-pricing-guide-2025
+
+26. **Raspberry Pi Power Consumption Guide (2025)**
+    EcoEnergyGeek: https://www.ecoenergygeek.com/raspberry-pi-power-consumption/
+
+**Note:** All URLs were verified as active in November 2025. For most updated information about prices and hardware availability, consult official manufacturer websites. Performance benchmarks may vary according to firmware versions, kernel, and software optimizations.
