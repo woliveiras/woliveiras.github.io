@@ -758,19 +758,97 @@ print("True ETA: ", y.tolist())
 print("Pred ETA: ", [round(v, 1) for v in pred_eta.tolist()])
 ```
 
-## LSTM models capture temporal dynamics for real-time ETA prediction
+## LSTM (Long Short-Term Memory) models capture temporal dynamics for real-time ETA prediction
 
-While GNNs excel at spatial reasoning over road networks, Long Short-Term Memory networks specialize in temporal sequence modeling—capturing how traffic evolves over time and along a route. Waze's production Smartsum model demonstrates this approach at scale, serving 150 million monthly active users across the United States, Canada, France, Israel, Brazil, and Malaysia.
+While GNNs excel at spatial reasoning over road networks, Long Short-Term Memory networks specialize in temporal sequence modeling, capturing how traffic evolves over time and along a route. Waze's production `Smartsum` model demonstrates this approach at scale, serving 150 million monthly active users across the United States, Canada, France, Israel, Brazil, and Malaysia.
 
-**Smartsum processes routes as sequences of road segments, using LSTM cells to maintain memory of traffic conditions encountered earlier in the journey.** Each segment has a feature vector combining real-time cross times (current conditions, 15 minutes ago, 2 hours ago), historical patterns by day type and time, spatial features (highway vs local road, lane count, HOV presence), and temporal context (time of day, day of week, special events). The LSTM layer creates segment embeddings that carry information forward—if heavy traffic is building, this information propagates through the memory cell to affect predictions for downstream segments.
+**Smartsum processes routes as sequences of road segments, using LSTM cells to maintain memory of traffic conditions encountered earlier in the journey.** Each segment has a feature vector combining real-time cross times (current conditions, 15 minutes ago, 2 hours ago), historical patterns by day type and time, spatial features (highway vs local road, lane count, HOV presence), and temporal context (time of day, day of week, special events). The LSTM layer creates segment embeddings that carry information forward, if heavy traffic is building, this information propagates through the memory cell to affect predictions for downstream segments.
 
-The architecture includes a parallel contextual processing branch that handles trip-level features through a two-layer neural network, producing a holistic trip state. This trip state concatenates with each segment embedding before final dense layers predict per-segment travel times. **The "smart sum" name reflects that the model intelligently aggregates segment predictions considering interdependencies, rather than naively summing independent predictions.**
+The architecture includes a parallel contextual processing branch that handles trip-level features through a two-layer neural network, producing a holistic trip state. This trip state concatenates with each segment embedding before final dense layers predict per-segment travel times. The "smart sum" name reflects that the model intelligently aggregates segment predictions considering interdependencies, rather than naively summing independent predictions.
 
-Training uses a custom "Bad ETA Session" loss function based on user experience research. The asymmetric loss penalizes underestimates more heavily than overestimates—being late frustrates users more than arriving early. Penalties scale with route length, and the entire metric ties directly to product analytics measuring user satisfaction. **This user-centric loss design achieved 40%+ reduction in bad ETA sessions during rush hours and 50% reduction in mid-drive ETA update notifications**, dramatically improving reliability.
+Training uses a custom "Bad ETA Session" loss function based on user experience research. The asymmetric loss penalizes underestimates more heavily than overestimates, being late frustrates users more than arriving early. Penalties scale with route length, and the entire metric ties directly to product analytics measuring user satisfaction. **This user-centric loss design achieved 40%+ reduction in bad ETA sessions during rush hours and 50% reduction in mid-drive ETA update notifications**, significantly enhancing user experience.
 
 The infrastructure leverages Google Cloud Vertex AI Pipelines with TensorFlow Extended (TFX) for the complete ML workflow. Waze's custom "waze-data-tfx" package abstracts TFX complexity, allowing data scientists to fork, configure, and deploy complete training pipelines rapidly. Models train continuously on fresh data from billions of GPS traces, converting coordinate streams into ground-truth segment traversal times for supervision.
 
-Comparing approaches reveals complementary strengths. **GNNs excel at spatial reasoning—understanding how traffic on one road affects connected roads through the network structure. LSTMs excel at temporal reasoning—modeling how traffic evolves over time and along a sequential route.** Hybrid architectures combining both, as explored in academic research, achieve the best performance by capturing both spatial dependencies (via graph convolution) and temporal dynamics (via recurrence).
+Comparing approaches reveals complementary strengths. **GNNs excel at spatial reasoning, understanding how traffic on one road affects connected roads through the network structure. LSTMs excel at temporal reasoning, modeling how traffic evolves over time and along a sequential route.** Hybrid architectures combining both, as explored in academic research, achieve the best performance by capturing both spatial dependencies (via graph convolution) and temporal dynamics (via recurrence).
+
+```python
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+# Two sample routes (sequences of segments)
+#
+# Route 0:
+#   seg0 ── seg1 ── seg2 ── seg3
+#   [30/50/local]  [20/50/local]  [40/80/highway]  [35/60/local]
+#
+# Route 1:
+#   seg0 ── seg1 ── seg2 ── seg3
+#   [50/80/highway]  [45/80/highway]  [25/50/local]  [20/50/local]
+#
+# Each segment feature vector is:
+#   [current_speed_kmh, speed_limit_kmh, is_highway]
+batch_size = 2
+seq_len = 4
+feat_dim = 3
+
+x = torch.tensor([
+    # route 0
+    [[30.0, 50.0, 0.0],  # segment 0
+     [20.0, 50.0, 0.0],  # segment 1 (more traffic)
+     [40.0, 80.0, 1.0],  # segment 2 (fast highway)
+     [35.0, 60.0, 0.0]], # segment 3
+    # route 1
+    [[50.0, 80.0, 1.0],
+     [45.0, 80.0, 1.0],
+     [25.0, 50.0, 0.0],
+     [20.0, 50.0, 0.0]],
+])  # shape: [batch, seq, feat_dim]
+
+# Ground truth (dummy) time per segment, in seconds
+y = torch.tensor([
+    [60.0, 90.0, 40.0, 50.0],  # route 0
+    [30.0, 35.0, 70.0, 80.0],  # route 1
+])  # [batch, seq]
+
+
+class LSTMETA(nn.Module):
+    def __init__(self, in_dim, hidden_dim):
+        super().__init__()
+        self.enc = nn.Linear(in_dim, hidden_dim)   # feature encoder
+        self.lstm = nn.LSTM(hidden_dim, hidden_dim, batch_first=True)
+        self.out = nn.Linear(hidden_dim, 1)        # per-segment travel time
+
+    def forward(self, x):
+        # x: [batch, seq, feat_dim]
+        h0 = torch.zeros(1, x.size(0), self.lstm.hidden_size)
+        c0 = torch.zeros(1, x.size(0), self.lstm.hidden_size)
+
+        h = F.relu(self.enc(x))                    # [batch, seq, hidden]
+        h_seq, _ = self.lstm(h, (h0, c0))          # [batch, seq, hidden]
+        seg_eta = self.out(h_seq).squeeze(-1)      # [batch, seq]
+        route_eta = seg_eta.sum(dim=1)             # [batch] simple smart-sum
+        return seg_eta, route_eta
+
+
+model = LSTMETA(in_dim=feat_dim, hidden_dim=16)
+opt = torch.optim.Adam(model.parameters(), lr=1e-2)
+loss_fn = nn.L1Loss()  # MAE for simplicity
+
+for epoch in range(300):
+    opt.zero_grad()
+    seg_pred, route_pred = model(x)
+    loss = loss_fn(seg_pred, y)  # train on per-segment times only
+    loss.backward()
+    opt.step()
+
+with torch.no_grad():
+    seg_pred, route_pred = model(x)
+    print("True segment ETA:\n", y)
+    print("Pred segment ETA:\n", seg_pred.round(decimals=1))
+    print("Pred route ETA (sum):\n", route_pred.round(decimals=1))
+```
 
 ## The mathematics of routing balances optimality guarantees with practical performance
 
