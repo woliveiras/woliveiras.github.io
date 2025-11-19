@@ -6,9 +6,15 @@ published: true
 tags: ["algorithms", "graph-theory", "machine-learning", "pathfinding", "routing", "graph-neural-networks"]
 ---
 
-Working on a map application used to find products in a store, which uses a classic routing algorithm, I started wondering how we could improve our solution to be smarter and more efficient. Nothing seemed better for this task than looking at how the big players work and understanding the technologies that make them so effective. Google Maps, Waze, and CityMapper are examples of applications that I use daily and that make me curious about how they work under the hood.
+I work on a map platform used to find products and points of interest in the company's physical stores. This platform processes store layout data, combines information from different sources (such as product locations, availability, prices, and promotions), and provides routing capabilities to help users navigate through the store efficiently.
 
-While researching these applications, I found that they leverage a combination of classical algorithms and modern machine learning techniques to provide fast and accurate routing services. This is particularly interesting because routing algorithms have evolved significantly over the years, adapting to the increasing complexity of road networks and traffic patterns. From `Dijkstra's` and `A*` algorithms that laid the foundation for pathfinding, to `Contraction Hierarchies` that enable real-time routing on continental scales, and finally to `Graph Neural Networks` that predict travel times by learning from vast amounts of traffic data.
+One of the components of this platform is a routing engine that uses a classic pathfinding algorithm to compute the best route between two points in the store and to connect multiple points of interest in a single trip, such as a shopping list. For this routing engine we use the classical Dijkstra's algorithm, and recently I started wondering how we could improve our solution to be smarter and more efficient. Nothing seemed better for this task than studying how the big players work and understanding the technologies that make them so effective. Google Maps, Waze, and CityMapper are applications I use daily and that make me curious about how they work under the hood.
+
+While researching these applications, I found that they leverage a combination of classical algorithms and modern machine learning techniques to provide fast and accurate routing services. What became clear is that, although my problem lives inside a single building, it shares the same structural challenges as city and country-scale navigation: representing the environment as a graph, assigning meaningful weights to edges, and answering shortest-path queries under dynamic conditions. Over the last decades routing algorithms have evolved significantly to handle these challenges, adapting to the increasing complexity of road networks and traffic patterns.
+
+The trajectory of this evolution goes from `Dijkstra's` and `A*` algorithms that laid the foundation for pathfinding, through `Contraction Hierarchies` that enable real-time routing on continental scales, to `Graph Neural Networks` that predict travel times by learning from vast amounts of traffic data.
+
+Of course, we don't need all these sophisticated techniques for indoor routing in a store, but understanding them can inspire improvements to our system. For example, we might consider hierarchical approaches to simplify the graph representation of the store layout or explore machine learning methods to predict walking times based on historical data.
 
 This article provides developers and researchers with the technical foundations and implementation details needed to understand and build modern routing systems. We explore algorithmic fundamentals with practical Python implementations, examine the mathematical principles that make these systems work, dissect the architectures powering Google Maps, Waze, and CityMapper (based on publicly available information), and analyze the academic research driving future innovations.
 
@@ -20,7 +26,7 @@ Routing problems are everywhere in our daily lives. For example, when you use Go
 
 At its core, the challenge lies in balancing efficiency and accuracy. The "most efficient path" might mean the `shortest distance`, the `least time`, or even the `lowest cost`, depending on the context. For road networks, this often involves considering factors like traffic, road closures, and speed limits. For computer networks, it might involve bandwidth and latency. In the case of products in a store, it involves shelves, internal walls, escalators, elevators, and so on. The versatility of routing problems makes them a fascinating area of study, as the same principles can be applied to vastly different domains.
 
-And, to understand how routing algorithms work, we first need to grasp two fundamental concepts: graphs and priority queues.
+And, to understand how routing algorithms work, we first need to grasp two fundamental concepts: **graphs** and **priority queues**.
 
 ### What is a Graph?
 
@@ -44,7 +50,7 @@ graph TD
 
 In this graph, we have the nodes `A`, `B`, `C`, `D`, and `E` representing intersections, and the edges between them represent roads with `weights` indicating travel times. Routing algorithms operate on such graphs to find the most efficient path from a **starting node** to a **destination node**. Each line here, for example, represents a possible route, and the numbers indicate how long it takes to travel that route.
 
-So, we can interpret this graph as follows: the arrows indicate that the direction of the movement between the nodes is **one-way** (going from A to B takes 7 units of time, from A to C takes 9 units, but we don't have the reverse direction). The number close to each arrow indicates the cost in units (in this case, time) to traverse that edge. We can call this graph a `directed`, `weighted` graph.
+So, we can interpret this graph as follows: the arrows indicate that the direction of the movement between the nodes is **one-way** (going from A to B takes 7 units of time, from A to C takes 9 units, but we don't have the reverse direction). The number close to each arrow indicates the cost in units (in this case, time) to traverse that edge. We can call this graph a `directed, weighted graph`.
 
 Let's look at a Python implementation of these concepts:
 
@@ -134,7 +140,39 @@ if __name__ == "__main__":
         print(pq.get())  # Output: B, A, C (lowest number, highest priority)
 ```
 
-In routing algorithms, the priority queue simply orders frontier nodes by their current best-known distance from the source: the node with minimal tentative distance is expanded next, and its neighbors are relaxed and reinserted if a shorter path is discovered.
+In routing algorithms, the priority queue simply orders frontier nodes by their current best-known distance from the source: the node with minimal tentative distance is expanded next, and its neighbors are relaxed and reinserted if a shorter path is discovered. Like in this Python example:
+
+```python
+import heapq
+from typing import Dict, List, Tuple
+
+def expand_frontier(
+    graph: Dict[int, List[Tuple[int, float]]],
+    source: int,
+) -> Dict[int, float]:
+    # best-known distance from source
+    dist: Dict[int, float] = {source: 0.0}
+
+    # priority queue: (distance, node)
+    frontier: List[Tuple[float, int]] = [(0.0, source)]
+    heapq.heapify(frontier)
+
+    while frontier:
+        current_dist, u = heapq.heappop(frontier)  # node with minimal tentative distance
+
+        # Skip outdated entries
+        if current_dist > dist[u]:
+            continue
+
+        # Relax neighbors
+        for v, w in graph.get(u, []):
+            new_dist = current_dist + w
+            if v not in dist or new_dist < dist[v]:
+                dist[v] = new_dist          # update best-known distance
+                heapq.heappush(frontier, (new_dist, v))  # reinsert neighbor
+
+    return dist
+```
 
 ### Transitioning to the Classic Algorithms
 
@@ -227,11 +265,11 @@ if __name__ == "__main__":
     # Build sample road network (nodes are intersections)
     g = Graph()
     g.add_edge(0, 1, 7)   # Intersection 0 to 1: 7 minutes
-    g.add_edge(0, 2, 9)
-    g.add_edge(0, 5, 14)
-    g.add_edge(1, 2, 10)
-    g.add_edge(1, 3, 15)
-    g.add_edge(2, 3, 11)
+    g.add_edge(0, 2, 9)   # Intersection 0 to 2: 9 minutes
+    g.add_edge(0, 5, 14)  # Intersection 0 to 5: 14 minutes
+    g.add_edge(1, 2, 10)  # Intersection 1 to 2: 10 minutes
+    g.add_edge(1, 3, 15)  # Intersection 1 to 3: 15 minutes
+    g.add_edge(2, 3, 11)  # Intersection 2 to 3: 11 minutes
 
     distances, predecessors = g.dijkstra(0, target=3)
     path = Graph.reconstruct_path(predecessors, 3)
@@ -373,21 +411,24 @@ if __name__ == "__main__":
     print(f"Total cost: {cost:.2f}")
 ```
 
-**Heuristic quality fundamentally determines A* performance.** With h(n) = 0, A* degrades to Dijkstra's algorithm. With a perfect heuristic matching the actual remaining cost, A* explores only nodes on the optimal path. Real-world navigation uses carefully tuned heuristics that balance accuracy with computation cost—often a scaled Euclidean distance accounting for typical road network properties like average highway speeds.
+**Heuristic quality fundamentally determines `A*` performance.** With h(n) = 0, A* degrades to Dijkstra's algorithm. With a perfect heuristic matching the actual remaining cost, A* explores only nodes on the optimal path. Real-world navigation uses carefully tuned heuristics that balance accuracy with computation cost, often a scaled Euclidean distance accounting for typical road network properties like average highway speeds.
 
-The choice between Dijkstra and A* in production depends on query patterns. **Dijkstra efficiently computes shortest paths to all reachable nodes from a source, making it ideal for one-to-many queries like "find all locations within 30 minutes."** A* optimizes single-source-single-target queries, the dominant pattern in navigation. Modern systems often use bidirectional A*, simultaneously searching from source and destination, meeting in the middle to achieve another order of magnitude speedup.
+The choice between Dijkstra and A* in production depends on query patterns. Dijkstra efficiently computes shortest paths to all reachable nodes from a source, making it ideal for one-to-many queries like "find all locations within 30 minutes." A* optimizes single-source-single-target queries, the dominant pattern in navigation. Modern systems often use bidirectional A*, simultaneously searching from source and destination, meeting in the middle to achieve another order of magnitude speedup.
 
 ## Contraction Hierarchies achieve 1000x speedups through hierarchical preprocessing
 
-Road networks exhibit natural hierarchy—most long-distance trips use similar major highways rather than exploring every possible local road. Contraction Hierarchies exploits this structure through aggressive preprocessing, achieving query times under 100 milliseconds on continental-scale networks where Dijkstra requires seconds.
+Road networks exhibit natural hierarchy, most long-distance trips use similar major highways rather than exploring every possible local road. Contraction Hierarchies exploits this structure through aggressive preprocessing, achieving query times under **100 milliseconds** on continental-scale networks where Dijkstra requires **seconds** according to researchers.
 
-**The preprocessing phase contracts nodes in a carefully chosen order, creating shortcuts that bypass unimportant intersections.** For each node in sequence, the algorithm finds all node pairs connected through it, checks whether the path through the contracted node represents the shortest route between those pairs, and if so, adds a shortcut edge directly connecting them. The contracted node receives a rank reflecting its importance, with local intersections ranked low and major highway junctions ranked high.
+The preprocessing phase contracts nodes in a carefully chosen order, creating shortcuts that bypass unimportant intersections. For each node in sequence, the algorithm finds all node pairs connected through it, checks whether the path through the contracted node represents the shortest route between those pairs, and if so, adds a shortcut edge directly connecting them. The contracted node receives a rank reflecting its importance, with local intersections ranked low and major highway junctions ranked high.
 
-The node ordering heuristic proves critical to performance. A simple but effective priority function combines multiple factors: edge difference (shortcuts added minus edges removed, preferring nodes that reduce total edges), deleted neighbors (count of already-contracted neighbors, ensuring uniform progression), and shortcut cover (how many queries would benefit from these shortcuts). **Experiments reported na literatura de Contraction Hierarchies mostram que, para uma rede viária de porte semelhante à do Reino Unido (cerca de 3,5 milhões de nós e 7,6 milhões de arestas), o pré-processamento pode levar em torno de uma hora em um único core, adicionando alguns milhões de atalhos e permitindo consultas de rota em dezenas de milissegundos para trajetos como Londres–Edimburgo.**
+The node ordering heuristic proves critical to performance. A simple but effective priority function combines multiple factors: edge difference (shortcuts added minus edges removed, preferring nodes that reduce the total number of edges), deleted neighbors (the count of already contracted neighbors, encouraging uniform progression), and shortcut cover (how many queries would benefit from these shortcuts).
 
-The query phase runs bidirectional Dijkstra with a crucial restriction: the forward search only follows edges to higher-ranked nodes, while the backward search only follows edges from higher-ranked nodes. Both searches rapidly climb the hierarchy, meeting at an important high-ranked node, typically a major highway junction. **This approach explores only hundreds of nodes instead of hundreds of thousands in large road networks, achieving order-of-magnitude speedups while maintaining optimality guarantees.**
+Experiments reported in the Contraction Hierarchies literature show that, for a road network comparable in size to the United Kingdom (around 3.5 million nodes and 7.6 million edges), preprocessing can take on the order of an hour on a single core, adding several million shortcuts and enabling route queries in tens of milliseconds for trips like London–Edinburgh.
 
-Public descriptions of large-scale routing systems, including patents and engineering blogs do Google, indicam um desenho híbrido para integrar tráfego em tempo real. A porção inicial da rota usa busca com dados de tráfego em tempo real para máxima precisão, crítica para os primeiros minutos em que as condições mudam rapidamente. O restante pode usar Contraction Hierarchies com tráfego previsto a partir de padrões históricos, trocando precisão perfeita em tempo real pela velocidade necessária para atender milhões de consultas concorrentes. Em arquiteturas distribuídas, o grafo é particionado em múltiplos shards, com regiões sobrepostas para permitir processamento distribuído de consultas.
+The query phase runs bidirectional Dijkstra with a crucial restriction: the forward search only follows edges to higher-ranked nodes, and the backward search likewise only follows edges to higher-ranked nodes in the reverse graph. Both searches rapidly climb the hierarchy, meeting at an important high-ranked node, typically a major highway junction. This approach explores only hundreds of nodes instead of **hundreds of thousands** in large road networks, achieving order-of-magnitude speedups while maintaining optimality guarantees.
+
+
+Public descriptions of large-scale routing systems, including patents and Google engineering blogs, suggest a hybrid design for integrating real-time traffic. The initial portion of a route is computed using live traffic data for maximum accuracy, which is critical for the first minutes when conditions change quickly. The remaining segments can leverage Contraction Hierarchies with traffic predicted from historical patterns, trading perfect real-time accuracy for the speed required to handle millions of concurrent queries. In distributed architectures, the road graph is partitioned into multiple shards with overlapping regions, enabling scalable, distributed processing of routing requests.
 
 Here's a simplified Contraction Hierarchies implementation showing the core concepts:
 
@@ -507,18 +548,20 @@ class ContractionHierarchies:
 
             contracted.add(node)
 
-    def query(self, source: int, target: int) -> Tuple[float, List[int]]:
+        def query(self, source: int, target: int) -> Tuple[float, List[int]]:
         """
         Query shortest path using CH with bidirectional search.
         """
         # Forward search: only edges to higher-level nodes
-        forward_dist = {source: 0}
-        forward_pq = [(0, source)]
+        forward_dist = {source: 0.0}
+        forward_prev: Dict[int, int] = {}
+        forward_pq = [(0.0, source)]
         forward_settled = set()
 
-        # Backward search: only edges from higher-level nodes
-        backward_dist = {target: 0}
-        backward_pq = [(0, target)]
+        # Backward search: only edges to higher-level nodes (in reverse graph)
+        backward_dist = {target: 0.0}
+        backward_prev: Dict[int, int] = {}
+        backward_pq = [(0.0, target)]
         backward_settled = set()
 
         best_dist = math.inf
@@ -529,10 +572,8 @@ class ContractionHierarchies:
             # Forward step
             if forward_pq:
                 d, node = heappop(forward_pq)
-
                 if node in forward_settled:
                     continue
-
                 forward_settled.add(node)
 
                 # Check for meeting point
@@ -544,19 +585,18 @@ class ContractionHierarchies:
 
                 # Expand only to higher-level nodes
                 for neighbor, weight in self.adj_forward.get(node, []):
-                    if (self.node_level.get(neighbor, -1) > self.node_level.get(node, -1)):
+                    if self.node_level.get(neighbor, -1) > self.node_level.get(node, -1):
                         new_dist = d + weight
                         if new_dist < forward_dist.get(neighbor, math.inf):
                             forward_dist[neighbor] = new_dist
+                            forward_prev[neighbor] = node
                             heappush(forward_pq, (new_dist, neighbor))
 
             # Backward step
             if backward_pq:
                 d, node = heappop(backward_pq)
-
                 if node in backward_settled:
                     continue
-
                 backward_settled.add(node)
 
                 # Check for meeting point
@@ -566,15 +606,36 @@ class ContractionHierarchies:
                         best_dist = total
                         meeting_node = node
 
-                # Expand only from higher-level nodes
+                # Expand only to higher-level nodes in reverse graph
                 for neighbor, weight in self.adj_backward.get(node, []):
-                    if (self.node_level.get(neighbor, -1) > self.node_level.get(node, -1)):
+                    if self.node_level.get(neighbor, -1) > self.node_level.get(node, -1):
                         new_dist = d + weight
                         if new_dist < backward_dist.get(neighbor, math.inf):
                             backward_dist[neighbor] = new_dist
+                            backward_prev[neighbor] = node
                             heappush(backward_pq, (new_dist, neighbor))
 
-        return best_dist, []  # Path reconstruction omitted for brevity
+        if meeting_node is None or best_dist == math.inf:
+            return math.inf, []
+
+        # Reconstruct path: source -> meeting_node
+        path_forward = []
+        v = meeting_node
+        while v != source:
+            path_forward.append(v)
+            v = forward_prev[v]
+        path_forward.append(source)
+        path_forward.reverse()
+
+        # Reconstruct path: meeting_node -> target (using backward_prev)
+        path_backward = []
+        v = meeting_node
+        while v != target:
+            v = backward_prev[v]
+            path_backward.append(v)
+
+        full_path = path_forward + path_backward  # meeting_node não é duplicado
+        return best_dist, full_path
 
 
 # Example usage
@@ -603,7 +664,7 @@ if __name__ == "__main__":
     print(f"Distance from 0 to 3: {dist}")
 ```
 
-The trade-off proves compelling for navigation: preprocessing takes minutes to hours but runs once (or periodically as roads change), while queries must complete in milliseconds millions of times per second. **Modern implementations typically incur apenas sobrecarga moderada de memória, e em alguns cenários representações comprimidas do grafo contraído podem até usar espaço semelhante ou menor que o grafo original com todas as arestas de baixo nível.** This effect occurs because the hierarchy allows efficient pruning of edges that would never be used in shortest-path queries.
+The trade-off is compelling for navigation: preprocessing takes minutes to hours but runs once (or periodically as the road network changes), while queries must complete in milliseconds and be served millions of times per second. Modern implementations typically incur only moderate memory overhead, and in some settings compressed representations of the contracted graph can even use space comparable to or smaller than the original graph with all low-level edges. This effect occurs because the hierarchy allows efficient pruning of edges that would never be used in shortest-path queries.
 
 ## Graph Neural Networks learn spatiotemporal traffic patterns from billions of trips
 
