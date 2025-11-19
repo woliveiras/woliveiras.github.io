@@ -668,17 +668,95 @@ The trade-off is compelling for navigation: preprocessing takes minutes to hours
 
 ## Graph Neural Networks learn spatiotemporal traffic patterns from billions of trips
 
-Classical routing algorithms compute optimal paths given edge weights, but accurately predicting those weights—travel times under real-world traffic conditions—requires modeling complex spatiotemporal dynamics. **Graph Neural Networks excel at this task by treating road networks as their natural graph structure, using message passing to capture how congestion on one road segment affects adjacent and downstream segments.**
+Classical routing algorithms compute optimal paths given edge weights, but accurately predicting those weights—travel times under real-world traffic conditions—requires modeling complex spatiotemporal dynamics. Graph Neural Networks excel at this task by treating road networks as their natural graph structure, using message passing to capture how congestion on one road segment affects adjacent and downstream segments.
 
-Google Maps' production GNN system, developed in partnership with DeepMind and detailed in their seminal 2021 CIKM paper "ETA Prediction with Graph Neural Networks in Google Maps," represents the first large-scale deployment of GNNs for navigation. The architecture divides road networks into supersegments—sequences of 20-50 connected road segments with significant shared traffic. Each supersegment becomes a subgraph where nodes represent road segments and edges connect consecutive or intersecting segments.
+Google Maps' production GNN system, developed in partnership with DeepMind and detailed in their seminal 2021 CIKM paper *"ETA Prediction with Graph Neural Networks in Google Maps"*, represents the first large-scale deployment of GNNs for navigation. The architecture divides road networks into supersegments—sequences of 20-50 connected road segments with significant shared traffic. Each supersegment becomes a subgraph where nodes represent road segments and edges connect consecutive or intersecting segments.
 
-**The Graph Network framework follows an encode-process-decode paradigm.** The encoder transforms raw features into learned representations: current speeds, historical patterns at multiple time horizons (0, 10, 20, 30, 60 minutes), road attributes like type and lane count, temporal context like time of day. The processing phase runs multiple rounds of message passing where neural networks compute messages between connected nodes and update node states based on received messages. Crucially, this allows the model to reason about complex interactions—a traffic jam on a side street spilling onto a major arterial, or the effect of an upcoming traffic light on approach speeds.
+The Graph Network framework follows an `encode-process-decode` paradigm. The encoder transforms raw features into learned representations: current speeds, historical patterns at multiple time horizons (0, 10, 20, 30, 60 minutes), road attributes like type and lane count, temporal context like time of day. The processing phase runs multiple rounds of message passing where neural networks compute messages between connected nodes and update node states based on received messages. This process allows the model to reason about complex interactions, a traffic jam on a side street spilling onto a major arterial, or the effect of an upcoming traffic light on approach speeds.
 
-The key technical innovation enabling production deployment was MetaGradients, adapted from reinforcement learning to dynamically tune the learning rate during training. **Route queries vary wildly in scale—from city blocks to continental trips—causing training instability as different batches have vastly different characteristics.** MetaGradients lets the system learn its own optimal learning rate schedule, automatically decreasing it to achieve stable convergence. The multi-component loss function combines L1 and L2 losses on global traversal times, Huber and negative log-likelihood losses for each node, and regularization on model weights, enabling the model to generalize beyond training data.
+The key technical innovation enabling production deployment was `MetaGradients`, adapted from reinforcement learning to dynamically tune the learning rate during training. Route queries vary wildly in scale, from city blocks to continental trips, causing training instability as different batches have vastly different characteristics. MetaGradients lets the system learn its own optimal learning rate schedule, automatically decreasing it to achieve stable convergence. The multi-component loss function combines L1 and L2 losses on global traversal times, Huber and negative log-likelihood losses for each node, and regularization on model weights, enabling the model to generalize beyond training data.
 
-The results proved dramatic: 40% reduction in bad ETA outcomes during Sydney rush hours, and up to 50% accuracy improvements in Berlin, Jakarta, São Paulo, Tokyo, and Washington DC. **The system maintains over 97% accuracy across all trips worldwide, a remarkable achievement given the complexity and variability of global traffic patterns.** The GNN naturally handles arbitrary complex connections—traffic ahead, behind, adjacent, and intersecting roads all influence predictions through learned message patterns.
+The results proved 40% reduction in bad ETA outcomes during Sydney rush hours, and up to 50% accuracy improvements in Berlin, Jakarta, São Paulo, Tokyo, and Washington DC. **The system maintains over 97% accuracy across all trips worldwide, a remarkable achievement given the complexity and variability of global traffic patterns.** The GNN naturally handles arbitrary complex connections—traffic ahead, behind, adjacent, and intersecting roads all influence predictions through learned message patterns.
 
-The architecture contrasts sharply with earlier attempts. Google initially tried separate fully-connected neural networks for each supersegment, but dynamically-sized routes would require millions of separately trained models—an impossible infrastructure challenge. Recurrent neural networks could handle variable-length sequences but struggled to incorporate the road network's graph structure. **GNNs provided the breakthrough by processing arbitrary graph structures in a single unified model**, handling everything from simple two-segment routes to complex paths with hundreds of nodes.
+The architecture contrasts sharply with earlier attempts. Google initially tried separate fully-connected neural networks for each supersegment, but dynamically-sized routes would require millions of separately trained models, an impossible infrastructure challenge. Recurrent neural networks could handle variable-length sequences but struggled to incorporate the road network's graph structure. **GNNs provided the breakthrough by processing arbitrary graph structures in a single unified model**, handling everything from simple two-segment routes to complex paths with hundreds of nodes.
+
+```python
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+# Small "urban" road network: 5 segments (nodes)
+#
+#   (2)──(3)
+#    │    │
+#   (0)──(1)──(4)
+#
+# Intersections are implicit; each node is a road segment.
+num_nodes = 5
+edges = torch.tensor([
+    [0, 1, 0, 2, 1, 3, 1, 4, 2, 3, 3, 2],  # src
+    [1, 0, 2, 0, 3, 1, 4, 1, 3, 2, 2, 3],  # dst (undirected as bidirectional edges)
+])
+
+# Features per segment: [current_speed_kmh, speed_limit_kmh]
+x = torch.tensor([
+    [25.0, 50.0],  # segment 0 (residential, slightly congested)
+    [15.0, 50.0],  # segment 1 (busy connector)
+    [30.0, 40.0],  # segment 2 (side street)
+    [35.0, 40.0],  # segment 3 (side street, flowing better)
+    [40.0, 60.0],  # segment 4 (arterial, free flowing)
+])
+
+# Target: observed travel time per segment in seconds (dummy values)
+y = torch.tensor([70.0, 120.0, 60.0, 55.0, 40.0])
+
+
+class SimpleGCNLayer(nn.Module):
+    def __init__(self, in_dim, out_dim):
+        super().__init__()
+        self.lin = nn.Linear(in_dim, out_dim)
+
+    def forward(self, x, edges):
+        src, dst = edges
+        # Aggregate neighbor features by summation
+        agg = torch.zeros_like(x)
+        agg.index_add_(0, dst, x[src])
+        # Add self-loop (retain local information)
+        agg = agg + x
+        return self.lin(agg)
+
+
+class ETA_GNN(nn.Module):
+    def __init__(self, in_dim, hidden_dim):
+        super().__init__()
+        self.enc = nn.Linear(in_dim, hidden_dim)      # encoder
+        self.gnn1 = SimpleGCNLayer(hidden_dim, hidden_dim)
+        self.gnn2 = SimpleGCNLayer(hidden_dim, hidden_dim)
+        self.out = nn.Linear(hidden_dim, 1)           # decoder
+
+    def forward(self, x, edges):
+        h = F.relu(self.enc(x))
+        h = F.relu(self.gnn1(h, edges))
+        h = F.relu(self.gnn2(h, edges))
+        eta = self.out(h).squeeze(-1)  # [num_nodes]
+        return eta
+
+
+model = ETA_GNN(in_dim=2, hidden_dim=16)
+optimizer = torch.optim.Adam(model.parameters(), lr=1e-2)
+loss_fn = nn.L1Loss()  # MAE for simplicity
+
+for epoch in range(300):
+    optimizer.zero_grad()
+    pred = model(x, edges)
+    loss = loss_fn(pred, y)
+    loss.backward()
+    optimizer.step()
+
+pred_eta = model(x, edges).detach()
+print("True ETA: ", y.tolist())
+print("Pred ETA: ", [round(v, 1) for v in pred_eta.tolist()])
+```
 
 ## LSTM models capture temporal dynamics for real-time ETA prediction
 
