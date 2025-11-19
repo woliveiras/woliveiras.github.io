@@ -852,37 +852,46 @@ with torch.no_grad():
 
 ## The mathematics of routing balances optimality guarantees with practical performance
 
-Understanding the mathematical foundations separates developers who can use routing libraries from those who can build and optimize them. The shortest path problem formalizes navigation: given graph G = (V, E) with edge weight function w, find path P from source s to target t minimizing the sum of edge weights along P. **This elegant formulation reduces complex navigation to graph theory, where intersections become vertices, road segments become edges, and travel time or distance provides weights.**
+The shortest path problem formalizes navigation: given `graph G = (V, E)` with edge weight function `w`, find path `P` from source `s` to target `t` minimizing the sum of edge weights along `P`.
 
-Big-O complexity analysis explains why algorithm choice matters. Dijkstra's O((E + V) log V) seems fast, but on continental road networks with tens of millions of nodes, this still requires seconds. Contraction Hierarchies' O(log V) query time—exploring only hundreds of nodes—explains how Google Maps handles millions of simultaneous requests. **The key insight: preprocessing shifts computational burden from query time to setup time, and with billions of queries per day, even millisecond savings multiply into massive infrastructure cost reductions.**
+**This formulation reduces complex navigation to graph theory, where intersections become vertices, road segments become edges, and travel time or distance provides weights.**
 
-Heuristic admissibility provides A*'s optimality guarantee through a simple principle: never overestimate remaining cost to goal. Formally, h(n) ≤ h*(n) where h*(n) denotes true optimal cost. Why does this ensure optimality? When A* selects a node for expansion, its f-value represents the minimum possible cost of any path through that node. If the heuristic never overestimates, nodes on the optimal path always have f-values at most the optimal cost, so A* expands them before exploring worse alternatives. **Consistency—the stronger property that h(n) ≤ cost(n, n') + h(n') for all edges—guarantees A* never reopens nodes, crucial for efficiency.**
+Big-O complexity analysis explains why algorithm choice matters. Dijkstra's `O((E + V) log V)` seems fast, but on continental road networks with tens of millions of nodes, this still requires long seconds of computation. Contraction Hierarchies' `O(log V)` query time, exploring only hundreds of nodes, explains how Google Maps handles millions of simultaneous requests. **The key insight: preprocessing shifts computational burden from query time to setup time, and with billions of queries per day, even millisecond savings multiply into massive infrastructure cost reductions.**
 
-The triangle inequality provides both intuition and practical heuristics. For any three points A, B, C, the direct distance satisfies dist(A,C) ≤ dist(A,B) + dist(B,C). This applies naturally to road networks treated as metric spaces. The ALT (A*, Landmarks, Triangle inequality) technique precomputes distances to strategically placed landmark nodes, then uses triangle inequality to derive lower bounds: the heuristic h(n, goal) = max over landmarks L of |dist(L, goal) - dist(L, n)| provides an admissible heuristic often much tighter than Euclidean distance.
+Heuristic admissibility provides `A*'s` optimality guarantee through a simple principle: **never overestimate remaining cost to goal**. Formally, `h(n) ≤ h*(n)` where `h*(n)` denotes true optimal cost. Why does this ensure optimality? When `A*` selects a node for expansion, its `f-value` represents the minimum possible cost of any path through that node. If the heuristic never overestimates, nodes on the optimal path always have f-values at most the optimal cost, so `A*` expands them before exploring worse alternatives. **Consistency, the stronger property that `h(n) ≤ cost(n, n') + h(n')` for all edges, guarantees `A*` never reopens nodes, crucial for efficiency.**
+
+The triangle inequality provides both intuition and practical heuristics. For any three points `A`, `B`, `C`, the direct distance satisfies `dist(A,C) ≤ dist(A,B) + dist(B,C)`. This applies naturally to road networks treated as metric spaces. The ALT (A*, Landmarks, Triangle inequality) technique precomputes distances to strategically placed landmark nodes, then uses triangle inequality to derive lower bounds: the heuristic `h(n, goal) = max over landmarks L of |dist(L, goal) - dist(L, n)|` provides an admissible heuristic often much tighter than Euclidean distance.
 
 Graph Neural Network mathematics centers on message passing and aggregation. At each layer, nodes update their representations by aggregating information from neighbors:
 
-
+```math
+h_v^{(l+1)} = \mathrm{UPDATE}\!\Big(h_v^{(l)}, \mathrm{AGGREGATE}\big(\{h_u^{(l)} : u \in \mathrm{neighbors}(v)\}\big)\Big)
 ```
-h_v^(l+1) = UPDATE(h_v^(l), AGGREGATE({h_u^(l) : u ∈ neighbors(v)}))
+
+Graph Convolutional Networks (GCNs) implement this using normalized adjacency matrices:
+
+```math
+H^{(l+1)} = \sigma\!\left(D^{-\frac{1}{2}} A D^{-\frac{1}{2}} H^{(l)} W^{(l)}\right)
 ```
 
-Graph Convolutional Networks (GCNs) implement this using normalized adjacency matrices: H^(l+1) = σ(D^(-1/2) A D^(-1/2) H^(l) W^(l)), where A is the adjacency matrix, D is the degree matrix, W contains learnable weights, and σ is an activation function like ReLU. **This formulation spreads each node's information to neighbors, weighted by connection strength, and learns how to combine information through gradient descent on W.**
+where \(A\) is the adjacency matrix, \(D\) is the degree matrix, \(W\) contains learnable weights, and \(\sigma\) is an activation function like ReLU. **This formulation spreads each node's information to neighbors, weighted by connection strength, and learns how to combine information through gradient descent on \(W\).**
 
-The DeepMind paper uses a more sophisticated Graph Network framework with separate update functions for edges, nodes, and global state. Edge features update considering incident node states, node features update based on aggregated incoming edge messages, and global features aggregate across all nodes and edges. Stacking multiple layers allows information to propagate further through the graph—k layers enable k-hop neighborhood influence.
+The DeepMind paper uses a more sophisticated Graph Network framework with separate update functions for edges, nodes, and global state. Edge features update considering incident node states, node features update based on aggregated incoming edge messages, and global features aggregate across all nodes and edges. Stacking multiple layers allows information to propagate further through the `graph—k` layers enable `k-hop` neighborhood influence.
 
 LSTM cell equations reveal how the architecture maintains long-term memory while allowing updates:
 
+- Forget gate: `f_t = σ(W_f [h_{t-1}, x_t] + b_f)`
+- Input gate: `i_t = σ(W_i [h_{t-1}, x_t] + b_i)`
+- Candidate cell state: `Ĉ_t = tanh(W_C [h_{t-1}, x_t] + b_C)`
+- Cell update: `C_t = f_t ⊙ C_{t-1} + i_t ⊙ Ĉ_t`
+- Output gate: `o_t = σ(W_o [h_{t-1}, x_t] + b_o)`
+- Hidden state: `h_t = o_t ⊙ tanh(C_t)`
 
-- Forget gate: `f_t = σ(W_f · [h_{t-1}, x_t] + b_f)`
-- Input gate: `i_t = σ(W_i · [h_{t-1}, x_t] + b_i)`
-- Cell update: `C_t = f_t * C_{t-1} + i_t * tanh(W_C · [h_{t-1}, x_t] + b_C)`
-- Output gate: `o_t = σ(W_o · [h_{t-1}, x_t] + b_o)`
-- Hidden state: `h_t = o_t * tanh(C_t)`
+Operationally, the forget gate `f_t` determines which parts of the previous memory `C_{t-1}` remain relevant, while the input gate `i_t` and candidate state `Ĉ_t` control what new information is written into the cell. The updated cell state `C_t` therefore acts as long-term memory, carrying information across many time steps. The output gate `o_t` selects how much of this memory to expose as the hidden state `h_t`, which is the representation consumed by downstream layers or the next step in the sequence. In traffic and ETA prediction settings, this mechanism allows the model to retain slowly evolving phenomena like rush-hour buildup while still reacting quickly to sudden incidents reflected in recent inputs.
 
 **The cell state C_t acts as a highway carrying information across time steps, with forget and input gates controlling what information to discard or add.** For traffic prediction, this allows the model to remember that rush hour started 30 minutes ago and will likely continue, while adapting to sudden incidents through the input gate.
 
-Loss function choice significantly impacts production performance. Mean Squared Error (MSE) penalizes large errors heavily due to squaring but proves sensitive to outliers. Mean Absolute Error (MAE) treats all errors equally, providing robustness but potentially underweighting catastrophic predictions. Huber loss combines both—acting like MSE for small errors and MAE for large ones—providing the smooth gradients needed for optimization while maintaining outlier robustness. **Waze's asymmetric Huber loss weights underestimation errors more heavily, directly encoding the product insight that users strongly prefer arriving early over arriving late.**
+Loss function choice significantly impacts production performance. Mean Squared Error (MSE) penalizes large errors heavily due to squaring but proves sensitive to outliers. Mean Absolute Error (MAE) treats all errors equally, providing robustness but potentially underweighting catastrophic predictions. Huber loss combines both, acting like MSE for small errors and MAE for large ones, providing the smooth gradients needed for optimization while maintaining outlier robustness. **Waze's asymmetric Huber loss weights underestimation errors more heavily, directly encoding the product insight that users strongly prefer arriving early over arriving late.**
 
 
 ## Multimodal routing optimization introduces new algorithmic challenges
