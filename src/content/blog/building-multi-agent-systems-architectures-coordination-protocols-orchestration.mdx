@@ -200,18 +200,41 @@ Good memory design is essential for ensuring that agents can operate efficiently
 
 ## Communication and Coordination Protocols
 
+Effective communication and coordination are the backbone of any multi-agent system. These protocols define how agents interact, share information, and collaborate to achieve their goals. In this section, we will explore various communication and coordination protocols, starting with direct messaging.
+
 ### Direct Messaging
 
-Agents communicate through structured messages:
+Direct messaging is one of the simplest and most intuitive forms of communication between agents. In this model, agents exchange structured messages directly with one another, specifying the sender, receiver, task, and any relevant context. This approach is highly efficient for systems with a small number of agents or well-defined communication patterns.
+
+For example, a planner agent might send a message to a coder agent to implement a specific function:
 
 ```json
 {
   "sender": "planner",
   "receiver": "coder",
   "task": "implement function",
-  "context": { ... }
+  "context": {
+    "functionName": "calculateTotal",
+    "parameters": ["price", "quantity"],
+    "returnType": "float",
+    "description": "This function should return the total cost by multiplying price and quantity."
+  }
 }
 ```
+
+Direct messaging offers several advantages:
+
+- **Simplicity**: The communication model is straightforward to implement and debug.
+- **Low Latency**: Messages are sent directly between agents, minimizing delays.
+- **Fine-Grained Control**: Agents can tailor messages to the specific needs of the receiver.
+
+However, there are also challenges to consider:
+
+- **Scalability**: As the number of agents increases, managing direct connections between all agents can become complex.
+- **Error Handling**: If a message is lost or an agent is unavailable, the system must have mechanisms to handle these failures.
+- **Coordination Overhead**: In systems with many interdependent tasks, direct messaging can lead to a high volume of communication, increasing the risk of bottlenecks.
+
+Despite these challenges, direct messaging remains a foundational communication protocol in multi-agent systems, particularly in scenarios where simplicity and low latency are prioritized. By designing clear and structured message schemas, engineers can ensure reliable and efficient communication between agents.
 
 ### Blackboard Model
 
