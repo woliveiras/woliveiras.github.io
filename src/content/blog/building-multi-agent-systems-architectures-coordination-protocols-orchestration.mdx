@@ -97,22 +97,36 @@ graph LR
   Tools --> Worker2
 ```
 
-### 3.1. Centralized Orchestration
+This diagram represents a typical multi-agent system architecture, showcasing the interaction between different components. At the center of the system is the **Supervisor / Orchestrator**, which acts as the central controller, managing the flow of tasks and ensuring coordination among agents. It assigns tasks to the appropriate agents and monitors their progress. The **Planner Agent** is responsible for breaking down high-level tasks into smaller, manageable subtasks, creating execution plans, and delegating these subtasks to specialized worker agents. These **Worker Agents**, such as Worker Agent A and Worker Agent B, execute specific tasks by interacting with external tools and APIs. They also store or retrieve information from the **Memory Bus**, a shared memory system that ensures consistency and enables collaboration between agents. The **Memory Bus** plays a crucial role in allowing agents to access context or intermediate results, while the **Tools / APIs** provide external resources or functionalities, such as databases, web services, or computational tools, that the agents can leverage to complete their tasks.
 
-A **Supervisor** coordinates all interactions.
-This is the simplest way to maintain control, consistency, and safety.
+These core components can be arranged in various architectural patterns, each with its own trade-offs in terms of scalability, robustness, and complexity. And the power of the modern tools allows us to implement really powerful systems.
 
-Pros: strong governance, easier debugging.
-Cons: single point of failure, limited scalability.
+Now, let's explore how to orchestrate these components effectively.
 
-### 3.2. Decentralized Architecture
+## Architectural Patterns
+
+Here I aggregate the main architectural patterns used in multi-agent systems I found in the literature and in practice.
+
+### Centralized Orchestration
+
+In a centralized orchestration model, the **Supervisor** plays a pivotal role as the central controller of the system. It is responsible for coordinating all interactions between agents, ensuring that tasks are assigned appropriately and executed in a structured manner. The Supervisor acts as the brain of the system, maintaining control over the workflow and providing a single point of governance. This approach is particularly useful in scenarios where consistency, safety, and strong oversight are critical.
+
+The Supervisor operates by receiving high-level requests from users or external systems, breaking them down into smaller tasks, and delegating these tasks to specialized agents. It monitors the progress of each agent, collects their outputs, and integrates the results into a cohesive response. This centralized control simplifies debugging and makes it easier to enforce policies and constraints across the system.
+
+However, the centralized model is not without its limitations. The reliance on a single Supervisor creates a potential single point of failure, meaning that if the Supervisor encounters an issue, the entire system could be disrupted. Additionally, scalability can become a challenge as the number of agents and tasks increases, potentially overwhelming the Supervisor and leading to bottlenecks.
+
+And, for me, the most annoying part of working with LLMs is the fact that if you run the same prompts multiple times, you can get different results due to their probabilistic nature. In a centralized orchestration model, this variability can lead to inconsistencies in task execution, as the Supervisor may receive different outputs from agents for the same input. This unpredictability can complicate the coordination process and make it challenging to ensure reliable outcomes.
+
+Despite these drawbacks, centralized orchestration remains a popular choice for systems that require strong governance and predictable behavior. It is particularly effective in environments where tasks are well-defined and the risk of emergent drift or uncoordinated actions needs to be minimized. By maintaining a clear hierarchy and centralized control, the Supervisor ensures that the system operates efficiently and reliably.
+
+### Decentralized Architecture
 
 Agents communicate peer-to-peer, negotiating tasks or sharing information.
 
 Pros: scalable, robust.
 Cons: harder to control, emergent drift more likely.
 
-### 3.3. Hybrid Architecture
+### Hybrid Architecture
 
 Hybrid architectures combine centralized planning with decentralized execution, often providing the best trade-off between control and scalability.
 
@@ -159,7 +173,7 @@ graph TD
   end
 ```
 
-### 3.4. Memory Architecture
+### Memory Architecture
 
 Memory determines how agents access context:
 
@@ -169,11 +183,9 @@ Memory determines how agents access context:
 
 Good memory design is essential for stability and cost management.
 
----
+## Communication and Coordination Protocols
 
-## 4. Communication and Coordination Protocols
-
-### 4.1. Direct Messaging
+### Direct Messaging
 
 Agents communicate through structured messages:
 
@@ -186,22 +198,22 @@ Agents communicate through structured messages:
 }
 ```
 
-### 4.2. Blackboard Model
+### Blackboard Model
 
 Agents read and write to a shared knowledge base.
 Useful for production workflows and DAG-style processing.
 
-### 4.3. Auction and Bidding
+### Auction and Bidding
 
 Agents score themselves for capability and compete for tasks.
 Inspired by contract-net protocols.
 
-### 4.4. Delegated Planning Protocols
+### Delegated Planning Protocols
 
 A planner decomposes tasks, assigns subtasks, and reconciles results.
 This is currently the most robust pattern for multi-step reasoning.
 
-### 4.5. Negotiation and Consensus
+### Negotiation and Consensus
 
 Agents cross-check outputs:
 
@@ -211,26 +223,24 @@ Agents cross-check outputs:
 
 This significantly reduces hallucination.
 
----
+## Orchestration Patterns
 
-## 5. Orchestration Patterns
-
-### 5.1. Supervisor–Worker
+### Supervisor–Worker
 
 The Supervisor assigns tasks, workers execute them.
 Ideal for workflows like document processing.
 
-### 5.2. Role-Based Collaboration
+### Role-Based Collaboration
 
 Each agent has a persistent identity (Researcher, Editor, Critic).
 Long-lived sessions improve coherence.
 
-### 5.3. Tool Router Pattern
+### Tool Router Pattern
 
 A router determines which agent or tool should handle a request.
 Useful for systems with many plugins or integrations.
 
-### 5.4. Planner–Executor Pattern
+### Planner–Executor Pattern
 
 In the planner–executor pattern, one agent is responsible for decomposing the problem and another for executing the concrete steps.
 
@@ -259,11 +269,11 @@ sequenceDiagram
   S-->>U: Final answer + trace
 ```
 
-### 5.5. Critic–Validator Pattern
+### Critic–Validator Pattern
 
 A Validator reviews outputs from another agent and proposes corrections.
 
-### 5.6. Self-Correcting Loop
+### Self-Correcting Loop
 
 Agents monitor each other for failures:
 
@@ -271,18 +281,17 @@ Agents monitor each other for failures:
 * infinite loop detection
 * hallucination mitigation
 
----
 
-## 6. Implementing Multi-Agent Systems in Practice
+## Implementing Multi-Agent Systems in Practice
 
-### 6.1. Framework Comparison
+### Framework Comparison
 
 * **LangGraph**: graph-based agent orchestration, deterministic execution.
 * **AutoGen**: chat-based agent collaboration.
 * **CrewAI**: role-based workflows.
 * **Custom orchestrators**: maximum flexibility, but more engineering effort.
 
-### 6.2. Designing Message Schemas
+### Designing Message Schemas
 
 Define schemas for:
 
@@ -293,7 +302,7 @@ Define schemas for:
 
 Schemas improve traceability and enable migration to message buses.
 
-### 6.3. Handling State and Memory
+### Handling State and Memory
 
 Memory strategies:
 
@@ -301,7 +310,7 @@ Memory strategies:
 * retrieval-augmented memory
 * hierarchical memory (short-term + long-term)
 
-### 6.4. Tooling Layer
+### Tooling Layer
 
 A critical layer for:
 
@@ -315,7 +324,7 @@ Tools expand the operational capacity of the agents.
 
 ---
 
-## 7. Observability, Debugging, and Governance
+## Observability, Debugging, and Governance
 
 Execution traces in multi-agent systems can be represented as DAGs, where each node is an agent action or tool call and edges represent dependencies:
 
@@ -349,7 +358,7 @@ Governance includes:
 
 ---
 
-## 8. Scaling Multi-Agent Systems
+## Scaling Multi-Agent Systems
 
 Scaling requires moving beyond in-memory orchestrators.
 
@@ -363,7 +372,7 @@ Strategies include:
 
 Scalability transforms a prototype into a production-ready platform.
 
-## 9. Reference Architecture (Blueprint)
+## Reference Architecture (Blueprint)
 
 A robust multi-agent system typically includes a supervisor, a planner, specialized workers, a shared memory bus, a tool layer, a message bus, and an observability stack.
 
@@ -411,38 +420,7 @@ graph TD
 
 This blueprint is adaptable for enterprise, research, or automation contexts.
 
----
-
-## 10. Case Studies
-
-### 10.1. Autonomous Research Team
-
-* Planner
-* Researcher
-* Critic
-* Summarizer
-* Data extraction tools
-
-### 10.2. Enterprise Document Pipeline
-
-* OCR agent
-* Extractor
-* Classifier
-* SQL agent
-* Quality-control agent
-
-### 10.3. DevOps Automation
-
-* Build agent
-* Testing agent
-* Deployment agent
-* Monitoring agent
-
-These illustrate how MAS architectures map naturally to human workflows.
-
----
-
-## 11. Best Practices and Anti-Patterns
+## Best Practices and Anti-Patterns
 
 ### Best Practices
 
@@ -461,9 +439,7 @@ These illustrate how MAS architectures map naturally to human workflows.
 * Unbounded context growth.
 * Autonomous actions without supervision.
 
----
-
-## 12. Future Directions
+## Future Directions
 
 Trends in MAS engineering:
 
@@ -474,9 +450,7 @@ Trends in MAS engineering:
 
 We are witnessing the early steps toward distributed artificial cognition.
 
----
-
-## 13. Conclusion
+## Conclusion
 
 Multi-agent systems represent a natural and necessary next step in AI engineering. They offer enhanced scalability, robustness, and modularity—attributes essential for real-world software.
 
