@@ -121,10 +121,13 @@ Despite these drawbacks, centralized orchestration remains a popular choice for 
 
 ### Decentralized Architecture
 
-Agents communicate peer-to-peer, negotiating tasks or sharing information.
+In a decentralized architecture, agents operate independently and communicate directly with one another in a peer-to-peer manner. This model eliminates the need for a central controller, allowing agents to negotiate tasks, share information, and collaborate autonomously. The decentralized approach is particularly well-suited for systems that require high scalability and robustness, as it distributes the workload across multiple agents and avoids reliance on a single point of control.
 
-Pros: scalable, robust.
-Cons: harder to control, emergent drift more likely.
+The peer-to-peer communication enables agents to adapt dynamically to changes in the environment, making the system more resilient to failures. For example, if one agent becomes unavailable, others can step in to fulfill its role without disrupting the overall operation. This flexibility makes decentralized architectures ideal for applications such as distributed sensor networks, swarm robotics, and blockchain-based systems.
+
+However, the lack of centralized oversight introduces challenges in maintaining control and consistency. Without a central authority, it can be difficult to enforce global policies or ensure that all agents are working towards the same objectives. Additionally, decentralized systems are prone to emergent drift, where individual agents may deviate from their intended behavior due to local interactions or conflicting goals. This can lead to unpredictable outcomes and require sophisticated mechanisms for coordination and conflict resolution.
+
+Despite these challenges, decentralized architectures offer significant advantages in terms of scalability and fault tolerance. By leveraging the collective intelligence of autonomous agents, these systems can achieve complex goals that would be difficult to accomplish with a centralized approach.
 
 ### Hybrid Architecture
 
