@@ -74,24 +74,16 @@ LLM-based agents require new patterns for governance, safety, and orchestration 
 Before we dive into specific architectures, it's useful to visualize a generic multi-agent ecosystem.
 
 ```mermaid
-%%{init: {"themeVariables": { "fontSize": "18px" }}}%%
-graph LR
+graph TD
   User[User / External System]
-  Orchestrator[Supervisor / Orchestrator]
-  Planner[Planner Agent]
-  Worker1[Worker Agent A]
-  Worker2[Worker Agent B]
-  Memory[(Memory Bus)]
-  Tools[Tools / APIs]
-
-  User --> Orchestrator
-  Orchestrator --> Planner
-  Planner --> Worker1
-  Planner --> Worker2
-  Worker1 --> Memory
-  Worker2 --> Memory
-  Worker1 --> Tools
+  User --> Orchestrator[Supervisor / Orchestrator]
+  Orchestrator --> Planner[Planner Agent]
+  Planner --> Worker1[Worker Agent A]
+  Planner --> Worker2[Worker Agent B]
+  Worker1 --> Tools[Tools / APIs]
   Worker2 --> Tools
+  Worker1 --> Memory[(Memory Bus)]
+  Worker2 --> Memory
   Memory --> Orchestrator
   Tools --> Worker1
   Tools --> Worker2
@@ -133,10 +125,13 @@ Despite these challenges, decentralized architectures offer significant advantag
 
 Hybrid architectures combine centralized planning with decentralized execution, often providing the best trade-off between control and scalability.
 
-The diagram below contrasts centralized, decentralized, and hybrid approaches:
+Hybrid architectures are particularly useful in scenarios where tasks require both structured planning and flexible execution. For example, in a logistics system, a centralized planner might optimize delivery routes, while individual delivery agents adapt to real-time traffic conditions and customer requests. Similarly, in a research environment, a supervisor could assign research topics to teams, while the teams independently explore and share findings.
+
+
+
+The diagrams below illustrate the differences between centralized, decentralized, and hybrid architectures, highlighting how hybrid models leverage the best aspects of both approaches:
 
 ```mermaid
-%%{init: {"themeVariables": { "fontSize": "16px" }}}%%
 graph TD
   subgraph Centralized
     CUser[User]
@@ -149,7 +144,10 @@ graph TD
     CAgent1 --> CSuper
     CAgent2 --> CSuper
   end
+```
 
+```mermaid
+graph TD
   subgraph Decentralized
     DUser[User]
     DAgent1[Agent 1]
@@ -160,7 +158,10 @@ graph TD
     DAgent2 --> DAgent3
     DAgent3 --> DAgent1
   end
+```
 
+```mermaid
+graph TD
   subgraph Hybrid
     HUser[User]
     HSuper[Supervisor]
@@ -175,6 +176,9 @@ graph TD
     HWorker2 --> HSuper
   end
 ```
+
+
+Despite their advantages, hybrid architectures also come with challenges. The integration of centralized and decentralized components requires careful design to ensure seamless communication and coordination. Additionally, the system must balance the trade-offs between control and autonomy, avoiding excessive centralization that could stifle flexibility or over-decentralization that might lead to inconsistencies.
 
 ### Memory Architecture
 
@@ -250,7 +254,6 @@ In the planner–executor pattern, one agent is responsible for decomposing the 
 The sequence diagram below shows how a planner, worker, and validator collaborate:
 
 ```mermaid
-%%{init: {"themeVariables": { "fontSize": "16px" }}}%%
 sequenceDiagram
   participant U as User
   participant S as Supervisor
@@ -332,7 +335,6 @@ Tools expand the operational capacity of the agents.
 Execution traces in multi-agent systems can be represented as DAGs, where each node is an agent action or tool call and edges represent dependencies:
 
 ```mermaid
-%%{init: {"themeVariables": { "fontSize": "16px" }}}%%
 graph TD
   Start[User Request] --> P1[Planner: Decompose Task]
   P1 --> W1[Worker A: Fetch Data]
@@ -382,7 +384,6 @@ A robust multi-agent system typically includes a supervisor, a planner, speciali
 The diagram below shows a high-level reference architecture:
 
 ```mermaid
-%%{init: {"themeVariables": { "fontSize": "16px" }}}%%
 graph TD
   User[User / Client]
   API[API Gateway]
