@@ -2,3 +2,71 @@
 svg[id^="mermaid"] {
   margin: 50px auto;
 }
+/* Responsive table wrapper: keep tables within the content container
+   and allow horizontal scrolling on small screens. */
+.prose :where(table):not(:where([class~="not-prose"] *)) {
+  width: 100%;
+  max-width: 100%;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  margin-top: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+/* Utility wrapper in case the HTML needs it: wrap tables with .table-wrapper
+   to provide a scrollable viewport constrained to the content width. */
+.table-wrapper {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Make sure table itself doesn't force wider layout; allow cells to wrap. */
+.table-wrapper table,
+.prose table {
+  /* Make table a block-level scrollable element so it can overflow
+     the content container and show a horizontal scrollbar when needed. */
+  display: block;
+  table-layout: auto;
+  border-collapse: collapse;
+  width: max-content; /* natural width, allows horizontal overflow */
+  max-width: 100%;    /* never exceed container width */
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Improve cell wrapping and spacing on small screens */
+.prose td,
+.prose th,
+.table-wrapper td,
+.table-wrapper th {
+  padding: 0.75rem 0.75rem;
+  /* Default: allow wrapping on wide screens */
+  white-space: normal;
+  word-break: normal;
+  overflow-wrap: normal;
+}
+
+/* On narrow viewports, avoid breaking words into single letters.
+   Use nowrap so the table preserves its columns and the wrapper
+   provides horizontal scrolling. */
+@media (max-width: 640px) {
+  .prose td,
+  .prose th,
+  .table-wrapper td,
+  .table-wrapper th {
+    white-space: nowrap;
+    word-break: normal;
+    overflow-wrap: normal;
+  }
+}
+
+/* Optional: show a subtle scrollbar track for webkit browsers */
+.table-wrapper::-webkit-scrollbar {
+  height: 8px;
+}
+.table-wrapper::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,0.12);
+  border-radius: 999px;
+}
