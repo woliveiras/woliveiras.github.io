@@ -8,7 +8,7 @@ tags: ["ai-agents", "multi-agent-systems", "architecture", "llm"]
 
 The AI Agents are really useful for automating tasks. We can use them to generate text, analyze data, and even write code. However, their true potential is unlocked when multiple agents collaborate within a structured system.
 
-I think that it was previsible, because we do something similar with microservices, where each service has a specific role and they communicate to achieve a common goal. A microservice alone can do a lot, but a well-orchestrated set of microservices can handle complex workflows efficiently.
+This progression was predictable, mirroring trends in other areas like microservices and distributed systems. But, where each service has a specific role and they communicate to achieve a common goal. A microservice alone can do a lot, but a well-orchestrated set of microservices can handle complex workflows efficiently.
 
 And also because of the complexity of real-world tasks. A single agent might struggle to manage all aspects of a task, but a team of specialized agents can divide the workload, verify each other's outputs, and adapt to changing requirements.
 
@@ -22,11 +22,11 @@ While studying multi-agent systems, we usually think that it's a recent concept 
 
 The concept of MAS is an established field in computer science and artificial intelligence, dating back to the 1970s and 1980s. Early research focused on distributed problem-solving, cooperative robotics, and agent communication languages like KQML and FIPA-ACL.
 
-Victor Lesser, a pioneer in the field, is talking about multi-agent systems since the 1980s. Rodney Brooks also contributed significantly with his work on distributed robotics and the subsumption architecture. We also have some notable books like ["Multi-agent systems: An introduction to distributed artificial intelligence"](https://amzn.to/4pwS2Od) by Jacques Ferber (1999). So, while LLMs have revitalized interest in MAS, the foundational concepts have a rich history that an prove useful for modern implementations.
+Victor Lesser, a pioneer in the field, is talking about multi-agent systems since the 1980s. Rodney Brooks also contributed significantly with his work on distributed robotics and the subsumption architecture. We also have some notable books like ["Multi-agent systems: An introduction to distributed artificial intelligence"](https://amzn.to/4pwS2Od) by Jacques Ferber (1999). So, while LLMs have revitalized interest in MAS, the foundational concepts have a rich history that can prove useful for modern implementations.
 
 For understanding the base of MAS, we can learn the classical definitions and architectures, and then see how they adapt to the capabilities and challenges of LLM-based agents.
 
-To understand it better, we'll learn the classical definitions. But, first, we need to understand what exaclty is an agent.
+To understand it better, we'll learn the classical definitions. But, first, we need to understand what exactly is an agent.
 
 ### What is an Agent?
 
@@ -107,7 +107,7 @@ The Supervisor operates by receiving high-level requests from users or external 
 
 However, the centralized model is not without its limitations. The reliance on a single Supervisor creates a potential single point of failure, meaning that if the Supervisor encounters an issue, the entire system could be disrupted. Additionally, scalability can become a challenge as the number of agents and tasks increases, potentially overwhelming the Supervisor and leading to bottlenecks.
 
-And, for me, the most annoying part of working with LLMs is the fact that if you run the same prompts multiple times, you can get different results due to their probabilistic nature. In a centralized orchestration model, this variability can lead to inconsistencies in task execution, as the Supervisor may receive different outputs from agents for the same input. This unpredictability can complicate the coordination process and make it challenging to ensure reliable outcomes.
+A significant challenge with LLM-based systems is their probabilistic nature; even if you run the same prompts multiple times, you can get different results due to their probabilistic nature. In a centralized orchestration model, this variability can lead to inconsistencies in task execution, as the Supervisor may receive different outputs from agents for the same input. This unpredictability can complicate the coordination process and make it challenging to ensure reliable outcomes.
 
 Despite these drawbacks, centralized orchestration remains a popular choice for systems that require strong governance and predictable behavior. It is particularly effective in environments where tasks are well-defined and the risk of emergent drift or uncoordinated actions needs to be minimized. By maintaining a clear hierarchy and centralized control, the Supervisor ensures that the system operates efficiently and reliably.
 
@@ -361,11 +361,110 @@ However, the iterative process can introduce delays, particularly in time-sensit
 
 ### Self-Correcting Loop
 
-The Self-Correcting Loop is an orchestration pattern where agents actively monitor each other to detect and address failures, ensuring the system remains robust and reliable. This pattern is particularly useful in dynamic environments where unexpected issues can arise, and immediate corrective actions are necessary to maintain system stability.
+The Self-Correcting Loop is an orchestration pattern where agents actively monitor each other to detect and address failures, ensuring the system remains robust and reliable. This pattern is particularly useful in dynamic environments where unexpected issues can arise, and immediate corrective actions are necessary to maintain system stability. By embedding checks and balances directly into the agentic workflow, the system can identify and recover from common failure modes without human intervention.
 
-In this model, agents are designed to identify specific types of failures during their interactions. For instance, timeout detection allows agents to recognize when a task or response is taking longer than expected, prompting them to either retry the operation or escalate the issue to another agent. Similarly, infinite loop detection ensures that agents do not get stuck in repetitive or unproductive cycles, which could otherwise consume resources and hinder overall system performance. Another critical aspect of this pattern is hallucination mitigation, where agents verify the accuracy and relevance of generated outputs to prevent the propagation of incorrect or misleading information.
+In this model, agents are designed to identify specific types of failures during their interactions. For instance, timeout detection is a foundational safeguard against unresponsive tools or stalled agents. An orchestrator can wrap calls to external APIs or long-running computations in a timeout mechanism, ensuring that the entire system does not hang if one component fails to respond. If a timeout is triggered, the orchestrator can then reroute the task, retry with a different tool, or escalate the issue to another agent.
 
-By continuously monitoring each other, agents in a Self-Correcting Loop can collaboratively maintain the integrity and efficiency of the system. This proactive approach not only minimizes the impact of individual failures but also enhances the system's ability to adapt to changing conditions and recover from errors in real time. However, implementing this pattern requires careful design to ensure that monitoring processes do not introduce excessive overhead or complexity, which could negate the benefits of the approach.
+```python
+import threading
+
+class TimeoutException(Exception):
+    pass
+
+def run_with_timeout(func, args, timeout_seconds):
+    """Executes a function and raises a timeout if it takes too long."""
+    result = [None]
+    exception = [None]
+
+    def target():
+        try:
+            result[0] = func(*args)
+        except Exception as e:
+            exception[0] = e
+
+    thread = threading.Thread(target=target)
+    thread.start()
+    thread.join(timeout_seconds)
+
+    if thread.is_alive():
+        # Note: This doesn't kill the thread, which is a limitation in Python.
+        # For production, more robust solutions like multiprocessing are often needed.
+        raise TimeoutException(f"Task timed out after {timeout_seconds} seconds.")
+
+    if exception[0]:
+        raise exception[0]
+
+    return result[0]
+
+# An agent orchestrator would use this to call a potentially slow tool
+try:
+    response = run_with_timeout(api.call, ("some_query",), 5)
+except TimeoutException as e:
+    # Escalate to another agent or retry with a different strategy
+    print(f"Caught a timeout: {e}")
+```
+
+Similarly, infinite loop detection prevents agents from becoming trapped in unproductive cycles, which could otherwise consume vast resources. A simple but effective technique is for the orchestrator to enforce a step limit on tasks. It injects a context object into the agent, which must be used to report progress. If an agent exceeds a predefined number of steps for a given task, the orchestrator terminates the operation and flags it for review.
+
+```python
+class TaskContext:
+    def __init__(self, task_id, max_steps=25):
+        self.task_id = task_id
+        self.max_steps = max_steps
+        self.current_step = 0
+
+    def increment(self):
+        """Increments the step counter and raises an error if the limit is exceeded."""
+        self.current_step += 1
+        if self.current_step > self.max_steps:
+            raise RuntimeError(f"Task {self.task_id} exceeded max steps. Possible infinite loop detected.")
+
+def worker_agent(context: TaskContext, goal: str):
+    """A worker that must report its progress with each step."""
+    while not "goal_is_met": # Placeholder for the real condition
+        context.increment()
+        # ... do one step of work ...
+        if "some_condition":
+            break # Exit condition
+
+# The orchestrator manages the context and can catch the error
+task_context = TaskContext("analyze_report_123")
+try:
+    worker_agent(task_context, "Summarize the document.")
+except RuntimeError as e:
+    print(f"Error: {e}")
+    # Fallback to a simpler agent or alert a human supervisor.
+```
+
+Another critical aspect of this pattern is hallucination mitigation, where agents cross-validate each other's outputs to ensure factual accuracy and relevance. This is often implemented using a `Validator` agent, which acts as a reviewer for a `Generator` agent's output. The validator can use a different model, a rule-based system, or an external knowledge base (like a web search) to check the generated content. If it detects a likely hallucination, it provides corrective feedback, and the orchestrator can prompt the generator to revise its output.
+
+```python
+def generator_agent(prompt: str) -> str:
+    """Generates content based on a prompt. May hallucinate."""
+    # In a real system, this would call an LLM.
+    # Simulate a potential hallucination:
+    return "The Eiffel Tower is in Rome, the capital of Italy."
+
+def validator_agent(text: str) -> bool:
+    """Validates text against a knowledge base or rules."""
+    # This could use a search API, a database, or another LLM.
+    if "Eiffel Tower" in text and "Rome" in text:
+        return False  # Found a likely factual error.
+    return True
+
+# The orchestrator implements the self-correction loop
+prompt = "Where is the Eiffel Tower and what city is it in?"
+generated_text = generator_agent(prompt)
+is_valid = validator_agent(generated_text)
+
+if not is_valid:
+    print("Orchestrator: Validation failed. Retrying with a correcting prompt.")
+    # The orchestrator can now trigger a new generation with more context.
+    corrected_prompt = f"Original prompt: '{prompt}'. Previous incorrect answer: '{generated_text}'. Please provide a factual correction."
+    new_text = generator_agent(corrected_prompt)
+```
+
+By continuously monitoring each other, agents in a Self-Correcting Loop can collaboratively maintain the integrity and efficiency of the system. However, implementing this pattern requires a careful balance. While these checks add a layer of resilience, they also introduce overhead. Timeout handlers, step counters, and validation calls consume computational resources and can increase latency. The key is to apply them judiciously: use aggressive timeouts for unreliable external APIs, implement step counters for complex, iterative tasks, and deploy validator agents for high-stakes content generation where accuracy is paramount. This proactive approach transforms a brittle system into a more robust one, minimizing the impact of individual failures and enhancing its ability to adapt and recover from errors in real time.
 
 ## Implementing Multi-Agent Systems in Practice
 
@@ -392,7 +491,7 @@ A high-level comparison of these options is summarized below:
 | CrewAI               | Role-based, team-like workflows   | Task and role coordination  | Medium                | Business-oriented flows and human-like processes  | Low (within its paradigm) |
 | Custom orchestrators | Fully custom infrastructure layer | Arbitrary (queues, workflows, services) | High (if designed so) | Deep integration, strict SLAs, bespoke architectures | High                      |
 
-I'm using LangGraph in my applications because I value deterministic execution and explicit control flow for complex multi-agent tasks. The easy of debug is for me something really important. However, the best choice will depend on your specific use case, team expertise, and long-term maintenance considerations.
+I'm using LangGraph in my applications because I value deterministic execution and explicit control flow for complex multi-agent tasks. Its ease of debugging is a critical factor. However, the best choice will depend on your specific use case, team expertise, and long-term maintenance considerations.
 
 
 ### Designing Message Schemas
@@ -437,7 +536,7 @@ def append_message(message: dict) -> None:
     history.append(message)
     # keep only the most recent MAX_MESSAGES
     if len(history) > MAX_MESSAGES:
-        del history[0:len(history) - MAX_MESSAGES]
+        history = history[-MAX_MESSAGES:]
 
 def build_prompt() -> str:
     return "\n".join(f"{m['role']}: {m['content']}" for m in history)
@@ -921,10 +1020,12 @@ Whether applied to enterprise automation, research assistants, developer tooling
 
 ## References
 
+- [Understanding the context window](https://platform.claude.com/docs/en/build-with-claude/context-windows)
+- [Managing context on the Claude Developer Platform](https://www.claude.com/blog/context-management)
 - [Training-Free Exponential Extension of Sliding Window Context with Cascading KV Cache](https://arxiv.org/abs/2406.17808v1)
 - [Memory vs RAG: Understanding the Difference](https://supermemory.ai/docs/memory-vs-rag)
 - [Retrieving Examples from Memory for Retrieval Augmented Neural Machine Translation: A Systematic Comparison](https://arxiv.org/abs/2404.02835)
-- [H-MEM: Hierarchical Memory for High-Efficiency Long-Term Reasoning in LLM Agents](https://arxiv.org/pdf/2507.22925)
+- [Hierarchical Memory for High-Efficiency Long-Term Reasoning in LLM Agents](https://arxiv.org/abs/2507.22925v1)
 - [A Complete Guide to Implementing Memory-Augmented RAG](https://medium.com/aingineer/a-complete-guide-to-implementing-memory-augmented-rag-c3582a8dc74f)
 - Autonomous swarms and emergent coordination: [Swarm intelligence](https://en.wikipedia.org/wiki/Swarm_intelligence); [Multi-agent reinforcement learning](https://en.wikipedia.org/wiki/Multi-agent_reinforcement_learning)
 - Neuro‑symbolic hybrid agents: [Neuro-symbolic artificial intelligence](https://en.wikipedia.org/wiki/Neuro-symbolic_artificial_intelligence)
