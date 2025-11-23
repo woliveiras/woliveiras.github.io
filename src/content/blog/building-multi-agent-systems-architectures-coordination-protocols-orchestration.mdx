@@ -425,11 +425,129 @@ By formalizing these message types with explicit schemas, using technologies suc
 
 ### Handling State and Memory
 
-Memory strategies:
+Handling state and memory is one of the most important design decisions in multi-agent systems, because it directly affects how well agents can reason over time, reuse context, and avoid redundant work. A simple but effective starting point is a **sliding window context**, where you only keep the most recent messages or events within a fixed token or time budget. This approach is easy to implement and works well for short interactions, but it can lose important information from earlier in the conversation if the window is too small or the interaction is very long.
 
-* sliding window context
-* retrieval-augmented memory
-* hierarchical memory (short-term + long-term)
+Example:
+
+```python
+MAX_MESSAGES = 10
+history: list[dict] = []  # each message: {"role": "user" | "assistant", "content": str}
+
+def append_message(message: dict) -> None:
+    history.append(message)
+    # keep only the most recent MAX_MESSAGES
+    if len(history) > MAX_MESSAGES:
+        del history[0:len(history) - MAX_MESSAGES]
+
+def build_prompt() -> str:
+    return "\n".join(f"{m['role']}: {m['content']}" for m in history)
+```
+
+This code illustrates the essence of a sliding window context: the agent always sees a bounded, recent slice of the conversation, which keeps prompts small and predictable while still preserving short-term coherence.
+
+For more complex scenarios, [retrieval-augmented memory](/posts/understanding-rag-llm/) becomes essential. Instead of keeping everything in the active context, you store past interactions, documents, or intermediate results in an external store, such as a vector database or key–value store. When an agent needs to reason about a new request, it queries this store for the most relevant pieces of information and injects them into the current prompt. This pattern allows you to maintain a long operational history without exceeding context limits, and it provides a principled way to reuse knowledge across tasks and sessions.
+
+Example:
+
+```python
+from typing import List, Dict
+import math
+
+MemoryItem = Dict[str, object]
+memory_store: List[MemoryItem] = []
+
+def embed(text: str) -> List[float]:
+    # Placeholder for a real embedding function
+    # In practice you would call an embedding API here.
+    return [float(ord(c)) for c in text[:16]]  # toy embedding
+
+def cosine_similarity(a: List[float], b: List[float]) -> float:
+    dot = sum(x * y for x, y in zip(a, b))
+    norm_a = math.sqrt(sum(x * x for x in a))
+    norm_b = math.sqrt(sum(x * x for x in b))
+    if norm_a == 0 or norm_b == 0:
+        return 0.0
+    return dot / (norm_a * norm_b)
+
+def add_memory(text: str) -> None:
+    memory_store.append({
+        "text": text,
+        "embedding": embed(text),
+    })
+
+def retrieve_relevant(query: str, top_k: int = 3) -> List[str]:
+    query_emb = embed(query)
+    scored = [
+        (cosine_similarity(query_emb, item["embedding"]), item["text"])
+        for item in memory_store
+    ]
+    scored.sort(reverse=True, key=lambda x: x[0])
+    return [text for _, text in scored[:top_k]]
+
+def build_prompt(query: str) -> str:
+    context_snippets = retrieve_relevant(query)
+    context_block = "\n\n".join(context_snippets)
+    return f"Context:\n{context_block}\n\nUser query:\n{query}"
+
+# Example usage
+add_memory("User asked about setting up a LangGraph workflow.")
+add_memory("We explained how to design message schemas for tasks and errors.")
+add_memory("We discussed retrieval-augmented memory and vector stores.")
+
+query = "How do I design message schemas?"
+prompt = build_prompt(query)
+print(prompt)
+```
+
+In large systems, a hierarchical memory strategy often works best. You explicitly separate short-term memory, which holds the immediate working context (recent messages, current goals, local variables), from long-term memory, which captures stable facts, learned patterns, and summaries of past interactions. Short-term memory is frequently updated and tightly coupled to the current episode, while long-term memory is updated more sparingly, typically through periodic summarization or explicit “commit” operations. By combining sliding windows for immediate context, retrieval for targeted recall, and hierarchical organization for long-lived knowledge, you can build agentic systems that remain coherent over long time spans while still being efficient and manageable in production.
+
+Example:
+
+```python
+from typing import List
+
+MAX_SHORT_MESSAGES = 8
+
+short_term: List[str] = []   # recent messages and local context
+long_term: List[str] = []    # summaries and stable facts
+
+def add_message(message: str) -> None:
+    """Update short-term memory with the latest message."""
+    short_term.append(message)
+    if len(short_term) > MAX_SHORT_MESSAGES:
+        # keep only the most recent messages
+        del short_term[0:len(short_term) - MAX_SHORT_MESSAGES]
+
+def commit_summary(summary: str) -> None:
+    """Summarize the current episode into long-term memory."""
+    long_term.append(summary)
+    short_term.clear()  # start a new short-term episode
+
+def retrieve_long_term(query: str, top_k: int = 2) -> List[str]:
+    """Very naive retrieval based on substring matching."""
+    matches = [mem for mem in long_term if query.lower() in mem.lower()]
+    return matches[:top_k]
+
+def build_prompt(query: str) -> str:
+    """Combine short-term and long-term memory into a prompt."""
+    long_block = "\n".join(retrieve_long_term(query))
+    short_block = "\n".join(short_term)
+    return (
+        f"Long-term memory:\n{long_block}\n\n"
+        f"Recent context:\n{short_block}\n\n"
+        f"User query:\n{query}"
+    )
+
+# Example usage
+add_message("User: How do I design message schemas?")
+add_message("Assistant: We discussed task, error, and state messages.")
+commit_summary("We helped the user design robust message schemas.")
+
+add_message("User: Now I want to handle memory.")
+query = "message schemas"
+prompt = build_prompt(query)
+print(prompt)
+```
 
 ### Tooling Layer
 
@@ -576,3 +694,11 @@ Multi-agent systems represent a natural and necessary next step in AI engineerin
 By combining structured cognition (planning, memory, orchestration) with generative intelligence, engineers can build systems that approximate complex human workflows at scale.
 
 Whether applied to enterprise automation, research systems, or developer tools, MAS architectures will define the next generation of AI applications.
+
+## References
+
+- [Training-Free Exponential Extension of Sliding Window Context with Cascading KV Cache](https://arxiv.org/abs/2406.17808v1)
+- [Memory vs RAG: Understanding the Difference](https://supermemory.ai/docs/memory-vs-rag)
+- [Retrieving Examples from Memory for Retrieval Augmented Neural Machine Translation: A Systematic Comparison](https://arxiv.org/abs/2404.02835)
+- [H-MEM: Hierarchical Memory for High-Efficiency Long-Term Reasoning in LLM Agents](https://arxiv.org/pdf/2507.22925)
+- [A Complete Guide to Implementing Memory-Augmented RAG](https://medium.com/aingineer/a-complete-guide-to-implementing-memory-augmented-rag-c3582a8dc74f)
