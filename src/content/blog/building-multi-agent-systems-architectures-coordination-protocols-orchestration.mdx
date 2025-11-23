@@ -278,24 +278,47 @@ Despite these challenges, the auction and bidding model remains a powerful tool 
 
 ### Supervisor–Worker
 
-The Supervisor assigns tasks, workers execute them.
-Ideal for workflows like document processing.
+The Supervisor–Worker pattern is a orchestration model where a central Supervisor assigns tasks to one or more Worker agents, who then execute these tasks. This pattern is particularly effective for workflows that involve repetitive or well-defined tasks, such as document processing, data transformation, or batch operations.
+
+The Supervisor acts as the central coordinator, receiving high-level requests from users or external systems. It breaks these requests into smaller, manageable tasks and delegates them to Worker agents. Each Worker operates independently, focusing solely on the task assigned to it. Once the task is completed, the Worker reports the results back to the Supervisor, which integrates the outputs and provides a cohesive response to the user.
+
+This pattern offers several advantages. It simplifies the overall system design by clearly separating the roles of coordination and execution. The Supervisor can focus on managing workflows and ensuring that tasks are distributed efficiently, while Workers can specialize in executing specific types of tasks. This separation of concerns enhances modularity and makes the system easier to scale, as additional Workers can be added to handle increased workloads.
+
+However, the Supervisor–Worker pattern also has limitations. The reliance on a central Supervisor creates a potential single point of failure. If the Supervisor becomes overwhelmed or encounters an issue, the entire system's operation can be disrupted. Additionally, the pattern may not be well-suited for tasks that require high levels of inter-agent collaboration or dynamic decision-making.
+
+Despite these challenges, the Supervisor–Worker pattern remains a popular choice for systems that prioritize simplicity, modularity, and scalability. By clearly defining the roles of Supervisor and Worker agents, this pattern provides a robust framework for orchestrating multi-agent workflows.
 
 ### Role-Based Collaboration
 
-Each agent has a persistent identity (Researcher, Editor, Critic).
-Long-lived sessions improve coherence.
+Role-Based Collaboration is an orchestration pattern where each agent is assigned a specific role, such as Researcher, Editor, or Critic. These roles are persistent, meaning that agents retain their identities and responsibilities throughout the system's operation. This approach is particularly effective for long-lived sessions where coherence and continuity are critical.
+
+In this pattern, agents collaborate by leveraging their specialized roles to achieve a common goal. For example, in a content creation system, a Researcher agent might gather information, an Editor agent might refine the content, and a Critic agent might review the final output for quality and consistency. By dividing responsibilities based on roles, the system can ensure that each aspect of the workflow is handled by an agent with the appropriate expertise.
+
+Role-Based Collaboration offers several benefits. It enhances the system's coherence by maintaining consistent agent identities and responsibilities. This consistency is particularly valuable in long-running workflows, where agents need to build and maintain context over time. Additionally, the pattern promotes specialization, allowing agents to develop expertise in their assigned roles and perform their tasks more effectively.
+
+However, this pattern also introduces challenges. The reliance on persistent roles can make the system less flexible, as agents may be less adaptable to changing requirements or unexpected tasks. Additionally, the pattern requires careful coordination to ensure that agents work together effectively and do not duplicate efforts or conflict with one another.
+
+Despite these challenges, Role-Based Collaboration is a powerful pattern for systems that require long-lived sessions and specialized expertise. By assigning persistent roles to agents, this pattern enables coherent and efficient collaboration in complex workflows.
 
 ### Tool Router Pattern
 
-A router determines which agent or tool should handle a request.
-Useful for systems with many plugins or integrations.
+The Tool Router Pattern is an orchestration model designed for systems with a wide variety of tools or integrations. In this pattern, a central router determines which agent or tool should handle a given request, based on the request's nature and requirements. This approach is particularly useful for systems that need to manage diverse tasks and leverage multiple specialized tools.
+
+The router acts as the decision-maker, analyzing incoming requests and routing them to the most appropriate agent or tool. For example, in a customer support system, the router might direct technical queries to a troubleshooting agent, billing inquiries to a finance agent, and general questions to a chatbot. By dynamically routing requests, the system can ensure that each task is handled by the most suitable resource.
+
+This pattern offers several advantages. It enhances the system's flexibility by allowing new tools or agents to be added without disrupting existing workflows. The router can also optimize task allocation based on real-time conditions, such as agent availability or workload. Additionally, the pattern simplifies the user experience by providing a single entry point for all requests, which are then routed to the appropriate resource.
+
+However, the Tool Router Pattern also has limitations. The reliance on a central router creates a potential bottleneck, as the router must process and route all incoming requests. This can lead to latency in high-throughput systems. Additionally, the pattern requires robust decision-making logic to ensure that requests are routed accurately and efficiently.
+
+Despite these challenges, the Tool Router Pattern is a valuable model for systems that need to manage diverse tasks and leverage multiple tools. By centralizing the routing logic, this pattern enables efficient and flexible orchestration in complex multi-agent systems.
 
 ### Planner–Executor Pattern
 
-In the planner–executor pattern, one agent is responsible for decomposing the problem and another for executing the concrete steps.
+The Planner–Executor Pattern is a widely used orchestration model in multi-agent systems, designed to separate the responsibilities of planning and execution. This separation allows for a clear division of labor, where one agent focuses on decomposing high-level problems into actionable steps, and another agent specializes in executing these steps efficiently.
 
-The sequence diagram below shows how a planner, worker, and validator collaborate:
+In this pattern, the Planner agent acts as the strategic thinker. It receives a high-level request, analyzes the problem, and breaks it down into smaller, manageable tasks. These tasks are then organized into an execution plan, which is passed on to the Executor agent. The Executor, in turn, focuses on carrying out these tasks, often interacting with tools, APIs, or other resources to achieve the desired outcomes.
+
+The sequence diagram below illustrates the collaboration between the Planner, Executor, and Validator agents:
 
 ```mermaid
 sequenceDiagram
@@ -318,6 +341,12 @@ sequenceDiagram
   S->>W: Apply feedback / continue with next steps
   S-->>U: Final answer + trace
 ```
+
+The Planner–Executor Pattern offers several key advantages. By separating planning and execution, agents can specialize in their respective roles, which leads to more efficient and effective task handling. This pattern also supports scalability, since multiple Executors can be deployed to handle different tasks in parallel, all guided by a single Planner. In addition, the Planner can dynamically adapt the execution plan based on feedback or changing requirements, ensuring that the system remains responsive to new challenges. Finally, the inclusion of a Validator agent adds an extra layer of quality control, helping ensure that outputs meet the required standards before being finalized.
+
+Despite its benefits, the Planner–Executor Pattern also introduces some challenges. The interaction between Planner, Executor, and Validator agents demands robust communication protocols to maintain smooth coordination, which can add coordination overhead. Furthermore, the sequential nature of planning, execution, and validation may introduce latency, especially in time-sensitive applications. Implementing this pattern also increases system complexity, as it requires careful design to manage dependencies and to ensure that tasks are executed in the correct order.
+
+The Planner–Executor Pattern is particularly well-suited for scenarios involving complex problem-solving or workflows with multiple interdependent steps. In software development, for example, a Planner agent can generate a development roadmap, while Executor agents implement specific features or fix bugs. In logistics, a Planner might optimize delivery routes, and Executors would handle the actual transportation of goods. In research settings, a Planner could outline a research agenda, while Executors conduct experiments or gather data. By leveraging the Planner–Executor Pattern in these kinds of contexts, multi-agent systems can achieve a high degree of organization and efficiency, making it a valuable model for a wide range of applications.
 
 ### Critic–Validator Pattern
 
