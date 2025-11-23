@@ -549,19 +549,67 @@ prompt = build_prompt(query)
 print(prompt)
 ```
 
+This example shows short-term memory as a bounded, frequently updated buffer, long-term memory as episodic summaries, and a prompt builder that combines both when answering a new query.
+
 ### Tooling Layer
 
-A critical layer for:
+The tooling layer is the bridge between agents and the external world. It is responsible for actions such as running code, [accessing the web](/posts/how-connect-local-ai-agent-to-the-internet/), [querying databases with SQL](/posts/how-connect-an-ai-agent-to-sql-database/), [read PDFs](/posts/building-ai-agent-pdf-question-answering-langchain-ollama/), triggering automation pipelines, and [calling third‑party APIs](/posts/how-to-chat-with-github-repository-a-guide-to-local-rag-with-ollama-and-langchain/). Instead of letting the model “hallucinate” results, you expose a curated set of tools that the orchestrator can invoke when the agent decides it needs them. In practice, this turns the agent from a pure text generator into a programmable controller that can read, write, and act on real systems.
 
-* code execution
-* web access
-* SQL queries
-* automation pipelines
-* API integrations
+A common pattern is to define tools as Python functions with structured arguments and register them in a simple tool registry that the orchestrator can look up by name:
 
-Tools expand the operational capacity of the agents.
+```python
+from typing import Callable, Any, Dict
+import sqlite3
+import requests  # install in your environment if you actually use it
 
----
+ToolFn = Callable[[Dict[str, Any]], Dict[str, Any]]
+tool_registry: Dict[str, ToolFn] = {}
+
+def tool(name: str) -> Callable[[ToolFn], ToolFn]:
+    def decorator(fn: ToolFn) -> ToolFn:
+        tool_registry[name] = fn
+        return fn
+    return decorator
+
+@tool("run_python")
+def run_python(args: Dict[str, Any]) -> Dict[str, Any]:
+    """Execute simple Python expressions in a sandboxed namespace."""
+    expression = args["expression"]
+    # Warning: this is only for illustration; real systems must sandbox carefully.
+    result = eval(expression, {"__builtins__": {"sum": sum, "len": len}})
+    return {"result": result}
+
+@tool("run_sql")
+def run_sql(args: Dict[str, Any]) -> Dict[str, Any]:
+    """Execute a read-only SQL query against a SQLite database."""
+    query = args["query"]
+    conn = sqlite3.connect("example.db")
+    try:
+        rows = conn.execute(query).fetchall()
+    finally:
+        conn.close()
+    return {"rows": rows}
+
+@tool("fetch_url")
+def fetch_url(args: Dict[str, Any]) -> Dict[str, Any]:
+    """Fetch the content of a web page."""
+    url = args["url"]
+    response = requests.get(url, timeout=5)
+    return {"status": response.status_code, "text": response.text}
+
+def call_tool(tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
+    """Simple dispatcher used by the agent orchestrator."""
+    if tool_name not in tool_registry:
+        raise ValueError(f"Unknown tool: {tool_name}")
+    return tool_registry[tool_name](arguments)
+
+# Example usage (the agent would decide which tool and arguments to use)
+result_code = call_tool("run_python", {"expression": "sum([1, 2, 3])"})
+result_sql = call_tool("run_sql", {"query": "SELECT * FROM users LIMIT 5;"})
+result_web = call_tool("fetch_url", {"url": "https://example.com"})
+```
+
+In a real multi-agent system, an agent produces a tool call like “use run_sql with this query” or “fetch this URL,” and the orchestrator uses a dispatcher like call_tool to execute that action and feed the structured result back into the agent’s context. By centralizing code execution, web access, database queries, automation hooks, and API integrations behind this tooling layer, you expand the operational capacity of agents in a controlled, auditable, and testable way.
 
 ## Observability, Debugging, and Governance
 
