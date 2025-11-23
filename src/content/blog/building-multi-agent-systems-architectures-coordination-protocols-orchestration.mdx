@@ -3,14 +3,14 @@ title: "Building Multi-Agent Systems: Architectures, Coordination Protocols, and
 description: "A deep technical guide to designing, orchestrating, and scaling multi-agent systems using LLM-based agents, coordination protocols, and modern AI engineering patterns."
 pubDate: "Sat Nov 22 08:00:00 2025 +0200"
 published: true
-tags: ["ai-agents", "multi-agent-systems", "architecture", "llm"]
+tags: ["ai-engineering", "ai-agents", "multi-agent-systems", "architecture", "llm"]
 ---
 
 The AI Agents are really useful for automating tasks. We can use them to generate text, analyze data, and even write code. However, their true potential is unlocked when multiple agents collaborate within a structured system.
 
-This progression was predictable, mirroring trends in other areas like microservices and distributed systems. But, where each service has a specific role and they communicate to achieve a common goal. A microservice alone can do a lot, but a well-orchestrated set of microservices can handle complex workflows efficiently.
+This progression was predictable, mirroring trends in other areas like microservices and distributed systems, where each service has a specific role and services communicate to achieve a common goal. A microservice alone can do a lot, but a well-orchestrated set of microservices can handle complex workflows efficiently.
 
-And also because of the complexity of real-world tasks. A single agent might struggle to manage all aspects of a task, but a team of specialized agents can divide the workload, verify each other's outputs, and adapt to changing requirements.
+Another key driver is the complexity of real-world tasks. A single agent might struggle to manage all aspects of a task, but a team of specialized agents can divide the workload, verify each other's outputs, and adapt to changing requirements.
 
 This shift—driven by advances in reasoning, tool integration, and memory architectures—has created a new engineering discipline: **multi-agent system design**.
 
@@ -24,9 +24,7 @@ The concept of MAS is an established field in computer science and artificial in
 
 Victor Lesser, a pioneer in the field, is talking about multi-agent systems since the 1980s. Rodney Brooks also contributed significantly with his work on distributed robotics and the subsumption architecture. We also have some notable books like ["Multi-agent systems: An introduction to distributed artificial intelligence"](https://amzn.to/4pwS2Od) by Jacques Ferber (1999). So, while LLMs have revitalized interest in MAS, the foundational concepts have a rich history that can prove useful for modern implementations.
 
-For understanding the base of MAS, we can learn the classical definitions and architectures, and then see how they adapt to the capabilities and challenges of LLM-based agents.
-
-To understand it better, we'll learn the classical definitions. But, first, we need to understand what exactly is an agent.
+To understand the foundations of MAS, it helps to start from classical definitions and architectures, and then see how they adapt to LLM-based agents. Before that, we need to clarify what we mean by an agent.
 
 ### What is an Agent?
 
@@ -240,7 +238,7 @@ Despite these challenges, direct messaging remains a foundational communication 
 
 The blackboard model is a coordination mechanism where agents interact through a shared knowledge base, often referred to as the "blackboard." This model is inspired by the way humans collaborate on a physical blackboard, where individuals contribute ideas, refine them, and build upon each other's work. In a multi-agent system, the blackboard serves as a central repository for information, enabling agents to read from and write to a shared context.
 
-This approach is particularly useful in scenarios that involve production workflows, data aggregation, or directed acyclic graph(DAG)-style processing. For example, in a workflow where multiple agents are responsible for different stages of data processing, the blackboard can act as a staging area where intermediate results are stored and accessed by subsequent agents.
+This approach is particularly useful in scenarios that involve production workflows, data aggregation, or directed acyclic graph (DAG)-style processing. For example, in a workflow where multiple agents are responsible for different stages of data processing, the blackboard can act as a staging area where intermediate results are stored and accessed by subsequent agents.
 
 #### Advantages of the Blackboard Model
 
@@ -491,8 +489,7 @@ A high-level comparison of these options is summarized below:
 | CrewAI               | Role-based, team-like workflows   | Task and role coordination  | Medium                | Business-oriented flows and human-like processes  | Low (within its paradigm) |
 | Custom orchestrators | Fully custom infrastructure layer | Arbitrary (queues, workflows, services) | High (if designed so) | Deep integration, strict SLAs, bespoke architectures | High                      |
 
-I'm using LangGraph in my applications because I value deterministic execution and explicit control flow for complex multi-agent tasks. Its ease of debugging is a critical factor. However, the best choice will depend on your specific use case, team expertise, and long-term maintenance considerations.
-
+In many of my applications, I prefer LangGraph because it provides deterministic execution and explicit control flow for complex multi-agent tasks, and it is comparatively **easy to debug**. However, the best choice will depend on your specific use case, team expertise, and long-term maintenance considerations.
 
 ### Designing Message Schemas
 
@@ -534,9 +531,8 @@ history: list[dict] = []  # each message: {"role": "user" | "assistant", "conten
 
 def append_message(message: dict) -> None:
     history.append(message)
-    # keep only the most recent MAX_MESSAGES
     if len(history) > MAX_MESSAGES:
-        history = history[-MAX_MESSAGES:]
+        del history[:-MAX_MESSAGES]
 
 def build_prompt() -> str:
     return "\n".join(f"{m['role']}: {m['content']}" for m in history)
@@ -1016,10 +1012,13 @@ Multi-agent systems represent a natural and necessary next step in AI engineerin
 
 By combining structured cognition (planning, memory, orchestration layers, and coordination patterns) with generative intelligence, engineers can build systems that approximate complex human workflows at scale. Planner–executor workflows, well-designed message schemas, robust tooling layers, and observability pipelines turn opaque prompts into auditable, debuggable systems. Scaling patterns (distributed agents, queues, stateless workers, and cost controls) enable these architectures to move from local prototypes to production platforms that can handle real workloads and real failure modes.
 
-Whether applied to enterprise automation, research assistants, developer tooling, or entirely new products, MAS architectures will increasingly define how we build AI applications. The most interesting systems ahead will not be a single model answering a single prompt, but dynamic societies of agents, coordinating over shared memory and infrastructure. Engineers who learn to design, observe, and govern these systems now will be shaping the foundations of the next generation of AI-native software.
+Whether applied to enterprise automation, research assistants, developer tooling, or entirely new products, MAS architectures are likely to increasingly define how we build AI applications. The most interesting systems ahead will not be a single model answering a single prompt, but dynamic societies of agents, coordinating over shared memory and infrastructure. Engineers who learn to design, observe, and govern these systems now will be shaping the foundations of the next generation of AI-native software.
 
 ## References
 
+- [An agent-based approach for building complex software systems](https://dl.acm.org/doi/10.1145/367211.367250)
+- [Introduction to Multi-Agent Systems](https://uranos.ch/research/references/Wooldridge_2001/TLTK.pdf)
+- [High-Level Communication and Control in a Distributed Problem Solver](https://www.reidgsmith.com/The_Contract_Net_Protocol_Dec-1980.pdf)
 - [Understanding the context window](https://platform.claude.com/docs/en/build-with-claude/context-windows)
 - [Managing context on the Claude Developer Platform](https://www.claude.com/blog/context-management)
 - [Training-Free Exponential Extension of Sliding Window Context with Cascading KV Cache](https://arxiv.org/abs/2406.17808v1)
@@ -1030,3 +1029,9 @@ Whether applied to enterprise automation, research assistants, developer tooling
 - Autonomous swarms and emergent coordination: [Swarm intelligence](https://en.wikipedia.org/wiki/Swarm_intelligence); [Multi-agent reinforcement learning](https://en.wikipedia.org/wiki/Multi-agent_reinforcement_learning)
 - Neuro‑symbolic hybrid agents: [Neuro-symbolic artificial intelligence](https://en.wikipedia.org/wiki/Neuro-symbolic_artificial_intelligence)
 - Organization‑inspired memory and long‑lived agents: [“Generative Agents: Interactive Simulacra of Human Behavior”](https://arxiv.org/abs/2304.03442); [Cognitive architecture](https://en.wikipedia.org/wiki/Cognitive_architecture)
+- [LangGraph Official Docs](https://www.langchain.com/langgraph)
+- [AutoGen Official Docs](https://microsoft.github.io/autogen/stable//index.html)
+- [CrewAI Official Docs](https://www.crewai.com/)
+- [AIOS Foundation](https://docs.aios.foundation/aios-docs/)
+- [AIOS: LLM Agent Operating System](https://arxiv.org/abs/2403.16971)
+- [LLM as OS, Agents as Apps: Envisioning AIOS, Agents and the AIOS-Agent Ecosystem](https://arxiv.org/abs/2312.03815)
