@@ -760,21 +760,95 @@ def call_tool_with_governance(agent: str, tool_name: str, args: Dict[str, Any]) 
 
 In this example, every tool call goes through governance checks before executing: the agent must be allowed to use the tool, it must not exceed its rate limit, the arguments must pass guardrails, and the call is always recorded in an audit log. If anything fails, the orchestrator does not crash the system; it returns a structured fallback response that downstream agents or clients can handle gracefully. This pattern illustrates how guardrails, rate limits, tool whitelisting, audit logs, and automatic fallbacks work together as a governance layer that wraps and controls agent behavior.
 
----
-
 ## Scaling Multi-Agent Systems
 
-Scaling requires moving beyond in-memory orchestrators.
+Scaling multi-agent systems requires moving beyond in-memory orchestrators running in a single process. As load grows, you need to distribute agents across multiple nodes, introduce message queues to decouple producers and consumers, run agents as stateless workers that can be scaled horizontally, add caching and memory compression to reduce repeated work, and implement cost controls so the system remains economically sustainable. Together, these strategies transform a fragile prototype into a production-ready platform.
 
-Strategies include:
+A common first step is distributing agents across nodes and adopting a message queue. Instead of calling agents directly in memory, you publish tasks to a queue (backed by Kafka, NATS, RabbitMQ, or a similar system) and let workers consume and process them. In Python, you can represent this pattern with a simple in-memory queue and multiple worker processes or threads:
 
-* distributing agents across nodes
-* adopting message queues (Kafka, NATS, RabbitMQ)
-* horizontal scaling via stateless agents
-* caching and memory compression
-* cost controls (adaptive liveness, dynamic workers)
+```python
+from typing import Dict, Any
+import queue
+import threading
 
-Scalability transforms a prototype into a production-ready platform.
+task_queue: queue.Queue[Dict[str, Any]] = queue.Queue()
+
+def submit_task(task: Dict[str, Any]) -> None:
+    task_queue.put(task)
+
+def agent_worker(name: str) -> None:
+    while True:
+        task = task_queue.get()
+        if task is None:
+            break  # shutdown signal
+        print(f"[{name}] processing task: {task['id']}")
+        # Here you would call your model and tools.
+        task_queue.task_done()
+
+# Start multiple workers (could be separate processes or machines in a real system).
+for i in range(3):
+    threading.Thread(target=agent_worker, args=(f"agent-{i}",), daemon=True).start()
+```
+
+To support horizontal scaling, agents should be stateless or “state-light.” Instead of keeping all state in memory, workers load the necessary state from an external store at the beginning of a task and write back updates when finished. This allows you to add or remove workers without losing context:
+
+```python
+import sqlite3
+import json
+from typing import Dict, Any
+
+def load_state(task_id: str) -> Dict[str, Any]:
+    conn = sqlite3.connect("state.db")
+    cur = conn.execute("SELECT state_json FROM task_state WHERE id = ?", (task_id,))
+    row = cur.fetchone()
+    conn.close()
+    return {} if row is None else json.loads(row[0])
+
+def save_state(task_id: str, state: Dict[str, Any]) -> None:
+    conn = sqlite3.connect("state.db")
+    conn.execute(
+        "INSERT OR REPLACE INTO task_state (id, state_json) VALUES (?, ?)",
+        (task_id, json.dumps(state)),
+    )
+    conn.commit()
+    conn.close()
+
+def handle_task(task: Dict[str, Any]) -> None:
+    state = load_state(task["id"])
+    # Use state and task["input"] to decide what to do.
+    # ...
+    save_state(task["id"], state)
+```
+
+Caching and memory compression help reduce repeated work and keep resource usage under control. For example, if multiple agents frequently query the model with similar prompts, you can cache responses using a simple in-memory cache:
+
+```python
+from functools import lru_cache
+
+@lru_cache(maxsize=1024)
+def cached_model_call(prompt: str) -> str:
+    # Replace this with a real model API call.
+    print("Calling model (not cached)...")
+    return f"Model response for: {prompt}"
+
+def agent_step(prompt: str) -> str:
+    return cached_model_call(prompt)
+```
+
+Finally, cost controls such as adaptive liveness and dynamic workers keep the system within budget. You can monitor queue length and adjust the number of workers accordingly, or shut down idle workers when demand is low. A simple heuristic in Python might look like this:
+
+```python
+def decide_worker_count(queue_length: int) -> int:
+    if queue_length == 0:
+        return 0
+    if queue_length < 10:
+        return 1
+    if queue_length < 50:
+        return 3
+    return 5  # high load, scale up workers
+```
+
+By combining distributed queues, stateless workers, caching, and basic autoscaling heuristics like these, you move from a single-process orchestrator to a scalable multi-agent platform that can handle real-world workloads while keeping latency, reliability, and cost under control.
 
 ## Reference Architecture (Blueprint)
 
@@ -823,43 +897,27 @@ graph TD
 
 This blueprint is adaptable for enterprise, research, or automation contexts.
 
-## Best Practices and Anti-Patterns
-
-### Best Practices
-
-* Define clear agent roles.
-* Use structured messages, not raw text.
-* Add validators for critical steps.
-* Constrain tools and privileges.
-* Maintain explicit memory boundaries.
-* Use deterministic execution where possible.
-
-### Anti-Patterns
-
-* Over-coordination ("meeting hell").
-* Agents re-explaining tasks to each other.
-* Infinite loops due to unclear control flow.
-* Unbounded context growth.
-* Autonomous actions without supervision.
-
 ## Future Directions
 
-Trends in MAS engineering:
+Future directions in multi‑agent systems point toward architectures that are **more autonomous**, **structured**, and **deeply integrated** with existing digital environments. Rather than a handful of agents running in a single orchestrator, we are moving toward larger collectives that coordinate, remember, and act in ways that look increasingly like complex organizations or operating systems.
 
-* **Autonomous swarms** with emergent coordination
-* **Neuro-symbolic hybrid agents**
-* **Organization-inspired memory topologies**
-* **LLM-based operating systems** enabling native agent ecosystems
+One active trend is the development of **autonomous swarms** with emergent coordination. Instead of centrally programming every behavior, you define local rules and communication protocols for many agents (robots, software services, or simulated entities) and observe global patterns such as flocking, search, or collective problem‑solving. Techniques from swarm intelligence and multi‑agent reinforcement learning allow these swarms to adapt to changing environments, redistribute work dynamically, and recover from individual failures without centralized control.
 
-We are witnessing the early steps toward distributed artificial cognition.
+Another direction is **neuro‑symbolic hybrid agents**, which combine the pattern‑recognition capabilities of neural models with the precision and structure of symbolic reasoning. In practice, this can mean using an LLM to interpret natural‑language goals and generate hypotheses, while delegating formal reasoning, constraint solving, or safety checks to symbolic engines or knowledge graphs. The result is an agent that can move fluidly between fuzzy, high‑level instructions and precise, verifiable operations, which is especially valuable in domains that require both interpretability and flexibility.
+
+Researchers are also exploring **organization‑inspired memory topologies**, where memory is not a single monolithic store but a structured network resembling teams, departments, or social groups. Agents may maintain personal episodic memory, share knowledge through common “knowledge bases,” and rely on specialized memory modules for long‑term planning, social modeling, or institutional rules. Recent work on long‑lived simulated agents with separated episodic, semantic, and reflective memory shows how such topologies can support more coherent, human‑like behavior over extended periods.
+
+Finally, there is growing interest in **LLM‑based operating systems** that enable native agent ecosystems. In these architectures, the LLM and its surrounding orchestration layer behave like an OS for agents: providing scheduling, inter‑agent messaging, tool and resource management, permissions, and observability. Frameworks for building agentic applications are early manifestations of this idea, offering system‑level abstractions for processes, capabilities, and coordination patterns. As these layers mature, we can expect richer “app stores” of reusable agents, standardized protocols for agent‑to‑agent collaboration, and tighter integration between agent platforms and traditional infrastructure.
+
+Taken together, these trends suggest that we are witnessing the early steps toward distributed artificial cognition: systems of many coordinated agents that perceive, remember, decide, and act as a collective, rather than as isolated models responding to individual prompts.
 
 ## Conclusion
 
-Multi-agent systems represent a natural and necessary next step in AI engineering. They offer enhanced scalability, robustness, and modularity—attributes essential for real-world software.
+Multi-agent systems represent a natural and necessary next step in AI engineering. As single-model applications hit limits in scalability, robustness, and maintainability, MAS architectures offer a way to decompose complex problems into cooperating specialists, each with clear roles, tools, and responsibilities. This shift is not just about “more models,” but about introducing structure (protocols, memory, orchestration, and governance) that makes large AI systems understandable and operable in real-world environments.
 
-By combining structured cognition (planning, memory, orchestration) with generative intelligence, engineers can build systems that approximate complex human workflows at scale.
+By combining structured cognition (planning, memory, orchestration layers, and coordination patterns) with generative intelligence, engineers can build systems that approximate complex human workflows at scale. Planner–executor workflows, well-designed message schemas, robust tooling layers, and observability pipelines turn opaque prompts into auditable, debuggable systems. Scaling patterns (distributed agents, queues, stateless workers, and cost controls) enable these architectures to move from local prototypes to production platforms that can handle real workloads and real failure modes.
 
-Whether applied to enterprise automation, research systems, or developer tools, MAS architectures will define the next generation of AI applications.
+Whether applied to enterprise automation, research assistants, developer tooling, or entirely new products, MAS architectures will increasingly define how we build AI applications. The most interesting systems ahead will not be a single model answering a single prompt, but dynamic societies of agents, coordinating over shared memory and infrastructure. Engineers who learn to design, observe, and govern these systems now will be shaping the foundations of the next generation of AI-native software.
 
 ## References
 
@@ -868,3 +926,6 @@ Whether applied to enterprise automation, research systems, or developer tools, 
 - [Retrieving Examples from Memory for Retrieval Augmented Neural Machine Translation: A Systematic Comparison](https://arxiv.org/abs/2404.02835)
 - [H-MEM: Hierarchical Memory for High-Efficiency Long-Term Reasoning in LLM Agents](https://arxiv.org/pdf/2507.22925)
 - [A Complete Guide to Implementing Memory-Augmented RAG](https://medium.com/aingineer/a-complete-guide-to-implementing-memory-augmented-rag-c3582a8dc74f)
+- Autonomous swarms and emergent coordination: [Swarm intelligence](https://en.wikipedia.org/wiki/Swarm_intelligence); [Multi-agent reinforcement learning](https://en.wikipedia.org/wiki/Multi-agent_reinforcement_learning)
+- Neuro‑symbolic hybrid agents: [Neuro-symbolic artificial intelligence](https://en.wikipedia.org/wiki/Neuro-symbolic_artificial_intelligence)
+- Organization‑inspired memory and long‑lived agents: [“Generative Agents: Interactive Simulacra of Human Behavior”](https://arxiv.org/abs/2304.03442); [Cognitive architecture](https://en.wikipedia.org/wiki/Cognitive_architecture)
