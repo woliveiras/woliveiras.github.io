@@ -70,3 +70,40 @@ svg[id^="mermaid"] {
   background: rgba(0,0,0,0.12);
   border-radius: 999px;
 }
+
+/* Constrain MathJax / mjx-container SVGs so long formulas don't break layout.
+   Provide a scrollable viewport inside the content area. */
+.mjx-container,
+.MathJax,
+.prose .mjx-container,
+.prose .MathJax {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin: 1rem 0;
+}
+.mjx-container > svg,
+.MathJax > svg,
+.prose .mjx-container > svg,
+.prose .MathJax > svg {
+  width: auto;
+  max-width: none; /* allow svg to be wider and be scrolled */
+  height: auto;
+  display: block;
+}
+
+/* Make inline links wrap gracefully so long URLs don't break the layout */
+.prose a {
+  /* allow breaks at slashes/hyphens and as a last resort anywhere */
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* For lists of references, ensure list items also allow wrapping */
+.prose ul li a,
+.prose ol li a {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
