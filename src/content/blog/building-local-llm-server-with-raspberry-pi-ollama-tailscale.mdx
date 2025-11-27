@@ -387,13 +387,22 @@ Below is a short explanation of each metric so you know what to look for:
 | `eval duration` | Time spent producing the generated tokens (the sequential generation phase). |
 | `eval rate` | Generation speed calculated as `eval tokens / eval duration` (tokens per second); this is the most relevant number for interactive latency. |
 
-On a Raspberry Pi 5, you can expect:
+On a Raspberry Pi 5, measured tokens-per-second vary by model and quantization. The table below shows results reported in the article "How Well Do LLMs Perform on a Raspberry Pi 5?" (StratosphereIPS, June 5 2025):
 
-- Around 5–6 tokens/second for ~3B models (fluid terminal experience).
-- 8–10+ tokens/second for ~1B models (very responsive).
-- 2–3 tokens/second for 7–8B models (usable for automations, slower for chat).
+| Model | Quantization | Disk Size (MB) | RAM Size (MB) | Tokens/Second |
+| --- | --- | ---: | ---: | ---: |
+| qwen2.5:3b | Q4_K_M | 1840.5 | 3025.9 | 5.20 |
+| llama3.2:1b-instruct-q4_K_M | Q4_K_M | 770.3 | 2415.8 | 11.22 |
+| smalllm2:1.7b-instruct-q4_K_M | Q4_K_M | 1006.7 | 5318.2 | 8.23 |
+| granite3.1-dense:2b | Q4_K_M | 1497.0 | 3697.7 | 5.81 |
+| llama3.2:3b | Q4_K_M | 1925.8 | 4659.3 | 4.69 |
+| qwen2.5:1.5b | Q4_K_M | 940.4 | 1849.3 | 9.97 |
+| gemma3:1b | Q4_K_M | 777.5 | 1393.8 | 11.53 |
+| bitnet-b1.58-2B-4T | Q1.5 | 1200.0 | 1500.0 | 8.13 |
 
-These numbers depend on cooling, power stability, and whether you are using NVMe or microSD for storage.
+Source: "How Well Do LLMs Perform on a Raspberry Pi 5?" — https://www.stratosphereips.org/blog/2025/6/5/how-well-do-llms-perform-on-a-raspberry-pi-5
+
+Note: these measured tokens/sec values were obtained under the conditions described in the article; your results will vary with model build, quantization, storage, power, cooling, and runtime options.
 
 ## Step 5 – Connect from Your Laptop or Phone
 
