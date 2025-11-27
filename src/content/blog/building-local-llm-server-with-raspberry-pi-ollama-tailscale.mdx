@@ -166,6 +166,12 @@ Now you can update the system packages:
 sudo apt update && sudo apt upgrade -y
 ```
 
+Restart to finish the upgrade:
+
+```bash
+sudo reboot
+```
+
 And install essential dependencies:
 
 ```bash
@@ -262,35 +268,59 @@ At this point, the Ollama server should be reachable on:
 
 ## Step 4 – Download a Model and Test Locally
 
-Running language models on small devices requires paying attention to memory usage. Models must be quantized in order to fit into the Raspberry Pi’s available RAM. For an 8 GB Raspberry Pi 5, a good starting point is a 1–3B parameter model.
+Running language models on small devices requires paying attention to memory usage. Models must be **quantized** in order to fit into the Raspberry Pi’s available RAM. For an 8 GB Raspberry Pi 5, a good starting point is a 1–3B parameter model, for an 16 GB Pi, you can try 3–7B models.
+
+I'll use some of the compact models available in Ollama’s model registry, but you can explore other options as well.
+
+My recommendation for selecting a model is to start with something small and responsive, then gradually try larger models as you gain confidence.
 
 On the Pi, pull a compact model:
 
 ```bash
-ollama pull llama3.2:3b
+ollama pull llama3.2:3b # 2.0GB size, 128K context, good balance of speed and capability
 ```
 
-Or, for an even lighter model:
-
-```bash
-ollama pull qwen2.5:1.5b
-```
-
-After the download finishes, run the model directly in your SSH session:
+After the download finishes, run the model directly in your SSH session for testing it:
 
 ```bash
 ollama run llama3.2:3b
 ```
 
-Type a prompt such as “Explain what you are running on” and press Enter. When you are done, exit with `Ctrl+C`.
+Type a prompt such as “Explain what you are running on” and press Enter. When you are done, exit with sending `/bye` or pressing `Ctrl + d`.
 
 To observe performance, enable verbose mode:
 
 ```bash
-OLLAMA_VERBOSE=1 ollama run llama3.2:3b
+ollama run llama3.2:3b --verbose
 ```
 
-At the end of each response, Ollama reports the tokens-per-second rate. On a Raspberry Pi 5, you can expect:
+You will see detailed logs about token generation speed, like this:
+
+```plaintext
+total duration:       6.275722542s
+load duration:        74.517583ms
+prompt eval count:    174 token(s)
+prompt eval duration: 145.824458ms
+prompt eval rate:     1193.22 tokens/s
+eval count:           353 token(s)
+eval duration:        4.300010242s
+eval rate:            82.09 tokens/s
+```
+
+Below is a short explanation of each metric so you know what to look for:
+
+| Metric | Meaning |
+| --- | --- |
+| `total duration` | Total wall-clock time for the whole request from start to finish, including model load, prompt processing, generation, and small overheads. |
+| `load duration` | Time spent loading the model into memory or fetching any cached model artifacts for this run. |
+| `prompt eval count` | Number of tokens in the input prompt that the model evaluated before starting generation. |
+| `prompt eval duration` | Time taken to process/evaluate the input prompt (tokenization + forward pass for the context). |
+| `prompt eval rate` | Speed for prompt processing, calculated as `prompt tokens / prompt eval duration` (tokens per second). |
+| `eval count` | Number of tokens generated (or evaluated) during the model's output/generation phase. |
+| `eval duration` | Time spent producing the generated tokens (the sequential generation phase). |
+| `eval rate` | Generation speed calculated as `eval tokens / eval duration` (tokens per second); this is the most relevant number for interactive latency. |
+
+On a Raspberry Pi 5, you can expect:
 
 - Around 5–6 tokens/second for ~3B models (fluid terminal experience).
 - 8–10+ tokens/second for ~1B models (very responsive).
