@@ -1,9 +1,9 @@
 ---
-title: "Building a Local LLM Server with Raspberry Pi 5, Ollama, and Tailscale"
-description: "A complete and privacy-preserving home AI stack powered by modern ARM hardware."
-pubDate: "Tue Nov 25 16:30:00 2025 +0200"
+title: "Building a Local LLM Server with Raspberry Pi 5, Ollama, Tailscale and Chatbox"
+description: "A complete and budget-friendly way to build a private, low-cost, always-available LLM server with a Raspberry Pi 5, Ollama inference engine, Tailscale for secure remote access, and Chatbox as a desktop/mobile client."
+pubDate: "Tue Nov 27 18:30:00 2025 +0200"
 published: true
-tags: ["llm", "ai-engineering", "hardware", "edge-ai", "ollama", "privacy", "tailscale", "raspberry-pi"]
+tags: ["llm", "ai-engineering", "hardware", "edge-ai", "ollama", "privacy", "tailscale", "iot"]
 ---
 
 ## Introduction
@@ -14,11 +14,9 @@ Beyond those limitations lies the largest issue of all: privacy. Every time some
 
 Running large language models locally removes this uncertainty. A user who hosts their own inference engine is not subject to usage limits or silent data collection. They do not worry about throttling and do not fear handing sensitive content to third parties. Instead, they gain sovereignty, operational continuity, predictable cost, and freedom from censorship, filtering, or service outages. Local models may not yet reach the capabilities of the largest frontier systems, but recent research shows that smaller models are improving rapidly and that quantization techniques allow them to run efficiently on hardware that costs less than a monthly subscription to commercial AI tools.
 
-This article is a hands-on tutorial for building a private, low-cost, always-available LLM server using a Raspberry Pi 5, the Ollama inference engine, and Tailscale for secure remote access. You will go from an empty microSD card to a fully working server that you can reach from your laptop or phone, even when you are outside your home network.
+This article is a hands-on tutorial for building a private, low-cost, always-available LLM server using a Raspberry Pi 5, the Ollama inference engine, Tailscale for secure remote access, and Chatbox as a desktop/mobile client. You will go from an empty microSD card to a fully working server that you can reach from your laptop or phone, even when you are outside your home network.
 
 The tutorial is designed for readers with no background in hardware or software engineering. Each step includes the exact commands to run, followed by short explanations that connect practice to theory. If you prefer to skip the background explanations, you can follow only the numbered steps and still complete the setup successfully.
-
-8vQX&
 
 ## What You Will Build
 
@@ -28,6 +26,7 @@ By the end, you will have:
 - Ollama running on the Pi, exposing an HTTP API on port `11434`.
 - A small, efficient LLM (for example, Llama 3.2 3B or Qwen 2.5 1.5B) downloaded and ready to use.
 - Tailscale providing secure remote access to the server from your other devices.
+- Chatbox configured on your laptop or phone to connect to the Ollama server.
 
 You will be able to:
 
@@ -63,20 +62,20 @@ Before configuring the system, it is important to visualize how all components w
 ```mermaid
 flowchart LR
 
-    subgraph User["User Devices"]
+    subgraph User["Clients"]
         L["Laptop / Desktop"]
         P["Phone / Tablet"]
     end
 
     subgraph Network["Secure Network Path"]
-        LAN["Home Network (Ethernet/Wi-Fi)"]
-        TS["Tailscale VPN (WireGuard Tunnel)"]
+        LAN["Home Network"]
+        TS["Tailscale VPN"]
     end
 
-    subgraph Server["Raspberry Pi 5 - Local LLM Server"]
-        OS["Raspberry Pi OS Lite (Headless)"]
-        OLL["Ollama Inference Engine"]
-        STORAGE["Model Storage<br/>MicroSD or NVMe"]
+    subgraph Server["Local LLM Server"]
+        OS["Pi OS Lite"]
+        OLL["Ollama"]
+        STORAGE["Model Storage"]
     end
 
     %% Assign style class to main nodes
@@ -404,11 +403,13 @@ Source: "How Well Do LLMs Perform on a Raspberry Pi 5?" — https://www.stratosp
 
 Note: these measured tokens/sec values were obtained under the conditions described in the article; your results will vary with model build, quantization, storage, power, cooling, and runtime options.
 
-## Step 5 – Connect from Your Laptop or Phone
+## Step 5 – Connect from Your Laptop or Phone using Chatbox
 
 Once the server is configured, you can interact with it from other devices.
 
-From another machine on your home network or Tailnet, test the REST API with `curl`:
+Let's do some basic tests using `curl` from another machine on your home network or Tailnet.
+
+To list installed models and their details:
 
 ```bash
 curl http://<pi-address>:11434/api/tags
@@ -431,14 +432,51 @@ For graphical clients (for example, Chatbox or desktop apps that support Ollama-
 - Host: `http://<pi-address>:11434`
 - Model name: whatever you downloaded (for example, `llama3.2:3b`).
 
+I **strongly recommend** using Chatbox (https://chatbox.com/) as a free, open-source desktop client that works well with Ollama servers and most of the popular LLM offers.
+
+Chatbox is available for Windows, macOS, and Linux, iOS and Android!
+
+After installing it, just go to `Settings` → `Model Providers` → find `Ollama` and add the server information. Use the Pi’s local IP address or Tailscale hostname as needed.
+
+To get the local IP address of your Pi, run:
+
+```bash
+ifconfig | grep -E 'inet ' | grep -v 127.0.0.1 | awk '{print $2}'
+```
+
+The result will be something like `192.168.x.xx`.
+
+Remember to add `http://` and the port `:11434` when configuring Chatbox. Example: `http://192.168.x.xx:11434`.
+
+Then click on `Fetch` to load the available models. Select the models you want to use with Chatbox, and you are ready to chat!
+
 If you are away from home, use the Pi’s Tailscale address or hostname instead of the local IP. As long as both devices are in the same Tailnet, your traffic will be encrypted end-to-end over WireGuard.
+
+You can create two different configurations in Chatbox: one for local network access and another for Tailscale access. This way, you can switch between them depending on your location.
 
 In this configuration, the Raspberry Pi acts as a central AI node that can be accessed from laptops, phones, tablets, or other devices regardless of location, while ensuring complete privacy.
 
 ## Conclusion
 
-Building a private LLM server with a Raspberry Pi 5, Ollama, and Tailscale offers a compelling alternative to commercial AI services. The user gains predictable costs, avoids subscription tiers and hidden limits, and protects their data from external servers. Recent advances in ARM architecture, model quantization, and software optimization make it possible to achieve smooth, responsive inference on hardware that fits in the palm of a hand and consumes less power than a light bulb.
+Building a private LLM server with a Raspberry Pi 5, Ollama, and Tailscale, using Chatbox as a client, offers a compelling alternative to commercial AI services. The user gains predictable costs, avoids subscription tiers and hidden limits, and protects their data from external servers. Recent advances in ARM architecture, model quantization, and software optimization make it possible to achieve smooth, responsive inference on hardware that fits in the palm of a hand and consumes less power than a light bulb.
 
-The Raspberry Pi 5’s improved processor, higher memory bandwidth, active cooling options, and stable power design allow it to handle workloads that were impossible on earlier generations. Combined with the simplicity of Ollama and the security of Tailscale, it forms a robust, reliable platform for personal AI experimentation, automation, learning, and private communication.
+The Raspberry Pi 5’s improved processor, higher memory bandwidth, active cooling options, and stable power design allow it to handle workloads that were impossible on earlier generations. Combined with the simplicity of Ollama and the security of Tailscale, it forms a robust, reliable platform for personal AI experimentation, automation, learning, and private communication. Chatbox provides a user-friendly interface that makes interacting with local models straightforward, whether on desktop or mobile.
 
 This architecture is not meant to compete with frontier-scale models running in vast data centers. Instead, it serves as a personal computing tool—one that belongs fully to the user. As small models continue to improve and hardware becomes more efficient, the power of local AI will only increase. For those who value autonomy, privacy, and the ability to truly own their tools, the future of local AI is bright.
+
+## References
+
+- Raspberry Pi 5 Official Product Page: https://www.raspberrypi.com/products/raspberry-pi-5/
+- Raspberry Pi Imager Software: https://www.raspberrypi.com/software/
+- Ollama Official Website: https://ollama.com/
+- Tailscale Official Website: https://tailscale.com/
+- Chatbox Official Website: https://chatboxai.app/
+- How Well Do LLMs Perform on a Raspberry Pi 5?: https://www.stratosphereips.org/blog/2025/6/5/how-well-do-llms-perform-on-a-raspberry-pi-5
+- Running Ollama on the Raspberry Pi: https://pimylifeup.com/raspberry-pi-ollama/
+- Run a large language model on your Raspberry Pi: https://projects.raspberrypi.org/en/projects/llm-rpi
+- Must Know Ollama Commands for Managing LLMs locally: https://itsfoss.com/ollama-commands/
+- I Ran 9 Popular LLMs on Raspberry Pi 5; Here's What I Found: https://itsfoss.com/llms-for-raspberry-pi/
+- Raspberry Pi 5 Ollama Llama3.x Performance: https://www.saltyoldgeek.com/posts/ollama-cluster-part-iii/
+- I tried out these AIs on the Raspberry Pi 5, so you don't have to: https://www.xda-developers.com/ollama-ai-comparison-raspberry-pi-5/
+- DeepSeek on Raspberry Pi 5 (16GB): A Step-by-Step Guide to Local LLM Inference: https://buyzero.de/en/blogs/news/deepseek-on-raspberry-pi-5-16gb-a-step-by-step-guide-to-local-llm-inference
+- Installing Ollama on Raspberry Pi: complete tutorial and practical guide: https://monraspberry.com/en/install-ollama-raspberry-pi/
