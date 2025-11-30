@@ -1,0 +1,698 @@
+---
+title: "React Interview Prep: Examples, Anti-Patterns, and Improvements"
+description: "Practical examples of common React anti-patterns, explanations, and improved solutions to prepare for interviews."
+pubDate: "Sun Nov 30 23:00:00 2025 +0200"
+tags: ["react", "web", "javascript", "performance", "ssr", "frontend"]
+published: true
+---
+
+This guide helps you prepare for a React interview. For each topic you will find:
+
+- a short example of a problematic ("bad") implementation;
+- an explanation of why it is problematic;
+- an improved implementation with best practices.
+
+The examples are focused on common interview topics: `components`, `hooks`, `Context API`, `state management`, `routing`, `micro-optimizations`, `testing`, and `SSR`.
+
+**Why this format?** Interviewers often look for clarity, awareness of trade-offs, and an ability to explain and improve code. When you walk through a code example in an interview, verbalize the problems and why your fix is better.
+
+## 1. Component responsibilities and separation of concerns
+
+Bad:
+
+```jsx
+// Bad: monolithic function component mixing fetch, form state, and UI
+export default function UserProfile({ userId }) {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [name, setName] = useState('');
+
+  useEffect(() => {
+    let mounted = true;
+    fetch(`/api/users/${userId}`)
+      .then(r => r.json())
+      .then(userData => {
+        if (!mounted) return;
+        setUser(userData);
+        setName(userData.name || '');
+        setLoading(false);
+      })
+      .catch(() => mounted && setLoading(false));
+    return () => {
+      mounted = false;
+    };
+  }, [userId]);
+
+  const handleSave = () => {
+    // bad: no headers, no submit state, uses alert for feedback
+    fetch(`/api/users/${user.id}`, { method: 'PUT', body: JSON.stringify({ name }) })
+      .then(() => alert('saved'));
+  };
+
+  if (loading) return <div>Loading...</div>;
+
+  return (
+    <div>
+      <h1>{user.name}</h1>
+      <input value={name} onChange={e => setName(e.target.value)} />
+      <button onClick={handleSave}>Save</button>
+    </div>
+  );
+}
+```
+
+What's wrong:
+
+- Single function component for doing too much:
+  - handles data fetching
+  - handles form state
+  - presents UI
+- Uses `alert` for feedback and no submit state handling.
+- Missing `form` HTML tags around input and button.
+- No content-type header on PUT (may break API expectations).
+- Uses a `mounted` flag without cancelling the fetch, so requests can keep running after unmount.
+
+Improved:
+
+```jsx
+// Improved: hooks for fetching and form handling; presentational component
+function useUser(userId) {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const loadUser = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/users/${userId}`, { signal: controller.signal });
+        if (!res.ok) throw new Error('Network error');
+        const data = await res.json();
+        setUser(data);
+        setError(null);
+      } catch (err) {
+        if (err.name === 'AbortError') return; // request was cancelled
+        setError(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadUser();
+    return () => controller.abort();
+  }, [userId]);
+
+  return { user, loading, error, setUser };
+}
+
+function useUserForm(initialName, onSave) {
+  const [name, setName] = useState(initialName || '');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    setName(initialName || '');
+  }, [initialName]);
+
+  const save = useCallback(async () => {
+    setSubmitting(true);
+    setError(null);
+    try {
+      await onSave({ name });
+    } catch (e) {
+      setError(e);
+    } finally {
+      setSubmitting(false);
+    }
+  }, [name, onSave]);
+
+  return { name, setName, save, submitting, error };
+}
+
+function UserProfileView({ user, name, onNameChange, onSave, loading, submitting, error }) {
+  if (loading) return <div>Loading...</div>;
+  if (error && !user) return <div role="alert">Error: {error.message}</div>;
+  if (!user) return <div>No user found.</div>;
+
+  return (
+    <form
+      onSubmit={e => {
+        e.preventDefault();
+        onSave();
+      }}
+    >
+      <h1>{user.name}</h1>
+      <input value={name} onChange={e => onNameChange(e.target.value)} />
+      <button type="submit" disabled={submitting || name.trim() === ''}>
+        {submitting ? 'Saving...' : 'Save'}
+      </button>
+      {error && <div role="alert">Error: {error.message}</div>}
+    </form>
+  );
+}
+
+export default function UserProfile({ userId }) {
+  const { user, loading, error: loadError } = useUser(userId);
+  const { name, setName, save, submitting, error: saveError } = useUserForm(user?.name, async ({ name }) => {
+    const res = await fetch(`/api/users/${user.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    });
+    if (!res.ok) throw new Error('Save failed');
+    return res.json();
+  });
+
+  return (
+    <UserProfileView
+      user={user}
+      name={name}
+      onNameChange={setName}
+      onSave={save}
+      loading={loading}
+      submitting={submitting}
+      error={loadError || saveError}
+    />
+  );
+}
+```
+
+Benefits:
+
+- Clear separation of data fetching, form logic, and UI.
+- Easier to test and reuse.
+- Proper headers and submit state.
+
+## 2. Rules of Hooks (always same order)
+
+Bad:
+
+```jsx
+function ConditionalHook({ enabled }) {
+  if (enabled) {
+    const [count, setCount] = useState(0);
+  }
+  // ...
+}
+```
+
+Why it's bad: React relies on the order of Hook calls to map state to hooks. Conditional hooks break that mapping and produce runtime errors.
+
+Good:
+
+```jsx
+function ConditionalHook({ enabled }) {
+  const [count, setCount] = useState(0);
+  if (!enabled) return <div>Disabled</div>;
+  return <button onClick={() => setCount(c => c + 1)}>{count}</button>;
+}
+```
+
+Interview note: be prepared to explain why the order matters (internal hook list index used by React).
+
+The order mathers because React maintains a list of hooks for each component instance. When a component renders, React calls the hooks in the order they are defined to associate the correct state and effects with each hook call. If hooks are called conditionally or inside loops, the order can change **between renders**, leading to mismatches in the internal hook list. This results in runtime errors or unexpected behavior, as React cannot correctly map the state and effects to their respective hooks.
+
+## 3. useEffect dependencies and stale closures
+
+Bad:
+
+```jsx
+function Timer({ onTick }) {
+  useEffect(() => {
+    const id = setInterval(() => onTick(), 1000);
+    return () => clearInterval(id);
+  }, []);
+}
+```
+
+Why: if `onTick` changes, effect still calls old callback. This causes stale closures and bugs.
+
+Good:
+
+```jsx
+function Timer({ onTick }) {
+  useEffect(() => {
+    const id = setInterval(() => onTick(), 1000);
+    return () => clearInterval(id);
+  }, [onTick]);
+}
+```
+
+If `onTick` is unstable, ask to wrap it with `useCallback` in the parent.
+
+## 4. Context API — common anti-patterns and better use
+
+Bad:
+
+```jsx
+// Bad: putting everything in a single giant context and updating on every input
+const AppContext = createContext();
+
+function AppProvider({ children }) {
+  const [state, setState] = useState({ user: null, theme: 'light', count: 0 });
+  return <AppContext.Provider value={{ state, setState }}>{children}</AppContext.Provider>;
+}
+```
+
+Problems:
+
+- Any change to `state` triggers re-render of **all consumers**.
+- Context value not memoized.
+
+Better:
+
+```jsx
+// Better: split contexts and memoize provider value
+const UserContext = createContext();
+const ThemeContext = createContext();
+
+function UserProvider({ children }) {
+  const [user, setUser] = useState(null);
+  const value = useMemo(() => ({ user, setUser }), [user]);
+  return <UserContext.Provider value={value}>{children}</UserContext.Provider>;
+}
+
+function ThemeProvider({ children }) {
+  const [theme, setTheme] = useState('light');
+  const value = useMemo(() => ({ theme, setTheme }), [theme]);
+  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
+}
+```
+
+Tips for interviews:
+
+- Explain trade-offs: Context is great for low-frequency global data (theme, locale, auth) but not for high-frequency UI state. In the case of high-frequency state, consider local state or state management libraries, like Redux or Zustand.
+- Use selectors or split contexts to avoid broad re-renders when only part of the context changes.
+
+## 5. State management: local vs global, Redux/Zustand patterns
+
+Bad:
+
+```jsx
+// Bad: putting transient UI form state into Redux/global store by default
+function Form() {
+  const name = useSelector(state => state.form.name);
+  const email = useSelector(state => state.form.email);
+  const dispatch = useDispatch();
+
+  const handleChange = (field, value) =>
+    dispatch({ type: 'form/setField', payload: { field, value } });
+
+  return (
+    <form>
+      <input value={name} onChange={e => handleChange('name', e.target.value)} />
+      <input value={email} onChange={e => handleChange('email', e.target.value)} />
+      <button type="submit">Submit</button>
+    </form>
+  );
+}
+
+const initialState = { name: '', email: '' };
+export function formReducer(state = initialState, action) {
+  if (action.type === 'form/setField') {
+    return { ...state, [action.payload.field]: action.payload.value };
+  }
+  return state;
+}
+```
+
+What's wrong here:
+
+- Promotes page-local, ephemeral fields (name/email) to the global store, adding boilerplate (actions/reducer) for no gain.
+- Every change goes through Redux dispatch, creating extra renders and indirection.
+- State now lives across pages/sessions unless cleaned up, which can leak stale data.
+- Debugging and testing get heavier even though the data is simple and short-lived.
+
+Good approaches:
+
+- Keep ephemeral UI state local to components (`useState`).
+- Use Context or a lightweight store (e.g., Zustand) for cross-cutting state.
+- Use Redux Toolkit when you need strict predictability, middleware, or complex selectors.
+
+Better for this case (local, transient form):
+
+```jsx
+// Good: keep form fields local; no global store needed
+function Form() {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+
+  const handleSubmit = e => {
+    e.preventDefault();
+    // submit to API or parent handler
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <input value={name} onChange={e => setName(e.target.value)} />
+      <input value={email} onChange={e => setEmail(e.target.value)} />
+      <button type="submit">Submit</button>
+    </form>
+  );
+}
+```
+
+When state truly must be shared across components, use a lightweight store (e.g., cart):
+
+```js
+// store.js
+import create from 'zustand';
+
+export const useStore = create(set => ({
+  cart: [],
+  addToCart: (item) => set(state => ({ cart: [...state.cart, item] })),
+}));
+
+// Component usage
+import { useStore } from './store';
+
+function AddButton({ item }) {
+  const addToCart = useStore(state => state.addToCart);
+  return <button onClick={() => addToCart(item)}>Add</button>;
+}
+```
+
+Why this is good:
+
+- Local form keeps scope small and avoids global boilerplate.
+- Zustand example shows shared state with a simple API; components subscribe to slices to avoid re-renders.
+- Only promote state to a store when multiple distant components need it.
+- Clear rule of thumb: local for ephemeral UI, context/Zustand for shared-but-simple, Redux Toolkit for complex flows and traceability.
+
+## 6. Routing: common pitfalls and improved patterns
+
+Bad:
+
+```jsx
+// Bad: naive manual routing or heavy coupling to route structure
+function App() {
+  const page = window.location.pathname;
+  if (page === '/about') return <About />;
+  if (page === '/posts') return <Posts />;
+}
+```
+
+Problems:
+
+- No handling of history, query params, nested routes, or code-splitting.
+
+Use a routing library like `react-router` and code-splitting for large routes:
+
+```jsx
+import React, { Suspense, lazy } from 'react';
+import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
+
+const Home = lazy(() => import('./Home'));
+const Posts = lazy(() => import('./Posts'));
+
+function App() {
+  return (
+    <BrowserRouter>
+      <nav>
+        <Link to="/">Home</Link>
+        <Link to="/posts">Posts</Link>
+      </nav>
+      <Suspense fallback={<div>Loading page...</div>}>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/posts/*" element={<Posts />} />
+        </Routes>
+      </Suspense>
+    </BrowserRouter>
+  );
+}
+```
+
+Interview talking points:
+
+- Nested routes and route params.
+- Link vs anchor tags and SPA navigation.
+- Route-based code splitting for performance.
+
+## 7. Micro-optimizations and performance patterns
+
+Example: preventing unnecessary re-renders with `useCallback` and `useMemo`.
+
+```jsx
+// Bad: creating handlers and objects inline, causing child re-renders
+function Parent({ items }) {
+  return items.map(item => <Child key={item.id} item={item} onClick={() => console.log(item.id)} />);
+}
+```
+
+Why: inline function means `onClick` is a new reference every render, breaking shallow prop checks / memoization.
+
+Better:
+
+```jsx
+function Parent({ items }) {
+  const handleClick = useCallback((id) => {
+    console.log(id);
+  }, []);
+
+  return items.map(item => <Child key={item.id} item={item} onClick={handleClick} />);
+}
+```
+
+By using `useCallback`, `handleClick` maintains the same reference across renders, preventing unnecessary re-renders of `Child` components that rely on shallow prop comparisons.
+
+Interview talking points:
+
+- Explain when to use `useCallback` and `useMemo` (avoid premature optimization).
+
+Example: virtualized list with `react-window`:
+
+```jsx
+// Bad: rendering large lists directly causes performance issues
+function LargeList({ items }) {
+  return (<ul>
+    {items.map(item => (<li key={item.id}>{item.title}</li>))}
+  </ul>);
+}
+```
+
+Why is this bad: rendering thousands of DOM nodes hurts performance and **memory**.
+
+```jsx
+// Good: virtualized list to render only visible items
+import { FixedSizeList as List } from 'react-window';
+
+function VirtualizedList({ items }) {
+  return (
+    <List height={500} itemCount={items.length} itemSize={35} width="100%">
+      {({ index, style }) => <div style={style}>{items[index].title}</div>}
+    </List>
+  );
+}
+```
+
+Why this is better: only renders visible items, reducing DOM nodes and improving performance.
+
+Interview talking points:
+
+- Benefits of virtualization for large lists (reduced DOM nodes, better performance).
+
+Example: avoid anonymous objects/arrays with `useMemo` in props
+
+```jsx
+// Bad: new object on every render breaks memoization
+function Parent({ config }) {
+  return <Child config={{ theme: 'dark', layout: 'grid' }} />;
+}
+```
+
+Why it's bad: `config` is a new object **each render**, breaking memoization and causing `Child` to re-render even if props are the same.
+
+```jsx
+function Parent({ config }) {
+  const memoizedConfig = useMemo(() => ({ theme: 'dark', layout: 'grid' }), []);
+  return <Child config={memoizedConfig} />;
+}
+```
+
+Why this is better: `memoizedConfig` keeps the same reference across renders, allowing `Child` to avoid unnecessary re-renders. It'll only re-render if `config` actually changes.
+
+Interview talking points:
+
+- Explain how `useMemo` helps maintain stable references for objects/arrays passed as props.
+
+Example: measure with Profiler before optimizing
+
+```jsx
+import { Profiler } from 'react';
+
+function onRenderCallback(
+  id, // the "id" prop of the Profiler tree that has just committed
+  phase, // either "mount" (if the tree just mounted) or "update" (if it re-rendered)
+  actualDuration, // time spent rendering the committed update
+  baseDuration, // estimated time to render the whole tree
+  startTime, //
+  commitTime, //
+  interactions //
+) {
+  console.log({ id, phase, actualDuration, baseDuration });
+}
+
+function App() {
+  return (
+    <Profiler id="App" onRender={onRenderCallback}>
+      <YourComponent />
+    </Profiler>
+  );
+}
+```
+
+Why this is good: measure actual render times before optimizing. Focus on real bottlenecks, not premature micro-optimizations.
+
+Example: lazy loading components with `React.lazy` and `Suspense`
+
+```jsx
+// Bad: importing all components upfront increases initial bundle size
+import HeavyComponent from './HeavyComponent';
+
+function App() {
+  return <HeavyComponent />;
+}
+```
+
+Why it's bad: large initial bundle size hurts **load time** and **TTI**.
+
+```jsx
+import React, { Suspense, lazy } from 'react';
+
+const HeavyComponent = lazy(() => import('./HeavyComponent'));
+
+function App() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <HeavyComponent />
+    </Suspense>
+  );
+}
+```
+
+Why this is better: `HeavyComponent` is loaded only **when needed**, reducing initial bundle size and improving load performance.
+
+## 8. Testing — behavior over implementation
+
+Bad test (fragile): testing internal state or implementation details.
+
+```js
+// Fragile: pokes at component internals instead of user-visible behavior
+import { shallow } from 'enzyme';
+import MyForm from './MyForm';
+
+test('updates state when typing', () => {
+  const wrapper = shallow(<MyForm onSubmit={jest.fn()} />);
+  wrapper.instance().handleChange({ target: { value: 'hello' } }); // reaching into instance
+  expect(wrapper.state('value')).toBe('hello'); // implementation detail
+});
+```
+
+Better test with `@testing-library/react` — simulate user behavior:
+
+```js
+import { render, screen, fireEvent } from '@testing-library/react';
+import MyForm from './MyForm';
+
+test('submits the form', () => {
+  const onSubmit = jest.fn();
+  render(<MyForm onSubmit={onSubmit} />);
+  fireEvent.change(screen.getByRole('textbox'), { target: { value: 'hello' } });
+  fireEvent.click(screen.getByRole('button', { name: /send/i }));
+  expect(onSubmit).toHaveBeenCalledWith('hello');
+});
+```
+
+Why this is better:
+
+- Exercises the component through the DOM and user events (real behavior), not internal methods/state.
+- Resilient to refactors: changing state shape or handler names won't break the test.
+- Mirrors how users interact, reducing false confidence from implementation-heavy tests.
+
+## 9. Server-Side Rendering (SSR) and data fetching
+
+Bad:
+
+```jsx
+// Bad: client-only fetch for SEO-sensitive content
+import { useEffect, useState } from 'react';
+
+export default function PostPage({ id }) {
+  const [post, setPost] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(`/api/posts/${id}`)
+      .then(res => res.json())
+      .then(data => setPost(data))
+      .finally(() => setLoading(false));
+  }, [id]);
+
+  if (loading) return <p>Loading...</p>;
+  return (
+    <article>
+      <h1>{post.title}</h1>
+      <div dangerouslySetInnerHTML={{ __html: post.body }} />
+    </article>
+  );
+}
+```
+
+What's wrong:
+
+- Ships an empty/placeholder HTML payload; bots/users wait for JS and network before seeing content (hurts SEO/LCP).
+- No caching strategy; every navigation re-fetches on the client.
+- Missing error handling/fallbacks; blank page on failure.
+
+Better: server-render the critical data so content is present on first paint.
+
+Next.js (Pages router) example — server-side rendering with data fetch:
+
+```js
+// pages/posts/[id].js
+export async function getServerSideProps(context) {
+  const res = await fetch(`${process.env.API_URL}/posts/${context.params.id}`);
+  const post = await res.json();
+  return { props: { post } };
+}
+
+export default function Post({ post }) {
+  return <article><h1>{post.title}</h1><div dangerouslySetInnerHTML={{ __html: post.body }} /></article>;
+}
+```
+
+Next.js (App Router / server components) example — server component:
+
+```jsx
+// app/posts/[id]/page.jsx (Server Component)
+import React from 'react';
+
+export default async function PostPage({ params }) {
+  const res = await fetch(`${process.env.API_URL}/posts/${params.id}`, { cache: 'no-store' });
+  const post = await res.json();
+  return (
+    <article>
+      <h1>{post.title}</h1>
+      <div dangerouslySetInnerHTML={{ __html: post.body }} />
+    </article>
+  );
+}
+```
+
+Interview talking points:
+
+- Difference between SSR, SSG, CSR, and ISR, you can find it here [Difference Between SSR, SSG, CSR, and ISR](/posts/difference-between-ssr-ssg-csr-and-isr/).
+- When to fetch on server vs client, you can find it here [When to Fetch on Server vs Client](posts/when-to-fetch-on-server-vs-client/).
+- Caching considerations and stale-while-revalidate strategies, , you can find it here [Caching Considerations and Stale-While-Revalidate](/posts/caching-considerations-and-stale-while-revalidate/).
+
+## Quick checklist before the interview
+
+- Review JavaScript fundamentals: [closures](https://javascript.info/closure), [promises](https://javascript.info/promise-basics), [event loop](https://javascript.info/event-loop).
+- Practice pair-programming style: talk through assumptions and trade-offs. Take a look here: [How to do effective pair-programming](/posts/how-to-do-effective-pair-programming/).
+- Prepare one or two short stories about tasks and wins you've implemented.
+
+## Conclusion
+
+This guide covers common React interview topics with practical examples and improvements. Focus on clarity, trade-offs, and best practices when discussing code in interviews. Good luck!
