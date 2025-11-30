@@ -1,0 +1,74 @@
+---
+title: "When to Fetch on Server vs Client"
+description: "A practical guide to deciding where data fetching belongs: server components, SSR, SSG/ISR, or client-side hooks."
+pubDate: "Sun Nov 30 20:00:00 2025 +0200"
+published: true
+tags: ["react", "nextjs", "ssr", "csr", "isr", "architecture"]
+---
+
+Where you fetch data decides what users see first, how fast it arrives, and which secrets stay safe. It is not just plumbing: it defines latency, caching strategy, SEO, and privacy boundaries. This guide helps you reason, before writing code, about whether data should be gathered on the server, baked into static output, or pulled in the client.
+
+## Start with three questions
+
+Begin with intent, not code. First, probe **freshness**: some pages must reflect “now” (prices, stock, personalized dashboards), while others tolerate staleness (docs, blogs). Your tolerance for staleness dictates whether you can pre-render (SSG/ISR), cache SSR, or must fetch per request. Next, identify the **audience and SEO** stakes: public pages that need to rank should ship HTML on first paint so bots and users see content immediately; internal or auth-only views can defer rendering because crawlability is irrelevant. Finally, assess **interactivity**: content-heavy pages can be rendered upfront, but app-like flows with rapid filters, infinite scroll, or optimistic updates benefit from client fetches and caches to stay responsive. These three axes—freshness, audience/SEO, and interactivity—frame every fetch decision and reveal where rendering work belongs.
+
+## Fetch on the server when…
+
+Reach for server-side fetching when the page must be correct before it ever reaches the browser. Personalized dashboards and account pages often need secrets (cookies/headers) that should never leak to client JavaScript; server components or SSR can read them safely. Public, SEO-sensitive pages also benefit: shipping HTML means bots and users see content on first paint, avoiding hydration delays. Even in app-like experiences, rendering critical content on the server can improve cold-start performance by avoiding a waterfall of client fetches.
+
+Next.js App Router example (Server Component):
+
+```jsx
+// app/dashboard/page.jsx
+import { cookies } from 'next/headers';
+
+export default async function Dashboard() {
+  const token = cookies().get('session')?.value;
+  const res = await fetch('https://api.example.com/me', {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: 'no-store',
+  });
+  const user = await res.json();
+  return <h1>Hello, {user.name}</h1>;
+}
+```
+
+## Fetch on the client when…
+
+Client-side fetching shines when the user’s actions dictate what to load next. Filters, infinite scrolls, typeaheads, and dashboards that refresh as you interact all benefit from staying in the browser and pulling data on demand. In auth-only or internal tools where SEO does not matter, you can hydrate once and then let the client drive. Optimistic and local-first experiences also lean on client caches: fetch APIs, reuse cached responses, and reconcile in the background to keep the UI feeling instant.
+
+Client example with SWR:
+
+```jsx
+import useSWR from 'swr';
+
+const fetcher = url => fetch(url).then(r => r.json());
+
+export function Products({ category }) {
+  const { data, isLoading, error } = useSWR(`/api/products?cat=${category}`, fetcher);
+  if (isLoading) return <p>Loading…</p>;
+  if (error) return <p role="alert">Error loading products</p>;
+  return <ul>{data.map(p => <li key={p.id}>{p.name}</li>)}</ul>;
+}
+```
+
+## Hybrid patterns
+
+Most real apps mix both sides. A common pattern is a **server-rendered shell** that delivers layout and above-the-fold content, while the client fetches secondary panels after hydration. Another is **ISR/SSG plus client refresh**: serve static HTML for speed, then let a client fetch update time-sensitive widgets. At scale, **edge plus client** caching serves a version from the CDN and relies on client-side SWR to bring it current without hurting first paint.
+
+## Decision cheatsheet
+
+| Scenario | Freshness need | Audience/SEO | Interactivity | Suggested approach |
+| --- | --- | --- | --- | --- |
+| Public, rarely changing | Stale OK (hours/days) | SEO-critical | Low | SSG/ISR; optional client refresh for small sections |
+| Public, must be fresh | Per request | SEO-critical | Medium | SSR/server components; cache headers for shared bits |
+| Auth-only, app-like | Varies by action | SEO irrelevant | High | CSR/client hooks; optional SSR shell for perceived speed |
+| Personalized but cacheable | Short TTL acceptable | Public or mixed | Medium | SSR with `s-maxage` or ISR for shared parts; `no-store` for user-specific |
+| High-frequency shared data | Minutes-level freshness | Public | Medium | ISR with short `revalidate`; edge cache with SWR on client |
+| Internal dashboards | Per user | Internal | High | Server fetch for secure data + client SWR for live updates |
+
+Choose the place that minimizes round trips for critical content, keeps secrets server-side, and matches how often the data changes. Most real apps mix approaches. Be explicit about which parts render where and why.
+
+## Conclusion
+
+Fetching strategy is an architectural choice, not a footnote. Decide based on freshness, audience, and interactivity; place sensitive data and critical content where they’re safest and fastest. Blend server render, static output, and client fetches as needed, but make those boundaries explicit. When each layer knows its role—edge, server, client—users get fast pages, bots see real content, and your backends stay healthy.
