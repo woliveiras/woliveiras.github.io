@@ -1,0 +1,125 @@
+---
+title: "How to Do Effective Pair Programming"
+description: "A practical guide to pairing with purpose: roles, setup, communication, and habits that make pair programming enjoyable."
+pubDate: "Sun Nov 30 21:00:00 2025 +0200"
+published: true
+tags: ["collaboration", "engineering-practices", "productivity", "pair-programming"]
+---
+
+Pair programming is more than two people at one keyboard. Done well, it accelerates learning, finds bugs early, and keeps teams aligned. Done poorly, it only drains energy.
+
+For me, an autistic developer, pairing is a real challenge but rewarding when structured effectively to be fast, engaging, and sustainable.
+
+This guide focuses on habits and structure that make pairing efficient and sustainable.
+
+## Pick a clear goal and a timebox
+
+Start with one slice of work (a test, a function, a refactor) and a timebox (30–90 minutes). Knowing the target and the end time keeps both partners focused and makes breaks explicit. But don’t over-plan: leave room for exploration, questions, and learning.
+
+Stay true to the plan. If you planned to write a test, write the test first. If you aimed to refactor a function, refactor it before moving on. This keeps momentum and avoids drifting into unrelated work.
+
+## Choose roles and swap regularly
+
+Usually, one person types while the other guides. Define roles upfront:
+
+- **Driver**: types, verbalizes what they are doing, keeps code flowing.
+- **Navigator**: thinks ahead, spots edge cases, checks alignment with requirements, and watches for design/quality issues.
+
+Swapping every 10–20 minutes or at natural breakpoints (test passes, function done) is a good practice of the industry. Frequent swaps keep both engaged and spread context evenly.
+
+In my case, I prefer to not swap too often to maintain focus, so we agree on longer intervals when needed. Changing roles every 20-30 minutes makes me really unconfortable, so we adapt to what works best for both. Be flexible and communicate openly about what feels best.
+
+Before starting the session, ask your partner about the roles and swap frequency they prefer. Aligning on this upfront avoids discomfort later.
+
+## Set up your environment for two
+
+Before starting, ensure both can see and interact with the code comfortably:
+
+- Use a shared session ([VS Code Live Share](https://marketplace.visualstudio.com/items?itemName=MS-vsliveshare.vsliveshare), tmux + SSH, [Tuple](https://tuple.app/)) so both can see and, when needed, type.
+- Enable readable fonts, high contrast, and large cursor; disable noisy notifications.
+- Agree on shortcuts (format on save, lint-on-save) to avoid surprise edits.
+
+Please, don't be the guy using Vim while your partner is using VS Code with a GUI. Align on the editor setup beforehand to avoid friction.
+
+## Talk through intent, not just keystrokes
+
+Narrate **why**, not only what. Before typing, confirm the approach: inputs/outputs, happy path, edge cases, test plan. As you code, call out trade-offs and name things together—naming is design.
+
+Example:
+
+- "I’m going to extract this logic into a `calculateTotal` function that takes an array of items and returns the sum. Does that sound right?"
+- "I’m adding a test for the empty array case to ensure we handle that correctly."
+- "I’m choosing to use `reduce` here for conciseness, but we could also use a `for` loop if you prefer clarity."
+
+## Keep a tight feedback loop
+
+I have a personal preference for very short feedback loops to avoid overload. But you can adapt this to your style.
+
+- Start by writing a text about the plan, data flow, archietecture, function signatures, or tests.
+- Write a failing test first to clarify requirements.
+- Put the test in the watch mode and make it pass quickly.
+- If you get stuck for more than a few minutes, pause and restate the problem, sketch data flow, or check the failing test output together, check the plan, or take a short break.
+- When context grows heavy, write a quick scratch note or checklist visible to both.
+
+I like to use a todo list on VS Code or a shared doc to keep track of small tasks or ideas that come up during pairing. This helps me stay focused on the current task without losing sight of other important points.
+
+For architectural vision of the feature, I prefer to sketch on a Miro board. Visual aids help me understand complex flows better than just verbal descriptions.
+
+## Handle disagreements productively
+
+We all have different styles and opinions. When disagreements arise:
+
+- Prefer “let’s try it” with a quick spike or test over long debate.
+- If you disagree on naming or structure, articulate the trade-offs and timebox the decision.
+- Use style guides and linters as neutral arbiters to avoid subjective back-and-forth.
+
+Please, avoid dominating the session with your opinions. Remember, the goal is collaboration, not winning an argument. If you feel strongly about a point, suggest trying both approaches in a spike or prototype to see which works better in practice.
+
+## Manage energy
+
+People have different energy levels and focus spans. We need to make the session sustainable for both:
+
+- Take micro-breaks every 45–60 minutes. Stand up, hydrate, then resume.
+- Rotate complex and simple tasks so pairing is not always on the hardest work.
+- If one person is exhausted, pause pairing and continue async. Burnout kills quality.
+
+In my case, I don't have energy to be talking with someone for long periods. So we agree to take breaks every hour or so, and sometimes I need to pause the session if I feel overwhelmed, sometimes we finish the session async, by using chat or comments. Communicating openly about energy levels helps us maintain a productive and enjoyable pairing experience.
+
+## Remote pairing tips
+
+Remote pairing adds challenges but can be effective with the right setup:
+
+- Keep cameras on if bandwidth allows; non-verbal cues reduce friction.
+- Mute when typing loudly; use push-to-talk or noise suppression.
+- Share a stable link for the session and keep chat open for links/snippets.
+- Use a shared timer or clock to manage swaps and breaks.
+- Use collaborative tools like Miro or Figma for diagrams and sketches.
+- Be explicit about communication: check in often to ensure understanding.
+- If one person has connectivity issues, switch roles so the other can drive until resolved.
+
+## When pairing ends
+
+We have some points before, while the pairing is happening, and now, after the session:
+
+- Summarize decisions, open questions, and next steps in a short note or ticket comment.
+- Capture any follow-up tasks (tests to add, docs to update, cleanup to do).
+- Celebrate small wins together to build a positive pairing culture.
+- Thank your partner; pairing is collaborative, not evaluative.
+- Reflect on what worked well and what could improve for next time.
+- Schedule the next pairing session if needed.
+- Plan for async follow-up if needed, using comments or chat to clarify any remaining questions.
+
+## Common pitfalls to avoid
+
+As we are not used to be good communicators all the time, here are some common pitfalls to avoid:
+
+- Silent sessions: lack of narration forces the navigator to guess intent.
+- Over-talking: too much chatter drowns out focus and flow.
+- Role confusion: unclear who is driving or navigating leads to friction.
+- Long stretches without swaps: one person dominates, leading to fatigue.
+- Rabbit holes: no timebox or intermediate tests/logs to guide progress.
+- Unclear goal: pairing drifts without a specific outcome.
+
+## Conclusion
+
+Effective pairing is deliberate: clear goal, defined roles, frequent swaps, and open communication. Treat it as a design and feedback activity, not just two people typing. Done this way, pairing makes teams faster, code safer, and knowledge wider.
