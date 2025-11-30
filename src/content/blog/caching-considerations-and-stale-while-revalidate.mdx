@@ -1,0 +1,124 @@
+---
+title: "Caching Considerations and Stale-While-Revalidate"
+description: "How to think about caching for SSR, SSG/ISR, and client fetches, and how stale-while-revalidate keeps pages fast and fresh."
+pubDate: "Sun Nov 30 16:00:00 2025 +0200"
+published: true
+tags: ["nextjs", "performance", "architecture"]
+---
+
+Caching is the main lever to make pages fast *and* fresh. Done well, it cuts latency, shields backends, and keeps users happy; done poorly, it leaks data or serves stale content at the worst time. This guide focuses on what to cache, where to cache it, and how stale-while-revalidate (SWR) patterns balance speed with correctness.
+
+## Caching layers to keep in mind
+
+**CDN/edge** is the first and most powerful layer. By placing HTML, JSON, and assets near users, you slash latency and offload origin traffic. SSG and ISR outputs thrive here because they are inherently cacheable; SSR responses can also live at the edge when you send proper cache headers (`Cache-Control: public, s-maxage=...`). Think of the CDN as your global, read-mostly layer that should answer most GET requests without touching your servers.
+
+**Origin/server caches** (in-memory stores or Redis) sit behind the CDN and protect your application and databases. They are ideal for SSR per-request data and expensive queries you can safely share across users. The goal is to prevent thundering herds on your DB/API and to smooth out load spikes. Keep TTLs aligned with data volatility and tag or key entries so you can invalidate precisely when upstream data changes.
+
+**Browser caches** include the HTTP cache and, in some cases, service workers. Use them for static assets and safe API responses—things that are identical for all users. Set `max-age` for browser caching and rely on `s-maxage` for CDN control. Be cautious with personalized data: avoid caching it in the browser or mark it `no-store` to prevent leaking between sessions or tabs.
+
+**Client data caches** from libraries like SWR or React Query live in memory inside the app. They provide instant reuse of recently fetched data, optimistic updates, and background revalidation. They don’t replace the network; they optimize perceived performance by serving warm data while a fresh fetch runs. Configure deduplication windows, revalidate-on-focus, and cache keys thoughtfully to avoid stale collisions and overfetching.
+
+## Stale-While-Revalidate in practice
+
+Stale-while-revalidate serves the last cached response immediately (the “stale” part), then kicks off a background fetch to refresh the cache (the “revalidate” part). Users get fast responses, and the cache self-heals to stay reasonably fresh. The trade is a small staleness window in exchange for much lower latency and origin load.
+
+Let's look at how to implement SWR patterns across different layers in pure JavaScript first.
+
+```js
+const cache = new Map();
+
+async function fetchWithSWR(url, ttlMs = 60_000) {
+  const now = Date.now();
+  const cached = cache.get(url);
+
+  // If we have fresh-ish data, return it immediately
+  if (cached && now - cached.timestamp < ttlMs) {
+    // Fire-and-forget background refresh
+    refresh(url);
+    return cached.data;
+  }
+
+  // Otherwise fetch fresh data and cache it
+  const data = await refresh(url);
+  return data;
+}
+
+async function refresh(url) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('Network error');
+  const data = await res.json();
+  cache.set(url, { data, timestamp: Date.now() });
+  return data;
+}
+
+// Usage
+fetchWithSWR('/api/articles')
+  .then(data => console.log('Articles:', data))
+  .catch(err => console.error(err));
+```
+
+This simple pattern returns cached data right away if it’s within the TTL, while a background refresh updates the cache. The next caller sees fresher data without waiting for the network.
+
+Now we can see how frameworks and libraries implement SWR patterns.
+
+### Next.js ISR (Pages Router)
+
+```js
+export async function getStaticProps() {
+  const res = await fetch('https://api.example.com/articles');
+  const articles = await res.json();
+  return {
+    props: { articles },
+    revalidate: 120, // seconds
+  };
+}
+```
+
+The CDN serves the static page instantly. After 120 seconds, the next request triggers a background rebuild; subsequent users see the fresh version.
+
+### Next.js fetch options (App Router)
+
+```jsx
+// Inside a Server Component
+const res = await fetch('https://api.example.com/articles', {
+  next: { revalidate: 120 }, // ISR-style
+});
+const articles = await res.json();
+```
+
+`next.revalidate` sets an SWR window for server components: serve cached HTML, then refresh on schedule.
+
+### Client-side SWR library
+
+```jsx
+import useSWR from 'swr';
+const fetcher = url => fetch(url).then(r => r.json());
+
+function Articles() {
+  const { data, isLoading } = useSWR('/api/articles', fetcher, {
+    revalidateOnFocus: true,
+  });
+  if (isLoading) return <p>Loading…</p>;
+  return <ul>{data.map(a => <li key={a.id}>{a.title}</li>)}</ul>;
+}
+```
+
+The hook returns cached data instantly, then refetches in the background when the tab regains focus.
+
+## Choosing TTL and revalidation
+
+TTL is about tolerable staleness. Volatile data (prices, inventory) gets short windows; slow-changing content (docs, blogs) can sit longer. Even SSR can benefit from a small TTL at the CDN to absorb spikes, as long as you segment what is cacheable vs personalized. Align headers with each layer: `s-maxage` for CDNs, `max-age` for browsers, and `stale-while-revalidate` where supported to serve quickly while refreshing in the background. For per-user responses, be explicit: mark them `no-store` so nothing leaks across sessions.
+
+## Common mistakes
+
+One of the most wasteful patterns is treating every page as SSR and omitting cache headers. Without `s-maxage` or similar directives, the CDN can’t help you, and every request hammers the origin. Another silent failure is configuring ISR once and forgetting its revalidation window; if you never rebuild or revalidate, “static” pages can drift wildly out of date. A more dangerous bug is caching personalized responses: unless you set `no-store` for per-user data, you risk leaking one user’s content to another. Finally, don’t rely solely on client caches for pages that need SEO: bots and first-time visitors still need real HTML on first paint, serve content from the server or static output before layering client-side refreshes.
+
+## A simple playbook
+
+For **public, mostly static pages**, lean on SSG or ISR and let the CDN carry the load. Pick a `revalidate` that matches how often the content changes; marketing sites and docs often need hours or days, news might need minutes. For **public pages that must be fresh per request**, use SSR but still give CDNs an `s-maxage` for the cacheable parts, and mark personalized sections `no-store` so they never leak. In **authenticated, app-like experiences**, a server-rendered shell can improve perceived speed, while client-side caches (SWR/React Query) keep interactive data snappy without pounding the origin. For **high-traffic APIs**, cache GETs at the CDN, add an origin cache or queue to shield databases, and let clients use SWR to smooth out latency and spikes.
+
+Caching well is about setting the right expectations: decide how stale is acceptable, how often to refresh, and which layer—edge, server, or client—does the work. Explicitness in headers and TTLs turns caching from a guess into a design choice.
+
+## Conclusion
+
+Good caching is deliberate. Decide what can be shared and for how long, choose the right layer to hold it, and use stale-while-revalidate to keep responses both fast and trustworthy. Make freshness an explicit choice, not a guess. Use TTLs, headers, and revalidation hooks—so users, bots, and backends all benefit from predictable performance instead of surprises.
