@@ -141,7 +141,7 @@ Next, prepare the operating system image. You have two safe options:
 - Flash the OS directly to your NVMe/SATA SSD using a USB adapter (fast and simple). See recommended adapters above.
 - Or flash a microSD card and, after first-boot and initial configuration, migrate the installed system from the microSD to the SSD attached to the Pi (recommended when you don't have an adapter).
 
-Both approaches work; the remainder of this section explains how to flash with Raspberry Pi Imager and then how to migrate the running system from a microSD to the SSD using two reliable methods (automated `rpi-clone` or manual `rsync`).
+Both approaches work; the remainder of this section explains how to flash with Raspberry Pi Imager and then how to migrate the running system from a microSD to the SSD using Klon, my automated migration tool for Raspberry Pi and HDD/SSD.
 
 Flash the image with Raspberry Pi Imager (macOS / Windows / Linux)
 
@@ -160,6 +160,7 @@ Migrate from microSD to SSD on the Raspberry Pi (two options)
 Prerequisites: boot the Pi from the freshly-flashed microSD, complete basic configuration (hostname, user, enable SSH), attach the SSD to the Pi via your HAT/adapter, and make sure the Pi detects the drive.
 
 Check devices and note names:
+
 ```bash
 lsblk
 sudo fdisk -l
@@ -167,50 +168,20 @@ sudo fdisk -l
 
 Identify the SSD device (example: `/dev/nvme0n1` or `/dev/sda`). Be careful and choose the correct device.
 
-Option A — rpi-clone (easy, recommended)
-
-1. Install and run `rpi-clone` to copy the system from the SD to the SSD. **Replace `sda` with your SSD device name**:
+1. Install and run `Klon` to copy the system from the SD to the SSD, and just follow the Klon instructions:
 ```bash
+# Install dependencies
+sudo apt-get update
+sudo apt-get install -y curl tar gzip dpkg make git golang
+
+# Clone and run Klon
 cd ~
-git clone https://github.com/billw2/rpi-clone.git
-cd rpi-clone
-sudo cp rpi-clone /usr/local/sbin/
-# Confirm target device with lsblk, then run (replace sda):
-sudo rpi-clone sda -f
+git clone https://github.com/woliveiras/Klon.git
+cd Klon
+sudo go run .
 ```
+
 2. Wait for the clone to finish. When done, power off the Pi, remove the microSD, and boot from the SSD.
-
-Option B — rsync (manual, for advanced users or when you need to migrate an already configured system)
-1. Prepare partitions on the SSD to match the Pi layout (FAT32 boot + ext4 root). Example using parted (replace `/dev/sda` with your SSD):
-```bash
-sudo parted /dev/sda -- mklabel gpt
-sudo parted /dev/sda -- mkpart primary fat32 1MiB 256MiB
-sudo parted /dev/sda -- mkpart primary ext4 256MiB 100%
-sudo mkfs.vfat -F32 /dev/sda1
-sudo mkfs.ext4 /dev/sda2
-```
-2. Mount the new partitions and copy the filesystem with `rsync`:
-```bash
-sudo mkdir -p /mnt/ssd-boot /mnt/ssd-root
-sudo mount /dev/sda2 /mnt/ssd-root
-sudo mount /dev/sda1 /mnt/ssd-boot
-sudo rsync -aAXv --exclude={'/dev/*','/proc/*','/sys/*','/tmp/*','/run/*','/mnt/*','/media/*','/lost+found'} / /mnt/ssd-root
-sudo cp -a /boot/* /mnt/ssd-boot/
-```
-3. Update `fstab` and `cmdline.txt` on the SSD to point to the SSD partitions (use `blkid` to get UUIDs or PARTUUIDs):
-```bash
-sudo blkid
-sudo nano /mnt/ssd-root/etc/fstab    # replace old UUIDs with the SSD UUIDs
-sudo nano /mnt/ssd-boot/cmdline.txt  # update root=PARTUUID=... to point to SSD root
-```
-4. Unmount, power off, remove microSD, and boot the Pi from the SSD.
-
-Verification after booting from SSD:
-```bash
-lsblk
-mount | grep ' / '
-df -h /
-```
 
 Important safety notes
 
@@ -468,6 +439,7 @@ This architecture is not meant to compete with frontier-scale models running in 
 
 - Raspberry Pi 5 Official Product Page: https://www.raspberrypi.com/products/raspberry-pi-5/
 - Raspberry Pi Imager Software: https://www.raspberrypi.com/software/
+- Klon GitHub Repository: https://github.com/woliveiras/Klon
 - Ollama Official Website: https://ollama.com/
 - Tailscale Official Website: https://tailscale.com/
 - Chatbox Official Website: https://chatboxai.app/
