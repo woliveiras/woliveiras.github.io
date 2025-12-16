@@ -1,0 +1,134 @@
+---
+title: 'How to Clone Pi OS from a microSD to an NVMe SSD'
+description: 'A concise guide for experienced users on migrating a Raspberry Pi OS installation from a microSD card to a high-performance NVMe SSD, including handling the common rpi-clone warning with NVMe devices.'
+pubDate: 'Nov 29 2025'
+tags: ['raspberry pi', 'nvme', 'linux', 'performance', 'rpi-clone']
+published: false
+---
+
+Migrating your Raspberry Pi's root filesystem from a microSD card to an NVMe SSD is one of the most significant performance upgrades you can make. It dramatically improves disk I/O, which in turn enhances overall system responsiveness, application load times, and file transfer speeds.
+
+This guide provides a direct, senior-level walkthrough for cloning your existing Pi OS setup to an NVMe drive.
+
+### Prerequisites
+
+*   Raspberry Pi 4 or 5.
+*   An NVMe-compatible HAT or adapter.
+*   An NVMe SSD installed and recognized by the Pi.
+
+### Step 1: Identify the Source and Target Drives
+
+First, ensure your system is up-to-date and the NVMe drive is visible.
+
+```bash
+sudo apt update && sudo apt upgrade -y
+```
+
+Next, identify the block devices. `mmcblk0` is typically the microSD card, and your NVMe will appear as `nvme0n1`.
+
+```bash
+lsblk
+```
+
+You should see an output similar to this, clearly distinguishing the source and destination:
+
+```
+NAME        MAJ:MIN RM   SIZE RO TYPE MOUNTPOINTS
+mmcblk0     179:0    0  59.5G  0 disk
+├─mmcblk0p1 179:1    0   256M  0 part /boot
+└─mmcblk0p2 179:2    0  59.2G  0 part /
+nvme0n1     259:0    0 931.5G  0 disk
+```
+
+### Step 2: Clone the System with rpi-clone
+
+The `rpi-clone` script is a reliable tool for this task. If you don't have it, clone the repository and copy it to your path:
+
+```bash
+git clone https://github.com/billw2/rpi-clone.git
+cd rpi-clone
+sudo cp rpi-clone rpi-clone-setup /usr/local/sbin/
+```
+
+Now, run the clone command, targeting the NVMe disk. The `-f` flag runs it without prompting for a backup of the destination.
+
+```bash
+sudo rpi-clone nvme0n1 -f
+```
+
+### The "Partition Name" Warning with NVMe Drives
+
+You will likely encounter the following warning:
+
+```
+Target disk nvme0n1 ends with a digit so may be a partition.
+rpi-clone requires disk names like 'sda' and not partition names like 'sda1'.
+
+Continue anyway?  (yes/no):
+```
+
+This occurs because `rpi-clone` employs a simple validation check that flags any device name ending in a digit as a potential partition. While this logic holds for traditional device names like `sda1`, it produces a false positive for NVMe drives.
+
+The standard naming convention for NVMe devices is `nvme<Controller_ID>n<Namespace_ID>`, making `nvme0n1` the identifier for the entire disk, not a partition. Partitions on this disk would be named `nvme0n1p1`, `nvme0n1p2`, and so on.
+
+Since `lsblk` confirmed `nvme0n1` is a `disk`, it is safe to proceed. Type **`yes`** and press Enter.
+
+After confirming, you may also see an `Error: /dev/nvme0n1: unrecognised disk label`. This is also expected for a new or unformatted drive, as it indicates the absence of a valid partition table. `rpi-clone` will create one for you before presenting the final confirmation:
+
+```
+** WARNING **          : All destination disk nvme0n1 data will be overwritten!
+-----------------------:
+
+Initialize and clone to the destination disk nvme0n1?  (yes/no):
+```
+This is the final check. If you are certain `nvme0n1` is the correct destination and it contains no critical data, type **`yes`** again to begin the cloning process.
+
+The script may then ask for an optional filesystem label for the new root partition:
+```
+Optional destination ext type file system label (16 chars max):
+```
+This is purely for naming and is not critical. You can simply press **Enter** to leave it blank and start the file synchronization process.
+
+### Step 3: Configure the Boot Order
+
+After the clone is complete, you must instruct the Raspberry Pi to boot from the new NVMe drive.
+
+```bash
+sudo raspi-config
+```
+
+Navigate to **Advanced Options** > **Boot Order** and select **B2 NVMe/USB Boot**.
+
+### Step 4: Finalize and Reboot
+
+Exit `raspi-config`, shut down the system, remove the microSD card, and power it back on. Your Raspberry Pi will now boot from the NVMe SSD.
+
+```bash
+sudo shutdown now
+```
+
+You can verify that the root filesystem (`/`) is mounted on the NVMe drive by running `lsblk` again. The output should now show `nvme0n1p2` as the root mountpoint.
+
+### Troubleshooting
+
+#### Mount Failure: "Can't lookup blockdev"
+
+During the "Syncing file systems" phase, you might encounter a mount failure:
+
+```
+Mounting /dev/nvme0n1p2 on /mnt/clone
+mount: /mnt/clone: fsconfig() failed: ... Can't lookup blockdev.
+Aborting!
+```
+
+This error typically means the kernel has not yet recognized the new partitions that `rpi-clone` just created. You can manually force the kernel to re-read the disk's partition table.
+
+1.  Run `partprobe` targeting your NVMe disk:
+    ```bash
+    sudo partprobe /dev/nvme0n1
+    ```
+
+2.  Re-run the `rpi-clone` command. The script will be able to find the partition and proceed with the file sync.
+    ```bash
+    sudo rpi-clone nvme0n1 -f
+    ```
