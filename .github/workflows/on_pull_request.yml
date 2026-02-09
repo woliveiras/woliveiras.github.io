@@ -24,7 +24,7 @@ jobs:
             ${{ runner.os }}-pnpm-
       - name: install dependencies
         run: pnpm install
-      - uses: oke-py/npm-audit-action@v2
+      - uses: oke-py/npm-audit-action@v4
         with:
           github_token: ${{ secrets.AUTH_GITHUB_TOKEN }}
           audit_level: moderate
