@@ -1,114 +1,172 @@
-# Guidelines for AI Agents When Creating Articles
+# Blog Post Authoring Guidelines (for AI agents)
 
-This document defines the writing style, structure, and metadata for creating new blog posts. The goal is to maintain consistency and quality across all publications.
+This repo is an Astro blog. New posts live in `src/content/blog/*.mdx` and are validated by the schema in `src/content.config.ts`.
 
-## 1. Metadata (Frontmatter)
+The goal of this document is to help you write posts that match the existing house style: practical, structured, engineering-focused, with a personal voice and lots of concrete examples.
 
-Each post must start with a YAML `frontmatter` block.
+## 1) Where and how to create a post
+
+- **Location**: create a new `*.mdx` file under `src/content/blog/`.
+- **Filename/slug**: use `kebab-case` (lowercase + hyphens). Keep it readable; avoid filler words when possible.
+- **No duplicate H1**: do not add `# Title` in the body; the layout renders the title from frontmatter.
+
+## 2) Frontmatter (required + optional)
+
+Frontmatter must be valid YAML and match the blog collection schema.
+
+### Required fields
 
 ```yaml
 ---
-title: "A Concise, Informative Title in a 'How To' or 'Understanding X' Style"
-description: "A short, clear 1–2 sentence summary of what the reader will learn."
-pubDate: "YYYY-MM-DD"
+title: "Clear, descriptive title"
+description: "1–2 sentences: what the reader will learn and why it matters."
+pubDate: "2025-12-18"
 published: true
-tags: ["tag1", "another-tag", "one-more-tag"]
+tags: ["tag-one", "tag-two", "tag-three"]
 ---
 ```
 
-- **`title`**: The title should be clear, action-oriented, or explanatory.
-  - **Examples of good titles**: "How to Do Effective Pair Programming", "Understanding the RAG Pattern with LLMs", "Guide to Migrating from NPM to PNPM".
-- **`description`**: A 1–2 sentence summary describing what the post covers.
-- **`pubDate`**: Publication date in `YYYY-MM-DD` format.
-- **`published`**: Use `true` for all new posts.
-- **`tags`**: A list of 3–5 relevant tags, in lowercase. Use hyphens to join words (e.g., `ai-agents`).
+- `title` (string): Title Case is preferred; keep it explicit and searchable.
+- `description` (string): Written for humans; avoid keyword stuffing.
+- `pubDate` (date-like string): `z.coerce.date()` accepts multiple formats, but **use ISO** `YYYY-MM-DD` for consistency.
+- `published` (boolean): use `true` for new posts.
+- `tags` (string[]): required by convention for new posts (schema allows it to be optional, but don’t omit it).
 
-### Common Tags
+### Optional fields (use when relevant)
 
-Use existing tags whenever possible to maintain consistency.
+```yaml
+---
+shortDescription: "Shorter OG-friendly description (optional)."
+updatedDate: "2025-12-18" # set when substantially updating an old post
 
-- **AI & LLMs**: `llm`, `ai-engineering`, `ai-agents`, `rag`, `langchain`, `ollama`, `crewai`
-- **Engineering Practices**: `engineering-practices`, `collaboration`, `pair-programming`, `productivity`, `testing`
-- **Web/JS Development**: `javascript`, `typescript`, `react`, `astro`, `ssr`, `caching`
-- **Tooling and Ecosystem**: `monorepo`, `pnpm`, `github-actions`, `dependabot`, `docker`
-- **Hardware/DIY**: `raspberry-pi`, `pwnagotchi`, `sbc`
-- **Guides and Tutorials**: `how-to`, `guide`, `tutorial`
+disableComments: false # omit unless you need to disable
+disableLikes: false    # omit unless you need to disable
 
-## 2. Tone and Writing Style
+# Hero/OG image controls (most posts don’t need these)
+heroImage: "/src/assets/posts/<slug>/hero.png"
+hideHero: false
+noImage: false
+useHeroAsOGImage: false
+noTextInOGImage: false
+---
+```
+
+Notes:
+- `heroImage` must point to a file under `/src/assets/` and must start with `/src/assets/`.
+- Prefer omitting optional booleans unless you intentionally want to change behavior.
+
+## 3) Voice, tone, and “house style”
 
 - **Language**: English.
-- **Tone**: Technical, but accessible and didactic. Writing should be clear and direct.
-- **Personal Perspective**: Include personal experiences and opinions to make the content more authentic and engaging. Using "I think...", "In my experience...", "For me..." is encouraged.
-- **Empathy**: Consider the reader’s pains and challenges, especially for beginners or when tackling complex topics.
+- **Tone**: technical but accessible; explain jargon when you introduce it.
+- **Personal voice**: include lived experience when it adds clarity (“In my experience…”, “For me…”, “What I usually do…”).
+- **Reader empathy**: assume the reader is busy; optimize for fast scanning and predictable structure.
+- **Actionable by default**: prefer step-by-step instructions, commands, expected outcomes, and trade-offs.
 
-## 3. Article Structure
+## 4) Recommended post shapes (pick one)
 
-A well-structured post makes reading and understanding easier.
+### A) “How to” / tutorial (hands-on)
 
-1.  **Introduction**:
-    - Start with a short introduction (2–3 paragraphs).
-    - Present the problem or topic and explain why it matters.
-    - If possible, add a personal touch that connects you to the subject.
+Use this shape when the reader should be able to follow along and reproduce results.
 
-2.  **Body**:
-    - Split the content into logical sections using `##` for main headings and `###` for subheadings.
-    - Use lists (`-` or `*`), **bold**, and `code` to highlight important information.
-    - For structured data, use Markdown tables.
-    - Keep paragraphs short and focused on a single idea.
+Suggested outline:
 
-3.  **Code Blocks**:
-    - Always specify the code block language (e.g., ` ```typescript `).
-    - Add comments in the code to explain complex parts.
+- Short introduction (2–3 paragraphs): problem → why it matters → what we’ll do.
+- `## Requirements` (versions, OS notes, accounts, prerequisites).
+- `## Step 1: ...`, `## Step 2: ...` (small steps; each ends with “what you should see”).
+- `## Troubleshooting` (common errors + fixes).
+- `## Conclusion` (short recap + next step).
+- `## References` (docs links for tools used).
 
-4.  **Conclusion**:
-    - End with a `## Conclusion` section.
-    - Summarize the main points.
-    - Offer a final reflection or an outlook on the topic’s future.
+### B) “Understanding X” / conceptual (mental model + trade-offs)
 
-5.  **References** (if applicable):
-    - If the post is based on external sources, include a `## References` section at the end with a list of links to the original materials.
+Use this shape when you’re teaching concepts, architecture, or decision-making.
 
-## Example Article Structure
+Suggested outline:
 
-```markdown
----
-title: "Post Title"
-description: "Post description."
-pubDate: "2025-12-16"
-published: true
-tags: ["example", "guide"]
----
+- Short introduction (2–3 paragraphs): motivation + what you’ll learn.
+- `## A mental model` (how to think about it).
+- `## How it works` (diagrams welcomed).
+- `## Trade-offs at a glance` (prefer a table).
+- `## Pitfalls to watch for` (practical gotchas).
+- `## Conclusion` (what to remember).
+- `## References` (docs/links when applicable).
 
-Short, engaging introduction that presents the topic and why it matters. A personal touch is welcome here.
+### C) Short note / opinion (personal + practical)
 
-## First Section Title
+Use this shape when you’re sharing an experience, a lesson learned, or a strong opinion.
 
-Explain the first concept. Use short paragraphs.
+Suggested outline:
 
-- Use lists to break down points.
-- **Bold** for emphasis.
+- Short introduction (personal context + tension/problem).
+- `## What I noticed` (observations).
+- `## What I do now` (habits/process).
+- `## Conclusion` (one-paragraph takeaway).
 
-## Second Section Title
+## 5) Markdown/MDX conventions used in this repo
 
-Keep developing the topic.
+### Headings
 
-```javascript
-// Example code block with the language specified.
-function helloWorld() {
-  console.log("Hello, World!");
-}
+- Use `##` for main sections, `###` for subsections.
+- For step-by-step posts, prefer `## Step N: ...` headings.
+
+### Code blocks
+
+- Always set the language: `sh`, `bash`, `typescript`, `javascript`, `python`, `yml`, `json`, etc.
+- Prefer showing code that is runnable/copy-pastable.
+- Use file labels when it helps:
+
+```yml title=".github/dependabot.yml"
+version: 2
 ```
 
-### Subtitle if needed
+This repo also supports line highlighting patterns you’ll see in older posts:
+- Fence options like `ins={3,4}` (highlight specific lines).
+- Inline markers like `// [!code highlight]` when demonstrating diffs or important config.
 
-Go deeper on a specific topic.
+### Diagrams and tables
 
-## Conclusion
+- Use Mermaid when explaining flows or architecture:
 
-Summarize the key takeaways and offer a final message.
-
-## References
-
-- [Link to an interesting article](https://example.com)
-- [Link to documentation](https://example.dev)
+```mermaid
+sequenceDiagram
+  actor U as User
+  participant S as Server
+  U->>S: Request
 ```
+
+- Use tables for comparisons (trade-offs, decision matrices).
+
+### Links
+
+- Prefer official docs for references.
+- Cross-link internal content when relevant:
+  - Posts: `/posts/<slug>/`
+  - Tags: `/tags/<tag>/`
+
+## 6) Safety, legality, and disclaimers (security/hacking posts)
+
+If the post covers cracking, exploitation, or offensive security:
+
+- Add a short disclaimer near the top (“educational purposes only”, “only on networks/systems you own or have permission to test”).
+- Avoid instructions that meaningfully increase real-world harm without a defensive framing.
+
+## 7) Quality checklist (before you consider it “done”)
+
+- Frontmatter validates: required keys present; `pubDate` is ISO; `published: true`; `tags` has 3–7 items.
+- The introduction answers: **what**, **why**, **who this is for**, and **what you’ll do/learn**.
+- Commands are explicit (paths, filenames, placeholders) and use `sh` fences.
+- Long posts include `## Conclusion`. Posts that rely on external material include `## References`.
+- Tag names are consistent (no typos, no random singular/plural changes).
+
+## 8) Tags (use existing ones first)
+
+Tags are free-form strings, but consistency is what makes tag pages useful. Prefer existing tags from the repository before introducing a new one.
+
+Common existing tags (sample, not exhaustive):
+
+- **AI/LLMs**: `llm`, `ai-engineering`, `ai-agents`, `ollama`, `langchain`, `langgraph`, `machine-learning`, `rag`
+- **Web/Frontend**: `javascript`, `typescript`, `react`, `nextjs`, `frontend`, `ssr`, `performance`, `web`, `architecture`, `caching`
+- **Tooling/DevOps**: `github-actions`, `devops`, `dependency-management`, `monorepos`, `pnpm`, `npm`, `yarn`, `docker`, `automation`
+- **Hardware/Security**: `raspberry-pi`, `hardware`, `iot`, `maker`, `security`, `hacking`, `privacy`, `self-hosting`
+- **Career/Collaboration**: `engineering-practices`, `collaboration`, `pair-programming`, `productivity`, `software-engineering`, `learning`

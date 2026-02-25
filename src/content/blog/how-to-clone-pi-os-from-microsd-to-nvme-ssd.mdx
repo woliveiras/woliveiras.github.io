@@ -1,14 +1,14 @@
 ---
 title: 'How to Clone Pi OS from a microSD to an NVMe SSD'
-description: 'A concise guide for experienced users on migrating a Raspberry Pi OS installation from a microSD card to a high-performance NVMe SSD, including handling the common rpi-clone warning with NVMe devices.'
+description: 'A concise guide for experienced users on migrating a Raspberry Pi OS installation from a microSD card to a high-performance NVMe SSD using Klon (a modern rpi-clone-inspired tool).'
 pubDate: 'Nov 29 2025'
-tags: ['raspberry pi', 'nvme', 'linux', 'performance', 'rpi-clone']
-published: false
+tags: ['raspberry-pi', 'nvme', 'linux', 'performance', 'klon']
+published: true
 ---
 
 Migrating your Raspberry Pi's root filesystem from a microSD card to an NVMe SSD is one of the most significant performance upgrades you can make. It dramatically improves disk I/O, which in turn enhances overall system responsiveness, application load times, and file transfer speeds.
 
-This guide provides a direct, senior-level walkthrough for cloning your existing Pi OS setup to an NVMe drive.
+This guide provides a direct walkthrough for cloning your existing Pi OS setup to an NVMe drive using **Klon**, a tool I built after running into reliability issues with `rpi-clone` on modern SSD/NVMe setups.
 
 ### Prerequisites
 
@@ -40,54 +40,43 @@ mmcblk0     179:0    0  59.5G  0 disk
 nvme0n1     259:0    0 931.5G  0 disk
 ```
 
-### Step 2: Clone the System with rpi-clone
+### Step 2: Install and Clone the System with Klon
 
-The `rpi-clone` script is a reliable tool for this task. If you don't have it, clone the repository and copy it to your path:
+`rpi-clone` is a great script, but it hasn’t aged well with newer device naming and some modern SSD/NVMe behaviors. Because of that, I created **Klon**: a Go-based cloning tool inspired by `rpi-clone`, with an explicit plan/confirm flow and better handling of current Linux disk conventions. Repo: https://github.com/woliveiras/klon
 
-```bash
-git clone https://github.com/billw2/rpi-clone.git
-cd rpi-clone
-sudo cp rpi-clone rpi-clone-setup /usr/local/sbin/
-```
+#### Install Klon (Raspberry Pi OS / Debian)
 
-Now, run the clone command, targeting the NVMe disk. The `-f` flag runs it without prompting for a backup of the destination.
+If you want the simplest path, install a prebuilt release:
 
 ```bash
-sudo rpi-clone nvme0n1 -f
+sudo apt-get update
+sudo apt-get install -y curl tar gzip dpkg
 ```
 
-### The "Partition Name" Warning with NVMe Drives
+Download and install the binary (example for Raspberry Pi 4/5, usually `arm64`):
 
-You will likely encounter the following warning:
-
+```bash
+VERSION=vX.Y.Z
+ARCH=arm64   # or amd64
+curl -L -o klon_${VERSION}_linux_${ARCH}.tar.gz \
+  https://github.com/woliveiras/klon/releases/download/${VERSION}/klon_${VERSION}_linux_${ARCH}.tar.gz
+sudo tar -C /usr/local/bin -xzvf klon_${VERSION}_linux_${ARCH}.tar.gz klon
+klon --version
 ```
-Target disk nvme0n1 ends with a digit so may be a partition.
-rpi-clone requires disk names like 'sda' and not partition names like 'sda1'.
 
-Continue anyway?  (yes/no):
+#### Clone microSD → NVMe with Klon
+
+Klon always shows you a clone plan first and asks for confirmation before it writes anything to the destination disk. For a brand-new SSD, you typically want an **initialize + sync** clone and then expand root to fill the disk:
+
+```bash
+sudo klon -f --expand-root nvme0n1
 ```
 
-This occurs because `rpi-clone` employs a simple validation check that flags any device name ending in a digit as a potential partition. While this logic holds for traditional device names like `sda1`, it produces a false positive for NVMe drives.
+If you prefer the interactive mode (recommended), just run:
 
-The standard naming convention for NVMe devices is `nvme<Controller_ID>n<Namespace_ID>`, making `nvme0n1` the identifier for the entire disk, not a partition. Partitions on this disk would be named `nvme0n1p1`, `nvme0n1p2`, and so on.
-
-Since `lsblk` confirmed `nvme0n1` is a `disk`, it is safe to proceed. Type **`yes`** and press Enter.
-
-After confirming, you may also see an `Error: /dev/nvme0n1: unrecognised disk label`. This is also expected for a new or unformatted drive, as it indicates the absence of a valid partition table. `rpi-clone` will create one for you before presenting the final confirmation:
-
+```bash
+sudo klon
 ```
-** WARNING **          : All destination disk nvme0n1 data will be overwritten!
------------------------:
-
-Initialize and clone to the destination disk nvme0n1?  (yes/no):
-```
-This is the final check. If you are certain `nvme0n1` is the correct destination and it contains no critical data, type **`yes`** again to begin the cloning process.
-
-The script may then ask for an optional filesystem label for the new root partition:
-```
-Optional destination ext type file system label (16 chars max):
-```
-This is purely for naming and is not critical. You can simply press **Enter** to leave it blank and start the file synchronization process.
 
 ### Step 3: Configure the Boot Order
 
@@ -113,7 +102,7 @@ You can verify that the root filesystem (`/`) is mounted on the NVMe drive by ru
 
 #### Mount Failure: "Can't lookup blockdev"
 
-During the "Syncing file systems" phase, you might encounter a mount failure:
+During the clone, you might encounter a mount failure:
 
 ```
 Mounting /dev/nvme0n1p2 on /mnt/clone
@@ -121,14 +110,14 @@ mount: /mnt/clone: fsconfig() failed: ... Can't lookup blockdev.
 Aborting!
 ```
 
-This error typically means the kernel has not yet recognized the new partitions that `rpi-clone` just created. You can manually force the kernel to re-read the disk's partition table.
+This error typically means the kernel has not yet recognized the new partitions that were just created. You can manually force the kernel to re-read the disk’s partition table.
 
 1.  Run `partprobe` targeting your NVMe disk:
     ```bash
     sudo partprobe /dev/nvme0n1
     ```
 
-2.  Re-run the `rpi-clone` command. The script will be able to find the partition and proceed with the file sync.
+2.  Re-run the Klon command:
     ```bash
-    sudo rpi-clone nvme0n1 -f
+    sudo klon -f --expand-root nvme0n1
     ```
