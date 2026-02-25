@@ -1,0 +1,129 @@
+---
+title: "How Experienced Developers Actually Use AI Agents in Their Daily Work"
+description: "A data-driven look at how professional developers really use AI coding agents like GitHub Copilot and Claude. Spoiler: they don't vibe code."
+pubDate: "2026-02-25"
+published: true
+tags: ["ai-agents", "ai-engineering", "engineering-practices", "collaboration", "software-engineering"]
+---
+
+If you've been on social media lately, you might think that the future of software engineering is "vibe coding". Just describe what you want in natural language, let the AI agent do its thing, and never read a diff again. Some people even claim to run **dozens of agents** simultaneously to build massive software autonomously.
+
+But is that how experienced developers actually work with AI agents?
+
+Talking about it with my peers, I kept hearing a different story. The developers I know are not "vibing" code. I thought maybe we're working wrong, because we really don't like this approach. But me and my friends, we're a bit strange, because we love to code. Giving up control to an agent and not reviewing its output just doesn't feel right.
+
+Well, we're not alone in that feeling!
+
+A research study from UC San Diego and Cornell University decided to find it out, and their findings tell a different story from what we see in the media.
+
+In this article, I want to walk through the key insights from the paper [_"Professional Software Developers Don't Vibe, They Control: AI Agent Use for Coding in 2025"_](https://arxiv.org/abs/2512.14012) (Huang et al., 2025), and share my perspective on what this means for us as software engineers.
+
+## The Study
+
+The researchers conducted a two-part study: **13 field observations** (watching real developers use agents in real tasks) and a **qualitative survey of 99 experienced developers** (all with 3+ years of professional experience). They investigated four key questions:
+
+1. **Motivations**: what do experienced developers care about when using agents?
+2. **Strategies**: what strategies do they use?
+3. **Suitability**: what tasks are agents good (or bad) for?
+4. **Sentiments**: how do they feel about it?
+
+The most important finding: **professional developers do not vibe code**. Instead, they carefully control the agents through planning and supervision, leveraging their expertise to guide results.
+
+## Vibe Coding vs. Controlled Coding
+
+The term "vibe coding" was popularized by Andrej Karpathy to describe a style of AI-assisted development where you _"fully give in to the vibes"_, _"forget that the code even exists"_, and _"don't read the diffs anymore"_. It sounds liberating for some of us, and for quick prototypes or personal experiments, it might be fun.
+
+But the research shows that experienced developers take a fundamentally different approach. They don't hand over control to the agent. They treat the agent more like a **junior developer** who needs clear instructions, constant supervision, and thorough code review.
+
+In practice, controlled coding starts with **planning before delegating**. Developers think through the architecture and break down problems into smaller, well-defined tasks before asking the agent to implement anything. They then **provide rich context**; writing detailed prompts, referencing existing code, explaining constraints, and setting expectations for the output. Once the agent produces something, they **validate every output**, reviewing all generated code, running tests, and verifying that the agent didn't introduce subtle bugs or unnecessary complexity. And when the agent gets it wrong (and it does), they **iterate and correct**, refining prompts, rejecting outputs, and guiding the agent toward the correct solution.
+
+In other words, the workflow is not "ask and accept". It's **"plan, delegate, review, and correct"**. The agent accelerates execution, but the developer remains the architect.
+
+## Why Experience Matters More Than Ever
+
+Here's the paradox of AI coding agents: **the tool that promises to make coding accessible to everyone actually requires deep expertise to use well**.
+
+The study found that experienced developers are effective with agents precisely because of their accumulated knowledge. They know how to **decompose complex problems** into tasks that agents can handle. They can **evaluate generated code** for correctness, maintainability, and security; things an agent won't flag on its own. They **recognize when the agent is wrong**, even when the code looks plausible and the application is running, because LLMs can produce confident-looking code that has subtle logical errors, poor architecture decisions, or security vulnerabilities. And they know how to **provide the right context** so the agent produces useful output.
+
+Without this expertise, a developer or someone else without coding experience, might accept agent-generated code that technically runs but is like a ticking time bomb. The developers in the study explicitly valued **software quality attributes** — readability, maintainability, correctness — over raw speed. They weren't looking for the fastest output; they were looking for the _right_ output.
+
+For me, this aligns with what I see in my day-to-day work. The developers who get the most value from AI agents are the ones who already know how to build software well. The agent amplifies their skills. But it doesn't replace them.
+
+## The 10x Productivity Myth
+
+One of the most interesting data points from the broader literature referenced in the study challenges the "10x developer" narrative that AI enthusiasts love to promote.
+
+A randomized controlled trial found that **experienced open-source maintainers were actually 19% slower** when allowed to use AI tools (Becker et al., 2025). And an agentic system deployed in an issue tracker achieved only an **8% complete success rate**; meaning only 8% of its autonomous attempts resulted in a merged pull request (Takerngsaksiri et al., 2025).
+
+And we don't need to look only at academic studies to see the risks of unsupervised AI agents. In early 2026, it was [reported](https://www.theguardian.com/technology/2026/feb/20/amazon-cloud-outages-ai-tools-amazon-web-services-aws) that Amazon Web Services suffered at least **two outages** caused by its own AI tools. In the most notable incident, in December 2025, engineers allowed Amazon's Kiro agentic coding tool to make changes autonomously, and the AI decided the best course of action was to **delete and recreate the environment**, causing a [13-hour disruption](https://www.silicon.co.uk/e-innovation/artificial-intelligence/amazon-ai-cloud-628790) to AWS Cost Explorer in one of Amazon's cloud regions in China.
+
+As a senior AWS employee [told the Financial Times](https://futurism.com/artificial-intelligence/amazon-ai-aws-outages): _"The engineers let the AI agent resolve an issue without intervention. The outages were small but entirely foreseeable."_ In both incidents, the engineers didn't require a second person's approval before finalizing the changes. Amazon's response was to call it "user error, not AI error" and a "coincidence" that AI was involved, but security researchers disagreed. As one researcher pointed out, **AI agents don't have full visibility into the context in which they're running**. They don't understand how customers might be affected or what the cost of downtime might be. This is exactly what the study's findings predict: without human supervision and control, agents make confident decisions that can have serious consequences.
+
+These numbers and real-world incidents stand in very sharp contrast to the claims you see on social media, where people confidently describe building entire applications in minutes with AI agents.
+
+So, what's happening here? First, there are significant **context switching costs**: setting up the agent, writing prompts, reviewing outputs, and correcting mistakes takes time that people often underestimate. Second, **quality expectations differ**: building a quick demo is very different from writing production code that needs to be maintainable, observable, secure, and reliable. And third, there's a strong **survivorship bias** at play: the people posting about their AI coding successes on social media are showing you the wins, not the hours of debugging agent-generated code.
+
+This doesn't mean agents aren't valuable. I'm a lover of this technology. And they clearly are valuable. The developers in the study confirmed this. But the value comes as a **productivity boost**, not a productivity _revolution_. Agents help you move faster on specific tasks, not build entire systems autonomously.
+
+## How Developers Feel About Agents
+
+The study also explored developers' emotional experience with agents, and the results paint a picture of **cautious optimism**.
+
+Experienced developers generally feel **positive** about incorporating agents into their workflow. They appreciate the speed boost for repetitive tasks, the ability to scaffold code quickly, and the reduced friction for tasks outside their primary expertise.
+
+But that positive sentiment comes with a critical caveat: **they need to feel in control**. When the agent behaves predictably and responds well to guidance, developers enjoy working with it. When the agent hallucinate, produce unnecessarily complex code, or ignore instructions, frustration builds.
+
+The key insight here is that developer satisfaction with AI agents is directly tied to **agency and control**. Developers don't want a black box that writes code for them. They want a powerful tool that responds to their direction. The moment the agent feels unpredictable or uncontrollable, the experience turns negative.
+
+This is good feedback for toolmakers: better transparency (why did the agent make this decision?), better steerability (how can I correct its course?), and better predictability (will it do what I expect?) are probably more valuable than raw capability improvements.
+
+## When to Delegate and When to Code Yourself
+
+Perhaps the most practical takeaway from the study is understanding **which tasks are a good fit** for AI agents and which are not.
+
+### Tasks Where Agents Work Well
+
+Based on the research findings, agents tend to succeed when the task is **well-defined and scoped**. Clear input, clear expected output, limited ambiguity. They also shine on **repetitive or boilerplate-heavy work**, like writing CRUD endpoints, scaffolding components, or generating test cases for existing functions. Tasks related to **popular frameworks or libraries** where the agent's training data is strong are another sweet spot. And they're particularly useful when the stakes are low; code that will be reviewed and tested anyway, where a mistake is caught early.
+
+### Tasks Where Agents Struggle
+
+On the other hand, agents tend to fail or produce poor results when the task involves **complex architectural decisions**, like designing a system, choosing between trade-offs, or modeling domain logic. They also struggle with **ambiguous requirements**: when even a human developer would need to ask clarifying questions, an agent will just guess. **Novel or niche domains** like proprietary APIs, internal libraries, or uncommon tech stacks that aren't well-represented in training data are another weak point. And the more steps a workflow requires, the more likely the agent **diverges from the intended path**.
+
+### A Practical Summary
+
+In this table, I summarize the characteristics of tasks that are a good fit for agents versus those that are a poor fit:
+
+| Characteristic | Good Fit for Agents | Poor Fit for Agents |
+|---|---|---|
+| Scope | Small, well-defined tasks | Large, ambiguous tasks |
+| Complexity | Straightforward logic | Complex architecture |
+| Domain | Common frameworks/libraries | Proprietary/niche code |
+| Risk | Low-stakes, review-gated | High-stakes, production-critical |
+| Input Needed | Clear prompts, enough context | Extensive domain knowledge |
+
+### Practical Strategies for Working With Agents
+
+Based on the study's findings, there are several strategies that consistently work for experienced developers.
+
+The first and most important one is to **plan first, then delegate**. Don't jump straight into prompting. Think about the architecture, break the task into pieces, and decide which pieces to delegate. When you do prompt the agent, **be specific**, provide context about the codebase, the conventions you follow, the constraints, and the expected behavior. Vague prompts produce vague results.
+
+Once the agent produces output, **review everything**. Treat it like a pull request from a junior developer. Read the diff, check for edge cases, verify naming conventions, and look for unnecessary complexity. Agents are also great for **exploration**, when you're working outside your main tech stack or exploring a new library, they can accelerate your learning by scaffolding examples quickly.
+
+Two more principles that make a real difference: **keep tasks small**, because large, multi-file changes are where agents lose coherence, and **maintain ownership of design decisions** — use the agent for implementation, but own the architecture. You decide the patterns, the abstractions, and the interfaces.
+
+Finally, **know when to stop**. If you've spent more time correcting the agent than it would have taken to write the code yourself, just write it yourself.
+
+## Conclusion
+
+The research is clear: experienced professional developers don't just vibe code. They use AI agents as a productivity **tool**, not as a replacement for engineering judgment. They plan, delegate small tasks, review outputs, and maintain **ownership of design decisions**.
+
+The key takeaway is that **software engineering fundamentals matter more than ever**. The developers who benefit most from AI agents are the ones who bring deep expertise in design, architecture, code quality, and problem decomposition. The agent accelerates your work, but only if you know where you're going.
+
+If you're using agents today, the best advice from this research and my experience is: treat the agent like a capable but junior colleague. Give it clear instructions, review its work **carefully**, and never outsource decisions that matter. You continue to be the owner of the codebase. If the application stops running in production, the blame is on you, not the agent.
+
+And if you're still learning, don't worry that AI will make your skills obsolete. The opposite is likely true. Your understanding of software design, debugging, and systems thinking is exactly what makes AI agents useful. Without those skills, the agent is just a fast way to generate crappy code that you can't trust.
+
+## References
+
+- Huang, R., Reyna, A., Lerner, S., Xia, H., & Hempel, B. (2025). _Professional Software Developers Don't Vibe, They Control: AI Agent Use for Coding in 2025_. [arXiv:2512.14012](https://arxiv.org/abs/2512.14012)
+- Karpathy, A. (2025). _Vibe Coding_. [https://karpathy.ai/blog/vibe-coding.html](https://karpathy.ai/blog/vibe-coding.html)
