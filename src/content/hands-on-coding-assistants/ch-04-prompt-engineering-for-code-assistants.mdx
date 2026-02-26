@@ -5,14 +5,462 @@ module: 0
 order: 4
 ---
 
-## Prompt Engineering for Code Assistants
+## Your prompt _is_ your plan
 
-TODO: Content for Chapter 4 — Prompt Engineering for Code Assistants (focus: Plan)
+In Ch 2, we defined the **Plan** phase of PDRC as answering five questions before you open the AI tool: What's the task? What are the acceptance criteria? What's the scope? What context does the AI need? And which tool is right for this task?
 
-**Topics to cover:**
+Your prompt is the artifact where those answers become instructions. A vague prompt means you skipped the Plan phase — and the rest of the PDRC cycle inherits that debt. You'll spend more time reviewing, more time correcting, and more time wondering why the AI "didn't understand."
 
-- From basics to advanced: prompt structures, context, and precision
-- Context management: open files, top-level comments, meaningful names, explicit imports
-- Strategies for complex tasks: decomposition, iteration, examples
-- When NOT to use AI — highly complex architectural tasks that require organizational context
-- Hands-on: solve the same problem with different prompt strategies and compare results
+This chapter is about turning planning into prompts that work on the first try, not the fifth.
+
+---
+
+## The anatomy of an effective prompt
+
+Every strong prompt has four components, whether explicitly stated or implied by context. Think of them as the skeleton of your delegation:
+
+| Component | What it answers | Example |
+|-----------|----------------|---------|
+| **Goal** | _What_ do you want? | "Write a middleware function that..." |
+| **Context** | _Where_ does this fit? | "...for our Express 5 API, using the existing auth pattern in `src/middleware/auth.ts`..." |
+| **Constraints** | _What rules_ must it follow? | "...using Zod for input validation, returning 400 with a structured error response..." |
+| **Output format** | _How_ should it look? | "...with JSDoc comments, a unit test file, and no changes to existing tests." |
+
+You don't need to label these sections in every prompt. For a trivial task ("generate a test for this function"), the goal is obvious and the context comes from your cursor position. But as tasks grow in complexity, making each component explicit prevents the AI from filling gaps with hallucinations.
+
+Here's the pattern applied to a real task:
+
+```text title="Prompt with all four components"
+Goal:       Add rate limiting to POST /api/comments
+Context:    We use Express 5 with Redis (connection in src/lib/redis.ts).
+            Authenticated users have a user ID from JWT middleware.
+Constraints:
+  - 10 req/min per user ID (authenticated)
+  - 100 req/min per IP (unauthenticated)
+  - Return 429 with Retry-After header
+  - Use sliding window counter pattern
+  - Create a new middleware file, don't modify existing ones
+Output:     The middleware file, a unit test file, and the route registration change.
+```
+
+Compare that to: "add rate limiting to the API." Same goal, but the second version forces the AI to guess on context, constraints, and output. Four opportunities for the result to miss the mark.
+
+You don't need to add the directives `Goal`, `Context`, `Constraints`, and `Output` in all your prompts. But having those sections mentally mapped out makes it easier to write a complete prompt that sets the AI up for success.
+
+---
+
+## Five prompt strategies that actually matter
+
+GitHub's documentation, VS Code's prompt crafting guide, and research from teams using Copilot at scale converge on five strategies that consistently improve output quality. These aren't theoretical, they're the patterns that reduce your Review and Correct cycles.
+
+### 1. Start general, then get specific
+
+Open with the big picture, then layer on details. This gives the model a frame before asking it to fill in the pixels.
+
+**Weak:**
+```text
+Validate the input.
+```
+
+**Strong:**
+```text
+Write an input validation function for the user registration endpoint.
+
+It should validate:
+- email: must be a valid format, max 254 chars
+- password: min 12 chars, at least one uppercase, one number, one special char
+- name: 1-100 chars, no HTML tags
+
+Use Zod schemas. Return typed error messages that the frontend can display per-field.
+```
+
+The first prompt might return a generic `if (!input)` check. The second returns a battle-ready Zod schema with exact constraints.
+
+### 2. Provide context explicitly
+
+The AI doesn't see your mental model. It sees your open files, your prompt, and your custom instructions. If context isn't visible, it doesn't exist.
+
+**For inline suggestions (completions):**
+
+- **Open related files** — VS Code uses open tabs to build a context window. If you're writing a service, open the interface it implements, the types it uses, and one example of a similar service. Close unrelated files.
+- **Add a top-level comment** — A brief description at the top of the file gives the model a frame: `// Rate limiting middleware using sliding window counters over Redis`
+- **Set explicit imports** — If you want Copilot to use `Log4js` instead of `console.log`, import `Log4js` first. The import statement _is_ a context signal.
+- **Use meaningful names** — `fetchUserOrderHistory()` guides the model far better than `getData()`. The function name is the strongest context signal for completions.
+
+**For chat and agent mode:**
+
+- Use `#file` or `@file` references to point at specific files: `Review #src/middleware/auth.ts and apply the same pattern to rate limiting`
+- Use `#codebase` or `@workspace` when you're not sure which files are relevant and want the AI to search
+- For CLI, use `@path/to/file` to reference files
+- Paste error messages, test output, or stack traces directly into the prompt — the model can't read your terminal unless you show it or if the Agent was using it before
+
+The VS Code prompt engineering guide puts it well: _"Just as you would provide a colleague with the context when asking for help with a specific programming task, you can do the same with AI."_
+
+### 3. Give examples (few-shot prompting)
+
+When you need the output to match a specific format or convention, show the model what you want. This is called **few-shot prompting** — you provide one or more examples of input-output pairs, and the model follows the pattern.
+
+```text title="Few-shot prompt for a date parser"
+Write a Go function that extracts all dates from a string.
+
+Supported formats:
+- 05/02/24, 05/02/2024, 5/2/24, 5/2/2024
+- 05-02-24, 05-02-2024, 5-2-24, 5-2-2024
+
+Example:
+  findDates("Meeting on 11/14/2023, follow-up 12-1-23")
+  → ["11/14/2023", "12-1-23"]
+
+  findDates("No dates here")
+  → []
+```
+
+Without the examples, the model might return parsed `time.Time` objects, or a single date, or a different return format. The examples nail down the exact contract.
+
+It's also useful when you're using a model that was trained on an old version of the language or library. For instance, if you're using a model that doesn't know about the latest version of React, you can show it an example of a functional component with hooks to guide it away from class components.
+
+**Pro tip:** Unit tests are excellent few-shot examples. Before writing a function, ask Copilot to generate the tests first. Then ask it to write the function that passes those tests. This is test-driven development with the AI as pair partner, and it's one of the most reliable workflows for getting correct output.
+
+### 4. Decompose complex tasks
+
+This is the most impactful strategy for non-trivial work, and it maps directly to the planning spectrum from Ch 2. Complex tasks fail not because the model is incapable, but because the prompt asks too many things at once.
+
+**Too much at once:**
+```text
+Build a user management system with registration, login, password reset,
+email verification, role-based access control, and an admin dashboard.
+```
+
+**Decomposed:**
+```text
+Step 1: "Create the user registration endpoint with email/password.
+         Use Zod for validation and bcrypt for password hashing.
+         Store users in the users table (Prisma schema attached)."
+
+Step 2: "Add email verification — generate a token, store it in the
+         verification_tokens table, send via the mailer in src/lib/email.ts."
+
+Step 3: "Add login with JWT. Use the same auth pattern as src/middleware/auth.ts.
+         Return access token (15min) and refresh token (7d)."
+
+(... continue step by step)
+```
+
+Each step is a single-responsibility delegation. The model does one thing well, you review it, and the next step builds on verified code. This is PDRC at the task level: Plan each step, Delegate it, Review the output, Correct before moving on.
+
+GitHub's own documentation recommends exactly this: _"If you want Copilot to complete a complex or large task, break the task into multiple simple, small tasks."_
+
+You can also use the model itself to help with decomposition. For instance, you can ask: "I want to build a user management system with X, Y, Z features. What are the individual components I need to implement?" The model can return a structured plan that you then execute step by step. You can use it to help break down a vague task into concrete steps, which is especially useful when the problem is new to you.
+
+### 5. Iterate, don't start over
+
+A mediocre first response is not a failure, it's a starting point. Chat and agent mode preserve conversation history, which means the model remembers what it already tried and why you're asking for changes.
+
+Effective iteration:
+
+```text
+First prompt:  "Write a function to calculate Fibonacci numbers."
+→ (AI returns a recursive solution)
+
+Second prompt: "Use an iterative approach instead — the recursive one
+                has O(2^n) time complexity."
+→ (AI returns an iterative solution)
+
+Third prompt:  "Add memoization and use TypeScript with proper types."
+→ (AI refines with memo + types)
+```
+
+Each iteration builds on the previous response. You're steering, not starting over. This is faster than writing a single "perfect" prompt because you can course-correct based on what you see.
+
+**When to start a new thread instead:** If the conversation context has drifted too far from the current task, or if previous responses are polluting the context with wrong approaches, start a new thread. Stale context is worse than no context.
+
+---
+
+## Context management: the invisible skill
+
+The five strategies above work on the prompt itself. But the _environment_ around the prompt — your editor state, your file organization, your project configuration — shapes every AI interaction whether you're actively prompting or not.
+
+### Your open tabs are context
+
+For inline completions, VS Code sends the contents of your currently open files as context. This means:
+
+- **Open** files that are related to what you're writing (interfaces, types, similar implementations)
+- **Close** unrelated files that might confuse the model
+- **Pin** the files you reference most often
+
+If you're implementing a new API endpoint and you have the database schema, the existing route handler, and the request types all open, completions will be dramatically better than if you only have the empty new file.
+
+### Names matter more than comments
+
+Meaningful names are the strongest context signal for completions. The model predicts the next token based on what it sees, and function names, variable names, and parameter names carry the most weight.
+
+```typescript title="Weak naming: model guesses"
+async function process(data: any) {
+  // What does "process" mean? What's "data"?
+  // The model has almost nothing to work with.
+}
+```
+
+```typescript title="Strong naming: model infers intent"
+async function validateAndStoreUserRegistration(
+  registration: UserRegistrationInput
+): Promise<Result<User, ValidationError[]>> {
+  // The name, parameter type, and return type give the model
+  // everything it needs to generate an accurate body.
+}
+```
+
+This isn't just an AI tip — it's good engineering that happens to make AI Coding dramatically more useful.
+
+### Imports steer the model
+
+Setting your import statements before asking for suggestions tells the model which libraries to use. Without them, it falls back to defaults (usually `console.log` instead of your logger, `fetch` instead of your HTTP client, etc.).
+
+```typescript title="Import first, then let the model follow"
+import { z } from "zod";
+import { logger } from "../lib/logger";
+import { db } from "../lib/database";
+import type { ApiResponse } from "../types/api";
+
+// Now start writing your function — the model knows your stack
+```
+
+### Custom instructions are persistent prompts
+
+In Ch 3, we set up `.github/copilot-instructions.md` and path-specific `.instructions.md` files. Think of these as prompts that run on every interaction. They provide the project context component automatically, so your individual prompts can focus on the goal, constraints, and output format for your current task.
+
+If you're writing the same context into every prompt ("we use Vitest, not Jest" or "always use named exports"), that context belongs in your custom instructions file instead.
+
+---
+
+## The prompt quality spectrum
+
+To make the difference concrete, here's the same task at three quality levels. The task: add a retry mechanism to an HTTP client.
+
+### Level 1: Vague (skipped the Plan phase)
+
+```text
+Add retry logic to the HTTP client.
+```
+
+**What you'll likely get:**
+- Generic retry with hardcoded values
+- No exponential backoff
+- Retries on every error (including 400s)
+- No logging
+- May not integrate with your existing HTTP client at all
+
+**PDRC cost:** You'll spend more time in Review spotting issues and in Correct fixing them than you saved by writing a short prompt.
+
+### Level 2: Specific (good Plan, basic Delegate)
+
+```text
+Add retry logic to the fetchWithAuth function in src/lib/http-client.ts.
+
+- Retry on 5xx errors and network timeouts only (not 4xx)
+- Maximum 3 retries
+- Exponential backoff: 1s, 2s, 4s
+- Log each retry with our logger (imported from src/lib/logger)
+```
+
+**What you'll likely get:**
+- Correct retry logic with the right conditions
+- Proper backoff timing
+- Uses your logger
+- Integrates with the existing function
+
+**PDRC cost:** One round of review, maybe a small correction for an edge case.
+
+### Level 3: Complete (thorough Plan, precise Delegate)
+
+```text
+Add retry logic to the fetchWithAuth function in src/lib/http-client.ts.
+
+Requirements:
+- Retry on 5xx errors and network timeouts (ECONNRESET, ETIMEDOUT) only
+- Do NOT retry on 4xx, abort signals, or request body errors
+- Maximum 3 retries with exponential backoff: 1s, 2s, 4s
+- Add jitter (±20%) to prevent thundering herd
+- Log each retry with logger.warn(), including attempt number, status code,
+  and next delay
+- If all retries fail, throw a RetryExhaustedError (extend AppError from
+  src/lib/errors.ts) with the last response attached
+
+Test requirements:
+- Unit tests using vitest and msw for HTTP mocking
+- Test cases: successful retry after 503, no retry on 400, retry exhaustion,
+  jitter bounds, abort signal cancels retry loop
+
+Don't modify the fetchWithAuth signature — wrap the internal fetch call.
+```
+
+**What you'll likely get:** Production-ready code on the first pass. Correct edge cases, proper error types, comprehensive tests.
+
+**PDRC cost:** Minimal review, likely zero corrections. The time invested in the prompt pays for itself immediately.
+
+---
+
+## When NOT to use AI — and when to stop prompting
+
+Knowing when to stop is as important as knowing how to start. There are situations where AI assistance is counterproductive, and recognizing them early saves time.
+
+### Signals you should stop prompting
+
+**You can't evaluate the output.** If you don't understand enough about the domain to judge whether the AI's answer is correct, you shouldn't be using AI for that task. You'll accept wrong code and compound the problem. Learn the fundamentals first, then use AI to accelerate.
+
+**You've been iterating for more than 3–4 rounds.** If the AI still isn't getting it right after multiple refinements, it's probably the wrong tool for this task — or the task needs to be decomposed further. Every iteration carries context window cost and the risk of the model fixating on its earlier wrong approaches.
+
+**The task requires organizational context that can't be expressed in a prompt.** "Should we use microservices or a monolith for this new product?" isn't an AI question. It's a team discussion that involves deployment costs, team structure, latency requirements, and business constraints.
+
+**The code is security-critical and you're not a security expert.** AI can generate encryption, authentication, and authorization code that _looks_ correct but has subtle flaws — missing constant-time comparison, weak PRNG usage, improper key derivation. If you can't spot these issues, the AI's output needs expert review regardless.
+
+### Tasks where AI hinders more than it helps
+
+| Scenario | Why AI struggles | What to do instead |
+|----------|-----------------|-------------------|
+| **Novel algorithm design** | Models reproduce patterns they've seen; truly novel logic isn't in the training data | Design the algorithm yourself; use AI for implementation once the approach is clear |
+| **Complex architectural decisions** | Requires organizational context, team knowledge, long-term cost analysis | Discuss with your team; document the decision in an ADR |
+| **Legacy system archaeology** | The model doesn't know your undocumented internal systems, tribal knowledge, or why things were built a certain way | Read the code, talk to people who wrote it, then use AI to help refactor once you understand it |
+| **Ambiguous requirements** | "Make it better" or "do whatever you think is right" gives the model no constraints, so it gives you whatever is statistically likely | Clarify the requirements with stakeholders first |
+| **Highly regulated code** | Compliance (HIPAA, PCI-DSS, SOC 2) requires auditability and specific patterns the model doesn't know | Write it yourself, have it audited, then optionally use AI for the _tests_ |
+
+### The sunk cost trap
+
+A common anti-pattern: you've spent 20 minutes refining a prompt and the output is still mediocre, but you keep going because you've "invested" time. Stop. The 20 minutes are gone. Writing the code manually from this point might take 10 minutes. Continuing to prompt might take another 20 with no guarantee of a better result.
+
+**Heuristic:** If the third iteration doesn't show meaningful improvement, switch strategies. Decompose the task, try a different tool, add more context, or just write it yourself.
+
+---
+
+## Hands-on: three prompts, one problem
+
+Let's put everything into practice. The exercise: add an input validation middleware to an Express API endpoint that creates a user. Same problem, three prompt strategies, different results.
+
+### Setup
+
+If you don't have a project ready, create a minimal one:
+
+```sh
+mkdir prompt-lab && cd prompt-lab
+npm init -y
+npm install express zod
+npm install -D typescript @types/express @types/node vitest
+npx tsc --init
+```
+
+Create a starter file:
+
+```typescript title="src/routes/users.ts"
+import express from "express";
+
+const router = express.Router();
+
+// POST /users — create a new user
+router.post("/", (req, res) => {
+  // TODO: validate input before processing
+  const { email, name, password } = req.body;
+  res.status(201).json({ message: "User created", email, name });
+});
+
+export default router;
+```
+
+### Prompt A: Minimal (the "hope for the best" approach)
+
+Open VS Code Chat (Agent mode) and type:
+
+```text
+Add validation to the user creation endpoint
+```
+
+Observe the result. Notice what the AI had to guess: Which fields? What rules? Which library? What error format? Save the output.
+
+### Prompt B: Specific with context
+
+```text
+Add input validation to the POST /users endpoint in #src/routes/users.ts.
+
+Requirements:
+- email: valid format, max 254 characters, required
+- name: 1-100 characters, no HTML tags, required
+- password: min 12 characters, at least one uppercase, one number,
+  one special character, required
+
+Use Zod for validation. Return 400 with per-field error messages
+in this format: { errors: [{ field: "email", message: "..." }] }
+```
+
+Compare this output to Prompt A. The constraints eliminated guesswork.
+
+### Prompt C: Decomposed with examples
+
+```text
+I need input validation for the POST /users endpoint. Let's build this
+step by step.
+
+Step 1: Create a Zod schema in src/schemas/user.ts for the user
+creation input with these fields:
+- email: valid email format, max 254 chars
+- name: 1-100 chars, must not contain HTML tags (strip or reject)
+- password: min 12 chars, regex: at least 1 uppercase, 1 number,
+  1 special char
+
+Step 2: Create a reusable validation middleware in
+src/middleware/validate.ts that:
+- Takes a Zod schema as parameter
+- Validates req.body against it
+- On failure, returns 400 with this shape:
+  { errors: [{ field: "email", message: "Invalid email format" }] }
+- On success, calls next() with the parsed (not raw) body
+
+Step 3: Apply the middleware to the POST /users route.
+
+Step 4: Write tests (vitest) that cover: valid input, missing fields,
+invalid email, weak password, HTML in name.
+```
+
+### What to compare
+
+After running all three prompts, compare them on these dimensions:
+
+| Dimension | Prompt A | Prompt B | Prompt C |
+|-----------|----------|----------|----------|
+| **Correctness** | Did it validate the right fields with the right rules? | | |
+| **Completeness** | Did it handle error formatting, edge cases, tests? | | |
+| **Integration** | Did it fit the existing code structure? | | |
+| **Reusability** | Is the validation logic reusable for other endpoints? | | |
+| **Review time** | How much time would you spend reviewing and fixing? | | |
+
+
+---
+
+## Key takeaways
+
+1. **A prompt is a plan artifact.** The quality of your prompt directly reflects the quality of your planning.
+2. **Four components** — goal, context, constraints, output format — cover most prompt structures.
+3. **Context is not optional.** Open files, imports, names, custom instructions, and explicit references all shape what the AI produces.
+4. **Decompose before you delegate.** Complex tasks broken into single-responsibility steps produce better results than one monolithic prompt.
+5. **Know when to stop.** If you can't evaluate the output, if iterations aren't improving, or if the task requires human judgment, stop prompting and do the work yourself.
+
+In Ch 5, we'll take the next step: building **custom agents and sub-agents** with `.agent.md` profiles that encode your prompt engineering decisions into reusable, shareable configurations — turning one-off prompts into permanent team knowledge.
+
+---
+
+## References
+
+### Official documentation
+
+- [VS Code — Prompt engineering for Copilot](https://code.visualstudio.com/docs/copilot/prompt-crafting) — open files, top-level comments, meaningful names, sample code priming
+- [GitHub Docs — Prompt engineering for Copilot Chat](https://docs.github.com/en/copilot/using-github-copilot/copilot-chat/prompt-engineering-for-copilot-chat) — start general then specific, give examples, decomposition, avoid ambiguity, iterate
+- [GitHub Docs — Best practices for using GitHub Copilot](https://docs.github.com/en/copilot/using-github-copilot/best-practices-for-using-github-copilot) — strengths/weaknesses, choosing the right tool, checking work, guiding output
+
+### Research and data
+
+- [McKinsey — The economic potential of generative AI (2023)](https://www.mckinsey.com/capabilities/mckinsey-digital/our-insights/the-economic-potential-of-generative-ai-the-next-productivity-frontier) — productivity gains, limitations on complex tasks, decomposition requirement
+- [GitHub — Survey reveals AI's impact on the developer experience (2023)](https://github.blog/news-insights/research/survey-reveals-ais-impact-on-the-developer-experience/) — adoption rates, quality metrics, collaboration expectations
+
+### Further reading
+
+- [GitHub Blog — How to write better prompts for GitHub Copilot (2023)](https://github.blog/2023-06-20-how-to-write-better-prompts-for-github-copilot/) — practical prompt tips with before/after examples
+- [GitHub Blog — Using GitHub Copilot in your IDE: tips, tricks, and best practices (2024)](https://github.blog/2024-03-25-how-to-use-github-copilot-in-your-ide-tips-tricks-and-best-practices/) — IDE-specific workflow optimizations
+- [GitHub Blog — A developer's guide to prompt engineering and LLMs (2023)](https://github.blog/2023-07-17-prompt-engineering-guide-generative-ai-llms/) — deeper technical guide on LLM prompting
