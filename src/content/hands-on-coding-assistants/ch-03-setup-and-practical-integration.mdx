@@ -1,17 +1,515 @@
 ---
 title: "Setup & Practical Integration"
-description: "Configuring Copilot/agents in the IDE, repository connection, and Copilot CLI."
+description: "Configuring Copilot/agents in the IDE, repository connection, custom instructions, MCP servers, and the new standalone Copilot CLI."
 module: 0
 order: 3
 ---
 
-## Setup & Practical Integration
+## Why setup is a Plan step
 
-TODO: Content for Chapter 3 — Setup & Practical Integration
+Most developers install Copilot, sign in, and start typing. They never configure anything beyond the defaults. Then they wonder why the AI keeps suggesting code in the wrong style, doesn't know about their testing framework, or ignores their team's conventions.
 
-**Topics to cover:**
+Setup is not overhead. It's the **Plan** phase of PDRC applied to your entire development environment. Every minute you spend configuring custom instructions, connecting MCP servers, and verifying your CLI installation pays for itself across every task you delegate from this point forward.
 
-- Configuring Copilot/agents in the IDE (VS Code, JetBrains, CLI)
-- Repository connection and permissions
-- Copilot CLI — using AI in the terminal (`gh copilot suggest`, `gh copilot explain`)
-- Hands-on: full setup with a real project
+In PDRC terms: you're teaching the AI _how you work_ before you ask it to work for you.
+
+---
+
+## Prerequisites
+
+Before starting, make sure you have the following:
+
+| Requirement | Minimum version | Check command |
+|-------------|-----------------|---------------|
+| **GitHub account** | Any (Free, Pro, Team, or Enterprise) | — |
+| **Copilot subscription** | Free tier works; Pro recommended | Check at [github.com/settings/copilot](https://github.com/settings/copilot) |
+| **VS Code** | 1.99+ (April 2025+) | `code --version` |
+| **Node.js** | 22+ (for Copilot CLI via npm) | `node --version` |
+| **Git** | 2.39+ | `git --version` |
+
+> **Note on plans:** GitHub Copilot Free gives you a monthly limit of inline suggestions and chat interactions. Copilot Pro removes that limit and adds premium request quotas for advanced models. Copilot Pro+ gives higher quotas. For this workshop, the Free plan works, but you'll hit limits faster during hands-on exercises. Check the [current plans](https://github.com/features/copilot/plans) for the latest pricing and limits.
+
+---
+
+## Step 1: Copilot in VS Code
+
+Copilot is built into VS Code as of version 1.99 (April 2025). You don't need to install a separate extension anymore: the GitHub Copilot and GitHub Copilot Chat extensions come pre-installed.
+
+### Sign in and activate
+
+1. Open VS Code
+2. Hover over the **Copilot icon** in the Status Bar (bottom-right) and select **Use AI Features**
+3. Choose a sign-in method (GitHub.com or GHE.com) and follow the browser prompts
+4. Once authenticated, the Copilot icon in the Status Bar should show as active
+
+If you already have a Copilot subscription, VS Code uses it automatically. If you don't, you'll be signed up for the Free plan.
+
+### Verify it works
+
+Open any code file and start typing. You should see inline suggestions appearing as ghost text. If nothing appears:
+
+1. Check the Status Bar — the Copilot icon should not show an error
+2. Open the Command Palette (`Cmd+Shift+P` on macOS / `Ctrl+Shift+P` on Windows/Linux) and run **GitHub Copilot: Sign In**
+3. Check that Copilot is not disabled for the file's language in your settings
+
+### Key settings to review
+
+Open VS Code settings (`Cmd+,`) and search for `copilot`. Here are the settings that matter most:
+
+```json title="settings.json (relevant Copilot settings)"
+{
+  // Enable inline completions (ghost text)
+  "editor.inlineSuggest.enabled": true,
+
+  // Enable next edit suggestions (NES) — predicts your next edit location
+  "github.copilot.nextEditSuggestions.enabled": true,
+
+  // Per-language control
+  "github.copilot.enable": {
+    "*": true,
+    "yaml": true,
+    "markdown": true,
+    "plaintext": false
+  }
+}
+```
+
+**Next Edit Suggestions (NES)** is worth enabling. Instead of only suggesting code at your cursor, Copilot predicts where you'll want to edit next and pre-fills the suggestion there. It's especially useful during refactoring.
+
+If you want, you can disable or enable more languages here. For example, if you don't want suggestions in Markdown files, set `"markdown": false`.
+
+### Chat and Agent mode
+
+Open the Chat panel with `Shift+Cmd+I` (macOS) or `Shift+Ctrl+I` (Windows/Linux). You can switch between modes using the dropdown at the top of the chat input:
+
+- **Agent** mode — Copilot reads your workspace, runs terminal commands, installs dependencies, and iterates on errors autonomously
+- **Ask** mode — get answers and code suggestions (no file modifications)
+- **Plan** mode — Copilot builds a structured plan before making any changes, then asks for your approval
+
+For this workshop, we'll primarily use **Agent mode** for complex tasks and **Ask** for exploration and learning. Agent mode is where PDRC matters most, the agent has significant autonomy, so your Plan and Review phases need to be solid.
+
+---
+
+## Step 2: Copilot CLI — AI in your terminal
+
+### The old vs. the new
+
+If you've seen tutorials mentioning `gh copilot suggest` or `gh copilot explain`, those commands belong to the **retired** Copilot extension for GitHub CLI. It has been replaced by **GitHub Copilot CLI** — a standalone tool that is a full-featured agentic interface, not just a suggestion engine.
+
+| Old (retired) | New (current) |
+|----------------|---------------|
+| `gh copilot suggest` | `copilot` (interactive session) |
+| `gh copilot explain` | `copilot -p "explain this"` |
+| Extension for `gh` CLI | Standalone binary |
+| Suggestions only | Full agent: reads/writes files, runs commands, creates PRs |
+| No MCP support | MCP servers, custom agents, skills, memory |
+
+The new Copilot CLI defaults to **Claude Sonnet 4.5** as its model and uses premium requests from your Copilot subscription quota.
+
+### Installation
+
+Choose your platform:
+
+```sh title="macOS/Linux — Homebrew"
+brew install copilot-cli
+```
+
+```sh title="macOS/Linux — install script"
+curl -fsSL https://gh.io/copilot-install | bash
+```
+
+```sh title="All platforms — npm"
+npm install -g @github/copilot
+```
+
+```sh title="Windows — WinGet"
+winget install GitHub.Copilot
+```
+
+Verify the installation:
+
+```sh
+copilot --version
+```
+
+### First launch and authentication
+
+Run `copilot` in your project directory. On first launch:
+
+1. Copilot asks you to **confirm you trust the files** in this directory. This is a security boundary — Copilot can read, modify, and execute files within trusted directories. Choose wisely.
+2. If you're not logged in, type `/login` and follow the browser-based authentication flow.
+3. You'll see the interactive prompt. Type `?` to see all available commands and slash commands.
+
+### Interactive mode vs. programmatic mode
+
+**Interactive mode** is a persistent conversation:
+
+```sh
+# Start in your project directory
+cd ~/projects/my-app
+copilot
+```
+
+Once inside, you can:
+- Ask questions about your codebase
+- Request code changes across multiple files
+- Run shell commands through Copilot
+- Switch to **plan mode** with `Shift+Tab` (Copilot builds a plan before writing code — sound familiar?)
+- Switch to **autopilot mode** with `Shift+Tab` again (full autonomy, use with caution)
+- Reference specific files with `@path/to/file.ts`
+- Run shell commands directly with `!git status`
+
+**Programmatic mode** runs a single prompt and exits:
+
+```sh
+# One-shot prompt
+copilot -p "Show me this week's commits and summarize them" --allow-tool 'shell(git)'
+```
+
+```sh
+# Autonomous mode — Copilot runs without asking for approval
+copilot --autopilot --yolo --max-autopilot-continues 10 -p "Run the tests and fix any failures"
+```
+
+### Plan mode — PDRC built into the CLI
+
+Plan mode is particularly relevant for this workshop. Press `Shift+Tab` in the interactive interface to cycle into **plan mode**. In this mode:
+
+1. Copilot analyzes your request
+2. Asks clarifying questions
+3. Builds a structured implementation plan
+4. Waits for your approval before writing any code
+
+This is PDRC's Plan phase, automated. You still review and approve the plan before Copilot begins delegating the execution to itself. If the plan looks wrong, you correct it _before_ any code is written, catching misunderstandings at the cheapest possible point.
+
+### Key slash commands
+
+| Command | What it does |
+|---------|--------------|
+| `/login` | Authenticate with GitHub |
+| `/model` | Switch the AI model (GPT-5, Claude Sonnet 4.5, Gemini, etc.) |
+| `/agent` | Select a custom agent (explore, task, code-review, or your own) |
+| `/delegate` | Push the current session to Copilot coding agent on GitHub |
+| `/review` | Have Copilot review code changes |
+| `/mcp` | List or manage MCP servers |
+| `/compact` | Compress conversation history to free context space |
+| `/context` | Show token usage breakdown |
+| `/usage` | View session stats (premium requests used, lines edited, duration) |
+| `?` | Show all available commands |
+
+### Security: tool approval
+
+When Copilot needs to run a command that could modify files (like `sed`, `chmod`, `node`), it asks for approval:
+
+```
+1. Yes
+2. Yes, and approve TOOL for the rest of the running session
+3. No, and tell Copilot what to do differently (Esc)
+```
+
+The option 2 approves the **_entire tool_, not just the specific command.** If you approve `rm` for the session, Copilot can run `rm -rf ./*` without asking again. This is the CLI equivalent of the "accept all" anti-pattern from Ch 2. For this workshop, we recommend **Option 1** (approve individually) until you're comfortable with the tool's behavior.
+
+For automation or CI use cases, you can pre-approve tools:
+
+```sh
+# Allow only git and write operations, deny rm
+copilot --allow-tool 'shell(git)' --allow-tool 'write' --deny-tool 'shell(rm)' -p "YOUR PROMPT"
+```
+
+But always review the tool list and understand the implications before pre-approving.
+
+---
+
+## Step 3: Custom instructions — teaching the AI your context
+
+Custom instructions are the single highest-leverage configuration you can do. They tell every Copilot interaction (completions, chat, agent mode, CLI, coding agent) how your project works, what conventions to follow, and what to avoid.
+
+This files will be automatically included in the context of every Copilot prompt for this repository. The more specific and accurate your instructions, the less time you spend in the Review and Correct phases.
+
+### Types of instruction files
+
+| Type | File location | Scope | Used by |
+|------|---------------|-------|---------|
+| **Repository-wide** | `.github/copilot-instructions.md` | Entire repository | All Copilot features (chat, completions, agent, CLI, code review) |
+| **Path-specific** | `.github/instructions/*.instructions.md` | Files matching a glob pattern | Chat, agent, CLI, code review |
+| **Agent instructions** | `AGENTS.md` (anywhere in repo) | Nearest in directory tree wins | Agent mode, Copilot CLI, coding agent |
+
+There's also support for `CLAUDE.md` and `GEMINI.md` at the repo root — these work the same way as `AGENTS.md` but are model-specific. If you have both `AGENTS.md` and `CLAUDE.md`, the coding agent will use `CLAUDE.md` when it's running on a Claude model, and `AGENTS.md` for other models.
+
+### Writing effective `copilot-instructions.md`
+
+Create `.github/copilot-instructions.md` in your repository root.
+
+A very resumptive instructions file for this example might look like this:
+
+```markdown title=".github/copilot-instructions.md"
+# Project: My App
+
+## Overview
+This is a Next.js 16 application using TypeScript, Tailwind CSS, and Prisma ORM.
+The database is PostgreSQL. We deploy to Google Cloud.
+
+## Architecture
+- `src/app/` — Next.js App Router pages and layouts
+- `src/components/` — Reusable React components (one component per file)
+- `src/lib/` — Shared utilities, database client, auth helpers
+- `src/server/` — Server-side logic, API route handlers
+- `prisma/` — Database schema and migrations
+
+## Conventions
+- Use `async/await` instead of `.then()` chains
+- Prefer named exports over default exports
+- All components must have TypeScript props interfaces
+- Tests use Vitest with React Testing Library
+- Error handling: use Result types, never throw in business logic
+
+## Build & test
+- `pnpm install` — install dependencies
+- `pnpm dev` — development server
+- `pnpm test` — run tests
+- `pnpm lint` — run ESLint + Prettier check
+- Always run `pnpm test` after making changes to verify nothing is broken
+
+## IMPORTANT
+- Never modify `prisma/schema.prisma` without explicit instruction
+- Never commit `.env` files
+- Always use parameterized queries, never string interpolation for SQL
+```
+
+This file gives Copilot a clear mental model of the project structure, tech stack, coding conventions, and build steps. When you ask Copilot to "Add a new API route for user registration," it references this file and knows exactly where to put the code, how to write it, and how to test it. Without these instructions, Copilot might guess wrong and produce code that doesn't fit the project's style or structure, leading to more time spent in Review and Correct phases.
+
+### Path-specific instructions
+
+For larger projects, different parts of the codebase have different conventions. Create files in `.github/instructions/`.
+
+For example, you might have `api-routes.instructions.md` for API route conventions and `react-components.instructions.md` for React component guidelines. Each file starts with a YAML front matter specifying which files it applies to:
+
+```markdown title=".github/instructions/api-routes.instructions.md"
+---
+applyTo: "src/server/**/*.ts,src/app/api/**/*.ts"
+---
+
+# API Route Guidelines
+
+- All API routes must validate input with Zod schemas
+- Return consistent response shapes: `{ data, error, status }`
+- Log all errors with structured logging (use `logger.error()`)
+- Rate limiting is handled by middleware, do not add it per-route
+- Always return appropriate HTTP status codes (don't default to 200 for errors)
+```
+
+```markdown title=".github/instructions/react-components.instructions.md"
+---
+applyTo: "src/components/**/*.tsx"
+---
+
+# React Component Guidelines
+
+- Use function components with TypeScript interfaces for props
+- Colocate styles using Tailwind classes, no CSS modules
+- Components must be pure: no side effects in render
+- Use `useCallback` and `useMemo` only when measured performance justifies it
+- Accessibility: all interactive elements must have aria labels
+```
+
+The `applyTo` glob tells Copilot which files these instructions apply to. When you're working on a file that matches, both the repository-wide instructions _and_ the matching path-specific instructions are included.
+
+### AGENTS.md — instructions for agent mode
+
+`AGENTS.md` files (inspired by the [openai/agents.md spec](https://github.com/openai/agents.md)) are specifically for agent interactions (agent mode in VS Code, Copilot CLI, and the coding agent). The nearest `AGENTS.md` in the directory tree takes precedence.
+
+You can have a root-level `AGENTS.md` for the whole project and subdirectory-level files for specific areas:
+
+```markdown title="AGENTS.md (project root)"
+# Agent Instructions
+
+## Build & Validate
+Always run `pnpm test` after making changes. If tests fail, fix them before
+reporting that the task is complete. Do not skip failing tests.
+
+## Prohibited Actions
+- Do not modify CI/CD configuration files (.github/workflows/)
+- Do not update dependency versions unless explicitly asked
+- Do not delete test files
+
+## Pull Request Standards
+- Commit messages follow Conventional Commits (feat:, fix:, chore:, etc.)
+- PRs must have a description explaining what changed and why
+- Keep PRs focused: one logical change per PR
+```
+
+### Instruction priority
+
+When multiple instruction files exist, they're all included, and they combine, they don't override. However, if there's a conflict:
+
+1. **Personal instructions** (user-level settings) — highest priority
+2. **Repository instructions** (`.github/copilot-instructions.md`, path-specific, `AGENTS.md`)
+3. **Organization instructions** — lowest priority
+
+---
+
+## Step 4: MCP servers — extending what Copilot can access
+
+MCP (Model Context Protocol) is an open standard for connecting AI models to external tools and data sources. Think of it as **plugins** for your AI Code Companion: a database MCP server lets Copilot query your database, a Playwright MCP server lets it control a browser, and the GitHub MCP server lets it manage issues and PRs.
+
+### MCP in VS Code
+
+VS Code has a built-in MCP server gallery. To add a server:
+
+1. Open the Extensions view (`Cmd+Shift+X`)
+2. Type `@mcp` in the search field to see the MCP server gallery
+3. Select a server and click **Install**
+4. When prompted, confirm that you trust the server
+
+Alternatively, manually configure servers in `.vscode/mcp.json`:
+
+```json title=".vscode/mcp.json"
+{
+  "servers": {
+    "github": {
+      "type": "http",
+      "url": "https://api.githubcopilot.com/mcp"
+    },
+    "playwright": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@microsoft/mcp-server-playwright"]
+    }
+  }
+}
+```
+
+**Commit this file to source control** to share MCP configurations with your team. This is another Plan step: you're deciding once which tools the team needs, and everyone benefits.
+
+> **Security warning:** MCP servers can run arbitrary code on your machine. Only install servers from trusted sources, and review the configuration before starting them. VS Code shows a trust prompt for each new server.
+
+### MCP in Copilot CLI
+
+Copilot CLI comes with the **GitHub MCP server** pre-configured, which lets you interact with GitHub (list PRs, create issues, merge branches) directly from the terminal.
+
+To add more MCP servers in the CLI:
+
+```
+/mcp add
+```
+
+Fill in the server details and press `Ctrl+S` to save. The configuration is stored in `~/.copilot/mcp-config.json`.
+
+### When MCP servers matter
+
+We'll dive deeper into MCP in **Module 03** (Ch 12–13). For now, the important thing is having the GitHub MCP server working, which enables:
+
+- Listing and managing issues/PRs from the CLI
+- Delegating tasks to the coding agent on GitHub
+- Searching code across repositories
+
+---
+
+## Step 5: Hands-on verification
+
+Let's verify everything works with a concrete exercise. Clone or create a small project and run through the checklist below. I'm using a JavaScript/TypeScript project, but you can do this with any language or framework.
+
+### Verification checklist
+
+```sh title="Run each check in order"
+# 1. VS Code Copilot is active
+# Open/Create a .ts or .js file and type "function add(" — you should see ghost text
+
+# 2. Copilot Chat works
+# Open Chat panel (Ctrl+Cmd+I) and type: "What does this project do?"
+
+# 3. Agent mode works
+# In Chat panel, switch to Agent mode and type: "List all files in this project"
+
+# 4. Copilot CLI is installed
+copilot --version
+
+# 5. Copilot CLI authentication works
+copilot -p "What is 2+2?" --allow-tool 'shell'
+
+# 6. Custom instructions are loaded
+# In VS Code Chat, type: "What custom instructions do you have for this repo?"
+# If you created .github/copilot-instructions.md, it should be listed in the references
+# If not, we'll create one in the next step
+```
+
+### Create a test custom instructions file
+
+If you don't already have one, create a minimal custom instructions file to verify they work:
+
+```sh
+mkdir -p .github
+cat > .github/copilot-instructions.md << 'EOF'
+# Project Instructions
+
+This is a workshop test project. When generating code:
+- Use TypeScript with strict mode
+- Prefer functional patterns over class-based patterns
+- Add JSDoc comments to all exported functions
+EOF
+```
+
+Then, in VS Code Chat, ask Copilot to generate a function. Check whether the output follows your instructions (TypeScript, functional, with JSDoc). If it does, your custom instructions are working. If it doesn't, check the references dropdown at the top of the chat response — the `copilot-instructions.md` file should be listed there.
+
+### CLI interactive session test
+
+```sh
+cd ~/projects/my-app  # or your test project
+copilot
+```
+
+Once inside the interactive session:
+
+1. Type `What files are in this project?` — Copilot should list files without needing approval
+2. Type `Explain the function on <filename>.ts` — Copilot reads the file and explains it
+3. Type `/context` — shows your token usage
+4. Type `/model` — shows available models and lets you switch
+5. Press `Shift+Tab` twice — you should see the mode switch to "plan" in the status bar
+
+Press `Ctrl+C` to exit the session.
+
+---
+
+## What you should have at this point
+
+After completing this chapter, your environment should include:
+
+| Component | Status | What it enables |
+|-----------|--------|-----------------|
+| **VS Code + Copilot** | Active, signed in | Completions, chat, agent mode |
+| **Copilot settings** | Reviewed, NES enabled | Better inline suggestions and edit predictions |
+| **Copilot CLI** | Installed, authenticated | Terminal-based AI interactions, plan mode, delegation |
+| **`.github/copilot-instructions.md`** | Created | Repository-wide context for all Copilot features |
+| **MCP servers** | GitHub MCP active (CLI), optional others in VS Code | Extended tool access |
+
+This is your toolbox for the rest of the workshop. Every chapter from here builds on this foundation.
+
+In Ch 4, we'll go deeper into custom instructions and `AGENTS.md`, learning how to write instructions that meaningfully change the AI's output quality. In Ch 5, we'll connect real projects and practice the full PDRC cycle for the first time.
+
+---
+
+## References
+
+### Official documentation
+
+- [VS Code — Set up GitHub Copilot](https://code.visualstudio.com/docs/copilot/setup) — sign-in, settings, and account management
+- [GitHub Docs — Configuring GitHub Copilot in your environment](https://docs.github.com/en/copilot/managing-copilot/configure-personal-settings/configuring-github-copilot-in-your-environment) — per-language settings, keyboard shortcuts, authorization
+- [GitHub Docs — Installing GitHub Copilot CLI](https://docs.github.com/en/copilot/how-tos/copilot-cli/set-up-copilot-cli/install-copilot-cli) — installation methods (npm, Homebrew, WinGet, install script)
+- [GitHub Docs — About GitHub Copilot CLI](https://docs.github.com/en/copilot/concepts/agents/about-copilot-cli) — modes, use cases, security, tool approval
+- [GitHub Docs — Using GitHub Copilot CLI](https://docs.github.com/en/copilot/how-tos/use-copilot-agents/use-copilot-cli) — interactive/programmatic usage, slash commands, tips
+
+### Custom instructions & configuration
+
+- [GitHub Docs — Adding repository custom instructions](https://docs.github.com/en/copilot/customizing-copilot/adding-repository-custom-instructions-for-github-copilot) — copilot-instructions.md, path-specific instructions, AGENTS.md
+- [GitHub — openai/agents.md spec](https://github.com/openai/agents.md) — the AGENTS.md specification
+- [GitHub Docs — Support for different types of custom instructions](https://docs.github.com/en/copilot/reference/custom-instructions-support) — which Copilot features support which instruction types
+
+### MCP servers
+
+- [VS Code Docs — Add and manage MCP servers](https://code.visualstudio.com/docs/copilot/chat/mcp-servers) — gallery, mcp.json configuration, trust model
+- [Model Context Protocol — Official documentation](https://modelcontextprotocol.io/) — the MCP open standard
+- [GitHub MCP Server Registry](https://github.com/mcp) — browse available MCP servers
+
+### Retired tools (for reference)
+
+- [GitHub Docs — Using the GitHub CLI Copilot extension](https://docs.github.com/en/copilot/using-github-copilot/using-github-copilot-in-the-cli) — retirement notice for the old `gh copilot suggest`/`gh copilot explain` extension
