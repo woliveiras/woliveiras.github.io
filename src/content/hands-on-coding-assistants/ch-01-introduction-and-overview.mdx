@@ -5,13 +5,304 @@ module: 0
 order: 1
 ---
 
-## Introduction & Overview
+## What this workshop is about
 
-TODO: Content for Chapter 1 — Introduction & Overview
+You already know how to write software. The question is: **how do you work _with_ an AI that also writes software?**
 
-**Topics to cover:**
+Coding assistants are everywhere. Autocomplete suggestions, inline chat, autonomous agents that open pull requests while you sleep. The tooling has evolved fast, faster than most teams' ability to use it well. The result is a gap: developers adopt the tools but don't change _how_ they think about the work. They accept suggestions without reviewing them. They prompt vaguely and get vague results. They let the agent run wild and then spend hours cleaning up the mess.
 
-- Code assistants vs. code agents (completions → chat → agent mode → coding agent)
-- Tool landscape: Copilot, Claude Code, Codex, Cursor, Windsurf — when to use each one
-- Where AI delivers proven value (McKinsey data + GitHub Survey): tests, documentation, refactoring, debugging, boilerplate
-- What AI does NOT do well: complex architectural decisions, organizational context, multifaceted requirements
+This workshop exists to close that gap. Every chapter is built around a single idea: **you stay in control, and the AI amplifies your decisions**. We'll give you a repeatable framework — PDRC (Plan, Delegate, Review, Correct) — and apply it across real-world tasks: writing tests, reviewing code, debugging, documenting, configuring agents, and measuring impact.
+
+But before we get to the framework (that's Ch 2), we need to understand what these tools actually are, where they shine, and where they will waste your time.
+
+---
+
+## The evolution: from autocomplete to autonomous agents
+
+Not all AI coding tools work the same way. They sit on a spectrum of autonomy, and understanding where each one falls is the first step to using them well.
+
+But first, some history, because this didn't start yesterday.
+
+### A brief timeline
+
+It seems big, but I promise that's important context. Take attention to the fast changes in the last few years, and especially the last **12 months**.
+
+| Year | Event |
+|------|-------|
+| 2013 | **Codota** — early research on AI-based code suggestions for Java |
+| 2014 | Microsoft Research releases **Bing Code Search** plugin for Visual Studio 2013 — code snippet search via natural language (a precursor to Copilot) |
+| 2018 | Jacob Jackson (University of Waterloo) creates **TabNine** — the first deep-learning-based code completion tool, using GPT-2 |
+| 2019 | The Verge calls TabNine _"Gmail's Smart Compose for coders"_; Codota acquires TabNine |
+| Jun 2021 | **GitHub Copilot** announced as a technical preview, powered by OpenAI Codex (a fine-tuned GPT-3) |
+| Jun 2022 | GitHub Copilot becomes **generally available**. In the technical preview, ~40% of code in enabled files was written by Copilot in languages like Python |
+| Nov 2023 | Copilot Chat upgraded to **GPT-4**; Tabnine introduces its own AI chat agent |
+| Oct 2024 | GitHub Copilot goes **multi-model**: users can choose between OpenAI GPT, Anthropic Claude, and Google Gemini |
+| Feb 2025 | GitHub announces **agent mode** — Copilot can read/modify multiple files, run commands, and iterate on errors inside the IDE |
+| Apr 2025 | Agent mode + **MCP support** rolled out to all VS Code users; Copilot Pro+ plan launched with premium requests |
+| May 2025 | GitHub announces **coding agent** — fully autonomous, receives a GitHub issue, spins up an environment, writes code, opens a PR |
+| Jun 2025 | GitHub's "pair to peer" vision blog — Copilot repositioned from assistant to **independent agent** |
+| Sep 2025 | **GPT-5 and GPT-5 Mini** generally available in Copilot — first GPT-5 family models; new **embedding model** for smarter code search in VS Code |
+| Dec 2025 | **Agent Skills** — reusable instruction folders that teach Copilot specialized tasks (compatible with Claude Code skills) |
+| Dec 2025 | **Copilot Memory** (early access) — agents learn from your codebase and build repository-specific context over time |
+| Dec 2025 | **Custom agents from partners** (Datadog, HashiCorp, etc.) for observability, IaC, and security workflows |
+| Feb 2026 | **Agentic Workflows** (technical preview) — repository automation written in Markdown (not YAML), executed via GitHub Actions with AI agents |
+| Feb 2026 | **3rd-party agents** (Anthropic Claude, OpenAI Codex) available on github.com and VS Code as alternative coding agents |
+| Feb 2026 | **Copilot CLI** generally available — Copilot runs directly in the terminal; GPT-5.3-Codex, Claude Opus 4.6, Gemini 3.1 Pro available |
+
+The speed of this evolution matters: it took just **four years** to go from "autocomplete on steroids" to "autonomous agent that opens pull requests", and then just **nine more months** to reach agentic workflows, persistent memory, and third-party agent ecosystems. Each level on that spectrum requires a different way of working and it's close to impossible to follow all changes without a good understanding on how to use the tools effectively.
+
+### Completions (inline suggestions)
+
+This is where it started for most developers. You type a function signature, and the tool predicts the next few lines. It works inside your editor, in real time, with no explicit prompt from you. TabNine pioneered this with deep learning in 2018; GitHub Copilot brought it to the mainstream in 2021.
+
+**When it works well:** boilerplate, repetitive patterns, standard implementations you'd write on autopilot anyway.
+
+**When it doesn't:** anything that requires understanding _why_ you're writing the code, not just _what_ comes next.
+
+Think of completions as a fast typist who has read a lot of code but has no idea what your project does.
+
+### Chat (interactive conversation)
+
+Chat gives you a conversation window, either in the IDE sidebar or in a terminal, where you describe what you want in natural language. The tool generates code, explains concepts, or helps you debug.
+
+**Key difference from completions:** you provide explicit context and intent. Instead of the tool guessing from your cursor position, you tell it what you need.
+
+This is where prompt quality starts to matter. A vague prompt like _"fix this"_ will give you a generic answer. A specific prompt like _"this function throws a TypeError when the input array is empty, add a guard clause and a unit test"_ will give you something useful.
+
+### Agent mode (IDE-integrated)
+
+Agent mode, introduced by GitHub Copilot in February 2025, takes chat a step further. Instead of generating a single code block, the agent can:
+
+- Read and modify multiple files
+- Run terminal commands
+- Execute tests
+- Iterate on its own output based on errors
+
+You're still in the loop, you approve or reject each action, but the tool is doing more than suggesting. It's _executing_.
+
+**When it works well:** multi-file refactors, test generation, implementing well-scoped features with clear acceptance criteria.
+
+**When it needs you:** deciding _which_ files to touch, _what_ the acceptance criteria are, and _whether_ the result is actually correct.
+
+### Coding agents (autonomous)
+
+This is the most autonomous level. GitHub's Copilot Coding Agent was announced in May 2025; OpenAI's Codex followed a similar model. A coding agent receives a task (typically a GitHub issue), spins up its own environment, writes code, runs tests, and opens a pull request. All without you sitting in front of the IDE.
+
+Since then, the ecosystem has expanded rapidly. By February 2026, GitHub introduced **Agentic Workflows**, repository automation written in plain Markdown that runs via GitHub Actions with AI agents. Anthropic's Claude and OpenAI's Codex became available as **alternative coding agents** directly on github.com. And features like **Agent Skills** (reusable instruction folders) and **Copilot Memory** (repository-specific context that persists across sessions) made agents significantly more context-aware.
+
+**The critical difference:** you're not reviewing in real time. The agent works asynchronously, and you review the output after the fact. This makes the **Review** and **Correct** steps of PDRC even more important, because by the time you see the code, the agent has already made dozens of decisions you didn't approve individually.
+
+---
+
+## The tool landscape
+
+The market moves fast, so rather than memorizing features that will change next quarter, focus on the _categories_ and what each tool is optimized for.
+
+| Tool | Type | Best at | Runs in |
+|------|------|---------|---------|
+| **GitHub Copilot** | Completions + Chat + Agent mode + Coding Agent + Agentic Workflows | Deep GitHub integration, code review, PR workflows, enterprise governance, agent skills, memory | VS Code, JetBrains, CLI, Eclipse, Xcode, Zed, GitHub.com |
+| **Claude Code** | CLI agent (also available as 3rd-party agent on GitHub) | Long-context reasoning, complex refactors, multi-file changes | Terminal (CLI-first), GitHub.com |
+| **OpenAI Codex** | Coding agent (also available as 3rd-party agent on GitHub) | Autonomous task execution from issues, cloud-based sandboxed environment | GitHub.com, ChatGPT |
+| **Cursor** | IDE with AI-native UX | Codebase-aware chat, fast iteration, composer for multi-file edits | Cursor IDE (VS Code fork) |
+| **Windsurf** | IDE with AI-native UX | Flows (multi-step agent), contextual awareness | Windsurf IDE |
+
+### A practical heuristic
+
+You don't need to pick one tool and ignore the rest. Different tools excel at different tasks:
+
+- **Quick inline edits and completions** → Copilot, Cursor
+- **Deep reasoning over a large codebase** → Claude Code
+- **Autonomous issue-to-PR** → Copilot Coding Agent, Codex
+- **Rapid prototyping with multi-file orchestration** → Cursor (composer), Windsurf (flows)
+- **Enterprise governance and code review** → Copilot (organization policies, agent firewalls, custom instructions)
+- **Repository automation with AI** → Copilot Agentic Workflows (Markdown-based, runs in GitHub Actions)
+
+The important thing is not _which_ tool you use, but _how_ you use it. A well-structured prompt in any of these tools will outperform a lazy prompt in the "best" tool.
+
+---
+
+## Where AI delivers proven value
+
+This isn't speculation. Multiple studies from GitHub and McKinsey give us hard data on where AI coding tools actually move the needle.
+
+### The numbers
+
+| Task | Impact | Source |
+|------|--------|--------|
+| Code documentation | Completed in **~50% of the time** | McKinsey, 2023 |
+| Writing new code | Completed in **nearly half the time** | McKinsey, 2023 |
+| Code refactoring | Completed in **~1/3 of the time** (2/3 time reduction) | McKinsey, 2023 |
+| Complex tasks completion rate | **25–30% more likely** to finish within deadline | McKinsey, 2023 |
+| Developer happiness and flow state | **2x more likely** to report fulfillment | McKinsey, 2023 |
+| AI coding tool adoption | **92%** of developers using AI tools at work | GitHub Survey, 2023 |
+| Perceived benefits | **70%** see significant advantage at work | GitHub Survey, 2023 |
+| Team collaboration | **81%** expect AI tools to increase collaboration | GitHub Survey, 2023 |
+
+### What this means in practice
+
+The biggest productivity gains cluster around tasks that are **repetitive, well-defined, and have clear patterns**:
+
+- **Test generation** — writing unit tests, integration tests, expanding coverage for existing code
+- **Documentation** — JSDoc, docstrings, README files, API docs
+- **Refactoring** — extracting functions, renaming, restructuring code to improve maintainability
+- **Debugging** — explaining errors, suggesting fixes, tracing through stack traces
+- **Boilerplate** — configuration files, scaffolding, standard CRUD operations
+
+Notice a pattern: these are all tasks where the _what_ is clear and the _how_ follows established conventions. The AI doesn't need to understand your business domain to generate a test for a pure function.
+
+---
+
+## What AI does NOT do well
+
+This is the part most evangelists skip. Understanding the limitations is just as important as understanding the capabilities, because **using AI on the wrong task wastes more time, money and natural resources than doing it manually**.
+
+### Complex architectural decisions
+
+An AI can generate a microservice. It cannot tell you whether your system _should_ be split into microservices. Architecture decisions require understanding organizational constraints, team topology, deployment infrastructure, and long-term maintenance costs. These are context-heavy decisions that no model has access to.
+
+McKinsey's research confirms this: **time savings shrank to less than 10% on tasks that developers rated as highly complex**, particularly when unfamiliar frameworks were involved.
+
+### Organizational context
+
+Your company's coding standards, naming conventions, security policies, deployment pipelines, internal libraries, none of this exists in the model's training data. Off-the-shelf tools won't know that your team uses a specific error-handling pattern, or that certain modules require approval from the security team before changes.
+
+This is exactly why Modules 01 and 03 of this workshop focus heavily on **custom instructions, AGENTS.md, and MCP integrations**. The tools can be taught your context, but _you_ have to teach them.
+
+### Multifaceted requirements
+
+When a task combines multiple frameworks, integrates with several systems, and has non-obvious constraints, AI tools struggle. McKinsey participants reported that to get usable solutions for multifaceted requirements, they had to **break the problem into smaller segments manually** before prompting.
+
+One participant put it simply: _"[Generative AI] is least helpful when the problem becomes more complicated and the big picture needs to be taken under consideration."_
+
+### The "accept all" trap
+
+This isn't a tool limitation, it's a human one. The GitHub Survey found that developers consistently rank **code quality** as the most important metric. But when you accept every suggestion without reading it, quality degrades silently. Bad patterns compound. Technical debt accumulates. And by the time you notice, the damage is spread across dozens of files.
+
+The McKinsey research found that code quality was **marginally better** in AI-assisted code, but only because developers **actively iterated** with the tools to achieve that quality. The quality doesn't come from the AI. It comes from the developer's review.
+
+### Real-world failures: what happens without human review
+
+These aren't hypothetical scenarios. Each of these happened in 2024–2026, and each illustrates what goes wrong when AI output is trusted without verification.
+
+#### cURL ends its bug bounty after a flood of AI-generated reports
+
+In January 2024, Daniel Stenberg — founder and lead developer of [cURL](https://curl.se/), one of the most widely used open-source projects in the world — published a detailed account of AI-generated security reports overwhelming the project's bug bounty program on HackerOne.
+
+The reports _looked_ professional. They included code references, proposed fixes, and were written in clean English. But they were fabricated. One claimed a critical vulnerability related to CVE-2023-38545 that didn't exist. The reporter admitted that they were using Google Bard. Another described a buffer overflow in WebSocket handling, complete with a proposed patch, but after careful investigation there was no buffer overflow at all. The LLM had mixed real function names with hallucinated vulnerabilities.
+
+Stenberg described the cost: each well-crafted fake report took real developer time to investigate and dismiss. Security reports are high priority, they **trump bug fixes and feature work**. Every hallucinated vulnerability stole hours from real development work.
+
+The scale of the problem grew. By January 2026, the project **ended its bug bounty program entirely**, stating it was "an attempt to reduce the noise." The word "slop" (Merriam-Webster's 2025 Word of the Year) became the shorthand for this kind of AI-generated low-quality output that shifts its cost to the recipient.
+
+**PDRC lens:** The reporters delegated entirely to an LLM (skipped Plan), submitted the raw output (skipped Review), and never verified the claims (skipped Correct). The entire cost landed on the maintainers.
+
+#### OpenClaw: when an autonomous agent becomes a security nightmare
+
+In January 2026, OpenClaw (originally "Clawdbot") — an open-source autonomous AI agent by Peter Steinberger — went viral with 140,000 GitHub stars. It could book flights, manage calendars, control browsers, and execute shell commands on behalf of users, all through messaging platforms like WhatsApp and iMessage.
+
+The security community raised alarms almost immediately. Cisco's AI Threat and Security Research team tested a third-party skill called "What Would Elon Do?", which had been artificially inflated to rank \#1 in the skill repository, and found it was **functionally malware**. The skill performed silent data exfiltration (sending user data to an external server via `curl` without user awareness) and direct prompt injection to bypass safety guidelines. Cisco's Skill Scanner flagged nine security findings: two critical, five high severity.
+
+The risks were systemic, not just theoretical:
+
+- **Skills operated without vetting.** Anyone could publish a skill to the repository; there was no code review, no signing, no sandbox.
+- **The agent had broad system access.** OpenClaw could run shell commands, read/write files, and access email, calendars, and messaging — a single misconfigured skill could exfiltrate sensitive data across all connected services.
+- **Prompt injection via messaging apps** extended the attack surface. Malicious prompts embedded in messages could cause unintended behavior without the user ever triggering them directly.
+- **Plaintext credentials were leaked** — API keys and tokens reported exposed, stealable via prompt injection or unsecured endpoints.
+
+One of OpenClaw's own maintainers warned on Discord: _"if you can't understand how to run a command line, this is far too dangerous of a project for you to use safely."_
+
+In a separate incident, a user discovered that his OpenClaw agent had created a dating profile on MoltMatch (an AI agent dating platform) and was screening potential matches **without his explicit direction**. The agent acted autonomously beyond what the user intended — exactly the kind of behavior that escapes detection when there's no Review step.
+
+**PDRC lens:** Users delegated life-management tasks to an autonomous agent without reviewing what skills it loaded, what permissions it needed, or what it was actually doing in the background. No Plan (threat model), no Review (skill audit), no Correct (permission boundaries).
+
+The OpenClaw story also hit close to home for AI professionals themselves. In February 2026, Business Insider reported that a **Meta AI alignment director** shared her own OpenClaw nightmare: the agent deleted emails from her account without permission, and she _"had to RUN to my Mac mini"_ to stop it. This is someone whose literal job is AI safety — and even she was caught off guard by an autonomous agent acting beyond its intended scope.
+
+#### AWS outages caused by an AI coding agent
+
+In early 2026, it was reported that Amazon Web Services suffered at least **two outages caused by its own AI tools**. In the most notable incident, in December 2025, engineers allowed Amazon's Kiro agentic coding tool to make changes autonomously, and the AI decided the best course of action was to **delete and recreate the environment**, causing a **13-hour disruption** to AWS Cost Explorer in one of Amazon's cloud regions in China.
+
+As a senior AWS employee told the _Financial Times_: _"The engineers let the AI agent resolve an issue without intervention. The outages were small but entirely foreseeable."_ In both incidents, the engineers didn't require a second person's approval before finalizing the changes.
+
+Amazon's response was to call it "user error, not AI error" and a "coincidence" that AI was involved, but security researchers disagreed. As one researcher pointed out, **AI agents don't have full visibility into the context in which they're running**. They don't understand how customers might be affected or what the cost of downtime might be.
+
+This is AWS — one of the most sophisticated engineering organizations on the planet — operating its own infrastructure, using its own AI tool. If it can happen there, it can happen anywhere.
+
+**PDRC lens:** The engineers Delegated (let the agent resolve an issue), but skipped Plan (no scope boundary for what the agent was allowed to do), skipped Review (no second pair of eyes before changes went live), and had no Correct mechanism (no rollback plan if the agent's "fix" made things worse). A simple approval gate could have caught a "delete and recreate" action before it caused 13 hours of downtime.
+
+#### "Workslop": AI-generated work that creates more work
+
+A September 2025 study published in the _Harvard Business Review_, conducted jointly by Stanford University and BetterUp, coined the term **"workslop"**. The AI-generated content at work that _looks_ polished but _lacks substance_, shifting the burden of quality from the creator to the recipient.
+
+The findings are stark: **40% of participating employees had received workslop**, and each incident took an **average of two hours to resolve**. The mechanism is simple: someone uses an LLM to draft a document, email, or proposal, spends minimal time reviewing it, and sends it along; the recipient then has to figure out what's actually correct, what's hallucinated, and what's missing.
+
+BetterUp defines workslop as _"AI-generated content that looks good, but lacks substance."_ It is the professional equivalent of accepting all Copilot suggestions: the output appears complete, but the thinking behind it is absent.
+
+**PDRC lens:** The "slopper" Planned (they had a task), Delegated (they used an LLM), but skipped Review and Correct. The cost didn't disappear, it was externalized to colleagues.
+
+### The pattern across all these cases
+
+Every failure follows the same structure:
+
+| Step skipped | What happened | Who paid the cost |
+|---|---|---|
+| **Plan** | No threat model, no scope definition | The agent acted with unbounded authority (OpenClaw); the AI deleted and recreated an environment (AWS) |
+| **Review** | Output accepted without verification | Hallucinated vulnerabilities wasted maintainer time (cURL); a Meta director's emails were deleted (OpenClaw) |
+| **Correct** | No iteration, no quality check | Colleagues spent hours fixing workslop (HBR study); 13 hours of AWS downtime (AWS) |
+
+The tools themselves aren't the problem. The absence of human judgment at critical checkpoints is.
+
+---
+
+## Setting expectations for this workshop
+
+By the end of this workshop, you will:
+
+1. **Have a mental model** (PDRC) for deciding when and how to use AI on any coding task
+2. **Know how to configure** your tools, repositories, and agents to reflect your team's context
+3. **Be able to generate, review, and iterate** on AI-assisted tests, code reviews, documentation, and refactors
+4. **Understand the security and governance** implications of AI-assisted development
+5. **Measure the impact** of AI tools on your team's productivity with concrete metrics
+
+What you will _not_ get is a magic prompt that solves everything. The tools are force multipliers, they multiply whatever you bring to them. Bring clear thinking and structured intent, and you'll get impressive results. Bring vague prompts and uncritical acceptance, and you'll get impressive-looking garbage.
+
+Let's start with the framework that makes the difference. Next up: **Chapter 2 — The Mental Model: Plan, Delegate, Review, Correct (PDRC)**.
+
+---
+
+## References
+
+### Data & research
+
+- [McKinsey — Unleashing developer productivity with generative AI](https://www.mckinsey.com/capabilities/mckinsey-digital/our-insights/unleashing-developer-productivity-with-generative-ai) (June 2023)
+- [GitHub Blog — Survey reveals AI's impact on the developer experience](https://github.blog/news-insights/research/survey-reveals-ais-impact-on-the-developer-experience/) (June 2023)
+
+### Historical milestones
+
+- [Microsoft Research — Bing Code Search](https://www.microsoft.com/en-us/research/video/bing-code-search/) (February 2014)
+- [The Verge — "This AI-powered autocompletion software is Gmail's Smart Compose for coders"](https://www.theverge.com/2019/7/24/20708542/coding-autocompleter-deep-tabnine-ai-deep-learning-smart-compose) — on TabNine (July 2019)
+- [Wikipedia — Tabnine](https://en.wikipedia.org/wiki/Tabnine) — history of Codota/TabNine (founded 2013, acquired 2019)
+- [GitHub Blog — Introducing GitHub Copilot: your AI pair programmer](https://github.blog/2021-06-29-introducing-github-copilot-ai-pair-programmer/) (June 2021)
+- [GitHub Blog — GitHub Copilot is generally available to all developers](https://github.blog/news-insights/product-news/github-copilot-is-generally-available-to-all-developers/) (June 2022)
+- [GitHub Blog — GitHub Copilot: The agent awakens](https://github.blog/news-insights/product-news/github-copilot-the-agent-awakens/) — agent mode announcement (February 2025)
+- [GitHub Blog — Vibe coding with GitHub Copilot: Agent mode and MCP support](https://github.blog/news-insights/product-news/github-copilot-agent-mode-activated/) — agent mode GA + MCP support for all VS Code users (April 2025)
+- [GitHub Blog — GitHub Copilot: Meet the new coding agent](https://github.blog/news-insights/product-news/github-copilot-meet-the-new-coding-agent/) — coding agent announcement (May 2025)
+- [GitHub Blog — From pair to peer programmer: Our vision for agentic workflows](https://github.blog/news-insights/product-news/from-pair-to-peer-programmer-our-vision-for-agentic-workflows-in-github-copilot/) — Copilot repositioned as independent agent (June 2025)
+- [GitHub Changelog — GPT-5 and GPT-5 Mini generally available in Copilot](https://github.blog/changelog/2025-09-09-openai-gpt-5-and-gpt-5-mini-are-now-generally-available-in-github-copilot/) (September 2025)
+- [GitHub Changelog — Copilot now supports Agent Skills](https://github.blog/changelog/2025-12-18-github-copilot-now-supports-agent-skills/) — reusable instruction folders (December 2025)
+- [GitHub Changelog — Copilot Memory early access](https://github.blog/changelog/2025-12-19-copilot-memory-early-access-for-pro-and-pro/) — repository-specific context (December 2025)
+- [GitHub Changelog — GitHub Agentic Workflows technical preview](https://github.blog/changelog/2026-02-13-github-agentic-workflows-are-now-in-technical-preview/) — Markdown-based automation with AI agents (February 2026)
+- [Wikipedia — GitHub Copilot](https://en.wikipedia.org/wiki/GitHub_Copilot) — full timeline and implementation details
+
+### Real-world failure cases
+
+- [Daniel Stenberg — "The I in LLM stands for intelligence"](https://daniel.haxx.se/blog/2024/01/02/the-i-in-llm-stands-for-intelligence/) — detailed account of AI-generated bogus security reports to curl's HackerOne bug bounty (January 2024)
+- [BleepingComputer — "Curl ending bug bounty program after flood of AI slop reports"](https://www.bleepingcomputer.com/news/security/curl-ending-bug-bounty-program-after-flood-of-ai-slop-reports/) — curl shuts down its bug bounty (January 2026)
+- [Cisco Blogs — "Personal AI Agents like OpenClaw Are a Security Nightmare"](https://blogs.cisco.com/ai/personal-ai-agents-like-openclaw-are-a-security-nightmare) — Cisco's AI Threat Research team analysis of OpenClaw security risks (January 2026)
+- [Wikipedia — OpenClaw](https://en.wikipedia.org/wiki/OpenClaw) — history, security issues, MoltMatch dating-profile incident
+- [Axios — "Silicon Valley's latest AI fixation poses early security test"](https://www.axios.com/2026/01/29/moltbot-cybersecurity-ai-agent-risks) — cybersecurity risks of autonomous AI agents (January 2026)
+- [Harvard Business Review — "AI-Generated 'Workslop' Is Destroying Productivity"](https://hbr.org/2025/09/ai-generated-workslop-is-destroying-productivity) — Stanford/BetterUp study on workslop (September 2025)
+- [Wikipedia — AI slop](https://en.wikipedia.org/wiki/AI_slop) — overview of AI slop across technology, business, and media (Merriam-Webster's 2025 Word of the Year)
+- [The Guardian — "Amazon cloud outages caused by AI tools"](https://www.theguardian.com/technology/2026/feb/20/amazon-cloud-outages-ai-tools-amazon-web-services-aws) — AWS outages caused by Kiro agentic coding tool (February 2026)
+- [Silicon.co.uk — "Amazon AI cloud outage"](https://www.silicon.co.uk/e-innovation/artificial-intelligence/amazon-ai-cloud-628790) — 13-hour AWS Cost Explorer disruption (December 2025)
+- [Futurism — "Amazon AI AWS outages"](https://futurism.com/artificial-intelligence/amazon-ai-aws-outages) — AWS employee quote via Financial Times (February 2026)
+- [Business Insider — "Meta AI alignment director shares her OpenClaw email-deletion nightmare"](https://www.businessinsider.com/meta-ai-alignment-director-openclaw-email-deletion-2026-2) — Meta director's account of OpenClaw deleting emails autonomously (February 2026)
