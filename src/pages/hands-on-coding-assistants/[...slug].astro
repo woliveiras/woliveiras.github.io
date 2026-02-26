@@ -1,0 +1,68 @@
+---
+import Footer from "$components/Footer.astro";
+import Header from "$components/Header.astro";
+import BaseLayout from "$layouts/BaseLayout.astro";
+import BlogPost from "$layouts/BlogPost.astro";
+import { getCollection, render } from "astro:content";
+import { SITE_TITLE } from "../../config.json";
+
+export async function getStaticPaths() {
+	const chapters = await getCollection("workshop");
+	const sorted = chapters.sort((a, b) => a.data.order - b.data.order);
+
+	return sorted.map((chapter, index) => ({
+		params: { slug: chapter.id },
+		props: {
+			chapter,
+			prev: index > 0 ? sorted[index - 1] : null,
+			next: index < sorted.length - 1 ? sorted[index + 1] : null,
+		},
+	}));
+}
+
+const { chapter, prev, next } = Astro.props;
+const { Content } = await render(chapter);
+---
+
+<BaseLayout
+	title={`${chapter.data.title} — ${SITE_TITLE}`}
+	description={chapter.data.description}
+>
+	<Header active="workshop" />
+
+	<main class="max-w-2xl lg:max-w-3xl mx-auto mt-8 px-4">
+		<div class="mb-6">
+			<a
+				href="/hands-on-coding-assistants/"
+				class="text-sm text-accent-600 hover:text-accent-500 dark:text-accent-400 dark:hover:text-accent-300"
+			>
+				← Back to Workshop
+			</a>
+		</div>
+
+		<BlogPost>
+			<Content />
+		</BlogPost>
+
+		<nav class="flex justify-between mt-12 mb-8 text-sm">
+			{prev ? (
+				<a
+					href={`/hands-on-coding-assistants/${prev.id}/`}
+					class="text-accent-600 hover:text-accent-500 dark:text-accent-400"
+				>
+					← {prev.data.title}
+				</a>
+			) : <span />}
+			{next ? (
+				<a
+					href={`/hands-on-coding-assistants/${next.id}/`}
+					class="text-accent-600 hover:text-accent-500 dark:text-accent-400"
+				>
+					{next.data.title} →
+				</a>
+			) : <span />}
+		</nav>
+	</main>
+
+	<Footer />
+</BaseLayout>

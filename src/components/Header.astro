@@ -53,6 +53,11 @@ const { active } = Astro.props;
         active={active === "devlog"}
         class="text-sm font-semibold leading-6">Log</HeaderLink
       >
+      <HeaderLink
+        href={BASE + "/hands-on-coding-assistants"}
+        active={active === "workshop"}
+        class="text-sm font-semibold leading-6">Workshop</HeaderLink
+      >
 
       {MANUAL_DARK_MODE ? <ThemeToggle /> : null}
 

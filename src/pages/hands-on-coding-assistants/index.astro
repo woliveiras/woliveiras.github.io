@@ -1,0 +1,120 @@
+---
+import Footer from "$components/Footer.astro";
+import Header from "$components/Header.astro";
+import BaseLayout from "$layouts/BaseLayout.astro";
+import ProseWrapper from "$layouts/ProseWrapper.astro";
+import { getCollection } from "astro:content";
+import { SITE_DESCRIPTION, SITE_TITLE } from "../../config.json";
+
+const chapters = await getCollection("workshop");
+const sorted = chapters.sort((a, b) => a.data.order - b.data.order);
+
+const modules = [
+  {
+    number: 0,
+    title: "Foundations & Philosophy",
+    description:
+      "Core concepts, the PDRC mental model, setup, and prompt engineering.",
+  },
+  {
+    number: 1,
+    title: "Agent Customization",
+    description:
+      "Custom agents, AGENTS.md, repository instructions, and agent skills.",
+  },
+  {
+    number: 2,
+    title: "AI in the Daily Development Cycle",
+    description:
+      "Test generation, code review, debugging, refactoring, and documentation.",
+  },
+  {
+    number: 3,
+    title: "Extensibility & Integrations",
+    description:
+      "MCP (Model Context Protocol), hooks, validation, and agent automation.",
+  },
+  {
+    number: 4,
+    title: "Security, Governance & Impact Measurement",
+    description:
+      "AI-first security, governance, impact metrics, and final project.",
+  },
+];
+---
+
+<BaseLayout
+  title={`Hands-on Coding Assistants — ${SITE_TITLE}`}
+  description={SITE_DESCRIPTION}
+>
+  <Header active="workshop" />
+
+  <main class="max-w-2xl lg:max-w-3xl mx-auto mt-8 px-4">
+    <ProseWrapper>
+      <h1>Hands-on Coding Assistants</h1>
+      <p>
+        AI coding tools can autocomplete your code, but that's the easy part.
+        The hard part is <strong>staying in control</strong>: knowing when to delegate,
+        what to review, and how to course-correct before bad suggestions compound.
+      </p>
+      <p>
+        This workshop teaches a repeatable framework —
+        <strong>Plan → Delegate → Review → Correct (PDRC)</strong> —
+        inspired by Deming's classic PDCA cycle, but adapted for a world where
+        the one executing your plan is an AI agent, not you.
+        Every module is hands-on: real repos, real tools, real trade-offs.
+      </p>
+
+      {
+        modules.map((mod) => {
+          const moduleChapters = sorted.filter(
+            (ch) => ch.data.module === mod.number,
+          );
+          return (
+            <section>
+              <h2>
+                Module {String(mod.number).padStart(2, "0")} — {mod.title}
+              </h2>
+              <p>{mod.description}</p>
+              <ul>
+                {moduleChapters.map((ch) => (
+                  <li>
+                    <a href={`/hands-on-coding-assistants/${ch.id}/`}>
+                      Ch {ch.data.order}: {ch.data.title}
+                    </a>
+                    <br />
+                    <span class="text-sm text-base-500">
+                      {ch.data.description}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          );
+        })
+      }
+      <hr />
+      <section class="text-sm text-base-500 dark:text-base-400">
+        <p>
+          <strong>License & Attribution</strong><br />
+          This workshop content is licensed under
+          <a
+            href="https://creativecommons.org/licenses/by/4.0/"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Creative Commons Attribution 4.0 International (CC BY 4.0)
+          </a>.
+          You are free to share and adapt this material for any purpose, including
+          commercial use, as long as you give appropriate credit.
+        </p>
+        <p>
+          Please cite as: <em>"Hands-on Coding Assistants" by William Oliveira
+          — <a href="https://woliveiras.com/hands-on-coding-assistants/">woliveiras.com</a></em>
+        </p>
+      </section>
+    </ProseWrapper>
+  </main>
+
+  <Footer />
+</BaseLayout>

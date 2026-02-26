@@ -49,4 +49,17 @@ const blog = defineCollection({
 
 const posts = defineCollection({});
 
-export const collections = { blog, posts };
+const workshop = defineCollection({
+	loader: glob({
+		pattern: "**/[^_]*.{md,mdx}",
+		base: "./src/content/hands-on-coding-assistants/",
+	}),
+	schema: z.object({
+		title: z.string(),
+		description: z.string(),
+		module: z.number(),
+		order: z.number(),
+	}),
+});
+
+export const collections = { blog, posts, workshop };
