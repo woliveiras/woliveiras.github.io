@@ -3,10 +3,12 @@ import {
 	BASE,
 	MANUAL_DARK_MODE,
 	SEARCH_ENABLED,
+	SERIES,
 	SITE_FAVICON,
 	SITE_NAME,
 } from "../config.json";
 import CodeCopyButton from "./CodeCopyButton.astro";
+import HeaderDropdown from "./HeaderDropdown.astro";
 import HeaderLink from "./HeaderLink.astro";
 import CommandPalette from "./search/CommandPalette.svelte";
 import Search from "./search/Search.svelte";
@@ -53,11 +55,11 @@ const { active } = Astro.props;
         active={active === "devlog"}
         class="text-sm font-semibold leading-6">Log</HeaderLink
       >
-      <HeaderLink
-        href={BASE + "/hands-on-coding-assistants"}
+      <HeaderDropdown
+        label="Series"
+        items={SERIES.map((s: { name: string; href: string }) => ({ name: s.name, href: BASE + s.href }))}
         active={active === "series"}
-        class="text-sm font-semibold leading-6">Series</HeaderLink
-      >
+      />
 
       {MANUAL_DARK_MODE ? <ThemeToggle /> : null}
 

@@ -1,0 +1,135 @@
+---
+import type { HTMLAttributes } from "astro/types";
+
+interface SeriesItem {
+	name: string;
+	href: string;
+}
+
+type Props = HTMLAttributes<"div"> & {
+	label: string;
+	items: SeriesItem[];
+	active: boolean;
+};
+
+const { label, items, active, class: className, ...props } = Astro.props;
+---
+
+<div class:list={["relative", className]} {...props}>
+	<button
+		type="button"
+		class:list={[
+			"text-sm font-semibold leading-6 inline-flex items-center gap-x-1",
+			active
+				? "text-accent-700 hover:text-accent-600 dark:text-accent-500 dark:hover:text-accent-400"
+				: "text-base-900 dark:text-base-50",
+		]}
+		aria-expanded="false"
+		aria-haspopup="true"
+		data-dropdown-trigger
+	>
+		{label}
+		<svg
+			class="h-4 w-4 transition-transform duration-200"
+			xmlns="http://www.w3.org/2000/svg"
+			viewBox="0 0 20 20"
+			fill="currentColor"
+			aria-hidden="true"
+			data-dropdown-chevron
+		>
+			<path
+				fill-rule="evenodd"
+				d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z"
+				clip-rule="evenodd"></path>
+		</svg>
+	</button>
+
+	<div
+		class="absolute right-0 z-50 mt-2 w-56 origin-top-right rounded-md bg-white dark:bg-base-800 shadow-lg ring-1 ring-base-200 dark:ring-base-700 opacity-0 invisible translate-y-1 transition-all duration-150 ease-out"
+		role="menu"
+		aria-orientation="vertical"
+		data-dropdown-menu
+	>
+		<div class="py-1">
+			{
+				items.map((item) => (
+					<a
+						href={item.href}
+						class="block px-4 py-2 text-sm text-base-700 dark:text-base-200 hover:bg-base-100 dark:hover:bg-base-700 hover:text-accent-700 dark:hover:text-accent-400"
+						role="menuitem"
+					>
+						{item.name}
+					</a>
+				))
+			}
+		</div>
+	</div>
+</div>
+
+<script>
+	function initDropdowns() {
+		document.querySelectorAll("[data-dropdown-trigger]").forEach((trigger) => {
+			const container = trigger.closest(".relative");
+			if (!container) return;
+
+			const menu = container.querySelector(
+				"[data-dropdown-menu]",
+			) as HTMLElement | null;
+			const chevron = trigger.querySelector(
+				"[data-dropdown-chevron]",
+			) as HTMLElement | null;
+			if (!menu) return;
+
+			let open = false;
+
+			function toggle(forceState?: boolean) {
+				open = forceState !== undefined ? forceState : !open;
+				trigger.setAttribute("aria-expanded", String(open));
+
+				if (open) {
+					menu!.classList.remove(
+						"opacity-0",
+						"invisible",
+						"translate-y-1",
+					);
+					menu!.classList.add("opacity-100", "visible", "translate-y-0");
+				} else {
+					menu!.classList.add("opacity-0", "invisible", "translate-y-1");
+					menu!.classList.remove(
+						"opacity-100",
+						"visible",
+						"translate-y-0",
+					);
+				}
+
+				if (chevron) {
+					chevron.style.transform = open ? "rotate(180deg)" : "";
+				}
+			}
+
+			trigger.addEventListener("click", (e) => {
+				e.stopPropagation();
+				toggle();
+			});
+
+			// Close when clicking outside
+			document.addEventListener("click", (e) => {
+				if (!container.contains(e.target as Node)) {
+					toggle(false);
+				}
+			});
+
+			// Close on Escape
+			document.addEventListener("keydown", (e) => {
+				if (e.key === "Escape" && open) {
+					toggle(false);
+					(trigger as HTMLElement).focus();
+				}
+			});
+		});
+	}
+
+	// Run on initial load and on Astro view transitions
+	initDropdowns();
+	document.addEventListener("astro:after-swap", initDropdowns);
+</script>

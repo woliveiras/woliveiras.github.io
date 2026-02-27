@@ -25,5 +25,11 @@
 		"SHOW_RSS": true
 	},
 	"BLUESKY_IDENTIFIER": "1ilhas.bsky.social",
-	"G_TAG": ""
+	"G_TAG": "",
+	"SERIES": [
+		{
+			"name": "Hands-on Coding Assistants",
+			"href": "/hands-on-coding-assistants"
+		}
+	]
 }
