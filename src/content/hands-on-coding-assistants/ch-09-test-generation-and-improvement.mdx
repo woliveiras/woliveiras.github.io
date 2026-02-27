@@ -13,7 +13,7 @@ Chapters 3 through 8 gave you the complete customization toolkit: instruction fi
 
 ## Why test generation is the #1 productivity use case
 
-In GitHub's 2024 developer survey (2 000 respondents across the US, Brazil, India, and Germany), **more than 98% of organizations reported having experimented with using AI coding tools to generate test cases**. The majority of respondents said their organizations use AI for test generation at least "sometimes". No other use case — not code completion, not documentation, not refactoring — showed adoption this universal.
+In GitHub's 2024 developer survey (2,000 respondents across the US, Brazil, India, and Germany), **more than 98% of organizations reported having experimented with using AI coding tools to generate test cases**. The majority of respondents said their organizations use AI for test generation at least "sometimes". No other use case — not code completion, not documentation, not refactoring — showed adoption this universal.
 
 Why? Because test generation sits at the intersection of three forces:
 
@@ -21,7 +21,7 @@ Why? Because test generation sits at the intersection of three forces:
 2. **Tests are the easiest AI output to verify.** You can run a test suite and get a binary answer: it passes or it fails. Compare that to generated application code, where correctness is harder to judge without manual review. This makes the **Review** phase of PDRC fast and unambiguous.
 3. **The ROI is immediate and measurable.** Before AI: you had 60% test coverage. After 30 minutes with an agent: you have 85%. The build turns green, the diff is clear, and you can merge with confidence.
 
-In PDRC terms, test generation heavily exercises the **Delegate** and **Review** phases. You delegate the writing of test code to the agent, then review by running the suite. If tests fail or miss cases, you **Correct** and iterate. The Plan phase is lightweight, you already know what code exists and what coverage is missing.
+In PDRC terms, test generation heavily exercises the **Delegate** and **Review** phases. You delegate the writing of test code to the agent, then review by running the suite. If tests fail or miss cases, you **Correct** and iterate. The Plan phase is lightweight — you already know what code exists and what coverage is missing.
 
 ---
 
@@ -244,7 +244,7 @@ After the agent generates E2E tests, verify:
 
 ## Coverage gap analysis with agents
 
-One of the most powerful and underused agent workflows is coverage gap analysis. Instead of asking the agent to "write tests," you give it your current coverage report and ask it to **fill the gaps**.
+One of the most underused agent workflows is coverage gap analysis. Instead of asking the agent to "write tests," you give it your current coverage report and ask it to **fill the gaps**.
 
 ### Step 1: generate the coverage report
 
@@ -581,7 +581,7 @@ In Ch 10, we'll apply the same Review-focused mindset to **code review** — how
 
 ### Research and data
 
-- [GitHub — Survey: The AI wave continues to grow (2024)](https://github.blog/news-insights/research/survey-ai-wave-grows/) — 2 000 respondents; 97% have used AI coding tools; 98% of organizations experimented with AI test generation; 92% (US) use it at least "sometimes"
+- [GitHub — Survey: The AI wave continues to grow (2024)](https://github.blog/news-insights/research/survey-ai-wave-grows/) — 2,000 respondents; 97% have used AI coding tools; 98% of organizations experimented with AI test generation; 92% (US) use it at least "sometimes"
 - [GitHub — Research: quantifying GitHub Copilot's impact on developer productivity and happiness (2022)](https://github.blog/2022-09-07-research-quantifying-github-copilots-impact-on-developer-productivity-and-happiness/) — up to 55% productivity increase with Copilot
 - [GitHub — Research: quantifying GitHub Copilot's impact in the enterprise with Accenture (2024)](https://github.blog/2024-05-13-research-quantifying-github-copilots-impact-in-the-enterprise-with-accenture/) — enterprise study on perceived code quality improvement
 

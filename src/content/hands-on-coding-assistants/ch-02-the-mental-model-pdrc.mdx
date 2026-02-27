@@ -64,7 +64,7 @@ The most common mistake developers make with AI tools is starting with the tool.
 
 **Planning means answering these questions _before_ you open the AI tool:**
 
-1. **What's the task?** — Be specific. "Add authentication" is not a plan. "Add JWT-based authentication middleware that validates tokens from our auth service, returns 401 for expired tokens, and passes the decoded user object to downstream handlers" is a plan (not complete, because I need to resume here).
+1. **What's the task?** — Be specific. "Add authentication" is not a plan. "Add JWT-based authentication middleware that validates tokens from our auth service, returns 401 for expired tokens, and passes the decoded user object to downstream handlers" is a plan (abbreviated for brevity).
 
 2. **What are the acceptance criteria?** — How will you know the output is correct? Tests that must pass? Behavior that must be observable? Performance thresholds? If you can't define "done," the AI certainly can't.
 
@@ -368,11 +368,12 @@ Every chapter from here forward maps to one or more phases of PDRC:
 
 | Module | Focus | PDRC emphasis |
 |--------|-------|---------------|
-| **Module 01** (Ch 3–5) | Setup, custom instructions, AGENTS.md | **Plan** — teaching the AI your context |
-| **Module 02** (Ch 6–11) | Prompt engineering, tests, code review, debugging, docs, refactoring | **Delegate + Review** — effective tasking and output evaluation |
-| **Module 03** (Ch 12–13) | MCP integrations and advanced agents | **Delegate** — extending what the AI can access and do |
-| **Module 04** (Ch 14–15) | Security, governance, responsible use | **Review** — systematic verification and risk management |
-| **Module 05** (Ch 16–17) | Metrics, measurement, final project | **Correct** — continuous improvement based on data |
+| **Module 00** (Ch 3–4) | Setup, prompt engineering | **Plan** — configuring tools and learning to prompt effectively |
+| **Module 01** (Ch 5–8) | Custom agents, AGENTS.md, instructions, skills | **Plan** — teaching the AI your context |
+| **Module 02** (Ch 9–12) | Tests, code review, debugging & refactoring, documentation | **Delegate + Review** — effective tasking and output evaluation |
+| **Module 03** (Ch 13–14) | MCP integrations, hooks, agent automation | **Delegate** — extending what the AI can access and do |
+| **Module 04** (Ch 15–16) | Security, governance, impact measurement | **Review** — systematic verification and risk management |
+| **Module 05** (Ch 17) | End-to-end final project | **Correct** — continuous improvement based on data |
 
 You'll apply PDRC in every hands-on exercise. By the end of the series, it won't be something you _think about_ — it'll be muscle memory.
 
