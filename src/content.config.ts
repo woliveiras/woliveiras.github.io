@@ -49,7 +49,7 @@ const blog = defineCollection({
 
 const posts = defineCollection({});
 
-const workshop = defineCollection({
+const series = defineCollection({
 	loader: glob({
 		pattern: "**/[^_]*.{md,mdx}",
 		base: "./src/content/hands-on-coding-assistants/",
@@ -62,4 +62,4 @@ const workshop = defineCollection({
 	}),
 });
 
-export const collections = { blog, posts, workshop };
+export const collections = { blog, posts, series };

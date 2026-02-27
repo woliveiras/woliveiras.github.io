@@ -27,7 +27,7 @@ Before starting, make sure you have the following:
 | **Node.js** | 22+ (for Copilot CLI via npm) | `node --version` |
 | **Git** | 2.39+ | `git --version` |
 
-> **Note on plans:** GitHub Copilot Free gives you a monthly limit of inline suggestions and chat interactions. Copilot Pro removes that limit and adds premium request quotas for advanced models. Copilot Pro+ gives higher quotas. For this workshop, the Free plan works, but you'll hit limits faster during hands-on exercises. Check the [current plans](https://github.com/features/copilot/plans) for the latest pricing and limits.
+> **Note on plans:** GitHub Copilot Free gives you a monthly limit of inline suggestions and chat interactions. Copilot Pro removes that limit and adds premium request quotas for advanced models. Copilot Pro+ gives higher quotas. For this series, the Free plan works, but you'll hit limits faster during hands-on exercises. Check the [current plans](https://github.com/features/copilot/plans) for the latest pricing and limits.
 
 ---
 
@@ -86,7 +86,7 @@ Open the Chat panel with `Shift+Cmd+I` (macOS) or `Shift+Ctrl+I` (Windows/Linux)
 - **Ask** mode — get answers and code suggestions (no file modifications)
 - **Plan** mode — Copilot builds a structured plan before making any changes, then asks for your approval
 
-For this workshop, we'll primarily use **Agent mode** for complex tasks and **Ask** for exploration and learning. Agent mode is where PDRC matters most, the agent has significant autonomy, so your Plan and Review phases need to be solid.
+For this series, we'll primarily use **Agent mode** for complex tasks and **Ask** for exploration and learning. Agent mode is where PDRC matters most, the agent has significant autonomy, so your Plan and Review phases need to be solid.
 
 ---
 
@@ -173,7 +173,7 @@ copilot --autopilot --yolo --max-autopilot-continues 10 -p "Run the tests and fi
 
 ### Plan mode — PDRC built into the CLI
 
-Plan mode is particularly relevant for this workshop. Press `Shift+Tab` in the interactive interface to cycle into **plan mode**. In this mode:
+Plan mode is particularly relevant for this series. Press `Shift+Tab` in the interactive interface to cycle into **plan mode**. In this mode:
 
 1. Copilot analyzes your request
 2. Asks clarifying questions
@@ -207,7 +207,7 @@ When Copilot needs to run a command that could modify files (like `sed`, `chmod`
 3. No, and tell Copilot what to do differently (Esc)
 ```
 
-The option 2 approves the **_entire tool_, not just the specific command.** If you approve `rm` for the session, Copilot can run `rm -rf ./*` without asking again. This is the CLI equivalent of the "accept all" anti-pattern from Ch 2. For this workshop, we recommend **Option 1** (approve individually) until you're comfortable with the tool's behavior.
+The option 2 approves the **_entire tool_, not just the specific command.** If you approve `rm` for the session, Copilot can run `rm -rf ./*` without asking again. This is the CLI equivalent of the "accept all" anti-pattern from Ch 2. For this series, we recommend **Option 1** (approve individually) until you're comfortable with the tool's behavior.
 
 For automation or CI use cases, you can pre-approve tools:
 
@@ -442,7 +442,7 @@ mkdir -p .github
 cat > .github/copilot-instructions.md << 'EOF'
 # Project Instructions
 
-This is a workshop test project. When generating code:
+This is a test project for the series. When generating code:
 - Use TypeScript with strict mode
 - Prefer functional patterns over class-based patterns
 - Add JSDoc comments to all exported functions
@@ -482,7 +482,7 @@ After completing this chapter, your environment should include:
 | **`.github/copilot-instructions.md`** | Created | Repository-wide context for all Copilot features |
 | **MCP servers** | GitHub MCP active (CLI), optional others in VS Code | Extended tool access |
 
-This is your toolbox for the rest of the workshop. Every chapter from here builds on this foundation.
+This is your toolbox for the rest of the series. Every chapter from here builds on this foundation.
 
 In Ch 4, we'll dive into **prompt engineering** — how to structure your prompts, manage context, decompose complex tasks, and know when _not_ to use AI. In Ch 5, we'll build **custom agents and sub-agents** with `.agent.md` profiles that turn your prompt patterns into reusable team knowledge.
 

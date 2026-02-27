@@ -6,7 +6,7 @@ import ProseWrapper from "$layouts/ProseWrapper.astro";
 import { getCollection } from "astro:content";
 import { SITE_DESCRIPTION, SITE_TITLE } from "../../config.json";
 
-const chapters = await getCollection("workshop");
+const chapters = await getCollection("series");
 const sorted = chapters.sort((a, b) => a.data.order - b.data.order);
 
 const modules = [
@@ -47,7 +47,7 @@ const modules = [
   title={`Hands-on Coding Assistants — ${SITE_TITLE}`}
   description={SITE_DESCRIPTION}
 >
-  <Header active="workshop" />
+  <Header active="series" />
 
   <main class="max-w-2xl lg:max-w-3xl mx-auto mt-8 px-4">
     <ProseWrapper>
@@ -58,7 +58,7 @@ const modules = [
         what to review, and how to course-correct before bad suggestions compound.
       </p>
       <p>
-        This workshop teaches a repeatable framework —
+        This series teaches a repeatable mental model —
         <strong>Plan → Delegate → Review → Correct (PDRC)</strong> —
         inspired by Deming's classic PDCA cycle, but adapted for a world where
         the one executing your plan is an AI agent, not you.
@@ -97,7 +97,7 @@ const modules = [
       <section class="text-sm text-base-500 dark:text-base-400">
         <p>
           <strong>License & Attribution</strong><br />
-          This workshop content is licensed under
+          This series content is licensed under
           <a
             href="https://creativecommons.org/licenses/by/4.0/"
             target="_blank"
