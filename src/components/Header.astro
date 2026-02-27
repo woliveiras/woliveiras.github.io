@@ -34,7 +34,22 @@ const { active } = Astro.props;
         </div>
       </a>
     </div>
-    <div class="flex gap-x-3 md:gap-x-10">
+
+    <!-- Hamburger button (mobile only) -->
+    <button
+      type="button"
+      class="md:hidden inline-flex items-center justify-center p-2 text-base-900 dark:text-base-50"
+      aria-expanded="false"
+      aria-label="Open menu"
+      data-mobile-menu-toggle
+    >
+      <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+      </svg>
+    </button>
+
+    <!-- Desktop nav -->
+    <div class="hidden md:flex gap-x-3 md:gap-x-10 items-center">
       <HeaderLink
         href={BASE + "/"}
         active={active === "blog"}
@@ -66,7 +81,177 @@ const { active } = Astro.props;
       {SEARCH_ENABLED ? <Search client:visible /> : null}
     </div>
   </nav>
+
+  <!-- Mobile menu overlay (fullscreen) -->
+  <div
+    class="fixed inset-0 z-50 hidden md:hidden"
+    role="dialog"
+    aria-modal="true"
+    data-mobile-menu
+  >
+    <!-- Backdrop -->
+    <div class="absolute inset-0 bg-white dark:bg-base-950 transition-opacity duration-300"></div>
+
+    <!-- Close button (top-right, same position as hamburger) -->
+    <div class="relative flex items-center justify-between p-6">
+      <a href={BASE + "/"} class="p-1.5">
+        <span class="sr-only">go to home</span>
+        <div class="text-3xl flex items-center gap-x-2">
+          {SITE_FAVICON}
+        </div>
+      </a>
+      <button
+        type="button"
+        class="inline-flex items-center justify-center p-2 text-base-900 dark:text-base-50"
+        aria-label="Close menu"
+        data-mobile-menu-close
+      >
+        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+
+    <!-- Menu content -->
+    <div class="relative px-8 pt-4 pb-8 space-y-2">
+      <a
+        href={BASE + "/"}
+        class:list={[
+          "block text-lg font-semibold py-3 border-b border-base-200 dark:border-base-800",
+          active === "blog"
+            ? "text-accent-700 dark:text-accent-500"
+            : "text-base-900 dark:text-base-50",
+        ]}
+      >Blog</a>
+      <a
+        href={BASE + "/about"}
+        class:list={[
+          "block text-lg font-semibold py-3 border-b border-base-200 dark:border-base-800",
+          active === "about"
+            ? "text-accent-700 dark:text-accent-500"
+            : "text-base-900 dark:text-base-50",
+        ]}
+      >About</a>
+      <a
+        href={BASE + "/projects"}
+        class:list={[
+          "block text-lg font-semibold py-3 border-b border-base-200 dark:border-base-800",
+          active === "projects"
+            ? "text-accent-700 dark:text-accent-500"
+            : "text-base-900 dark:text-base-50",
+        ]}
+      >Projects</a>
+      <a
+        href={BASE + "/devlog"}
+        class:list={[
+          "block text-lg font-semibold py-3 border-b border-base-200 dark:border-base-800",
+          active === "devlog"
+            ? "text-accent-700 dark:text-accent-500"
+            : "text-base-900 dark:text-base-50",
+        ]}
+      >Log</a>
+
+      <!-- Series collapsible section -->
+      <div class="border-b border-base-200 dark:border-base-800">
+        <button
+          type="button"
+          class:list={[
+            "flex w-full items-center justify-between text-lg font-semibold py-3",
+            active === "series"
+              ? "text-accent-700 dark:text-accent-500"
+              : "text-base-900 dark:text-base-50",
+          ]}
+          aria-expanded="false"
+          data-mobile-series-toggle
+        >
+          Series
+          <svg class="h-5 w-5 transition-transform duration-200" data-mobile-series-chevron fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+          </svg>
+        </button>
+        <div class="hidden pb-3 pl-4 space-y-1" data-mobile-series-list>
+          {SERIES.map((s: { name: string; href: string }) => (
+            <a
+              href={BASE + s.href}
+              class="block py-2 text-base text-base-600 dark:text-base-300 hover:text-accent-700 dark:hover:text-accent-400"
+            >
+              {s.name}
+            </a>
+          ))}
+        </div>
+      </div>
+
+      <div class="flex items-center gap-x-4 pt-6">
+        {MANUAL_DARK_MODE ? <ThemeToggle /> : null}
+        {SEARCH_ENABLED ? <Search client:visible /> : null}
+      </div>
+    </div>
+  </div>
 </header>
 
 <CommandPalette client:load />
 <CodeCopyButton />
+
+<script>
+  function initMobileMenu() {
+    const openBtn = document.querySelector("[data-mobile-menu-toggle]");
+    const closeBtn = document.querySelector("[data-mobile-menu-close]");
+    const menu = document.querySelector("[data-mobile-menu]");
+    const iconOpen = document.querySelector("[data-mobile-icon-open]");
+    const iconClose = document.querySelector("[data-mobile-icon-close]");
+    if (!openBtn || !closeBtn || !menu) return;
+
+    // Clone to remove stale listeners
+    const newOpenBtn = openBtn.cloneNode(true) as HTMLElement;
+    openBtn.parentNode?.replaceChild(newOpenBtn, openBtn);
+    const newCloseBtn = closeBtn.cloneNode(true) as HTMLElement;
+    closeBtn.parentNode?.replaceChild(newCloseBtn, closeBtn);
+
+    function setOpen(state: boolean) {
+      newOpenBtn.setAttribute("aria-expanded", String(state));
+
+      if (state) {
+        menu!.classList.remove("hidden");
+        document.body.style.overflow = "hidden";
+      } else {
+        menu!.classList.add("hidden");
+        document.body.style.overflow = "";
+      }
+    }
+
+    newOpenBtn.addEventListener("click", () => setOpen(true));
+    newCloseBtn.addEventListener("click", () => {
+      setOpen(false);
+      newOpenBtn.focus();
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && !menu!.classList.contains("hidden")) {
+        setOpen(false);
+        newOpenBtn.focus();
+      }
+    });
+
+    // Series accordion inside overlay
+    const seriesToggle = document.querySelector("[data-mobile-series-toggle]");
+    const seriesList = document.querySelector("[data-mobile-series-list]");
+    const seriesChevron = document.querySelector("[data-mobile-series-chevron]");
+    if (seriesToggle && seriesList) {
+      const newSeriesToggle = seriesToggle.cloneNode(true) as HTMLElement;
+      seriesToggle.parentNode?.replaceChild(newSeriesToggle, seriesToggle);
+      const newChevron = newSeriesToggle.querySelector("[data-mobile-series-chevron]");
+
+      newSeriesToggle.addEventListener("click", () => {
+        const expanded = newSeriesToggle.getAttribute("aria-expanded") === "true";
+        newSeriesToggle.setAttribute("aria-expanded", String(!expanded));
+        seriesList.classList.toggle("hidden");
+        if (newChevron) {
+          (newChevron as HTMLElement).style.transform = expanded ? "" : "rotate(180deg)";
+        }
+      });
+    }
+  }
+
+  initMobileMenu();
+  document.addEventListener("astro:after-swap", initMobileMenu);
+</script>
