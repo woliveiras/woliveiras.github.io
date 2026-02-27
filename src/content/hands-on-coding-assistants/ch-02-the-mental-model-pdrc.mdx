@@ -1,11 +1,11 @@
 ---
 title: "The Mental Model: Plan, Delegate, Review, Correct (PDRC)"
-description: "An adaptation of Deming's PDCA cycle for AI-assisted development — the operational framework for working with coding agents."
+description: "The way I think about working with coding agents — a personal adaptation of the PDCA cycle for AI-assisted development."
 module: 0
 order: 2
 ---
 
-## Why you need a framework at all
+## Why you need a way of thinking about this at all
 
 Most developers adopt AI coding tools the same way: install the extension, accept a few suggestions, feel productive, and move on. No process. No criteria for when to use the tool or when to ignore it. No systematic way to evaluate output quality.
 
@@ -13,9 +13,11 @@ This works fine for trivial tasks. But the moment the stakes go up; production c
 
 The solution isn't to stop using AI. It's to use it _within a structure_ that keeps you in control.
 
+What I'm about to share isn't a formal methodology or an industry standard. It's the way I personally learned to work with coding agents after a lot of trial, error, and wasted time. I call it **PDRC** — Plan, Delegate, Review, Correct. It's heavily inspired by a well-known quality cycle (more on that below), but adapted to the specific reality of working with AI tools every day. Take what works for you, adjust what doesn't, and make it your own.
+
 ---
 
-## From PDCA to PDRC
+## The inspiration: PDCA
 
 If you've worked in manufacturing, quality engineering, or any organization influenced by lean/agile, you've probably seen **PDCA** — Plan, Do, Check, Act. It's one of the most widely adopted continuous-improvement cycles in the world, popularized by W. Edwards Deming in the 1950s (building on earlier work by Walter Shewhart in the 1930s).
 
@@ -31,7 +33,7 @@ graph LR
 
 The cycle never stops. You plan the work, do the work, check the results against your plan, and act on what you learned — which feeds back into the next plan.
 
-**PDRC is an adaptation of PDCA for a specific context: AI-assisted software development.**
+**PDRC is my personal adaptation of PDCA for AI-assisted software development.** It's not an official extension of Deming's work or a formally validated methodology — it's just the names I found most useful for describing what actually happens when you work with a coding agent.
 
 The core insight is simple: when you work with an AI coding tool, _you are no longer the one doing_. You're delegating execution to a model. And because you didn't write the code yourself, _checking_ it requires more deliberate effort — the same kind of review you'd give to a junior developer's pull request, except the "junior" writes faster than any human and has no understanding of your business domain.
 
@@ -356,7 +358,7 @@ Not every task needs the full ceremony. The key is matching your investment to t
 | **Medium** | Standard — explicit plan, review the diff, one round of correction | Adding a new endpoint, refactoring a module |
 | **High** | Full — written plan with acceptance criteria, thorough review, multiple correction rounds | Security-critical code, authentication, payment logic, database migrations |
 
-The PDRC framework is a spectrum, not a checkbox. Use your judgment — but _have_ a framework. The alternative is "accept all," and we've seen where that leads.
+PDRC is a spectrum, not a checkbox. Use your judgment — but _have_ a mental model for how you engage with AI. The alternative is "accept all," and we've seen where that leads.
 
 ---
 
@@ -372,7 +374,7 @@ Every chapter from here forward maps to one or more phases of PDRC:
 | **Module 04** (Ch 14–15) | Security, governance, responsible use | **Review** — systematic verification and risk management |
 | **Module 05** (Ch 16–17) | Metrics, measurement, final project | **Correct** — continuous improvement based on data |
 
-You'll apply PDRC in every hands-on exercise. By the end of the workshop, it won't be a framework you _think about_ — it'll be muscle memory.
+You'll apply PDRC in every hands-on exercise. By the end of the workshop, it won't be something you _think about_ — it'll be muscle memory.
 
 Next up: **Chapter 3 — Setup & Practical Integration** — where we configure the tools and prepare the environment for everything that follows.
 
