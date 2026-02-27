@@ -1,45 +1,51 @@
 ---
+import { getCollection } from "astro:content";
 import Footer from "$components/Footer.astro";
 import Header from "$components/Header.astro";
 import BaseLayout from "$layouts/BaseLayout.astro";
 import ProseWrapper from "$layouts/ProseWrapper.astro";
-import { getCollection } from "astro:content";
 import { SITE_DESCRIPTION, SITE_TITLE } from "../../config.json";
 
 const chapters = await getCollection("series");
 const sorted = chapters.sort((a, b) => a.data.order - b.data.order);
 
 const modules = [
-  {
-    number: 0,
-    title: "Foundations & Philosophy",
-    description:
-      "Core concepts, the PDRC mental model, setup, and prompt engineering.",
-  },
-  {
-    number: 1,
-    title: "Agent Customization",
-    description:
-      "Custom agents, AGENTS.md, repository instructions, and agent skills.",
-  },
-  {
-    number: 2,
-    title: "AI in the Daily Development Cycle",
-    description:
-      "Test generation, code review, debugging, refactoring, and documentation.",
-  },
-  {
-    number: 3,
-    title: "Extensibility & Integrations",
-    description:
-      "MCP (Model Context Protocol), hooks, validation, and agent automation.",
-  },
-  {
-    number: 4,
-    title: "Security, Governance & Impact Measurement",
-    description:
-      "AI-first security, governance, impact metrics, and final project.",
-  },
+	{
+		number: 0,
+		title: "Foundations & Philosophy",
+		description:
+			"Core concepts, the PDRC mental model, setup, and prompt engineering.",
+	},
+	{
+		number: 1,
+		title: "Agent Customization",
+		description:
+			"Custom agents, AGENTS.md, repository instructions, and agent skills.",
+	},
+	{
+		number: 2,
+		title: "AI in the Daily Development Cycle",
+		description:
+			"Test generation, code review, debugging, refactoring, and documentation.",
+	},
+	{
+		number: 3,
+		title: "Extensibility & Integrations",
+		description:
+			"MCP (Model Context Protocol), hooks, validation, and agent automation.",
+	},
+	{
+		number: 4,
+		title: "Security, Governance & Impact Measurement",
+		description:
+			"AI-first security, governance, IP policy, impact metrics, and continuous improvement.",
+	},
+	{
+		number: 5,
+		title: "Full Cycle",
+		description:
+			"End-to-end final project applying the complete PDRC cycle on a real codebase.",
+	},
 ];
 ---
 
@@ -52,18 +58,67 @@ const modules = [
   <main class="max-w-2xl lg:max-w-3xl mx-auto mt-8 px-4">
     <ProseWrapper>
       <h1>Hands-on Coding Assistants</h1>
-      <p>
-        AI coding tools can autocomplete your code, but that's the easy part.
-        The hard part is <strong>staying in control</strong>: knowing when to delegate,
-        what to review, and how to course-correct before bad suggestions compound.
+      <p class="text-lg text-base-500 dark:text-base-400 italic !mt-0">
+        A Developer's Mental Model for AI-Assisted Engineering
       </p>
+
       <p>
-        This series teaches a repeatable mental model —
-        <strong>Plan → Delegate → Review → Correct (PDRC)</strong> —
-        inspired by Deming's classic PDCA cycle, but adapted for a world where
-        the one executing your plan is an AI agent, not you.
-        Every module is hands-on: real repos, real tools, real trade-offs.
+        AI coding tools can write code for you. But <strong
+          >writing code was never the bottleneck</strong
+        > — making the right decisions, catching bad suggestions before they compound,
+        and maintaining quality across a real codebase is. Most developers use these
+        tools on autopilot. This series shows you how to use them <em
+          >with intention</em
+        >.
       </p>
+
+      <p>
+        Across <strong>17 chapters and 6 modules</strong>, you'll learn a
+        repeatable mental model — <strong
+          >Plan, Delegate, Review, Correct (PDRC)</strong
+        > — and apply it hands-on to every stage of the development cycle: from writing
+        your first prompt to shipping a full feature with multi-agent collaboration,
+        automated code review, security hooks, and measurable impact.
+      </p>
+
+      <h3>What you'll walk away with</h3>
+      <ul>
+        <li>
+          A <strong>mental model</strong> for working with AI that prevents the "accept
+          all" trap and keeps you in control of quality.
+        </li>
+        <li>
+          <strong>Custom agents, instruction files, and skills</strong> tailored
+          to your codebase — so the AI knows your conventions before you even type
+          a prompt.
+        </li>
+        <li>
+          Practical workflows for <strong
+            >test generation, code review, debugging, refactoring, and
+            documentation</strong
+          > — the daily tasks where AI delivers the most measurable value.
+        </li>
+        <li>
+          <strong>MCP integrations and hooks</strong> that extend what the AI can
+          access and automate, from external APIs to pre-execution security validation.
+        </li>
+        <li>
+          <strong>Governance, security, and impact measurement</strong> strategies
+          so you can adopt AI tools at team and org level with confidence.
+        </li>
+        <li>
+          An <strong>end-to-end final project</strong> where you run the complete
+          PDRC cycle on a real codebase.
+        </li>
+      </ul>
+
+      <p>
+        Every chapter is hands-on: real repos, real tools, real trade-offs. No
+        filler, no hype — just the engineering discipline that makes AI
+        assistants actually useful.
+      </p>
+
+      <hr />
 
       {
         modules.map((mod) => {
@@ -104,13 +159,16 @@ const modules = [
             rel="noopener noreferrer"
           >
             Creative Commons Attribution 4.0 International (CC BY 4.0)
-          </a>.
-          You are free to share and adapt this material for any purpose, including
-          commercial use, as long as you give appropriate credit.
+          </a>. You are free to share and adapt this material for any purpose,
+          including commercial use, as long as you give appropriate credit.
         </p>
         <p>
-          Please cite as: <em>"Hands-on Coding Assistants" by William Oliveira
-          — <a href="https://woliveiras.com/hands-on-coding-assistants/">woliveiras.com</a></em>
+          Please cite as: <em
+            >"Hands-on Coding Assistants" by William Oliveira — <a
+              href="https://woliveiras.com/hands-on-coding-assistants/"
+              >woliveiras.com</a
+            ></em
+          >
         </p>
       </section>
     </ProseWrapper>

@@ -1,9 +1,9 @@
 ---
+import { getCollection, render } from "astro:content";
 import Footer from "$components/Footer.astro";
 import Header from "$components/Header.astro";
 import BaseLayout from "$layouts/BaseLayout.astro";
 import BlogPost from "$layouts/BlogPost.astro";
-import { getCollection, render } from "astro:content";
 import { SITE_TITLE } from "../../config.json";
 
 export async function getStaticPaths() {
