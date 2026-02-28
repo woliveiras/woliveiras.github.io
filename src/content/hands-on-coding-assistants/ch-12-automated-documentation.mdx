@@ -415,7 +415,7 @@ style from src/services/user-service.ts. Include @param, @returns,
 @throws, and @example for each function.
 ```
 
-The key phrase is "follow the existing documentation style from..." — this gives the agent a concrete example to match, producing consistent output across the module.
+The key phrase is "follow the existing documentation style from...". This gives the agent a concrete example to match, producing consistent output across the module.
 
 ### The documentation review pass
 
@@ -435,9 +435,7 @@ In this exercise, you'll take an undocumented module, generate comprehensive doc
 
 ### Prerequisites
 
-- A project with some undocumented code (or use the `PaymentProcessor` from Chapter 11)
-- VS Code with Copilot
-- A testing framework (to verify documentation examples)
+For running this exercise, you'll need a project with some undocumented code (or use the `PaymentProcessor` from Chapter 11).
 
 ### Step 1: assess the documentation gap
 
@@ -538,7 +536,7 @@ For each correction, consider: could a custom instruction prevent this in the fu
 
 ## Documentation as a living practice
 
-The biggest risk with AI-generated documentation isn't that it's wrong (you review it) — it's that it becomes stale. Code changes faster than docs. Here are three practices that keep documentation alive:
+The biggest risk with AI-generated documentation isn't that it's wrong (you review it), it's that it becomes stale. Code changes faster than docs. So, here are three practices that keep documentation alive:
 
 ### 1. Document at code-time, not later
 
@@ -548,7 +546,7 @@ Don't defer documentation to a "docs sprint." Generate it as you write the code:
 - Create an endpoint → generate the API docs before the PR
 - Commit changes → let Copilot generate the commit message
 
-This is cheap because the context is fresh — you just wrote the code, so reviewing the docs takes seconds.
+This is cheap because the context is fresh. You just wrote the code, so reviewing the docs takes seconds.
 
 ### 2. Include documentation in code review
 
