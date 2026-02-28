@@ -1,17 +1,557 @@
 ---
 title: "End-to-End Final Project"
 description: "Complete challenge applying the full PDRC cycle with multi-agent collaboration on a real codebase."
-module: 4
+module: 5
 order: 17
 ---
 
-## End-to-End Final Project
+## Welcome to Module 5: the full loop
 
-TODO: Content for Chapter 17 — End-to-End Final Project (full PDRC)
+This is the chapter where everything connects. Across 16 chapters and 5 modules, you've learned the foundations and prompt engineering (Module 0), customized agents and project context (Module 1), applied PDRC to daily engineering tasks (Module 2), extended the loop with MCP, hooks, and automation (Module 3), and governed the system with security controls and measurement (Module 4).
 
-**Topics to cover:**
+Now you'll run the complete cycle on a single realistic project. No new concepts. No new tools. Just the disciplined application of everything you've practiced, measured against the criteria you define.
 
-- Complete challenge: receive issue → **Plan** (spec + acceptance criteria) → **Delegate** (custom agents + skills) → **Review** (tests + automatic code review) → **Correct** (iterate on feedback) → PR ready
-- Multi-agent collaboration on a real codebase
-- Retrospective: what worked, what didn't, where the developer had to intervene
-- Discussion: how to bring this workflow into your team's daily routine
+The chapter is structured as a guided project with explicit checkpoints. You can work through it on any codebase, like your own, a side project, or the sample scenario provided below. The goal isn't the specific code. It's the workflow: **Plan, Delegate, Review, Correct** with evidence at every step.
+
+---
+
+## The scenario
+
+You've joined a team that maintains an open-source task management API. The codebase is a Node.js/Express application with a PostgreSQL database, deployed via GitHub Actions. It has decent test coverage (around 72%) but inconsistent coding standards and no custom instructions for AI tools.
+
+A product manager has filed the following issue:
+
+> **Issue #247: Add task labels feature**
+>
+> Users need the ability to add, remove, and filter tasks by labels (like "urgent", "bug", "feature"). This has been the top-requested feature for three months.
+>
+> Requirements:
+> - Tasks can have zero or more labels
+> - Labels are simple strings, max 50 characters, lowercase
+> - API endpoints: add label to task, remove label from task, list tasks filtered by label
+> - Labels should be searchable (partial match)
+> - Existing tests must continue to pass
+> - New endpoints need tests
+>
+> This issue is ready for development.
+
+Your job: take this issue through the full PDRC cycle using AI-assisted development, as if you were onboarding your team to this workflow for the first time.
+
+> **Adapting to your own project:** If you prefer to work on your own codebase, substitute the scenario above with a real feature request or bug from your issue tracker. The steps below are written generically enough to apply to any project. The important thing is the process, not the specific application.
+
+---
+
+## Phase 1: Plan
+
+The Plan phase is where the developer thinks. The AI doesn't write code yet. You do the design work that makes delegation effective.
+
+### Step 1.1: write the specification
+
+Transform the issue into a proper spec using the template from Ch 16. The spec should be detailed enough that someone (or something) unfamiliar with the codebase could implement the feature correctly.
+
+```markdown title="spec-247-task-labels.md"
+# Spec: Task Labels Feature (Issue #247)
+
+## Goal
+
+Add a labeling system to the task management API so users can organize
+and filter tasks by labels.
+
+## Acceptance criteria
+
+- [ ] Database: new `labels` table with `id`, `task_id`, `name`, `created_at`
+- [ ] Database: unique constraint on (`task_id`, `name`) to prevent duplicates
+- [ ] POST /api/tasks/:id/labels — adds a label (body: { name: string })
+- [ ] DELETE /api/tasks/:id/labels/:name — removes a label
+- [ ] GET /api/tasks?label=:name — filters tasks by exact label match
+- [ ] GET /api/tasks?label_search=:query — filters tasks by partial label match
+- [ ] Label names are validated: lowercase, max 50 chars, alphanumeric + hyphens
+- [ ] Unit tests for label model/service layer
+- [ ] Integration tests for all new endpoints
+- [ ] Existing test suite passes with no regressions
+- [ ] Migration file is reversible (up and down)
+
+## Technical notes
+
+- Follow existing patterns in `src/routes/tasks.js` and `src/models/task.js`
+- Use the existing `validate()` middleware pattern for input validation
+- Labels table should use a foreign key to `tasks.id` with CASCADE delete
+- Use parameterized queries (no raw string interpolation) for SQL
+
+## Out of scope
+
+- Label colors or metadata (future enhancement)
+- Bulk label operations (future enhancement)
+- Label management endpoints (create/list/delete labels globally)
+```
+
+### Step 1.2: set up the repository for AI-assisted development
+
+If the repository doesn't already have AI configuration, create the foundational files. This is a one-time setup that pays off on every subsequent task.
+
+**Custom instructions:**
+
+```markdown title=".github/copilot-instructions.md"
+This is a Node.js/Express REST API with PostgreSQL.
+
+## Build and test
+
+- Install: `npm ci`
+- Test: `npm test` (runs Jest with coverage)
+- Lint: `npm run lint` (ESLint)
+- Database migrations: `npm run migrate`
+
+## Code standards
+
+- Use async/await, not callbacks or raw promises
+- All SQL queries use parameterized placeholders ($1, $2...), never string interpolation
+- Input validation uses the validate() middleware in src/middleware/validate.js
+- Error responses follow the format: { error: string, details?: string }
+- All new endpoints need both unit and integration tests
+- Tests go in __tests__/ mirroring the src/ structure
+
+## Security
+
+- Never include credentials, API keys, or database URLs in code
+- Use environment variables for all configuration
+- Validate and sanitize all user input
+```
+
+**Setup steps:**
+
+```yaml title="copilot-setup-steps.yml"
+steps:
+  - name: Install dependencies
+    run: npm ci
+  - name: Set up test database
+    run: |
+      cp .env.example .env.test
+      npm run migrate:test
+```
+
+**Agent profiles:**
+
+```yaml title=".github/agents/planner.md"
+---
+name: planner
+description: Analyzes issues and generates implementation plans. Read-only.
+tools:
+  - read
+  - search
+---
+
+You are an implementation planner. Given a spec or issue:
+1. Identify all files that need to change
+2. Determine the order of changes (database first, then model, then routes, then tests)
+3. Flag any risks or ambiguities in the spec
+4. Output a step-by-step implementation plan
+
+Never modify files. Only analyze and recommend.
+```
+
+```yaml title=".github/agents/implementer.md"
+---
+name: implementer
+description: Implements features following project conventions.
+tools:
+  - read
+  - search
+  - edit
+  - execute
+---
+
+Follow the project's custom instructions strictly.
+Implement changes in this order: database migrations, models, routes, tests.
+Run the test suite after every significant change.
+If tests fail, fix the issue before moving on.
+```
+
+```yaml title=".github/agents/test-writer.md"
+---
+name: test-writer
+description: Writes and improves tests. No production code changes.
+tools:
+  - read
+  - search
+  - edit
+  - execute
+---
+
+You write tests for this project. Follow these rules:
+- Unit tests for service/model logic
+- Integration tests for API endpoints (use supertest)
+- Cover happy path, error cases, and edge cases
+- Do not modify files outside of __tests__/
+- Run the full test suite after writing tests to confirm they pass
+```
+
+### Step 1.3: get an implementation plan
+
+Before writing any code, use the planner agent to analyze the spec:
+
+Assign the issue (with the spec as the body) and mention the planner agent, or use Copilot Chat in your IDE:
+
+> @planner Review the spec in spec-247-task-labels.md. Identify all files that need to be created or modified, suggest the implementation order, and flag any risks or ambiguities.
+
+The planner should return something like:
+
+1. Create migration: `migrations/XXXX_create_labels_table.sql`
+2. Create model: `src/models/label.js`
+3. Update routes: `src/routes/tasks.js` (add label endpoints, add filter query params)
+4. Create validation: `src/middleware/validators/label.js`
+5. Create tests: `__tests__/models/label.test.js`, `__tests__/routes/tasks-labels.test.js`
+
+**Risks identified:**
+- The spec says "partial match" for label search — needs clarification on whether this means SQL `LIKE` or full-text search
+- CASCADE delete means deleting a task removes all its labels — confirm this is desired behavior
+
+### Step 1.4: resolve ambiguities
+
+Review the planner's output. For each risk or ambiguity, make a decision and **update the spec**:
+
+- Partial match → Use SQL `ILIKE '%query%'` (case-insensitive substring match). Full-text search is out of scope.
+- CASCADE delete → Confirmed. When a task is deleted, its labels are deleted.
+
+Add these decisions to the spec's technical notes section. The spec is now a complete, unambiguous instruction set.
+
+### Plan phase checklist
+
+Before moving to Delegate, verify:
+
+- [ ] Spec has clear acceptance criteria with checkboxes
+- [ ] Technical notes reference specific files, patterns, and conventions
+- [ ] Out-of-scope section prevents scope creep
+- [ ] Implementation plan exists (from planner agent or your own analysis)
+- [ ] All ambiguities are resolved and documented in the spec
+
+---
+
+## Phase 2: Delegate
+
+Now the AI writes code. Your job shifts from author to supervisor.
+
+### Step 2.1: delegate to the coding agent
+
+Create a GitHub issue with the full spec as the body (or update the existing issue). Assign it to the coding agent. If you have multiple agents, assign to the `implementer` agent specifically.
+
+On GitHub.com, assign Copilot to the issue. In VS Code agent mode, you can paste the spec and say:
+
+> Implement the feature described in this spec. Follow the implementation plan: migration first, then model, then routes, then tests. Run the test suite after each step.
+
+### Step 2.2: monitor — don't micromanage
+
+While the agent works, resist the urge to intervene at every step. The whole point of the Plan phase was to give the agent clear enough instructions that it can work autonomously.
+
+Check in at natural checkpoints:
+- After the migration is created
+- After the model/route code is written
+- After tests are written and run
+
+### Step 2.3: multi-agent collaboration (optional)
+
+If you set up the `test-writer` agent, you can use a two-pass approach:
+
+1. **First pass:** The `implementer` agent creates the migration, model, and routes with basic tests.
+2. **Second pass:** Assign a follow-up task to the `test-writer` agent: "Review the implementation in PR #XX and add edge case tests: empty labels, labels at max length, duplicate label attempts, partial search with special characters, deleting a task with multiple labels."
+
+This mirrors how human teams work — one developer implements, another reviews and strengthens the tests.
+
+### Delegate phase checklist
+
+Before moving to Review, verify:
+
+- [ ] The agent has created a PR (or you have the changes ready for review)
+- [ ] The PR description references the original issue and spec
+- [ ] The agent ran the test suite and it passes
+- [ ] No unrelated changes were made (scope stays within the spec)
+
+---
+
+## Phase 3: Review
+
+You're back in the driver's seat. The agent produced work; now you evaluate it against your spec.
+
+### Step 3.1: automated review
+
+If you've configured Copilot Code Review (Ch 10), it runs automatically on the PR. Check what it found:
+
+- Style violations?
+- Missing error handling?
+- Security concerns (SQL injection, missing input validation)?
+- Test coverage gaps?
+
+### Step 3.2: spec compliance check
+
+Go through each acceptance criterion in the spec and check whether the PR satisfies it:
+
+| # | Criterion | Status | Notes |
+| --- | --- | --- | --- |
+| 1 | `labels` table with correct columns | Pass | Migration looks correct |
+| 2 | Unique constraint on (task_id, name) | Pass | |
+| 3 | POST /api/tasks/:id/labels | Pass | |
+| 4 | DELETE /api/tasks/:id/labels/:name | Pass | |
+| 5 | GET /api/tasks?label=:name | Pass | |
+| 6 | GET /api/tasks?label_search=:query | Fail | Uses `LIKE` instead of `ILIKE` — not case-insensitive |
+| 7 | Label validation (lowercase, max 50, format) | Partial | Max length checked, but no regex for alphanumeric + hyphens |
+| 8 | Unit tests | Pass | |
+| 9 | Integration tests | Partial | Missing test for 404 when task doesn't exist |
+| 10 | Existing tests pass | Pass | |
+| 11 | Reversible migration | Fail | No down migration provided |
+
+**Spec compliance score: 8/11 (73%)**
+
+This is your measurement instrument from Ch 16 in action. The spec told the agent what to do, and now it tells you exactly what was missed.
+
+### Step 3.3: security and quality review
+
+Beyond spec compliance, check the fundamentals:
+
+- [ ] No hardcoded credentials or connection strings
+- [ ] SQL uses parameterized queries (not string interpolation)
+- [ ] Input validation sanitizes user-provided label names
+- [ ] Error responses don't leak internal details (stack traces, query text)
+- [ ] No unnecessary dependencies added
+
+### Review phase checklist
+
+Before moving to Correct, you should have:
+
+- [ ] A spec compliance score (met/total criteria)
+- [ ] A list of specific issues to fix
+- [ ] Automated review results (if configured)
+- [ ] A security and quality assessment
+
+---
+
+## Phase 4: Correct
+
+This phase closes the loop. You feed specific, actionable feedback back to the agent.
+
+### Step 4.1: write targeted review comments
+
+For each failed or partial criterion, leave a specific comment on the PR. Good feedback looks like this:
+
+**For criterion 6 (case-insensitive search):**
+> The label search endpoint uses `LIKE` instead of `ILIKE`. The spec requires case-insensitive partial matching. Update the query in `src/models/label.js` to use `ILIKE` and add a test that searches for "Urgent" and expects to find a label named "urgent".
+
+**For criterion 7 (validation regex):**
+> Label validation checks max length but doesn't enforce the alphanumeric + hyphens format from the spec. Add a regex check `/^[a-z0-9-]+$/` in `src/middleware/validators/label.js` and add tests for invalid formats: spaces, uppercase, special characters.
+
+**For criterion 11 (down migration):**
+> The migration file is missing the down/rollback function. Add `DROP TABLE IF EXISTS labels;` in the down migration.
+
+### Step 4.2: let the agent iterate
+
+Mention `@copilot` in the review (or continue the agent mode session) with the specific fixes. The agent should:
+
+1. Make the requested changes
+2. Run the test suite
+3. Push updates to the PR
+
+### Step 4.3: re-review
+
+After the agent pushes fixes, run through the spec compliance check again:
+
+| # | Criterion | Previous | Updated |
+| --- | --- | --- | --- |
+| 6 | Case-insensitive search | Fail | Pass |
+| 7 | Label validation | Partial | Pass |
+| 9 | Integration tests | Partial | Pass |
+| 11 | Reversible migration | Fail | Pass |
+
+**Updated spec compliance: 11/11 (100%)**
+
+The PR is now ready to merge.
+
+### Correct phase checklist
+
+- [ ] All failed criteria have specific, actionable feedback
+- [ ] The agent addressed every review comment
+- [ ] Spec compliance is at 100% (or you've documented why certain criteria were intentionally deferred)
+- [ ] The test suite passes
+- [ ] A human has given final approval
+
+---
+
+## Phase 5: Retrospective
+
+The PDRC cycle for this task is complete. Now step back and evaluate the process itself.
+
+### What to record
+
+Create a brief retrospective document:
+
+```markdown title="docs/retrospectives/issue-247-labels.md"
+# Retrospective: Issue #247 — Task Labels
+
+## Timeline
+- Spec written: 25 minutes
+- Repository setup (instructions, agents, setup steps): 40 minutes (one-time cost)
+- Agent implementation: ~15 minutes (autonomous)
+- Review: 20 minutes
+- Correction round: ~10 minutes (agent autonomous) + 10 minutes (re-review)
+- **Total developer time: ~55 minutes active, ~25 minutes waiting**
+- **Total elapsed time: ~2 hours**
+
+## Spec compliance
+- First pass: 8/11 (73%)
+- After correction: 11/11 (100%)
+- Correction rounds: 1
+
+## What worked well
+- The spec prevented scope creep — the agent didn't add unrequested features
+- The planner agent caught the LIKE vs ILIKE ambiguity before implementation
+- Multi-agent approach: implementer + test-writer produced better coverage
+  than a single pass
+- Setup steps meant the agent had a working test database from the start
+
+## What needed intervention
+- Case-insensitive search (ILIKE) was in the spec but the agent used LIKE anyway
+  → **Action:** Add "use ILIKE for case-insensitive queries" to custom instructions
+- Down migration was missing
+  → **Action:** Add "all migrations must include rollback" to custom instructions
+- Validation regex wasn't applied
+  → **Action:** Add a path-specific instruction for validators:
+  `.github/instructions/validators.instructions.md`
+
+## What I'd change next time
+- Include a validation example in the spec's technical notes
+- Reference the specific middleware file pattern in the acceptance criteria
+- Use a hook to verify migration files have both up and down functions
+
+## Metrics
+- PR lead time: 1h 45m (from PR creation to merge)
+- Build success: passed on first push (after agent ran tests)
+- Test coverage delta: +2.3% (from 72% to 74.3%)
+```
+
+### Key question: where did the developer matter?
+
+Look at your retrospective and identify the moments when human judgment was essential:
+
+1. **Designing the spec.** The agent didn't decide what the feature should be. You did.
+2. **Resolving ambiguities.** The planner flagged the LIKE/ILIKE question. A human decided the answer.
+3. **Evaluating quality.** The automated checks passed, but the spec compliance check caught the missing criteria.
+4. **Writing actionable feedback.** Vague feedback ("fix the search") produces vague fixes. Specific feedback ("use ILIKE, add this test case") produces correct fixes.
+
+These are the moments the PDRC mental model is designed to protect. The developer's role isn't typing code — it's making decisions and verifying outcomes.
+
+---
+
+## Bringing the workflow to your team
+
+You've now completed the full cycle. The question is: how do you turn this from an exercise into daily practice?
+
+### Start small
+
+Don't try to adopt everything at once. Here's a phased rollout:
+
+**Week 1-2: Foundation**
+- Add `.github/copilot-instructions.md` to your main repositories
+- Create `copilot-setup-steps.yml` with build and test commands
+- Assign 2-3 small issues (bug fixes, doc updates) to the coding agent
+
+**Week 3-4: Specialization**
+- Create 2-3 custom agent profiles (implementer, test-writer, reviewer)
+- Introduce the spec template for agent-assigned issues
+- Start tracking PR lead time for agent PRs vs. human PRs
+
+**Month 2: Automation**
+- Add MCP connections for your external tools (error tracking, design docs)
+- Create hooks for security validation and audit logging
+- Run a team retrospective on the first month's metrics
+
+**Month 3: Measurement**
+- Establish your full measurement dashboard (Ch 16)
+- Compare Month 2 metrics to Month 1 baseline
+- Identify and fix the single biggest bottleneck
+
+### Common pitfalls to avoid
+
+| Pitfall | Symptom | Fix |
+| --- | --- | --- |
+| Skipping the Plan phase | High correction rounds, scope creep in PRs | Require specs for all agent-assigned issues |
+| Over-delegating | Agent assigned complex architectural tasks | Start with well-defined, bounded tasks |
+| Under-reviewing | Bugs in production from agent-created PRs | Spec compliance checklist on every PR |
+| Ignoring the agent's failures | Same mistakes repeat across multiple PRs | Update custom instructions after every retrospective |
+| Measuring the wrong thing | Team celebrates "more code" while quality drops | Focus on cycle time, build success, and developer satisfaction |
+| No security review | Secrets in PRs, overly permissive agent access | Run the Ch 15 security audit checklist |
+
+### The role of the developer, revisited
+
+In Ch 1, we said the central idea of this series is: **you stay in control, and the AI amplifies your decisions.** After 17 chapters, that idea should feel concrete:
+
+- **You** write the spec. The AI implements it.
+- **You** define the standards. The AI follows them.
+- **You** configure the agents. The AI operates within those boundaries.
+- **You** review the output. The AI iterates on your feedback.
+- **You** measure the impact. The AI is the instrument you're tuning.
+
+The developer who uses AI well isn't the one who writes the cleverest prompt. It's the one who builds the system — instructions, agents, hooks, specs, metrics — that makes every prompt effective by default.
+
+---
+
+## Series recap: what you learned
+
+| Module | Chapters | Core skill |
+| --- | --- | --- |
+| **0 — Foundations** | 1-4 | PDRC mental model, setup, prompt engineering |
+| **1 — Agent Customization** | 5-8 | Custom agents, AGENTS.md, repository instructions, skills |
+| **2 — AI in the Daily Cycle** | 9-12 | Test generation, code review, debugging & refactoring, documentation |
+| **3 — Beyond Code** | 13-14 | MCP for external tools, hooks for automation, issue-to-PR pipelines |
+| **4 — Trust at Scale** | 15-16 | Security, governance, firewalls, IP, impact measurement, spec-driven development |
+| **5 — Full Cycle** | 17 | End-to-end application of everything, retrospective, team adoption |
+
+### The PDRC mental model — one last time
+
+| Phase | What you do | What the AI does |
+| --- | --- | --- |
+| **Plan** | Write specs, define acceptance criteria, resolve ambiguities | Analyze the codebase, suggest implementation plans, flag risks |
+| **Delegate** | Assign tasks, choose agents, set boundaries | Write code, run tests, create PRs |
+| **Review** | Check spec compliance, evaluate quality, assess security | Run automated reviews, highlight potential issues |
+| **Correct** | Provide specific feedback, update instructions, record lessons | Iterate on feedback, push fixes, re-run tests |
+
+The cycle repeats. Each iteration improves the instructions, the agents, and the specs — which improves the next cycle. This is the continuous improvement loop from Ch 16, and it's the real output of this series: not any single piece of code, but a system that gets better every time you use it.
+
+---
+
+## Final hands-on: your full PDRC cycle
+
+Complete the following exercise from beginning to end. Use a real repository if possible.
+
+### The challenge
+
+1. **Pick a task.** Choose a feature request, bug fix, or improvement from your project's issue tracker. If you don't have one, use the task labels scenario from this chapter.
+
+2. **Plan.** Write a spec with acceptance criteria, technical notes, and out-of-scope section. Use the planner agent (or Copilot Chat) to validate the plan and flag ambiguities. Resolve all ambiguities before proceeding.
+
+3. **Delegate.** Assign the task to the coding agent (or work in agent mode). Let the agent complete the implementation without intervention unless it's stuck.
+
+4. **Review.** Score the PR against your spec (criteria met / total criteria). Run the security checklist from Ch 15. Note every issue you find.
+
+5. **Correct.** Write specific review comments for each issue. Let the agent iterate. Re-review and score again.
+
+6. **Retrospect.** Write a retrospective covering: timeline, spec compliance (before and after), what worked, what needed intervention, what you'd change, and metrics.
+
+7. **Improve.** Based on the retrospective, make at least one change to your custom instructions, agent profiles, or spec template. Commit it to the repository.
+
+### Deliverables checklist
+
+- [ ] Spec document with acceptance criteria
+- [ ] Repository AI configuration (instructions, agents, setup steps)
+- [ ] Merged PR that satisfies all acceptance criteria
+- [ ] Spec compliance scores (first pass and final)
+- [ ] Retrospective document
+- [ ] At least one instruction/agent/template improvement committed
+
+---
+
+## Conclusion
+
+You started this series knowing how to write software. You're leaving it knowing how to **direct** software, how to think about the work at a higher level, delegate with precision, review with structure, and correct with specificity.
+
+The tools will keep evolving. Models will get smarter. Agents will become more autonomous. New features will ship every month. But the PDRC mental model doesn't depend on any specific tool or model. It depends on the fundamental principle that drove every chapter: **the developer who plans well, delegates clearly, reviews rigorously, and corrects specifically will always get better results than the developer who just types a prompt and hopes for the best.**
+
+Build the system. Trust the process. Measure the results. Improve and repeat.
+
+
