@@ -1,0 +1,152 @@
+---
+title: "Before You Start"
+description: "Prerequisites, tools, accounts, and knowledge you need to follow this series effectively."
+module: 0
+order: 0
+---
+
+## Who this series is for
+
+You already write software. You're comfortable with a code editor, a terminal, and version control. You've probably used GitHub Copilot's autocomplete or asked ChatGPT to explain an error message. This series picks up from there.
+
+If you can clone a repo, install dependencies, and open a pull request — you have everything you need to follow along. If terms like "PR," "CI," or "environment variable" are unfamiliar, you'll want to learn the basics first.
+
+---
+
+## Required tools
+
+Install these before starting Chapter 1. Every hands-on exercise in the series assumes they're available.
+
+### 1. Visual Studio Code
+
+VS Code is the primary editor throughout the series. As of version 1.99 (April 2025), GitHub Copilot is built in — no separate extension required.
+
+- **Download**: [code.visualstudio.com](https://code.visualstudio.com/)
+- **Minimum version**: 1.99+
+- **Verify**: Open VS Code → `Help` → `About` → check the version number
+
+### 2. Node.js
+
+Most code examples use JavaScript or TypeScript. Node.js is also needed to run MCP servers and various CLI tools.
+
+- **Download**: [nodejs.org](https://nodejs.org/) (use the LTS version)
+- **Minimum version**: 22+
+- **Verify**:
+
+```sh
+node --version
+# Expected: v22.x.x or higher
+```
+
+### 3. Git
+
+You need Git for version control and to interact with GitHub repositories.
+
+- **Download**: [git-scm.com](https://git-scm.com/) (or install via your OS package manager)
+- **Minimum version**: 2.39+
+- **Verify**:
+
+```sh
+git --version
+# Expected: git version 2.39.x or higher
+```
+
+### 4. A package manager: npm or pnpm
+
+`npm` ships with Node.js. Several chapters also use `pnpm` in examples — either works, but if you want to follow the examples exactly:
+
+```sh
+# npm is already installed with Node.js
+npm --version
+
+# To install pnpm (optional, but used in many examples)
+corepack enable
+corepack prepare pnpm@latest --activate
+pnpm --version
+```
+
+### 5. GitHub account + Copilot access
+
+You need a GitHub account with access to GitHub Copilot.
+
+- **Create an account**: [github.com/signup](https://github.com/signup) (if you don't have one)
+- **Copilot access**: The **Free tier** works for most exercises. **Copilot Pro** is recommended — it removes the monthly completion limits that might interrupt your workflow during longer exercises
+- **Verify**: Open VS Code, click the Copilot icon in the status bar, and sign in with your GitHub account
+
+---
+
+## Recommended (not required)
+
+These tools appear in specific chapters. You don't need them upfront — install them when the chapter calls for them.
+
+| Tool | Used in | Purpose |
+|------|---------|---------|
+| **Copilot CLI** | Ch 3, 5 | Command-line AI assistant (`gh copilot suggest`, `gh copilot explain`) |
+| **Docker** | Ch 13, 14 | Running MCP servers and containerized environments |
+| **jq** | Ch 14 | Parsing JSON in hook scripts |
+| **Playwright** | Ch 9 | E2E test examples |
+| **Python 3** | Ch 9 | Alternative test coverage examples (`pytest`) |
+
+Each chapter that introduces an optional tool includes installation instructions in context.
+
+---
+
+## Knowledge this series assumes
+
+The series teaches AI-assisted engineering workflows — not programming fundamentals. Here's what you should be comfortable with before starting:
+
+### Must-have
+
+- **Terminal basics** — navigating directories (`cd`), running commands, reading output. You don't need to be a shell expert, but you shouldn't be afraid of the command line.
+- **JavaScript or TypeScript** — most code examples use TypeScript. You need to read and understand basic syntax: functions, types, async/await, imports. You don't need to be an expert — the AI will help.
+- **Git fundamentals** — clone, commit, push, branch, merge. You should know what a pull request is and how to create one.
+- **GitHub navigation** — creating repositories, opening issues, reviewing PRs on github.com.
+
+### Helpful but not required
+
+- **REST API concepts** — HTTP methods, status codes, JSON request/response. Chapters 4 and 17 use API examples extensively.
+- **Testing concepts** — what unit tests, integration tests, and E2E tests are. Chapter 9 explains the workflow but assumes you know the basic taxonomy.
+- **CI/CD basics** — what GitHub Actions does and why you'd want automated pipelines. Chapters 6, 14, and 15 use workflows.
+- **Another programming language** — some examples use Python, Go, or SQL to show that the workflows are language-agnostic. You don't need to know these languages — the principles transfer.
+
+---
+
+## Operating system
+
+The series is OS-agnostic. Keyboard shortcuts are given for both macOS (`Cmd`) and Windows/Linux (`Ctrl`). Installation commands cover Homebrew (macOS), apt (Linux), and WinGet (Windows) where applicable. Hook scripts show both Bash and PowerShell variants.
+
+If you're on **Windows**, you'll have the smoothest experience using **WSL 2** (Windows Subsystem for Linux) for terminal commands, though it's not strictly required.
+
+---
+
+## Quick setup checklist
+
+Run these commands to verify everything is ready:
+
+```sh
+# Check VS Code (run from terminal)
+code --version
+# Expected: 1.99.x or higher
+
+# Check Node.js
+node --version
+# Expected: v22.x.x or higher
+
+# Check Git
+git --version
+# Expected: git version 2.39.x or higher
+
+# Check npm
+npm --version
+# Expected: 10.x.x or higher
+
+# Check GitHub authentication (optional but helpful)
+gh auth status
+# Expected: Logged in to github.com
+```
+
+If all commands return valid versions, you're ready. Open Chapter 1 and let's get started.
+
+---
+
+**Next up**: [Ch 1 — Introduction & Overview](/hands-on-coding-assistants/ch-01-introduction-and-overview/) — the tool landscape, what AI can and can't do, and the mental model that ties this series together.
