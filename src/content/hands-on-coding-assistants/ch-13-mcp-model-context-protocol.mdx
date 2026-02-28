@@ -5,16 +5,686 @@ module: 3
 order: 13
 ---
 
-## MCP (Model Context Protocol)
+## Welcome to Module 3: extending the loop beyond code
 
-TODO: Content for Chapter 13 — MCP (Model Context Protocol)
+Modules 1 and 2 gave you everything you need to Plan, Delegate, Review, and Correct inside the boundaries of your codebase: instruction files, custom agents, test generation, code review, debugging, refactoring, and documentation. That covers a lot of ground, but it leaves your AI assistant blind to the rest of your engineering ecosystem. It can't check Sentry for the stack trace that explains a bug. It can't look up a Notion design doc. It can't query your Azure resources to understand the infrastructure a service depends on.
 
-**Topics to cover:**
+Module 3 opens the walls. Starting with this chapter on MCP, then continuing with hooks and automation in Ch 14, you'll learn how to connect Copilot to the external systems that surround your code, and how to orchestrate fully automated workflows that go from issue to pull request without manual intervention.
 
-- What is MCP: open protocol for connecting AI to external systems ("USB-C for AI")
-- Local vs. remote MCP servers (stdio, http, sse)
-- Configuring MCP servers in the repository (GitHub settings)
-- Practical examples: Sentry (debugging), Notion (documentation), Azure (infra), Cloudflare
-- Customizing the built-in GitHub MCP Server (expanding toolsets: repos, issues, PRs, actions, web_search)
-- Security: environment secrets (`COPILOT_MCP_*`), agent firewalls
-- Hands-on: configure Sentry MCP + customized GitHub MCP server
+We begin with the protocol that makes it all possible.
+
+---
+
+## What is MCP?
+
+**Model Context Protocol (MCP)** is an open standard, originally introduced by Anthropic, that defines how AI models connect to external tools and data sources. The analogy you'll see everywhere is "USB-C for AI": just as USB-C gives you one universal port for charging, displays, and data transfer, MCP gives AI assistants one universal protocol for connecting to any external service.
+
+Before MCP, every integration between an AI tool and an external system required a custom, purpose-built connector. If you wanted Copilot to understand your Sentry errors, someone had to build a Sentry-specific integration. If you wanted it to read your Notion docs, someone had to build a Notion-specific integration. Each integration had its own authentication model, its own data format, and its own API surface. The result was an N-times-M problem: N AI tools times M external services, each needing a bespoke bridge.
+
+MCP collapses this to N-plus-M. Each AI tool implements the MCP client once. Each external service publishes an MCP server once. Any client can talk to any server. The protocol handles discovery (what tools does this server offer?), invocation (call a tool with these parameters), and response (here's the result). Authentication, transport, and error handling all follow a standard specification.
+
+### What MCP servers provide
+
+An MCP server can expose three types of capabilities:
+
+| Capability | What it does | Example |
+|---|---|---|
+| **Tools** | Functions the AI can call to perform actions or retrieve data | `get_issue_details` from Sentry, `search_pages` from Notion |
+| **Resources** | Data the AI can access as context (files, database tables, API responses) | A Notion page, an Azure resource definition |
+| **Prompts** | Preconfigured prompt templates for common tasks | A Sentry-optimized bug analysis prompt |
+
+For GitHub Copilot's coding agent, **tools are the primary capability**. When you configure an MCP server, you're telling Copilot: "here are functions you can call autonomously to gather information or perform actions."
+
+### Where MCP fits in PDRC
+
+MCP transforms every phase of the loop:
+
+- **Plan**: the agent can query Sentry for recent errors, read Notion design docs, or check Azure resource states before planning its approach.
+- **Delegate**: prompts can include live data from external systems, making delegations far more precise ("fix the error from Sentry issue PROJ-1234" becomes actionable because the agent can fetch the full stack trace).
+- **Review**: the agent can verify its work against external systems (did the fix resolve the Sentry error? does the PR description match the Notion spec?).
+- **Correct**: feedback from external tools feeds directly into correction loops.
+
+Without MCP, the agent works from whatever context you paste into the prompt. With MCP, the agent can go get its own context.
+
+---
+
+## Local vs. remote MCP servers
+
+MCP servers come in two flavors, distinguished by where they run and how they communicate:
+
+### Local servers (stdio)
+
+A local MCP server is a process that runs on the same machine as the AI client (or, in the case of Copilot coding agent, on the GitHub Actions runner). Communication happens over standard input/output (stdio). The client spawns the server process and exchanges JSON messages through stdin/stdout.
+
+**Configuration pattern:**
+
+Commonly, local servers are launched via a command like `npx` or `docker`. The configuration specifies the command to run, any arguments, and environment variables. For example:
+
+```json
+{
+  "mcpServers": {
+    "my-local-server": {
+      "type": "local",
+      "command": "npx",
+      "args": ["-y", "@some-org/mcp-server@latest"],
+      "env": {
+        "API_KEY": "COPILOT_MCP_MY_API_KEY"
+      },
+      "tools": ["tool_one", "tool_two"]
+    }
+  }
+}
+```
+
+Key fields:
+
+- `type`: `"local"` or `"stdio"` — both work.
+- `command`: the executable to run (commonly `npx`, `docker`, `uvx`, or a binary path).
+- `args`: arguments passed to the command.
+- `env`: environment variables injected into the server process. For Copilot coding agent, values reference secrets from the Copilot environment (prefixed with `COPILOT_MCP_`).
+- `tools`: an allowlist of specific tools to enable. Use `["*"]` to enable all tools (but think twice about this — more on security later).
+
+### Remote servers (HTTP / SSE)
+
+A remote MCP server runs on someone else's infrastructure and communicates over HTTP. Two transport variants exist:
+
+- **HTTP (Streamable HTTP)**: the modern, preferred transport. The client sends HTTP requests and receives responses (optionally streamed).
+- **SSE (Server-Sent Events)**: an older transport that uses HTTP for requests and SSE for streaming responses. Still supported, but HTTP is recommended for new servers.
+
+**Configuration pattern:**
+
+```json
+{
+  "mcpServers": {
+    "my-remote-server": {
+      "type": "http",
+      "url": "https://some-service.example.com/mcp",
+      "headers": {
+        "Authorization": "Bearer $COPILOT_MCP_SERVICE_TOKEN"
+      },
+      "tools": ["*"]
+    }
+  }
+}
+```
+
+Key fields:
+
+- `type`: `"http"` or `"sse"`.
+- `url`: the server's endpoint URL.
+- `headers`: HTTP headers attached to every request. You can reference Copilot environment secrets here by prefixing the variable name with `$`.
+
+### When to choose which
+
+| Factor | Local | Remote |
+|---|---|---|
+| **Latency** | Lower (same machine) | Higher (network round-trip) |
+| **Dependencies** | Must be installable on the runner | No local dependencies |
+| **Authentication** | Environment variables passed to the process | HTTP headers (tokens, API keys) |
+| **Maintenance** | You manage the server version | The service provider manages it |
+| **Examples** | Sentry (stdio), Azure MCP, Azure DevOps | Cloudflare, GitHub MCP Server, Sentry (OAuth), Notion |
+
+In practice, you'll find both options depending on the vendor. Some services offer local servers launched via `npx` (like Azure MCP), some offer remote MCP endpoints (like Cloudflare or GitHub's own MCP server), and some like Sentry and Notion offer both — a remote endpoint with OAuth for interactive use and a local server for headless/coding-agent workflows.
+
+---
+
+## Configuring MCP servers for Copilot coding agent
+
+There are two main places where you configure MCP servers, depending on where the AI runs:
+
+### 1. VS Code (local development)
+
+In VS Code, MCP server configuration lives in `.vscode/mcp.json` at the root of your project. This file is checked into source control, so your entire team shares the same MCP configuration.
+
+```json title=".vscode/mcp.json"
+{
+  "servers": {
+    "github": {
+      "type": "http",
+      "url": "https://api.githubcopilot.com/mcp"
+    },
+    "playwright": {
+      "command": "npx",
+      "args": ["-y", "@microsoft/mcp-server-playwright"]
+    }
+  }
+}
+```
+
+VS Code provides IntelliSense for this file, and you can manage servers through the Extensions view (search `@mcp` in the extensions marketplace), the Command Palette (`MCP: Add Server`), or by editing the JSON directly.
+
+When you add or change an MCP server, VS Code needs to (re)start the server to discover its tools. The first time you start a server, VS Code will prompt you to confirm that you trust it — a security measure we'll discuss in detail later.
+
+**User-level vs. workspace-level**: servers configured in `.vscode/mcp.json` are workspace-specific. For servers you want available across all projects (like the GitHub MCP server), use the `MCP: Open User Configuration` command to edit your user-level `mcp.json`.
+
+### 2. GitHub.com (Copilot coding agent)
+
+For the coding agent that runs on GitHub's infrastructure (the one that picks up issues and creates PRs), MCP configuration is set in the repository settings:
+
+1. Go to **Settings** then **Copilot** then **Coding agent** in your repository.
+2. Add your JSON configuration in the **MCP configuration** section.
+3. Click **Save** — GitHub validates the syntax automatically.
+
+The JSON format is almost identical to the VS Code format, but with two key differences:
+
+- You **must** include a `tools` key for each server (VS Code auto-discovers tools; the coding agent needs an explicit allowlist).
+- Secrets are managed through **Copilot environments**, not local environment variables.
+
+### Setting up secrets (Copilot environments)
+
+Many MCP servers require API keys or tokens. For the coding agent, you store these as environment secrets:
+
+1. Go to **Settings** then **Environments** in your repository.
+2. Create a new environment called `copilot` (or open it if it already exists).
+3. Under **Environment secrets**, add a secret with a name beginning `COPILOT_MCP_` (e.g., `COPILOT_MCP_SENTRY_ACCESS_TOKEN`).
+
+The `COPILOT_MCP_` prefix is mandatory. Only secrets with this prefix are available to MCP server configurations. This is a deliberate security boundary: it prevents MCP servers from accessing secrets intended for other purposes (like deployment credentials).
+
+### Reusing VS Code configuration
+
+If you've already configured MCP servers in VS Code, you can adapt the same configuration for the coding agent. The main adjustments:
+
+1. Add a `tools` key for each server, specifying which tools are available.
+2. Replace any `inputs` with `env` entries referencing `COPILOT_MCP_`-prefixed secrets.
+3. Replace any `envFile` references with `env` entries.
+
+---
+
+## Practical examples: connecting Copilot to your ecosystem
+
+Let's walk through four real-world MCP integrations, from bug tracking to infrastructure. Each example shows the configuration JSON, explains which tools are enabled and why, and illustrates a concrete use case through the PDRC lens.
+
+### Example 1: Sentry (error tracking)
+
+**What it does**: the Sentry MCP server gives Copilot authenticated access to exceptions recorded in Sentry. The agent can fetch issue details, read stack traces, and get AI-generated issue summaries, all without you copying and pasting error logs into a prompt.
+
+Sentry offers two MCP modes: a **remote** OAuth service (best for interactive tools like VS Code or Claude Desktop) and a **local** stdio server (best for headless environments like the coding agent).
+
+**Configuration (for Copilot coding agent — local stdio):**
+
+```json
+{
+  "mcpServers": {
+    "sentry": {
+      "type": "local",
+      "command": "npx",
+      "args": ["@sentry/mcp-server@latest", "--host=$SENTRY_HOST"],
+      "tools": ["get_issue_details", "get_issue_summary"],
+      "env": {
+        "SENTRY_HOST": "COPILOT_MCP_SENTRY_HOST",
+        "SENTRY_ACCESS_TOKEN": "COPILOT_MCP_SENTRY_ACCESS_TOKEN"
+      }
+    }
+  }
+}
+```
+
+For interactive clients like VS Code, you can use the remote endpoint instead (`"url": "https://mcp.sentry.dev/mcp"`), which authenticates via OAuth in the browser — no API token needed.
+
+**Tools enabled and why:**
+
+- `get_issue_details`: fetches the full details of a Sentry issue, including the stack trace, tags, and metadata. This is the core tool for debugging workflows.
+- `get_issue_summary`: returns an AI-generated summary of the issue. Useful for quick triage.
+
+Notice we're **not** enabling every Sentry tool with `["*"]`. We're allowlisting only the two read-only tools that the agent needs. This is intentional — more on this in the security section.
+
+**PDRC in action:**
+
+Imagine you open a GitHub issue: "Users are getting a 500 error on the `/checkout` endpoint. Sentry issue: PROJ-4521."
+
+- **Plan**: the agent reads the issue, then calls `get_issue_details("PROJ-4521")` to fetch the full stack trace from Sentry. It identifies the error: a `NullPointerException` in `PaymentService.processOrder()` where `order.getShippingAddress()` returns null.
+- **Delegate**: the agent generates a fix — adding a null check and a descriptive error message before the address is accessed.
+- **Review**: you review the PR. The stack trace is referenced in the PR description. The fix matches the exact code path from Sentry.
+- **Correct**: if the fix is incomplete (say, the null check should also log a warning), you comment on the PR and the agent iterates.
+
+Without Sentry MCP, you'd need to open Sentry, find the issue, copy the stack trace, paste it into the prompt, and hope the agent interprets it correctly. With MCP, the agent does this itself.
+
+### Example 2: Notion (documentation and specs)
+
+**What it does**: the Notion MCP server lets Copilot read pages, databases, and comments from your Notion workspace. This is powerful when your team keeps design docs, API specs, or runbooks in Notion.
+
+**Configuration:**
+
+```json
+{
+  "servers": {
+    "notion": {
+      "type": "http",
+      "url": "https://mcp.notion.com/mcp"
+    }
+  }
+}
+```
+
+This is Notion's official remote MCP server with OAuth authentication. When using this in VS Code, you'll be prompted to authorize in the browser — no API token needed. For the coding agent (headless), you can use the local open-source server with `npx @notionhq/notion-mcp-server` and a `NOTION_TOKEN` environment variable instead.
+
+**Use case**: your team writes product specs in Notion. A GitHub issue says "Implement the search filters described in the Product Spec page." With Notion MCP, the agent can fetch the spec page directly, extract the filter requirements, and generate code that matches the documented behavior without you having to copy-paste the spec into the prompt.
+
+### Example 3: Azure (infrastructure)
+
+**What it does**: the Azure MCP server lets Copilot understand your Azure resources — resource groups, App Services, storage accounts, networking configurations. When the agent is working on infrastructure code (Bicep, Terraform, ARM templates), it can query the actual state of your cloud resources.
+
+**Configuration:**
+
+```json
+{
+  "mcpServers": {
+    "Azure": {
+      "type": "local",
+      "command": "npx",
+      "args": ["-y", "@azure/mcp@latest", "server", "start"],
+      "tools": ["*"]
+    }
+  }
+}
+```
+
+Azure MCP uses the Azure Developer CLI for authentication. You'll need to run `azd coding-agent config` locally to set up the authentication flow and create a `copilot-setup-steps.yml` file (we'll cover this file in detail in Ch 14).
+
+**Use case**: you're migrating an App Service from one tier to another. The agent can query the current configuration, compare it against the target, and generate the infrastructure-as-code diff — all grounded in the actual state of your Azure subscription, not in assumptions.
+
+### Example 4: Cloudflare (edge platform)
+
+**What it does**: the Cloudflare MCP server connects Copilot to your Cloudflare services, including Workers, Pages, D1 databases, and documentation.
+
+**Configuration:**
+
+```json
+{
+  "mcpServers": {
+    "cloudflare": {
+      "type": "sse",
+      "url": "https://docs.mcp.cloudflare.com/sse",
+      "tools": ["*"]
+    }
+  }
+}
+```
+
+Notice this is a **remote** server. It uses the `sse` transport type and a URL instead of a local command. You don't need to install anything locally. The Cloudflare MCP endpoint handles everything.
+
+**Use case**: you're building a Cloudflare Worker and need to understand rate limiting options. The agent can query Cloudflare's documentation server directly, get current API references, and generate code that uses the correct API surface — no stale documentation, no guessing.
+
+### The pattern across all examples
+
+Every MCP integration follows the same flow:
+
+1. **Configure** the server (JSON in repo settings or `.vscode/mcp.json`).
+2. **Set secrets** (Copilot environment for coding agent, VS Code inputs or env files for local).
+3. **Allowlist tools** (be specific; avoid wildcard `*` unless you trust every tool the server exposes).
+4. **Use it through PDRC** — the agent now has tools it can call autonomously during Plan and Delegate phases.
+
+---
+
+## Customizing the built-in GitHub MCP server
+
+Here's something many teams don't realize: **Copilot coding agent already ships with a built-in GitHub MCP server**. By default, it connects to GitHub with a specially scoped token that only has read-only access to the current repository.
+
+This default configuration is deliberately conservative. The agent can read files, issues, and PR metadata in the current repo. But you can expand its capabilities significantly.
+
+### Expanding toolsets
+
+The GitHub MCP server organizes its tools into **toolsets** — logical groups of related capabilities. When no toolsets are specified, the default set is: `context`, `repos`, `issues`, `pull_requests`, and `users`.
+
+Here are the most commonly used toolsets:
+
+| Toolset | What it provides |
+|---|---|
+| `context` | Current user and GitHub context (default, strongly recommended) |
+| `repos` | Repository metadata, file contents, branches, commits (default) |
+| `issues` | Issue creation, reading, commenting, labeling (default) |
+| `pull_requests` | PR creation, review, merge, commenting (default) |
+| `users` | User profile information (default) |
+| `code_security` | Code scanning alerts and vulnerability data |
+| `secret_protection` | Secret scanning alerts |
+| `actions` | Workflow runs, logs, artifacts |
+| `web_search` | Web search capabilities via GitHub |
+| `dependabot` | Dependabot alerts and tools |
+| `discussions` | GitHub Discussions |
+| `notifications` | GitHub Notifications |
+| `projects` | GitHub Projects |
+| `orgs` | GitHub Organization tools |
+
+Additional toolsets include `gists`, `git` (low-level Git operations), `labels`, `security_advisories`, and `stargazers`. The remote server also offers exclusive toolsets like `copilot` and `copilot_spaces`. For the full, up-to-date list, see the [GitHub MCP Server README](https://github.com/github/github-mcp-server#available-toolsets).
+
+To customize the GitHub MCP server, add a configuration to your repository's MCP settings:
+
+```json
+{
+  "mcpServers": {
+    "github-mcp-server": {
+      "type": "http",
+      "url": "https://api.githubcopilot.com/mcp/readonly",
+      "tools": ["*"],
+      "headers": {
+        "X-MCP-Toolsets": "repos,issues,users,pull_requests,code_security,secret_protection,actions,web_search"
+      }
+    }
+  }
+}
+```
+
+**Key details:**
+
+- The URL `https://api.githubcopilot.com/mcp/readonly` keeps the server in read-only mode. Remove `/readonly` to enable write access (issue creation, PR commenting, etc.) — but this requires a personal access token.
+- The `X-MCP-Toolsets` header specifies which toolsets to enable. You can include as many or as few as your workflow requires.
+- The `tools` field controls individual tools within the enabled toolsets.
+
+### Enabling cross-repository access
+
+By default, the GitHub MCP server only accesses the current repository. To let the agent read from other repositories (useful for monorepo-adjacent setups or shared library repos), you need to provide a personal access token (PAT):
+
+1. Create a **fine-grained personal access token** with read-only permissions on the repositories you want to expose.
+2. In your repository's Copilot environment, add a secret called `COPILOT_MCP_GITHUB_PERSONAL_ACCESS_TOKEN` with the PAT value.
+3. Update the MCP configuration to reference it.
+
+This lets the agent, for example, read shared configuration from a platform repository while working on a service repository. It's powerful — and it requires careful thought about which repositories to expose.
+
+### Practical example: issue-aware development
+
+With the `issues` and `pull_requests` toolsets enabled, the coding agent can:
+
+1. Read the full issue description (including comments and labels).
+2. Cross-reference related issues.
+3. Draft PR descriptions that link back to the issue.
+4. Check if similar PRs already exist.
+
+This turns the agent from "a tool that writes code based on your prompt" into "a tool that understands the project management context around the code it's writing."
+
+---
+
+## Security: what you must get right
+
+MCP gives your AI assistant the ability to call external tools **autonomously**. Once configured, Copilot will use MCP tools without asking for approval each time. This is by design, it's what makes MCP useful. But it means security is your responsibility at configuration time, not at runtime.
+
+### Principle 1: allowlist specific tools
+
+The `tools` field in your MCP configuration is the most important security control you have. Always prefer an explicit allowlist over the wildcard `*`.
+
+**Why?** MCP servers can expose dozens of tools, including write operations. If a server has both `get_issue_details` (read) and `delete_issue` (write), using `["*"]` enables both. The agent might call `delete_issue` if it misinterprets a prompt.
+
+```json
+{
+  "tools": ["get_issue_details", "get_issue_summary"]
+}
+```
+
+This is better:
+
+```json
+{
+  "tools": ["*"]
+}
+```
+
+than this. Yes, it requires knowing which tools the server offers. Check the server's documentation or source code. The small upfront cost is worth the safety.
+
+### Principle 2: use the COPILOT_MCP_ prefix for all secrets
+
+Copilot environments enforce a naming convention: only secrets and variables prefixed with `COPILOT_MCP_` are available to MCP configurations. This isn't just a convention — it's a security boundary.
+
+Your repository might have secrets for deployment (`AWS_ACCESS_KEY_ID`), CI (`CODECOV_TOKEN`), or other sensitive operations. The `COPILOT_MCP_` prefix ensures MCP servers can never access these. Even if a malicious MCP server tried to read environment variables, it would only see the ones you explicitly exposed.
+
+### Principle 3: prefer read-only access
+
+When configuring the GitHub MCP server, start with the `/readonly` URL:
+
+```
+https://api.githubcopilot.com/mcp/readonly
+```
+
+Only remove `/readonly` when you have a specific need for write access and you've considered the implications. A misconfigured agent with write access to GitHub could create issues, merge PRs, or modify workflows.
+
+### Principle 4: scope tokens narrowly
+
+When providing personal access tokens (for GitHub MCP or other servers), use **fine-grained tokens** with the minimum permissions needed:
+
+- Read-only where possible.
+- Scoped to specific repositories (not "all repositories").
+- Short-lived tokens preferred over long-lived ones.
+
+### Principle 5: trust, but also verify what the server actually does
+
+In VS Code, the first time you start an MCP server, you're prompted to confirm trust. This is a meaningful checkpoint. Review the server's source code or documentation before accepting. For the coding agent on GitHub, there's no interactive trust prompt (it runs autonomously), which makes your configuration-time decisions even more important.
+
+### A security checklist for MCP configuration
+
+Before saving an MCP configuration, run through this checklist:
+
+- [ ] Are tools explicitly allowlisted (not `*`)?
+- [ ] Are all secrets prefixed with `COPILOT_MCP_`?
+- [ ] Is the GitHub MCP server using `/readonly` unless write access is specifically needed?
+- [ ] Are PATs fine-grained and scoped to minimum permissions?
+- [ ] Have you reviewed the MCP server's documentation or source code?
+- [ ] Does the server come from a trusted publisher (official vendor, well-known open source project)?
+
+---
+
+## Combining multiple MCP servers
+
+The real power of MCP emerges when you combine multiple servers. Your configuration isn't limited to one server — you can stack as many as your workflow requires:
+
+```json
+{
+  "mcpServers": {
+    "sentry": {
+      "type": "local",
+      "command": "npx",
+      "args": ["@sentry/mcp-server@latest", "--host=$SENTRY_HOST"],
+      "tools": ["get_issue_details", "get_issue_summary"],
+      "env": {
+        "SENTRY_HOST": "COPILOT_MCP_SENTRY_HOST",
+        "SENTRY_ACCESS_TOKEN": "COPILOT_MCP_SENTRY_ACCESS_TOKEN"
+      }
+    },
+    "notion": {
+      "type": "http",
+      "url": "https://mcp.notion.com/mcp"
+    },
+    "github-mcp-server": {
+      "type": "http",
+      "url": "https://api.githubcopilot.com/mcp/readonly",
+      "tools": ["*"],
+      "headers": {
+        "X-MCP-Toolsets": "repos,issues,pull_requests,actions"
+      }
+    }
+  }
+}
+```
+
+With this configuration, the agent can:
+
+1. Read a Sentry error to understand the bug.
+2. Fetch the relevant Notion design doc to understand the intended behavior.
+3. Cross-reference GitHub issues to find related reports.
+4. Generate a fix grounded in all three contexts.
+
+This is what turns a coding assistant into an engineering companion, it has access to the same information sources you do.
+
+---
+
+## Hands-on: configure Sentry MCP and a customized GitHub MCP server
+
+Time to put this into practice. In this exercise, you'll configure two MCP servers: Sentry for error tracking and a customized GitHub MCP server with expanded toolsets. We'll cover both VS Code (local development) and GitHub.com (coding agent) configurations.
+
+### Prerequisites
+
+- A GitHub repository where you have admin access.
+- A Sentry account with at least one project (a free tier account works).
+- VS Code with GitHub Copilot installed.
+
+### Step 1: configure Sentry MCP in VS Code
+
+Create or edit `.vscode/mcp.json` in your project root:
+
+```json title=".vscode/mcp.json"
+{
+  "servers": {
+    "sentry": {
+      "command": "npx",
+      "args": [
+        "@sentry/mcp-server@latest",
+        "--host=your-org.sentry.io"
+      ],
+      "env": {
+        "SENTRY_ACCESS_TOKEN": "${input:sentry_token}"
+      }
+    }
+  },
+  "inputs": [
+    {
+      "id": "sentry_token",
+      "type": "promptString",
+      "description": "Sentry API token",
+      "password": true
+    }
+  ]
+}
+```
+
+Replace `your-org` with your actual Sentry organization slug. The `inputs` block tells VS Code to prompt you for the token when the server starts, and avoids hardcoding secrets in the file.
+
+**Start the server:**
+
+1. Open the Command Palette and run `MCP: List Servers`.
+2. Select the Sentry server and choose **Start**.
+3. VS Code will ask you to confirm trust, then prompt for your Sentry API token.
+4. When the server starts, check the MCP output log to verify the tools are discovered.
+
+**Test it:**
+
+Open Copilot Chat and try a prompt like:
+
+```
+What are the most recent unresolved issues in my Sentry project?
+```
+
+If the server is configured correctly, Copilot will call the Sentry MCP tools to fetch the data. You'll see the tool invocations in the chat response.
+
+### Step 2: customize the GitHub MCP server in VS Code
+
+The GitHub MCP server is available from the VS Code MCP server gallery. Add it to your workspace configuration:
+
+```json title=".vscode/mcp.json"
+{
+  "servers": {
+    "sentry": {
+      "command": "npx",
+      "args": [
+        "@sentry/mcp-server@latest",
+        "--host=your-org.sentry.io"
+      ],
+      "env": {
+        "SENTRY_ACCESS_TOKEN": "${input:sentry_token}"
+      }
+    },
+    "github": {
+      "type": "http",
+      "url": "https://api.githubcopilot.com/mcp"
+    }
+  },
+  "inputs": [
+    {
+      "id": "sentry_token",
+      "type": "promptString",
+      "description": "Sentry API token",
+      "password": true
+    }
+  ]
+}
+```
+
+The GitHub MCP server in VS Code uses the built-in Copilot authentication — no additional token needed for the current repository.
+
+**Test it:**
+
+```
+List the open issues in this repository that are labeled "bug".
+```
+
+Copilot should use the GitHub MCP server tools to fetch and display the issues.
+
+### Step 3: configure both servers for Copilot coding agent
+
+Now let's set up the same servers for the coding agent that runs on GitHub's infrastructure.
+
+**3a. Create the Copilot environment:**
+
+1. Go to your repository on GitHub.com.
+2. Navigate to **Settings** then **Environments**.
+3. Click **New environment** and name it `copilot`.
+4. Under **Environment secrets**, add:
+   - `COPILOT_MCP_SENTRY_HOST` with value `your-org.sentry.io` (hostname only — do **not** include `https://`)
+   - `COPILOT_MCP_SENTRY_ACCESS_TOKEN` with your Sentry API token
+
+**3b. Add the MCP configuration:**
+
+1. Navigate to **Settings** then **Copilot** then **Coding agent**.
+2. In the MCP configuration section, enter:
+
+```json
+{
+  "mcpServers": {
+    "sentry": {
+      "type": "local",
+      "command": "npx",
+      "args": ["@sentry/mcp-server@latest", "--host=$SENTRY_HOST"],
+      "tools": ["get_issue_details", "get_issue_summary"],
+      "env": {
+        "SENTRY_HOST": "COPILOT_MCP_SENTRY_HOST",
+        "SENTRY_ACCESS_TOKEN": "COPILOT_MCP_SENTRY_ACCESS_TOKEN"
+      }
+    },
+    "github-mcp-server": {
+      "type": "http",
+      "url": "https://api.githubcopilot.com/mcp/readonly",
+      "tools": ["*"],
+      "headers": {
+        "X-MCP-Toolsets": "repos,issues,pull_requests,actions,web_search"
+      }
+    }
+  }
+}
+```
+
+3. Click **Save**.
+
+**3c. Validate the configuration:**
+
+1. Create a test issue in your repository: "Test MCP integration: fetch Sentry issue PROJ-1234 and describe the error."
+2. Assign the issue to Copilot.
+3. Wait for the agent to pick it up (you'll see the eyes emoji reaction).
+4. When the PR appears, click **View session** to check the agent logs.
+5. In the logs, expand **Start MCP Servers** — you should see both servers listed with their discovered tools.
+
+### Step 4: verify your security posture
+
+Review your configuration against the security checklist from earlier:
+
+- Sentry tools are allowlisted (`get_issue_details`, `get_issue_summary`) — not `*`.
+- GitHub MCP server uses the `/readonly` URL.
+- All secrets use the `COPILOT_MCP_` prefix.
+- The Sentry API token has the minimum permissions needed (issue read access).
+
+If everything checks out, you've successfully extended Copilot's reach beyond the codebase and into your engineering ecosystem.
+
+---
+
+## Conclusion
+
+MCP is the bridge between your AI coding assistant and the rest of your engineering world. Here's what to take away:
+
+1. **MCP is a universal protocol, not a single integration.** One standard, any server. Configure once per service, and your AI can access it across VS Code, GitHub coding agent, and any other MCP-compatible client.
+
+2. **Local servers run on your machine (or the Actions runner); remote servers run elsewhere.** Local uses `command` + `args` + `env`. Remote uses `url` + `headers`. Choose based on where the server is hosted and what dependencies it needs.
+
+3. **The built-in GitHub MCP server is your quickest win.** It ships with Copilot coding agent and only needs a configuration tweak to expand from default read-only to full toolset access across repos, issues, PRs, actions, and web search.
+
+4. **Security is a configuration-time decision.** Allowlist specific tools, use the `COPILOT_MCP_` prefix for all secrets, prefer read-only access, and scope tokens narrowly. Once an MCP server is configured, the agent uses its tools autonomously.
+
+5. **Combining multiple MCP servers creates compounding value.** Sentry for error context plus Notion for design docs plus GitHub for project management gives the agent the same information sources you use — making its output dramatically more relevant.
+
+In Ch 14, we'll build on MCP by adding **hooks and automation** — shell commands that execute at key points during agent execution, the `copilot-setup-steps.yml` file that customizes the agent's development environment, and workflows that take an issue all the way from creation to merged PR without manual intervention.
+
+
