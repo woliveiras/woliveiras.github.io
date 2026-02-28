@@ -5,13 +5,928 @@ module: 3
 order: 14
 ---
 
-## Hooks, Validation & Agent Automation
+## From protocol to pipeline
 
-TODO: Content for Chapter 14 — Hooks, Validation & Agent Automation (focus: Delegate + Review)
+Ch 13 introduced MCP, the protocol that lets Copilot talk to external systems. MCP answers the question "what can the agent access?" This chapter answers the next question: **"what happens before, during, and after the agent acts?"**
 
-**Topics to cover:**
+Hooks are shell commands that execute at strategic points in the agent's workflow. They let you enforce policies (block dangerous commands), create audit trails (log every tool invocation), and integrate with external systems (notify Slack when a session ends). Combined with `copilot-setup-steps.yml` — the file that customizes the agent's development environment — hooks give you fine-grained control over how the coding agent operates.
 
-- Hooks: execute shell commands at key points during agent execution
-- `copilot-setup-steps.yml` — customizing the coding agent's development environment
-- Integration with project tools: Slack, Teams, Linear, Azure Boards
-- Hands-on: build a workflow where agent receives issue → creates branch → implements → opens PR → automatic code review
+In PDRC terms, this chapter is about strengthening the **Review** and **Correct** phases at the infrastructure level. Instead of reviewing agent output manually after the fact, hooks let you inject automated checks that run *during* agent execution. The agent still does the work (Delegate), but your hooks validate that work in real time.
+
+---
+
+## What are hooks?
+
+Hooks are custom shell commands that Copilot executes at key points during an agent session. Think of them as event listeners: the agent's workflow emits events (session started, tool about to be used, tool finished, error occurred), and your hooks react to those events.
+
+Hooks are stored as JSON files in `.github/hooks/` inside your repository. You can have multiple hook files, and Copilot loads all `*.json` files from that directory. These hooks work with both the coding agent on GitHub and GitHub Copilot CLI in the terminal.
+
+### The six hook triggers
+
+| Trigger | When it fires | What you can do |
+|---|---|---|
+| `sessionStart` | A new agent session begins (or an existing session resumes) | Initialize logging, validate project state, set up temporary resources |
+| `sessionEnd` | The session completes or is terminated | Clean up temp files, generate session reports, send completion notifications |
+| `userPromptSubmitted` | The user submits a prompt | Log user requests for auditing and usage analysis |
+| `preToolUse` | Before the agent uses any tool (`bash`, `edit`, `view`, `create`) | **Approve or deny** tool executions, enforce security policies, block dangerous commands |
+| `postToolUse` | After a tool finishes (success or failure) | Log results, track statistics, send failure alerts |
+| `errorOccurred` | An error occurs during execution | Log errors, send notifications, track error patterns |
+
+The `preToolUse` hook is the most powerful one. It's the only hook that can change the agent's behavior by returning a JSON response that denies a tool execution. All other hooks are observational: they receive data about what happened, but they don't alter the flow.
+
+### Hook configuration format
+
+A hook file follows this structure:
+
+```json title=".github/hooks/my-hooks.json"
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [...],
+    "sessionEnd": [...],
+    "userPromptSubmitted": [...],
+    "preToolUse": [...],
+    "postToolUse": [...],
+    "errorOccurred": [...]
+  }
+}
+```
+
+Each trigger holds an array of hook definitions. A hook definition looks like this:
+
+```json
+{
+  "type": "command",
+  "bash": "./scripts/my-hook.sh",
+  "powershell": "./scripts/my-hook.ps1",
+  "cwd": "scripts",
+  "env": { "LOG_LEVEL": "INFO" },
+  "timeoutSec": 30
+}
+```
+
+| Field | Required | Description |
+|---|---|---|
+| `type` | Yes | Must be `"command"` |
+| `bash` | Yes (Unix) | The bash command or script path to execute |
+| `powershell` | Yes (Windows) | The PowerShell command or script path to execute |
+| `cwd` | No | Working directory, relative to the repository root |
+| `env` | No | Environment variables merged with the existing environment |
+| `timeoutSec` | No | Maximum execution time in seconds (default: 30) |
+
+You can define multiple hooks for the same trigger — they execute in order, top to bottom.
+
+---
+
+## How hooks communicate
+
+Every hook receives JSON input via stdin. The input always includes a `timestamp` (Unix milliseconds) and `cwd` (current working directory), plus fields specific to the trigger type.
+
+### Input examples
+
+**sessionStart:**
+
+```json
+{
+  "timestamp": 1704614400000,
+  "cwd": "/path/to/project",
+  "source": "new",
+  "initialPrompt": "Fix the authentication bug"
+}
+```
+
+The `source` field tells you whether this is a `"new"` session, a `"resume"` of an existing one, or a `"startup"`.
+
+**preToolUse:**
+
+```json
+{
+  "timestamp": 1704614600000,
+  "cwd": "/path/to/project",
+  "toolName": "bash",
+  "toolArgs": "{\"command\":\"rm -rf dist\",\"description\":\"Clean build directory\"}"
+}
+```
+
+This is where hooks get interesting. The `toolName` tells you *which* tool the agent is about to use, and `toolArgs` contains the exact arguments. You can inspect these and decide whether to allow or deny the operation.
+
+**postToolUse:**
+
+```json
+{
+  "timestamp": 1704614700000,
+  "cwd": "/path/to/project",
+  "toolName": "bash",
+  "toolArgs": "{\"command\":\"npm test\"}",
+  "toolResult": {
+    "resultType": "success",
+    "textResultForLlm": "All tests passed (15/15)"
+  }
+}
+```
+
+The `toolResult` object gives you the outcome: `"success"`, `"failure"`, or `"denied"`.
+
+### Output: the preToolUse response
+
+Only `preToolUse` hooks can produce meaningful output. To deny a tool execution, your script prints a JSON object to stdout:
+
+```json
+{"permissionDecision": "deny", "permissionDecisionReason": "Destructive operations require approval"}
+```
+
+The `permissionDecision` field accepts `"allow"`, `"deny"`, or `"ask"` — though currently only `"deny"` is processed. If your script exits without output (or outputs `"allow"`), the tool execution proceeds normally.
+
+### Reading input in scripts
+
+The standard pattern in Bash:
+
+```sh
+#!/bin/bash
+INPUT=$(cat)
+TOOL_NAME=$(echo "$INPUT" | jq -r '.toolName')
+TOOL_ARGS=$(echo "$INPUT" | jq -r '.toolArgs')
+```
+
+And in PowerShell:
+
+```powershell
+$input = [Console]::In.ReadToEnd() | ConvertFrom-Json
+$toolName = $input.toolName
+$toolArgs = $input.toolArgs
+```
+
+The key detail: input comes from stdin. Use `cat` (Bash) or `ReadToEnd()` (PowerShell) to capture it, then parse with `jq` or `ConvertFrom-Json`.
+
+---
+
+## Practical hook patterns
+
+Let's walk through four patterns that solve real engineering problems. Each one maps to a PDRC concern.
+
+### Pattern 1: security guardrails (Review)
+
+The most common use case for `preToolUse` hooks: blocking dangerous commands before they execute.
+
+```sh title=".github/hooks/scripts/security-check.sh"
+#!/bin/bash
+INPUT=$(cat)
+TOOL_NAME=$(echo "$INPUT" | jq -r '.toolName')
+TOOL_ARGS=$(echo "$INPUT" | jq -r '.toolArgs')
+
+# Only validate bash commands
+if [ "$TOOL_NAME" != "bash" ]; then
+  exit 0
+fi
+
+# Check for dangerous patterns
+COMMAND=$(echo "$TOOL_ARGS" | jq -r '.command')
+if echo "$COMMAND" | grep -qE "rm -rf /|sudo|mkfs|DROP TABLE|format"; then
+  echo '{"permissionDecision":"deny","permissionDecisionReason":"Dangerous system command blocked by security hook"}'
+  exit 0
+fi
+
+# Allow by default
+```
+
+The hook file that registers it:
+
+```json title=".github/hooks/security.json"
+{
+  "version": 1,
+  "hooks": {
+    "preToolUse": [
+      {
+        "type": "command",
+        "bash": "./.github/hooks/scripts/security-check.sh",
+        "timeoutSec": 5
+      }
+    ]
+  }
+}
+```
+
+**Why this matters**: the agent has access to a bash shell. Without guardrails, a misinterpreted prompt could lead to destructive commands. This hook adds an automated Review layer that catches dangerous patterns before they execute. You can customize the regex to match your project's specific risks (for example, blocking `aws s3 rm` commands in a cloud project).
+
+### Pattern 2: file boundary enforcement (Review)
+
+Sometimes you want the agent to only edit files in specific directories. For example, a frontend agent should only touch `src/` and `test/`, not `infrastructure/` or `.github/`.
+
+```sh title=".github/hooks/scripts/enforce-boundaries.sh"
+#!/bin/bash
+INPUT=$(cat)
+TOOL_NAME=$(echo "$INPUT" | jq -r '.toolName')
+
+# Only enforce on file-editing tools
+if [ "$TOOL_NAME" = "edit" ] || [ "$TOOL_NAME" = "create" ]; then
+  PATH_ARG=$(echo "$INPUT" | jq -r '.toolArgs' | jq -r '.path')
+
+  if [[ ! "$PATH_ARG" =~ ^(src/|test/) ]]; then
+    echo "{\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"Can only edit files in src/ or test/ directories\"}"
+    exit 0
+  fi
+fi
+```
+
+This enforces the boundaries described in your instruction files (Ch 7) at the infrastructure level. Instructions tell the agent what it *should* do; hooks enforce what it *can* do.
+
+### Pattern 3: audit logging (Correct)
+
+For compliance-sensitive environments, you need a complete record of what the agent did during a session. Hooks are perfect for this:
+
+```json title=".github/hooks/audit.json"
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [
+      {
+        "type": "command",
+        "bash": "echo \"Session started: $(date)\" >> logs/session.log",
+        "cwd": ".",
+        "timeoutSec": 10
+      }
+    ],
+    "userPromptSubmitted": [
+      {
+        "type": "command",
+        "bash": "./.github/hooks/scripts/log-prompt.sh",
+        "timeoutSec": 10
+      }
+    ],
+    "preToolUse": [
+      {
+        "type": "command",
+        "bash": "./.github/hooks/scripts/log-tool-use.sh",
+        "timeoutSec": 10
+      }
+    ],
+    "postToolUse": [
+      {
+        "type": "command",
+        "bash": "./.github/hooks/scripts/log-tool-result.sh",
+        "timeoutSec": 10
+      }
+    ],
+    "sessionEnd": [
+      {
+        "type": "command",
+        "bash": "./.github/hooks/scripts/cleanup.sh",
+        "timeoutSec": 60
+      }
+    ]
+  }
+}
+```
+
+The `log-tool-result.sh` script might write structured JSON lines:
+
+```sh title=".github/hooks/scripts/log-tool-result.sh"
+#!/bin/bash
+INPUT=$(cat)
+TIMESTAMP=$(echo "$INPUT" | jq -r '.timestamp')
+TOOL_NAME=$(echo "$INPUT" | jq -r '.toolName')
+RESULT_TYPE=$(echo "$INPUT" | jq -r '.toolResult.resultType')
+
+jq -n \
+  --arg ts "$TIMESTAMP" \
+  --arg tool "$TOOL_NAME" \
+  --arg result "$RESULT_TYPE" \
+  '{timestamp: $ts, tool: $tool, result: $result}' >> logs/audit.jsonl
+```
+
+This creates a structured audit trail that you can feed into your compliance tools, SIEM systems, or simply review when something goes wrong.
+
+### Pattern 4: external notifications (Delegate)
+
+Hooks can call external services. This example sends a Slack notification when the agent encounters an error:
+
+```sh title=".github/hooks/scripts/notify-slack.sh"
+#!/bin/bash
+INPUT=$(cat)
+ERROR_MSG=$(echo "$INPUT" | jq -r '.error.message')
+
+WEBHOOK_URL="$SLACK_WEBHOOK_URL"
+
+curl -s -X POST "$WEBHOOK_URL" \
+  -H 'Content-Type: application/json' \
+  -d "{\"text\":\"Agent Error: $ERROR_MSG\"}"
+```
+
+The hook registration:
+
+```json
+{
+  "version": 1,
+  "hooks": {
+    "errorOccurred": [
+      {
+        "type": "command",
+        "bash": "./.github/hooks/scripts/notify-slack.sh",
+        "env": {
+          "SLACK_WEBHOOK_URL": "https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
+        },
+        "timeoutSec": 15
+      }
+    ]
+  }
+}
+```
+
+The same pattern works for Microsoft Teams, PagerDuty, or any service that accepts webhook calls. In PDRC terms, this extends the Delegate phase: the agent delegates error notifications to your team's communication channels.
+
+---
+
+## copilot-setup-steps.yml: the agent's environment
+
+While hooks run *during* agent execution, `copilot-setup-steps.yml` runs *before*. It's a GitHub Actions workflow that prepares the coding agent's development environment installing dependencies, configuring tools, setting up authentication, and anything else the agent needs to start working.
+
+### Why this file exists
+
+The coding agent runs in an ephemeral GitHub Actions runner. By default, it's a clean Ubuntu environment with standard tools (Node.js, Python, Git, etc.). But your project might need:
+
+- Specific language runtimes or versions (Node 20, Python 3.12, Go 1.22).
+- Private package registries (npm, PyPI, NuGet with authentication).
+- System-level dependencies (Docker images, native libraries).
+- Cloud CLI tools (Azure CLI for MCP authentication, AWS CLI for deployments).
+
+Without `copilot-setup-steps.yml`, the agent has to figure all of this out through trial and error. It *can* install dependencies by running shell commands, but this is slow, unreliable, and sometimes impossible (for example, private registries that require credentials).
+
+### The anatomy of a setup file
+
+```yaml title=".github/workflows/copilot-setup-steps.yml"
+name: "Copilot Setup Steps"
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+  pull_request:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+
+jobs:
+  # The job MUST be called copilot-setup-steps
+  copilot-setup-steps:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+```
+
+**Key requirements:**
+
+1. **The file must live at** `.github/workflows/copilot-setup-steps.yml` — exactly this path, no variations.
+2. **The job must be named** `copilot-setup-steps` — any other name will be ignored.
+3. **The file must be on the default branch** — the agent won't pick it up from feature branches.
+
+**What you can customize:**
+
+| Setting | Description |
+|---|---|
+| `steps` | The setup commands to run before the agent starts |
+| `permissions` | GitHub token permissions (keep as restrictive as possible) |
+| `runs-on` | The runner type (`ubuntu-latest`, a larger runner label, or an ARC scale set) |
+| `services` | Docker service containers (databases, caches) |
+| `timeout-minutes` | Maximum setup time (up to 59 minutes) |
+
+**What gets ignored if you try to set it:** anything else. The workflow has a single job, and only the settings above are honored.
+
+### Built-in validation
+
+The `on` triggers in the template (`push` and `pull_request` filtering on the file's own path) mean that any changes to the setup file automatically trigger a validation run. You can see the result in the Actions tab or in a PR's checks — before merging, not after.
+
+If any step fails (non-zero exit code), the agent skips remaining steps and starts with whatever environment state exists at that point. This means your steps should be ordered from most critical to least critical.
+
+### Real-world examples
+
+**Python project with private packages:**
+
+```yaml title=".github/workflows/copilot-setup-steps.yml"
+name: "Copilot Setup Steps"
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+  pull_request:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+
+jobs:
+  copilot-setup-steps:
+    runs-on: ubuntu-latest
+    environment: copilot
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Configure private registry
+        run: |
+          pip config set global.extra-index-url "https://${{ secrets.PYPI_TOKEN }}@pypi.internal.company.com/simple/"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+```
+
+The `environment: copilot` line gives the job access to secrets stored in the Copilot environment (the same one you set up for MCP in Ch 13).
+
+**Monorepo with multiple languages:**
+
+```yaml title=".github/workflows/copilot-setup-steps.yml"
+name: "Copilot Setup Steps"
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+  pull_request:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+
+jobs:
+  copilot-setup-steps:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+
+      - name: Install pnpm
+        run: corepack enable && corepack prepare pnpm@latest --activate
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+        working-directory: frontend
+
+      - name: Install backend dependencies
+        run: go mod download
+        working-directory: backend
+```
+
+**Azure MCP authentication (from Ch 13):**
+
+```yaml title=".github/workflows/copilot-setup-steps.yml"
+name: "Copilot Setup Steps"
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+  pull_request:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+
+jobs:
+  copilot-setup-steps:
+    runs-on: ubuntu-latest
+    environment: copilot
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          allow-no-subscriptions: true
+```
+
+This connects to Ch 13's Azure MCP example. The Azure login step runs before the agent starts, so the Azure MCP server can authenticate via the Azure CLI session.
+
+---
+
+## Integration with project tools
+
+Hooks and setup steps together create a bridge between the coding agent and your project management ecosystem. Here's how the connection works for each tool category:
+
+### Slack and Microsoft Teams
+
+**Pattern**: use `postToolUse` and `sessionEnd` hooks to send notifications about agent activity.
+
+```sh title=".github/hooks/scripts/notify-teams.sh"
+#!/bin/bash
+INPUT=$(cat)
+REASON=$(echo "$INPUT" | jq -r '.reason')
+
+WEBHOOK_URL="$TEAMS_WEBHOOK_URL"
+
+curl -s -X POST "$WEBHOOK_URL" \
+  -H 'Content-Type: application/json' \
+  -d "{
+    \"@type\": \"MessageCard\",
+    \"summary\": \"Copilot session ended\",
+    \"sections\": [{
+      \"activityTitle\": \"Copilot Coding Agent\",
+      \"facts\": [{\"name\": \"Status\", \"value\": \"$REASON\"}]
+    }]
+  }"
+```
+
+This notifies your team channel when the agent finishes a session. Combined with `errorOccurred` hooks, you get a real-time feed of agent activity in the same place your team already communicates.
+
+### Linear, Azure Boards, and Jira
+
+**Pattern**: use `sessionStart` hooks to fetch issue context, and `sessionEnd` hooks to update issue status.
+
+When the coding agent picks up a GitHub issue, it already knows the issue title and description. But if your team tracks work in Linear or Azure Boards, the GitHub issue might only contain a reference ("See LINEAR-1234"). A `sessionStart` hook can:
+
+1. Parse the issue description for external references.
+2. Call the Linear/Azure Boards/Jira API to fetch the full task details.
+3. Write the details to a file in the workspace that the agent can read.
+
+```sh title=".github/hooks/scripts/fetch-linear-context.sh"
+#!/bin/bash
+INPUT=$(cat)
+PROMPT=$(echo "$INPUT" | jq -r '.initialPrompt')
+
+# Check if the prompt references a Linear issue
+LINEAR_ID=$(echo "$PROMPT" | grep -oP 'LINEAR-\d+' || true)
+
+if [ -n "$LINEAR_ID" ]; then
+  # Fetch issue details from Linear API
+  curl -s "https://api.linear.app/graphql" \
+    -H "Authorization: $LINEAR_API_KEY" \
+    -H "Content-Type: application/json" \
+    -d "{\"query\": \"{ issue(id: \\\"$LINEAR_ID\\\") { title description priority } }\"}" \
+    > .github/hooks/context/linear-issue.json
+
+  echo "Fetched Linear issue $LINEAR_ID context"
+fi
+```
+
+A `sessionEnd` hook can then update the external tracker when the agent finishes — marking the task as "in review" or posting the PR link.
+
+### CI/CD systems (GitHub Actions)
+
+The coding agent already creates PRs, which trigger your existing CI/CD workflows. But hooks can add intelligence to this loop:
+
+- A `postToolUse` hook on `bash` commands can track which tests the agent runs, and compare against your required test suite.
+- A `sessionEnd` hook can trigger a specific workflow (via the GitHub API) if the agent's changes affect infrastructure code.
+
+---
+
+## The full automation loop: issue to merged PR
+
+Let's put everything together. The goal: an issue is created, the coding agent picks it up, implements the fix, creates a PR with full context, and the PR goes through automated review with hooks validating the agent's behavior at every step.
+
+### The architecture
+
+Here's how the pieces connect:
+
+| Phase | What happens | What controls it |
+|---|---|---|
+| **Environment setup** | Dependencies installed, tools configured, authentication established | `copilot-setup-steps.yml` |
+| **Session start** | Agent begins, hooks initialize logging and fetch external context | `sessionStart` hooks |
+| **Implementation** | Agent reads the issue, plans, writes code, runs tests | Custom instructions (Ch 7), MCP (Ch 13) |
+| **Validation** | Every tool call passes through security and boundary checks | `preToolUse` hooks |
+| **Audit** | Every tool result is logged for compliance | `postToolUse` hooks |
+| **PR creation** | Agent opens a PR with description, test results, and issue links | Built-in coding agent behavior |
+| **Automated review** | Copilot Code Review (Ch 10) reviews the PR | Repository settings |
+| **Notification** | Team is notified of the PR via Slack/Teams | `sessionEnd` hooks |
+
+### What you configure once vs. what runs automatically
+
+**One-time setup (configure once, benefits every issue):**
+
+1. `copilot-setup-steps.yml` — environment configuration.
+2. `.github/hooks/*.json` — hook definitions.
+3. `.github/copilot-instructions.md` — agent instructions (Ch 7).
+4. MCP configuration in repository settings (Ch 13).
+5. Copilot Code Review enabled in repository settings (Ch 10).
+
+**Automated flow (runs for every assigned issue):**
+
+1. You (or a team member) create an issue and assign it to Copilot.
+2. The agent picks it up (eyes emoji reaction within seconds).
+3. Setup steps run: dependencies installed, tools ready.
+4. `sessionStart` hooks fire: logging initialized, external context fetched.
+5. The agent reads the issue, plan-delegates-reviews-corrects through the implementation.
+6. `preToolUse` hooks validate every tool call. `postToolUse` hooks log every result.
+7. The agent creates a PR.
+8. Copilot Code Review automatically reviews the PR.
+9. `sessionEnd` hooks fire: team notified, external tracker updated.
+10. A human reviews the PR, merges or requests changes (the agent can iterate on feedback).
+
+The human in this loop is the final reviewer — not the person writing the code, running the tests, creating the PR, or updating the tracker. The agent handles all of that, with hooks ensuring it operates within your team's guardrails.
+
+---
+
+## Performance and reliability
+
+Hooks run synchronously and block agent execution. A slow hook slows the agent. A failed hook can disrupt the session. Here's how to keep things reliable:
+
+### Keep hooks fast
+
+- **Target: under 5 seconds per hook.** This is especially important for `preToolUse`, which runs on every tool call. An agent session might involve dozens of tool calls; a 5-second hook adds minutes to the total.
+- **Use async patterns for expensive operations.** If you need to call an external API (Slack, Linear), fire the request in the background and don't wait for the response:
+
+```sh
+# Send notification in background, don't block agent
+curl -s -X POST "$WEBHOOK_URL" -d "$PAYLOAD" &
+```
+
+- **Avoid unnecessary work.** Check the trigger type early and exit if the hook doesn't apply:
+
+```sh
+if [ "$TOOL_NAME" != "bash" ]; then
+  exit 0  # This hook only cares about bash commands
+fi
+```
+
+### Handle timeouts
+
+The default timeout is 30 seconds. For most hooks, this is generous. Reduce it to 5-10 seconds for `preToolUse` hooks (which run frequently) and increase it for `sessionEnd` cleanup hooks (which run once):
+
+```json
+{
+  "preToolUse": [
+    {
+      "type": "command",
+      "bash": "./scripts/security-check.sh",
+      "timeoutSec": 5
+    }
+  ],
+  "sessionEnd": [
+    {
+      "type": "command",
+      "bash": "./scripts/cleanup.sh",
+      "timeoutSec": 60
+    }
+  ]
+}
+```
+
+### Test hooks locally
+
+You can test hooks by piping JSON into them:
+
+```sh
+echo '{"timestamp":1704614600000,"cwd":"/tmp","toolName":"bash","toolArgs":"{\"command\":\"ls\"}"}' | ./scripts/security-check.sh
+echo $?
+```
+
+This lets you verify behavior without running a full agent session. Test with both allowed and denied inputs to make sure your logic handles both paths.
+
+---
+
+## Hands-on: build a validated agent workflow
+
+In this exercise, you'll create a complete hook-and-setup configuration for a TypeScript project. The setup installs dependencies deterministically, the hooks enforce security boundaries and create an audit trail, and the whole thing integrates with one notification channel.
+
+### Prerequisites
+
+- A GitHub repository with a TypeScript/Node.js project (or any project with `npm` or `pnpm`).
+- Admin access to the repository.
+- A Slack workspace with an incoming webhook URL (optional; you can skip the notification step if you don't use Slack).
+
+### Step 1: create copilot-setup-steps.yml
+
+Create the file at `.github/workflows/copilot-setup-steps.yml`:
+
+```yaml title=".github/workflows/copilot-setup-steps.yml"
+name: "Copilot Setup Steps"
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+  pull_request:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+
+jobs:
+  copilot-setup-steps:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify setup
+        run: |
+          echo "Node version: $(node --version)"
+          echo "npm version: $(npm --version)"
+          echo "Dependencies installed: $(ls node_modules | wc -l) packages"
+```
+
+Push this to your default branch. Check the Actions tab; the workflow should run and pass. This validates that your environment setup works before the agent ever uses it.
+
+### Step 2: create the hooks directory and security hook
+
+Create `.github/hooks/scripts/` and add the security guardrail:
+
+```sh title=".github/hooks/scripts/security-check.sh"
+#!/bin/bash
+set -e
+
+INPUT=$(cat)
+TOOL_NAME=$(echo "$INPUT" | jq -r '.toolName')
+TOOL_ARGS=$(echo "$INPUT" | jq -r '.toolArgs')
+
+# Only inspect bash commands
+if [ "$TOOL_NAME" != "bash" ]; then
+  exit 0
+fi
+
+COMMAND=$(echo "$TOOL_ARGS" | jq -r '.command')
+
+# Block destructive patterns
+if echo "$COMMAND" | grep -qE "rm -rf /|sudo rm|DROP TABLE|format C:"; then
+  echo '{"permissionDecision":"deny","permissionDecisionReason":"Destructive command blocked by repository security hook"}'
+  exit 0
+fi
+
+# Block commands that access secrets
+if echo "$COMMAND" | grep -qE "printenv|env |cat.*\.env|echo.*SECRET|echo.*TOKEN"; then
+  echo '{"permissionDecision":"deny","permissionDecisionReason":"Commands that expose environment variables or secrets are not allowed"}'
+  exit 0
+fi
+```
+
+Make it executable:
+
+```sh
+chmod +x .github/hooks/scripts/security-check.sh
+```
+
+### Step 3: create the audit logging hook
+
+Create `.github/hooks/scripts/log-tool-result.sh`:
+
+```sh title=".github/hooks/scripts/log-tool-result.sh"
+#!/bin/bash
+INPUT=$(cat)
+TIMESTAMP=$(echo "$INPUT" | jq -r '.timestamp')
+TOOL_NAME=$(echo "$INPUT" | jq -r '.toolName')
+RESULT_TYPE=$(echo "$INPUT" | jq -r '.toolResult.resultType')
+
+mkdir -p logs
+
+jq -n \
+  --arg ts "$TIMESTAMP" \
+  --arg tool "$TOOL_NAME" \
+  --arg result "$RESULT_TYPE" \
+  '{timestamp: $ts, tool: $tool, result: $result}' >> logs/audit.jsonl
+```
+
+```sh
+chmod +x .github/hooks/scripts/log-tool-result.sh
+```
+
+### Step 4: create the hook configuration
+
+Create the hook file at `.github/hooks/workflow-hooks.json`:
+
+```json title=".github/hooks/workflow-hooks.json"
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [
+      {
+        "type": "command",
+        "bash": "mkdir -p logs && echo \"Session started: $(date)\" >> logs/session.log",
+        "timeoutSec": 5
+      }
+    ],
+    "preToolUse": [
+      {
+        "type": "command",
+        "bash": "./.github/hooks/scripts/security-check.sh",
+        "timeoutSec": 5
+      }
+    ],
+    "postToolUse": [
+      {
+        "type": "command",
+        "bash": "./.github/hooks/scripts/log-tool-result.sh",
+        "timeoutSec": 10
+      }
+    ],
+    "sessionEnd": [
+      {
+        "type": "command",
+        "bash": "echo \"Session ended: $(date)\" >> logs/session.log",
+        "timeoutSec": 5
+      }
+    ]
+  }
+}
+```
+
+### Step 5: test locally
+
+Before pushing, verify your security hook works:
+
+```sh
+# Should be allowed (normal command)
+echo '{"timestamp":1704614600000,"cwd":"/tmp","toolName":"bash","toolArgs":"{\"command\":\"npm test\"}"}' | ./.github/hooks/scripts/security-check.sh
+echo "Exit code: $?"
+
+# Should be denied (destructive command)
+echo '{"timestamp":1704614600000,"cwd":"/tmp","toolName":"bash","toolArgs":"{\"command\":\"rm -rf /\"}"}' | ./.github/hooks/scripts/security-check.sh
+echo "Exit code: $?"
+```
+
+The first command should produce no output (allowed). The second should output a JSON deny response.
+
+### Step 6: commit and validate
+
+```sh
+git add .github/hooks/ .github/workflows/copilot-setup-steps.yml
+git commit -m "feat: add copilot setup steps and agent hooks"
+git push origin main
+```
+
+You can also use the GitHub UI to create a PR with these changes.
+
+### Step 7: test with a real issue
+
+1. Create an issue in your repository: "Add input validation to the /users endpoint."
+2. Assign it to Copilot.
+3. Watch the session logs (click **View session** in the PR timeline).
+4. Verify:
+   - **Setup steps** ran successfully (check the "Copilot Setup Steps" section in logs).
+   - **Hooks** are listed in the session info.
+   - **Audit logs** appear if you inspect the agent's workspace (the `logs/` directory).
+5. Review the PR. Copilot Code Review (Ch 10) should have already posted its review.
+
+### What you've built
+
+In this exercise, you've assembled the full automation stack:
+
+- **Environment** (`copilot-setup-steps.yml`): deterministic dependency installation.
+- **Security** (preToolUse hook): blocks destructive and secret-exposing commands.
+- **Audit** (postToolUse hook): logs every tool result as structured JSON.
+- **Lifecycle** (sessionStart/End hooks): tracks session boundaries.
+
+This is the infrastructure that turns "assign an issue to Copilot" into a reliable, auditable, policy-compliant workflow.
+
+---
+
+## Conclusion
+
+Hooks and setup steps are the control plane for your AI coding agent. Here's what to take away:
+
+1. **Hooks execute at six strategic points.** Session start/end, prompt submitted, pre/post tool use, and error occurred. Of these, `preToolUse` is the most powerful — it can deny tool executions based on your custom logic.
+
+2. **copilot-setup-steps.yml runs before the agent starts.** Use it to install dependencies deterministically, configure authentication, and set up language runtimes. Without it, the agent wastes time guessing how to set up your project.
+
+3. **Security hooks enforce what instructions recommend.** Custom instructions (Ch 7) tell the agent what it *should* do. `preToolUse` hooks enforce what it *can* do. Use both layers together.
+
+4. **Audit hooks create compliance trails.** Every tool call can be logged as structured data. This is essential for regulated industries and useful for debugging agent behavior in any organization.
+
+5. **The full loop — issue to merged PR — is achievable.** Combine setup steps (environment), hooks (validation and logging), MCP (external data), custom instructions (behavior), and Copilot Code Review (automated review) for a workflow where the human's role is final review, not manual orchestration.
+
+In Ch 15, we'll shift to the concerns that keep security teams and legal departments up at night: **AI-first security and governance**. We'll cover risks like sensitive data exposure in prompts and code injection, agent firewalls that control which domains the coding agent can access, testing and releasing custom agents in organizations, and the intellectual property implications of AI-generated code.
+
+
