@@ -7,21 +7,45 @@
       wrapper.style.position = "relative";
 
       let copyButton = document.createElement("button");
-      copyButton.className =
-        "opacity-0 focus:opacity-100 focus:outline-base-600 dark:focus:outline-base-400 group-hover:opacity-100 w-16 transition-opacity duration-500 absolute top-3 right-3 text-xs bg-base-200 dark:bg-base-800 outline outline-base-400 dark:outline-base-800 py-1 px-2 rounded-xl dark:hover:bg-base-700 hover:bg-base-300";
       copyButton.innerHTML = copyButtonLabel;
 
-      // Add class 'group' to codeBlock
-      codeBlock.classList.add("group");
+      let title = codeBlock.getAttribute("data-title");
 
-      codeBlock.setAttribute("tabindex", "0");
-      codeBlock.appendChild(copyButton);
+      if (title) {
+        // ---- Titled code block: file name header + inline copy button ----
+        wrapper.classList.add("has-code-title");
 
-      // Wrap the codeBlock with the wrapper div
-      let parent = codeBlock.parentNode;
-      if (parent) {
-        parent.insertBefore(wrapper, codeBlock);
-        wrapper.appendChild(codeBlock);
+        let titleBar = document.createElement("div");
+        titleBar.className = "code-title-bar";
+
+        let titleText = document.createElement("span");
+        titleText.className = "code-title-text";
+        titleText.textContent = title;
+        titleBar.appendChild(titleText);
+
+        copyButton.className = "code-title-copy";
+        titleBar.appendChild(copyButton);
+
+        let parent = codeBlock.parentNode;
+        if (parent) {
+          parent.insertBefore(wrapper, codeBlock);
+          wrapper.appendChild(titleBar);
+          wrapper.appendChild(codeBlock);
+        }
+      } else {
+        // ---- Untitled code block: floating copy button (existing behavior) ----
+        copyButton.className =
+          "opacity-0 focus:opacity-100 focus:outline-base-600 dark:focus:outline-base-400 group-hover:opacity-100 w-16 transition-opacity duration-500 absolute top-3 right-3 text-xs bg-base-200 dark:bg-base-800 outline outline-base-400 dark:outline-base-800 py-1 px-2 rounded-xl dark:hover:bg-base-700 hover:bg-base-300";
+
+        codeBlock.classList.add("group");
+        codeBlock.setAttribute("tabindex", "0");
+        codeBlock.appendChild(copyButton);
+
+        let parent = codeBlock.parentNode;
+        if (parent) {
+          parent.insertBefore(wrapper, codeBlock);
+          wrapper.appendChild(codeBlock);
+        }
       }
 
       copyButton.addEventListener("click", async () => {
@@ -39,8 +63,13 @@
 
       let oldLabel = button.innerText;
       let oldClassName = button.className;
-      button.className =
-        "opacity-100 transition-opacity duration-500 w-16 absolute top-3 right-3 text-xs bg-green-200 dark:bg-green-900 outline outline-green-300 dark:outline-green-700 text-green-800 dark:text-green-300 py-1 px-2 rounded-xl";
+
+      if (button.classList.contains("code-title-copy")) {
+        button.className = "code-title-copy copied";
+      } else {
+        button.className =
+          "opacity-100 transition-opacity duration-500 w-16 absolute top-3 right-3 text-xs bg-green-200 dark:bg-green-900 outline outline-green-300 dark:outline-green-700 text-green-800 dark:text-green-300 py-1 px-2 rounded-xl";
+      }
       button.innerText = "copied";
 
       setTimeout(() => {

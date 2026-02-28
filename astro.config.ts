@@ -16,6 +16,7 @@ import rehypeMathjax from "rehype-mathjax";
 import rehypeMermaid from "rehype-mermaid";
 import remarkMath from "remark-math";
 import addMermaidClass from "./add-mermaid-classname";
+import { transformerCodeMeta } from "./shiki-title-transformer";
 import { BASE, SITE } from "./src/config.json";
 import ExcalidrawEmbed from "./src/embeds/excalidraw/embed";
 import LinkCardEmbed from "./src/embeds/link-card/embed";
@@ -64,6 +65,7 @@ export default defineConfig({
 			},
 			defaultColor: false,
 			transformers: [
+				transformerCodeMeta(),
 				transformerMetaHighlight(),
 				transformerNotationHighlight(),
 			],

@@ -68,6 +68,57 @@ const { title, description, image } = Astro.props;
         display: inline !important;
       }
 
+      /* ---- Code block title bar ---- */
+      .has-code-title {
+        @apply border border-base-300 dark:border-base-700 rounded-xl overflow-hidden;
+        margin-top: 1.7142857em;
+        margin-bottom: 1.7142857em;
+      }
+
+      .has-code-title pre {
+        margin: 0 !important;
+        border: none !important;
+        border-radius: 0 !important;
+      }
+
+      .code-title-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+        padding: 0.4rem 0.75rem;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+          "Liberation Mono", "Courier New", monospace;
+        font-size: 0.8rem;
+        line-height: 1.5;
+        @apply bg-base-300/40 dark:bg-base-800/60;
+        @apply text-base-500 dark:text-base-400;
+        @apply border-b border-base-300 dark:border-base-700;
+      }
+
+      .code-title-text {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        min-width: 0;
+      }
+
+      .code-title-copy {
+        flex-shrink: 0;
+        font-size: 0.75rem;
+        padding: 0.1rem 0.5rem;
+        border-radius: 0.375rem;
+        cursor: pointer;
+        transition: background-color 150ms, color 150ms;
+        @apply text-base-500 dark:text-base-400;
+        @apply hover:bg-base-300/80 dark:hover:bg-base-700/80;
+      }
+
+      .code-title-copy.copied {
+        @apply text-green-700 dark:text-green-300;
+        @apply bg-green-200/60 dark:bg-green-900/50;
+      }
+
       /* SVG dark mode global override */
       html.dark .svg-wrapper svg * {
         stroke: #fff !important;
