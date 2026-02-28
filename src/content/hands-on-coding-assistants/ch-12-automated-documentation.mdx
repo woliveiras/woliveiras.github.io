@@ -5,14 +5,620 @@ module: 2
 order: 12
 ---
 
-## Automated Documentation
+## The documentation gap, and why AI closes it
 
-TODO: Content for Chapter 12 — Automated Documentation (focus: Delegate + Review)
+Every engineering team agrees that documentation matters. Almost no engineering team writes enough of it. The reason is simple economics: documentation is high-value but low-urgency. It never blocks the current sprint, so it perpetually lives at the bottom of the backlog. Meanwhile, the codebase grows, new people join, and everyone pays the cost of tribal knowledge.
 
-**Topics to cover:**
+AI changes this equation. The studies found that **documenting code functionality can be completed in half the time** with AI assistance. This is the second-largest productivity gain after code refactoring. And it makes sense: documentation is a classic Delegate task. It's pattern-heavy (describe what this function does, list its parameters, show an example), it's high-volume (every function, every endpoint, every config option), and it's easy to Review (read the generated doc and check if it's accurate).
 
-- Code documentation generation (JSDoc, docstrings, README)
-- API and schema documentation
-- AI-assisted commit messages ("magic sparkles")
-- Automated PR descriptions
-- Hands-on: document an entire module with AI and compare manual vs. assisted quality
+This chapter covers four documentation surfaces where AI delivers immediate value: **code-level documentation** (JSDoc, docstrings, inline comments), **API and schema documentation**, **commit messages**, and **PR descriptions**. For each surface, we'll look at the mechanics, the prompts, the review checklist, and the pitfalls.
+
+In PDRC terms, this chapter exercises the **Delegate → Review** loop most heavily. You delegate documentation writing to the agent, review for accuracy and completeness, and correct where the agent hallucinated or missed context. The Correct phase is lighter than in code generation because documentation errors are easier to spot, you can read a docstring in 10 seconds and know if it's wrong.
+
+---
+
+## Code-level documentation: JSDoc, docstrings, and inline comments
+
+Code-level documentation lives closest to the code it describes. It includes function signatures, parameter descriptions, return values, examples, and inline comments that explain _why_ a decision was made (not _what_ the code does, the code already says what it does).
+
+### Generating JSDoc/TSDoc with AI
+
+In VS Code, you can generate documentation for any function using inline chat or the `/doc` slash command:
+
+```
+/doc
+```
+
+Select a function, invoke `/doc`, and Copilot generates a JSDoc block with parameter descriptions, return type, and a brief summary. For TypeScript/JavaScript, the output typically looks like:
+
+```typescript
+/**
+ * Calculates the total price including tax and any applicable discount.
+ *
+ * @param basePrice - The original price before tax
+ * @param taxRate - Tax rate as a decimal (e.g., 0.08 for 8%)
+ * @param discountCode - Optional discount code to apply
+ * @returns The final price rounded to 2 decimal places
+ * @throws {ValidationError} If basePrice is negative
+ *
+ * @example
+ * ```ts
+ * calculateTotal(100, 0.08); // 108.00
+ * calculateTotal(100, 0.08, "SAVE10"); // 97.20
+ * ```
+ */
+export function calculateTotal(
+  basePrice: number,
+  taxRate: number,
+  discountCode?: string
+): number {
+  // ...
+}
+```
+
+### Beyond `/doc`: targeted documentation prompts
+
+The `/doc` command produces a basic docblock. For richer documentation, use explicit prompts:
+
+**Document complex behavior:**
+
+```
+Document the retry logic in this function. Explain the backoff
+strategy, the maximum number of retries, and what happens when
+all retries are exhausted. Include an example showing both the
+success and failure paths.
+```
+
+**Document side effects:**
+
+```
+This function has side effects that aren't obvious from the
+signature. Document what it mutates, what events it emits,
+and what external services it calls. Focus on what a caller
+needs to know to use it safely.
+```
+
+**Document the "why":**
+
+```
+This code uses a custom connection pool instead of the ORM's
+built-in pooling. Add an inline comment explaining why. Check
+the git history for context about when this was introduced
+and what problem it solved.
+```
+
+### Python docstrings
+
+The same patterns apply to Python, for example. Copilot generates Google, NumPy, or Sphinx-style docstrings depending on what it sees in the project:
+
+```python
+def classify_transaction(
+    amount: float,
+    merchant_category: str,
+    user_history: list[Transaction],
+) -> TransactionCategory:
+    """Classify a financial transaction based on amount, merchant, and history.
+
+    Uses a rule-based approach that first checks merchant category against
+    known mappings, then falls back to amount-based heuristics informed by
+    the user's transaction history.
+
+    Args:
+        amount: Transaction amount in the user's default currency.
+        merchant_category: MCC (Merchant Category Code) as a string.
+        user_history: Previous transactions for pattern matching.
+            Must contain at least 10 transactions for reliable classification.
+
+    Returns:
+        A TransactionCategory enum value.
+
+    Raises:
+        InsufficientHistoryError: If user_history has fewer than 10 entries.
+        InvalidMCCError: If merchant_category is not a recognized code.
+
+    Example:
+        >>> history = load_transactions(user_id="u_123", limit=50)
+        >>> classify_transaction(42.50, "5411", history)
+        TransactionCategory.GROCERIES
+    """
+```
+
+### Review checklist for generated documentation
+
+AI-generated documentation has a specific failure mode: it tends to describe the _obvious_ and skip the _important_. Here's what to check:
+
+| Check | What to look for |
+|-------|-----------------|
+| **Accuracy** | Does the description match what the code actually does? (AI sometimes describes what it _should_ do instead) |
+| **Completeness** | Are all parameters, return values, and thrown exceptions documented? |
+| **Side effects** | Does it mention mutations, events, network calls, or file I/O? |
+| **Edge cases** | Does it explain behavior for null/undefined/empty inputs? |
+| **Examples** | Are the examples runnable and correct? (AI often generates examples that look right but have wrong values) |
+| **The "why"** | Does it explain design decisions, not just mechanics? AI usually misses this — add it manually |
+
+The sweet spot: let AI generate the boilerplate (parameter descriptions, return types, basic summary), then you add the "why", the context about design decisions, trade-offs, and historical reasons that only a human knows.
+
+---
+
+## API and schema documentation
+
+API documentation is where AI-assisted generation provides real leverage. A typical REST API might have dozens of endpoints, each with request/response schemas, query parameters, headers, and error codes. Documenting all of that manually is tedious. Documenting it with AI is fast, and the result is consistent because the agent follows the same pattern for every endpoint.
+
+### Generating endpoint documentation
+
+Given a route handler, ask the agent to generate comprehensive API documentation:
+
+```
+Generate API documentation for this endpoint in Markdown format. Include:
+- HTTP method and path
+- Description of what the endpoint does
+- Request headers (including authentication)
+- Request body schema with types and required/optional markers
+- Query parameters if any
+- All possible response codes with example response bodies
+- Rate limiting information if applicable
+- Example curl command
+```
+
+The output follows a consistent structure:
+
+```markdown
+### POST /api/v1/users
+
+Creates a new user account.
+
+**Authentication:** Bearer token required (scope: `users:write`)
+
+**Request body:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| email | string | Yes | User's email address |
+| name | string | Yes | Display name (2-100 chars) |
+| role | string | No | One of: `viewer`, `editor`, `admin`. Default: `viewer` |
+
+**Responses:**
+
+| Code | Description |
+|------|-------------|
+| 201 | User created successfully |
+| 400 | Validation error (see error body) |
+| 409 | Email already registered |
+| 429 | Rate limit exceeded |
+
+**Example:**
+
+```sh
+curl -X POST https://api.example.com/api/v1/users \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"email": "new@example.com", "name": "New User"}'
+```
+
+
+### Generating schema documentation
+
+For TypeScript projects, you can generate documentation from your type definitions:
+
+```
+Generate documentation for all types in this file. For each type:
+- One-sentence description of what it represents
+- Table with field name, type, required/optional, and description
+- Example JSON that conforms to the type
+- Note any validation rules (min/max, regex patterns, enums)
+```
+
+### OpenAPI/Swagger generation
+
+If your project uses OpenAPI (Swagger), AI can generate or update the spec from your route handlers:
+
+```
+Generate an OpenAPI 3.0 YAML specification for all endpoints in
+the src/api/routes/ directory. Include request/response schemas,
+authentication requirements, and example values. Use $ref for
+shared schemas.
+```
+
+This is a high-leverage prompt: a single interaction produces a machine-readable API spec that can power documentation sites, client SDK generation, and API testing. Review it carefully, AI sometimes misses authentication middleware or gets response codes wrong.
+
+### README generation
+
+Every project needs a README, and AI can generate a solid first draft:
+
+```
+Generate a README.md for this project. Include:
+- Project title and one-paragraph description
+- Prerequisites (Node version, required tools)
+- Installation steps (clone, install, configure)
+- Development commands (dev server, test, build, lint)
+- Project structure overview (main directories and what they contain)
+- Environment variables (from .env.example if it exists)
+- Contributing guidelines
+- License
+
+Use the existing `package.json`, `tsconfig.json`, and directory structure
+as sources of truth. Don't add anything that isn't actually in the project.
+```
+
+The last instruction is critical: AI will happily add sections about Docker, CI/CD, and deployment even if your project doesn't have them. Constraining the output to "what actually exists" produces a README that's useful from day one.
+
+---
+
+## AI-assisted commit messages
+
+Commit messages are the most overlooked documentation surface. A good commit history is a narrative of _why_ the codebase changed, not just what changed (the diff already tells you that). A bad commit history is a wall of "fix", "update", "wip", and "misc changes."
+
+I have a personal experience to share here: before using AI, my commit messages were often rushed and uninformative. After I started using Copilot to generate commit messages, I found that my commit history became much more readable and useful for creating the changelog and understanding the evolution of the codebase.
+
+The problem was that I always put something like "fix: payment processing returns error 500" as a commit message, which doesn't tell me what the bug was, why it was a problem, or how I fixed it. Now, I use Copilot to generate a more detailed message that includes the context of the bug, the approach I took to fix it, and any relevant issue references. This has made my commit history much more valuable for future me and for my teammates.
+
+### How Copilot generates commit messages
+
+In VS Code's Source Control view, Copilot can generate commit messages based on your staged changes. Look for the sparkle icon (✨) next to the commit message input field. Click it, and Copilot analyzes the staged diff and produces a summary.
+
+If the icon is not available yet, it may be because you haven't staged any changes, or you haven't enabled the feature in your settings. Make sure you have the latest version of Copilot and that it's configured to generate commit messages.
+
+The generated message typically follows a format like:
+
+```
+feat: add input validation for user registration endpoint
+
+- Add email format validation using zod schema
+- Add password strength requirements (min 8 chars, 1 uppercase, 1 number)
+- Return 400 with specific error messages for each validation rule
+- Add unit tests for all validation cases
+```
+
+### On GitHub.com
+
+When creating a pull request, you can also use Copilot to generate commit messages. The Copilot actions menu (sparkle icon) appears in the text field header.
+
+### Writing custom instructions for commit messages
+
+The default generated messages are functional but generic. Custom instructions can enforce your team's conventions:
+
+```markdown title=".github/copilot-instructions.md"
+## Commit message format
+
+Use Conventional Commits format:
+
+- feat: new feature visible to users
+- fix: bug fix
+- docs: documentation only
+- refactor: code change that neither fixes nor adds
+- test: adding or updating tests
+- chore: build, CI, or maintenance tasks
+
+Rules:
+- Subject line: max 72 characters, lowercase, no period
+- Body: wrap at 80 characters, explain WHY not WHAT
+- Reference issue numbers when applicable: "Closes #123"
+- For breaking changes, add "BREAKING CHANGE:" in the footer
+```
+
+With these instructions, Copilot generates messages that match your team's format — reducing the "fix commit message style" comments in code review.
+
+### Review checklist for commit messages
+
+| Check | What to look for |
+|-------|-----------------|
+| **Accuracy** | Does the message match the actual changes? (AI sometimes describes the intent rather than what was done) |
+| **Scope** | Does it mention all significant changes, not just the first file? |
+| **Convention** | Does it follow your team's format (Conventional Commits, etc.)? |
+| **The "why"** | Does the body explain _why_ the change was needed? This is almost always missing from AI output — add it |
+| **References** | Does it reference the relevant issue, ticket, or discussion? AI can't know this — add it manually |
+
+The pattern is familiar: AI handles the _what_ (analyzing the diff and summarizing it), you add the _why_ (business context, design decisions, issue references).
+
+---
+
+## Automated PR descriptions
+
+Pull request descriptions are the bridge between developer and reviewer. A good PR description explains the context, the approach, the testing strategy, and any concerns. AI can generate the mechanical parts — the "what changed" summary — while you add the strategic framing.
+
+### Generating PR summaries on GitHub
+
+On GitHub.com, when creating or editing a pull request:
+
+1. Navigate to the description text field
+2. Click the **Copilot actions** icon (sparkle) in the text field header
+3. Select **Summary**
+4. Wait for Copilot to analyze the diff and generate a description
+5. Review and edit the output before submitting
+
+The generated summary typically includes:
+
+- A high-level description of what the PR does
+- A bulleted list of the changes organized by file or area
+- Notes about the types of changes (new feature, bug fix, refactoring)
+
+### Customizing PR description templates
+
+For teams that want consistent PR descriptions, combine Copilot's generation with a PR template. Create `.github/pull_request_template.md`:
+
+```markdown title=".github/pull_request_template.md"
+## What
+
+<!-- Copilot: generate a summary of changes here -->
+
+## Why
+
+<!-- Human: explain the business context and motivation -->
+
+## How
+
+<!-- Copilot: describe the technical approach -->
+
+## Testing
+
+<!-- Human: describe how this was tested -->
+- [ ] Unit tests added/updated
+- [ ] Integration tests pass
+- [ ] Manual testing completed
+
+## Checklist
+
+- [ ] Code follows project conventions
+- [ ] Documentation updated if needed
+- [ ] No hardcoded secrets or credentials
+- [ ] Breaking changes documented
+```
+
+This template creates a clear division of labor: Copilot fills in the _What_ and _How_ sections (mechanical diff analysis), while the author fills in _Why_ and _Testing_ (context that only a human has).
+
+### Adding PR description instructions
+
+You can guide Copilot's PR summary output through custom instructions:
+
+```markdown title=".github/copilot-instructions.md"
+## PR description guidelines
+
+When generating PR summaries:
+- Group changes by area (API, database, frontend, tests)
+- Highlight breaking changes prominently at the top
+- Note any new dependencies added
+- Note any environment variable changes
+- If the PR touches database migrations, describe the schema changes
+- Keep the summary concise — bullets, not paragraphs
+```
+
+---
+
+## Documenting an entire module: the workflow
+
+For larger documentation tasks, like documenting an entire module, library, or service, a systematic approach prevents gaps and ensures consistency.
+
+### The documentation planning prompt
+
+Start by asking the agent to survey what needs documenting:
+
+```
+Analyze the src/services/ directory and create a documentation plan.
+For each file, list:
+1. What's already documented (has JSDoc/docstrings)
+2. What's missing documentation
+3. Priority (public API = high, internal helper = medium, type = low)
+
+Output the plan as a Markdown checklist I can work through.
+```
+
+This gives you a map of the documentation gaps before you write anything.
+
+### Batch documentation generation
+
+Once you have the plan, work through it systematically:
+
+```
+Generate JSDoc documentation for all exported functions in
+src/services/auth-service.ts. Follow the existing documentation
+style from src/services/user-service.ts. Include @param, @returns,
+@throws, and @example for each function.
+```
+
+The key phrase is "follow the existing documentation style from..." — this gives the agent a concrete example to match, producing consistent output across the module.
+
+### The documentation review pass
+
+After generating documentation for a module, do a review pass:
+
+1. **Read each docstring against the implementation.** Does it match?
+2. **Check the examples.** Are they runnable? Do the expected outputs match actual behavior?
+3. **Look for hallucinated features.** AI sometimes documents parameters that don't exist or behaviors that aren't implemented.
+4. **Add the "why" where it matters.** For any function that exists for a non-obvious reason, add context that the AI can't infer.
+5. **Verify cross-references.** If a docstring says "see also `relatedFunction()`" — does that function actually exist?
+
+---
+
+## Hands-on: document a module with AI
+
+In this exercise, you'll take an undocumented module, generate comprehensive documentation, review it, and establish a documentation standard.
+
+### Prerequisites
+
+- A project with some undocumented code (or use the `PaymentProcessor` from Chapter 11)
+- VS Code with Copilot
+- A testing framework (to verify documentation examples)
+
+### Step 1: assess the documentation gap
+
+Open the module in Copilot Chat and ask:
+
+```
+Analyze src/services/payment-processor.ts and tell me:
+1. Which functions have documentation?
+2. Which are missing documentation?
+3. What types/interfaces need documentation?
+4. Are there any inline comments that explain design decisions?
+```
+
+### Step 2: write documentation instructions
+
+Create a documentation standard for your project:
+
+```markdown title="docs/.instructions.md"
+---
+applyTo: "**/*.ts"
+---
+
+## Documentation standard
+
+### Functions
+- All exported functions must have JSDoc with @param, @returns, @throws
+- Include at least one @example with expected output
+- Describe side effects (mutations, events, network calls) explicitly
+- For async functions, document what happens on rejection
+
+### Types/Interfaces
+- All exported types must have a one-line description
+- Complex types should include a usage example
+- Document validation rules (min/max, patterns, enums)
+
+### Inline comments
+- Use inline comments for "why", not "what"
+- Reference issue numbers for workarounds: // Workaround for #423
+- Mark temporary code with // TODO(author): description
+```
+
+### Step 3: generate documentation for each function
+
+Work through the module function by function:
+
+```
+Generate JSDoc documentation for the processPayment function
+following the documentation standard in docs/.instructions.md.
+Include parameter descriptions, return value, thrown errors,
+side effects, and a usage example.
+```
+
+### Step 4: generate type documentation
+
+```
+Generate documentation for all TypeScript interfaces and types
+in src/services/payment-processor.ts. For each type, include:
+- One-sentence description
+- Example JSON that conforms to the type
+- Note any validation constraints
+```
+
+### Step 5: generate a module README
+
+```
+Generate a README.md for the src/services/ directory that
+documents the Payment service. Include:
+- What the service does (one paragraph)
+- Architecture overview (how it connects to other services)
+- Available functions with one-line descriptions
+- Configuration requirements (environment variables)
+- Common usage patterns with code examples
+- Error handling approach
+```
+
+### Step 6: review and correct
+
+Go through each generated document with the review checklist:
+
+- Does the docstring match the implementation?
+- Are the examples runnable and correct?
+- Are side effects documented?
+- Did the AI hallucinate any features?
+- Is the "why" present where it matters?
+
+For each correction, consider: could a custom instruction prevent this in the future? If yes, add it to your documentation standard.
+
+### What you practiced
+
+| PDRC phase | What happened |
+|-----------|--------------|
+| **Plan** | You assessed the documentation gap and created a documentation standard |
+| **Delegate** | You generated docs for functions, types, and the module README |
+| **Review** | You checked each generated doc against the actual code |
+| **Correct** | You fixed inaccuracies, added missing "why" context, and updated your documentation instructions |
+
+---
+
+## Documentation as a living practice
+
+The biggest risk with AI-generated documentation isn't that it's wrong (you review it) — it's that it becomes stale. Code changes faster than docs. Here are three practices that keep documentation alive:
+
+### 1. Document at code-time, not later
+
+Don't defer documentation to a "docs sprint." Generate it as you write the code:
+
+- Write a function → generate the docstring immediately
+- Create an endpoint → generate the API docs before the PR
+- Commit changes → let Copilot generate the commit message
+
+This is cheap because the context is fresh — you just wrote the code, so reviewing the docs takes seconds.
+
+### 2. Include documentation in code review
+
+Add a documentation check to your code review instructions:
+
+```markdown title=".github/copilot-instructions.md"
+## Code review: documentation
+
+When reviewing pull requests:
+- Flag new public functions without JSDoc/docstrings
+- Flag modified functions where the docs don't match the new behavior
+- Flag new endpoints without API documentation
+- The "why" comment is required for any non-obvious design decision
+```
+
+This way, both Copilot Code Review (Chapter 10) and human reviewers enforce documentation standards automatically.
+
+### 3. Periodic documentation audits
+
+Schedule periodic audits using the documentation planning prompt from earlier:
+
+```
+Analyze the entire src/services/ directory. For each exported
+function, check if the JSDoc documentation matches the current
+implementation. Flag any mismatches, missing docs, or outdated
+examples.
+```
+
+This is a high-leverage use of AI: it can compare docs against code across an entire module faster than any human review.
+
+---
+
+## Conclusion
+
+Documentation is the purest expression of the Delegate → Review pattern. The output is English (or your team's language), not code, so reviewing it is faster and more accessible. Here's what to remember:
+
+1. **AI halves documentation time.** McKinsey found documenting code functionality takes half the time with AI assistance. This turns documentation from "something we'll do later" into "something we do now."
+
+2. **Four documentation surfaces benefit immediately.** Code-level docs (JSDoc/docstrings), API docs, commit messages, and PR descriptions. Each has a clear delegation pattern and a clear review checklist.
+
+3. **The `/doc` command is your starting point.** It generates a basic docblock in seconds. For richer documentation, use explicit prompts that specify what to include (side effects, examples, error conditions, the "why").
+
+4. **AI generates the "what"; you add the "why".** This is the universal pattern across all documentation surfaces. AI can describe what a function does by reading the code. It cannot explain why you chose this approach over the alternatives — that requires human context.
+
+5. **Custom instructions enforce consistency.** A documentation standard in `.instructions.md` ensures every generated docstring follows the same format, covers the same fields, and meets the same quality bar.
+
+6. **Document at code-time, not later.** The cheapest moment to document code is when you just wrote it. AI makes this almost free.
+
+In Ch 13, we'll leave the code-and-docs world and enter **MCP (Model Context Protocol)** — the open protocol that connects AI assistants to external systems. MCP lets Copilot talk to Sentry for debugging, Notion for documentation, Azure for infrastructure, and any other service you need. It's the extensibility layer that turns a coding assistant into a full engineering companion.
+
+---
+
+## References
+
+### Research and data
+
+- [McKinsey — Unleashing developer productivity with generative AI (2023)](https://www.mckinsey.com/capabilities/mckinsey-digital/our-insights/unleashing-developer-productivity-with-generative-ai) — documenting code functionality completed in half the time with AI
+- [GitHub — Survey: The AI wave continues to grow (2024)](https://github.blog/news-insights/research/survey-ai-wave-grows/) — broad adoption data on AI coding tools
+
+### Official documentation
+
+- [Creating a pull request summary with GitHub Copilot](https://docs.github.com/en/copilot/using-github-copilot/using-github-copilot-for-pull-requests/creating-a-pull-request-summary-with-github-copilot) — PR description generation
+- [VS Code — Copilot Chat](https://code.visualstudio.com/docs/copilot/copilot-chat) — `/doc` command, inline chat for documentation
+- [Conventional Commits](https://www.conventionalcommits.org/) — commit message specification referenced in this chapter
+- [OpenAPI Specification](https://swagger.io/specification/) — API documentation standard
+
+### Related chapters
+
+- Ch 2 — The PDRC mental model (Delegate + Review loop applied to documentation)
+- Ch 7 — Repository custom instructions (documentation standards in `.instructions.md`)
+- Ch 10 — AI-assisted code review (enforcing documentation in reviews)
+- Ch 11 — Debugging, refactoring & iteration (documenting corrections as instructions)
+- Ch 13 — MCP (extending AI to external documentation systems like Notion)
