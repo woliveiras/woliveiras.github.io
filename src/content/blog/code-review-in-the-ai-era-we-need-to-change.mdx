@@ -1,0 +1,174 @@
+---
+title: "Code Review in the AI Era: We Need to Change"
+description: "AI agents are reshaping how we write code, but our engineering practices haven't caught up. A deep look at the challenges of code review, the growing gap between code produced and code understood, and why none of the current solutions feel complete yet."
+pubDate: "2026-03-25"
+published: true
+tags: ["ai-engineering", "engineering-practices", "software-engineering", "ai-agents", "collaboration", "code-review"]
+---
+
+I have been using AI coding agents heavily from November 2025 until now, March, 2026. I single-handedly shipped a health data privacy platform (the FastAPI backend, the CrewAI Agents, the Google Cloud Infrastructure, and the React web app), refactored the entire application once, built a native Android app to manage my cats' health, created a CLI tool for managing Radarr, Lidarr, Readarr, and Bazarr in Golang ([corsarr](https://github.com/woliveiras/corsarr)), a tool for cloning the Raspberry Pi, also in Golang ([klon](https://github.com/woliveiras/klon)), and I rely on agents daily at my job and even for drafting and reviewing posts on this blog. The productivity gains are real. I'm not here to argue otherwise.
+
+But something has been bothering me. The way my teams and I review code doesn't feel right anymore. Not because code review is broken, but because the shape of the work has changed and our practices haven't kept up. If you're on a team using AI coding agents (or considering it), I think you're probably feeling this too.
+
+I've spent the last few weeks reading everything I could find on this topic: research papers, practitioner essays, data reports, and the notes from a retreat where ~50 senior engineers gathered at the same location as the Agile Manifesto, 25 years later. What I found is a landscape of real challenges, interesting experiments, and no clear answers. Here's what I learned.
+
+## The new bottleneck
+
+The data tells a clear story. Faros AI analyzed 10,000+ developers across 1,255 teams and found that AI adoption leads to +21% tasks completed and +98% more PRs merged. Sounds great, until you see the other side: +91% increase in review time, +154% increase in average PR size, and +9% more bugs per developer. There was no significant correlation between AI adoption and improvement at the organizational level.
+
+DORA's 2025 research confirmed the pattern from a different angle: AI is an amplifier. Teams with strong engineering fundamentals benefit. Teams without them get worse, faster.
+
+We're producing more code faster, but the review process is drowning under the volume. The bottleneck has shifted from writing code to understanding it.
+
+## An old problem, amplified
+
+In 1985, Peter Naur wrote that programming is fundamentally "theory building." The real program isn't the source code. It's the mental model in the developers' heads: why the system exists, how its parts connect, what trade-offs were made. When that theory is lost, even clean code becomes a liability.
+
+Margaret-Anne Storey built on this idea with "cognitive debt": the debt that lives in developers' brains, not in the codebase. She described a team of students that collapsed in week seven. Not because their code was bad, but because nobody could explain why design decisions were made or how different parts of the system were supposed to work together. Simon Willison confirmed this from personal experience: he lost the mental model of his own vibe-coded projects. Each additional feature became harder to reason about.
+
+Amy Ko used the term "comprehension debt" in a 2017 ICSE study of startup software evolution. Addy Osmani popularized it in the AI context: the growing gap between how much code exists in a system and how much of it any human genuinely understands. Unlike technical debt, this one creates false confidence. The code is clean, the tests are green, but the understanding is hollow.
+
+An MIT Media Lab study using EEG found that LLM users showed the lowest brain connectivity between sessions. Anthropic's randomized controlled trial (n=52) was perhaps the most revealing: developers who passively delegated to AI scored below 40% on comprehension tests. Those who used AI for conceptual inquiry (asking "why" questions, understanding trade-offs) scored above 65%.
+
+This isn't a new vulnerability. It's an old one that AI amplified. Naur warned about it forty years ago. The difference is speed: before AI, production and comprehension were roughly coupled, both limited by human pace. Now production massively outpaces comprehension, and we don't have a mechanism to recouple them.
+
+## When shipping becomes too easy
+
+Julie Belião from Mozilla AI named what many of us feel but struggle to articulate: when the cost of building collapses, the cost of building the *wrong* thing increases dramatically. The scarce resource stops being engineering capacity and becomes **judgment**.
+
+"High on velocity," she writes. Speed becomes addictive. Teams optimize for the appearance of velocity. And who has authority to slow down? In teams under pressure to ship, the answer is often nobody.
+
+Alejandro Gonzalez, also from Mozilla AI, extended this to what ownership means now. The engineering culture always tied ownership to authorship: "I understand this code because I wrote it." AI breaks that link. Gonzalez proposes "stewardship" instead: you understand how the system behaves, you monitor its health, you respond when it breaks, you improve the architecture over time. You don't need to have written every line. But you do need to understand the territory.
+
+The deeper problem is economics. As Gonzalez puts it: "The same speed that makes AI valuable also creates pressure to ship faster than you can carefully review." The technology isn't the problem. The incentive is.
+
+## Code review was never just about bugs
+
+Here's what makes this hard. Code review serves at least four purposes beyond catching defects:
+
+1. **Distributing knowledge** about the codebase across the team
+2. **Aligning architectural decisions** so the system stays coherent
+3. **Mentoring**: seniors teach juniors (and learn from them)
+4. **Maintaining a shared mental model** of how the system works
+
+If we drop code review because it doesn't scale, we lose all of this. If we keep it as-is, we're asking humans to review AI-generated PRs that are 154% larger than before with the same time and cognitive capacity. Neither option works.
+
+As Rachel Laycock (CTO of Thoughtworks) put it: "AI is an accelerator of whatever you already have. Without engineering fundamentals, this velocity multiplier becomes a debt accelerator."
+
+## The fundamental tensions
+
+Before looking at what people are trying, it helps to name the tensions that make this problem genuinely hard.
+
+**Velocity vs. comprehension.** Before AI, production and comprehension were roughly coupled. Now they've been decoupled, and every attempt to speed up production widens the gap further.
+
+**Review as quality gate vs. review as learning tool.** Latent.Space argues code review is a "historical approval gate" that should be replaced by deterministic verification. But as Kent Beck observed, "90% of my skills are now worth $0... but the other 10% are worth 1000x." That 10% is exactly the kind of judgment that review-as-learning develops. You can automate the gate; you can't automate the growth.
+
+**Determinism vs. judgment.** We can automate linters, type checks, security scanners, and even some behavioral verification. But the judgment calls ("is this the right abstraction?", "will this be maintainable in two years?", "does this align with where we want the architecture to go?") require human understanding that we're actively losing. Naur would say: you're losing the theory, and no amount of tooling can substitute for it.
+
+**The economics problem.** Belião called it being "high on velocity." The HBR ethnography confirmed the pattern empirically: AI doesn't reduce work, it intensifies it. Engineers spend more time reviewing and correcting colleagues' vibe-coded output. People feel more productive but not less busy.
+
+## What people are trying
+
+Several approaches have emerged. Each addresses part of the problem. Each has real trade-offs. None of them feels complete.
+
+### Risk-based graduated review
+
+Instead of "always review everything" or "never review," some teams are experimenting with tiered review based on the risk level of the code being changed. Critical code (authentication, payments, data handling) gets deep human review. Low-risk changes (documentation, configuration, boilerplate) get automated verification only.
+
+This can be implemented with tools that already exist. GitHub Rulesets support per-file-path review requirements; CODEOWNERS classifies who owns which paths; GitHub Actions can classify risk and auto-approve low-risk PRs. Google, Chromium, and Kubernetes have run variants of this model for years. Chromium's "Rubber Stamper" bot auto-approves changes that are verifiably safe (translations, clean reverts) without human judgment.
+
+**The trade-off:** who defines what's "risky"? Classifying code by risk requires understanding a system, the very thing comprehension debt erodes. It's a chicken-and-egg problem. And a PR that touches both `docs/readme.md` and `src/auth/login.ts` still needs the full review treatment. Real changes rarely fall neatly into risk buckets.
+
+### Spec-driven development
+
+The idea: instead of reviewing code, humans write specifications (acceptance criteria, behavioral specs, BDD scenarios) and AI implements against them. The human checkpoint moves upstream, from "did you write this correctly?" to "are we solving the right problem with the right constraints?"
+
+Harper Reed documented the most detailed public workflow: brainstorm a spec with a conversational LLM, feed it to a reasoning model to generate a step-by-step plan, then execute prompts sequentially. StrongDM took it to the extreme: a three-person team building production security software with "no hand-coded software" and no human code review, using scenarios stored outside the codebase as holdout sets. Drew Breunig created `whenwords`, a "software library with no code", just a `SPEC.md` and `tests.yaml` that any AI agent can implement in any language. Even the widely adopted `AGENTS.md` format is a form of spec: persistent context files that tell agents how to behave in a codebase.
+
+**The trade-offs** are significant. Oliver Schoenborn captured the core critique in a widely-discussed Latent.Space comment: "People who believe in spec-driven development are naive about how hard it is to write a full spec compared to just writing code." Requirements emerge through building. The assumption that you can fully specify a non-trivial system before building it has been tested repeatedly and found wanting. StrongDM found that agents "take shortcuts: `return true` is a great way to pass narrowly written tests." And who maintains the spec when edge cases are discovered during implementation?
+
+Martin Fowler asked directly: "Will the rise of specifications bring us back to waterfall-style development?" His answer: "I don't think LLMs change the value of rapidly building and releasing small slices of capability." Spec-driven isn't waterfall (Harper Reed calls it "waterfall in 15 minutes"), but the tension is real.
+
+### TDD as "the strongest form of prompt engineering"
+
+The Thoughtworks retreat summary used exactly that phrase. Fowler noted that "TDD has been essential for us to use LLMs effectively" and that the refactoring step in the TDD cycle is "where developers consolidate their understanding."
+
+This is compelling because it reuses a practice that already exists and addresses the comprehension gap directly: the refactoring step forces you to understand what the AI produced. But TDD adoption was never universal even before AI. Is AI the event that finally makes TDD widespread, or does it remain a practice that works beautifully for those who already do it?
+
+### BDD as the natural AI spec format
+
+Latent.Space makes the strongest case: BDD specs define observable behavior in natural language, which is exactly what AI agents need. BDD "never fully caught on because writing specs felt like extra work when you were also going to write the code." With AI, the equation flips: the spec isn't extra work, it's the primary artifact.
+
+**The trade-off:** there's no evidence of a BDD renaissance actually happening at scale. The conceptual alignment is strong, but Aviator Verify is one of the few tools building in this direction. The space is fragmented: some teams use markdown specs, some use BDD, some use acceptance criteria checklists, some use test suites as specs. No dominant "AI-native spec tool" has emerged.
+
+### ADRs and RFCs as cognitive antidotes
+
+Architecture Decision Records capture *why* decisions were made, the exact information that cognitive debt erodes. Michael Nygard's original observation still holds: without documented rationale, newcomers are trapped between blind acceptance ("leave it alone") and blind reversal ("I don't understand this, I'll rewrite it"). Both options generate more debt.
+
+ADR-writing could serve as the "refactoring step" that Fowler is looking for: forced comprehension through writing. You can't write an ADR without articulating context, alternatives, and consequences. Uber, Google, Stripe, and Spotify all use variants of RFCs or ADRs extensively. Gergely Orosz has cataloged 80+ companies with RFC/design doc practices.
+
+**The trade-offs:** ADRs get outdated. Google admits their design docs "tend to get out of sync with reality." Volume is a problem: Zimmermann warns that an ADR log with more than 100 entries becomes unreadable. With AI accelerating decisions, you hit 100 fast. And if the AI agent writes the ADR for you, you lose the forced comprehension that was the whole point. The middle ground (agent generates a draft, human revises) might work, but it's untested at scale.
+
+### What the Thoughtworks retreat revealed
+
+Perhaps the most telling signal is that ~50 senior practitioners gathered to discuss the future of software development and left without consensus. Annie Vella's summary identified eight themes, but one stands out: **"What's the artifact if not code?"** Multiple sessions questioned whether source code is even the durable artifact anymore. "If agents can regenerate code from a specification, is the code the durable artifact, or is it the domain model, the test suite, the intent?"
+
+Camille Fournier observed that the fatigue of context-switching across multiple agent tasks mirrors the hardest part of being a manager. Laura Tacho noted that "the Venn diagram of Developer Experience and Agent Experience is a circle." The retreat also surfaced burnout among senior engineers who adopted AI intensively.
+
+They didn't answer the question. But the fact that experienced engineers are asking it tells you how uncertain the ground is.
+
+## What I'm doing today
+
+I want to be honest about where I stand. I've built real things with AI agents, not toy projects. A data privacy platform for healthcare. A full refactoring of that same platform. A native Android app (I'm a Web Developer, not a mobile developer). Production code at work. And **the more I use these tools, the more I realize how easy it is to lose the thread**.
+
+What's helping me keep my sanity nowadays are three things:
+
+**Keeping architecture documentation updated, following the C4 model.** Not code-level design documentation, that changes too fast and AI makes it even more volatile. I focus on the architecture level: system context, containers, components. The "why does this system exist and how do its parts relate" kind of documentation. This gives me and anyone working on the project a stable map of the territory, even when the code underneath is being generated and regenerated.
+
+**Using spec-driven development for features.** Before I ask an agent to implement something, I write down what the feature should do: acceptance criteria, expected behaviors, constraints. This forces me into the conceptual inquiry mode that the Anthropic study found preserves comprehension. It's not a complete specification that tries to dictate every implementation detail. It's enough to stay in the loop of *what* is being built and *why*.
+
+**Investing harder in application resilience and observability.** This is where I think the priority should shift. If we accept that comprehension debt is growing and that we can't review our way out of it, the safety net needs to be in the system itself. That means stricter monitoring in production, proper staging environments (dev, homolog/QA, prod) so bugs are caught before users are affected, and deep traceability so that when something does break, you can trace the problem back to the function, method, or endpoint responsible. When you can no longer remember which piece of code handles which processing, observability stops being a nice-to-have and becomes the primary way you maintain understanding of a running system. Gonzalez's argument for "stewardship" points in the same direction: if ownership is no longer about authorship, it has to be about monitoring, responding, and improving what's already in production.
+
+Are these the right practices? I don't know. I'm not confident they'll hold up as tools evolve or as the systems I work on grow more complex. But they're keeping me from falling into passive delegation, and that feels important.
+
+## We need to keep changing
+
+Here's what I actually believe after all this research: **none of the current solutions are enough, and anyone who says otherwise is selling something.**
+
+Every approach I explored addresses a real part of the problem, but each also assumes something that's still unproven at scale. Risk-based review assumes you can classify risk, which requires the comprehension you're trying to preserve. Specs assume you can define behavior upfront, which decades of software engineering have shown is hard. ADRs assume people will write them, which history suggests is optimistic.
+
+The data is sobering. More output, more bugs, longer reviews, intensified work. And most people use these tools in ways that actively degrade their learning.
+
+We are in an experiment. The tools change every few months. The practices lag behind the tools. The research lags behind the practices. And the economic pressure to "just ship" keeps accelerating.
+
+What I believe we need is more honesty about what we're losing, more disciplined experimentation with new practices, and less confidence in any single framework. The engineers at the Thoughtworks retreat, some of the most experienced in the industry, couldn't agree on what the future looks like. I think that's the honest position.
+
+I'll keep using AI agents. I'll keep documenting architecture and writing specs. I'll keep looking for better approaches. And I'll keep being skeptical of anyone who claims they've figured this out.
+
+## References
+
+- [Addy Osmani - Comprehension Debt](https://addyosmani.com/blog/comprehension-debt/)
+- [Amy Ko - A Three-Year Participant Observation of Software Startup Software Evolution (ICSE 2017)](https://faculty.washington.edu/ajko/papers/Ko2017AnswerDashReflection.pdf)
+- [Margaret-Anne Storey - Cognitive Debt](https://margaretstorey.com/blog/2026/02/09/cognitive-debt/)
+- [Latent.Space - How to Kill the Code Review](https://www.latent.space/p/reviews-dead)
+- [Mozilla AI - Owning Code in the Age of AI](https://blog.mozilla.ai/owning-code-in-the-age-of-ai/)
+- [Mozilla AI - When Shipping Becomes Too Easy](https://blog.mozilla.ai/when-shipping-becomes-too-easy/)
+- [Anthropic - How AI Impacts Skill Formation](https://www.anthropic.com/research/AI-assistance-coding-skills)
+- [MIT Media Lab - Your Brain on ChatGPT](https://www.media.mit.edu/publications/your-brain-on-chatgpt/)
+- [Faros AI - AI Productivity Paradox Report](https://www.faros.ai/blog/ai-software-engineering)
+- [HBR - AI Doesn't Reduce Work, It Intensifies It](https://hbr.org/2026/02/ai-doesnt-reduce-work-it-intensifies-it)
+- [Martin Fowler - Future of Software Development](https://martinfowler.com/bliki/FutureOfSoftwareDevelopment.html)
+- [Martin Fowler - Fragments Feb 9, 2026](https://martinfowler.com/fragments/2026-02-09.html)
+- [Annie Vella - Finding Comfort in the Uncertainty](https://annievella.com/posts/finding-comfort-in-the-uncertainty/)
+- [Rachel Laycock - AI Velocity Debt Accelerator](https://thenewstack.io/ai-velocity-debt-accelerator/)
+- [Kent Beck - 90% of My Skills Are Now Worth $0](https://tidyfirst.substack.com/p/90-of-my-skills-are-now-worth-0)
+- [Harper Reed - My LLM Codegen Workflow](https://harper.blog/2025/02/16/my-llm-codegen-workflow-atm/)
+- [Harper Reed - Waterfall in 15 Minutes](https://harper.blog/2025/04/10/waterfall-in-15-minutes-or-your-money-back/)
+- [StrongDM - Software Factories and the Agentic Moment](https://factory.strongdm.ai/)
+- [Drew Breunig - A Software Library with No Code](https://www.dbreunig.com/2026/01/08/a-software-library-with-no-code.html)
+- [Aviator Verify - Writing Effective Acceptance Criteria](https://docs.aviator.co/verify/how-to-guides/writing-effective-acceptance-criteria)
+- [AGENTS.md - Open Format for Guiding Coding Agents](https://github.com/agentsmd/agents.md)
+- [Nygard - Documenting Architecture Decisions](https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions)
+- [Orosz - Scaling Engineering via RFCs](https://blog.pragmaticengineer.com/scaling-engineering-teams-via-writing-things-down-rfcs/)
+- [DORA Research 2025](https://dora.dev/research/2025/)
+- [Peter Naur - Programming as Theory Building (1985)](https://pages.cs.wisc.edu/~remzi/Naur.pdf)
