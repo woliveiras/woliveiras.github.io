@@ -1,0 +1,106 @@
+---
+title: "Open-Source Licenses and Data Sovereignty: What You Need to Know"
+description: "Not all open-source licenses are equal when it comes to data sovereignty. Learn which license types can create jurisdictional risks and how to evaluate them for your infrastructure."
+pubDate: "2026-03-25"
+published: true
+tags: ["privacy", "self-hosting", "security", "software-engineering", "architecture"]
+---
+
+When building infrastructure on European soil to keep data under EU jurisdiction, many teams turn to open-source software as a natural choice. The reasoning seems straightforward: if the code is open and you host it yourself, you control everything. But that's not always the full picture.
+
+Open-source licenses vary widely in their terms, and some include clauses that can create unexpected dependencies, restrictions, or even jurisdictional entanglements. This post unpacks the landscape so you can make informed decisions about which open-source tools fit your data sovereignty goals.
+
+## Why Licenses Matter for Data Sovereignty
+
+The core premise of data sovereignty is controlling where your data lives and which laws govern it. When you self-host open-source software on a European cloud provider, your data physically stays in Europe. That's the easy part.
+
+The harder question is: does the license of the software you're running create any obligations, dependencies, or relationships that could undermine that sovereignty? In most cases the answer is no, but there are edge cases worth understanding.
+
+## License Categories and Their Implications
+
+### Permissive Licenses (Low Risk)
+
+Licenses like **MIT**, **BSD (2-clause and 3-clause)**, **Apache 2.0**, and **ISC** impose minimal restrictions. You can use, modify, and deploy the software however you want. There are no clauses that create jurisdictional dependencies or require you to interact with any specific entity.
+
+These licenses are the safest choice for data sovereignty. You deploy the software, you control the data, and the license doesn't create any ongoing relationship with the original authors or any organization.
+
+**Examples of projects using permissive licenses:**
+- PostgreSQL (PostgreSQL License, similar to MIT/BSD)
+- pgvector (PostgreSQL License)
+- llama.cpp (MIT)
+
+### Copyleft Licenses (Low Risk, With Obligations)
+
+**GPL (v2, v3)**, **LGPL**, and **AGPL** require that modifications to the source code be shared under the same license. This is a code-level obligation, not a data-level one. Your data is not affected by copyleft requirements.
+
+The **AGPL** deserves special attention. It extends GPL's sharing requirements to software accessed over a network. If you modify AGPL-licensed software and provide it as a service, you must make your modifications available. This doesn't affect your data sovereignty directly, but it does create obligations about your code. For organizations that don't want to share their modifications, AGPL software needs careful evaluation.
+
+**Examples of projects using copyleft licenses:**
+- Nextcloud (AGPL v3)
+- CryptPad (AGPL v3)
+- Forgejo (MIT, but worth checking dependencies)
+- Keycloak (Apache 2.0, but integrates with LGPL components)
+
+### Source-Available / Business Source Licenses (Medium Risk)
+
+This is where things get more nuanced. Some projects use licenses that look open-source but include restrictions:
+
+- **Business Source License (BSL / BUSL)**: Allows source code access but restricts commercial use or competing use for a period (typically 3-4 years), after which it converts to a permissive or copyleft license. The entity granting the license retains significant control during that period.
+
+- **Server Side Public License (SSPL)**: Created by MongoDB, the SSPL requires that anyone offering the software as a service must open-source their entire infrastructure stack. It's so restrictive that the Open Source Initiative does not consider it an open-source license.
+
+- **Elastic License 2.0 (ELv2)**: Prohibits providing the software as a managed service. You can self-host for internal use, but the line between "internal use" and "service" can be ambiguous.
+
+**The risk for data sovereignty**: These licenses often give a single company significant control over the terms of use. If that company is based in the US, you may find yourself in a situation where your infrastructure depends on a US entity's licensing decisions. A license change, a new restriction, or an enforcement action could force you to migrate, re-engineer, or negotiate from a position of dependency.
+
+**Examples of projects using source-available licenses:**
+- CockroachDB (BSL 1.1, converts to Apache 2.0 after 3 years)
+- MongoDB (SSPL)
+- Elasticsearch/Kibana (moved to ELv2 and SSPL, though OpenSearch forked under Apache 2.0)
+- HashiCorp Terraform/Vault/Consul (moved to BSL in 2023, OpenTofu forked under MPL 2.0)
+
+### Proprietary Licenses With Open-Source Components (Higher Risk)
+
+Some products offer a "community edition" under an open-source license while keeping critical features under a proprietary license. The open-source part may be genuinely useful, but you risk hitting a ceiling where essential functionality (clustering, SSO, audit logging, enterprise security features) requires a commercial agreement with a specific company.
+
+If that company is under US jurisdiction, you've reintroduced the exact dependency you were trying to avoid.
+
+**What to watch for:**
+- "Open Core" models where the core is open-source but extensions are proprietary
+- Features gated behind "Enterprise" tiers that require a commercial license
+- CLA (Contributor License Agreements) that grant the company rights to relicense your contributions
+
+## Practical Evaluation Checklist
+
+When choosing open-source software for a sovereignty-conscious stack, ask these questions:
+
+1. **What is the exact license?** Read it. Don't assume "open-source" means permissive.
+2. **Who controls the license?** A single company? A foundation? A community?
+3. **Has the license changed before?** Projects that have relicensed once may do it again (see HashiCorp, Elastic, MongoDB).
+4. **Is there a fork under a more permissive license?** When projects relicense, community forks often emerge (OpenSearch, OpenTofu, Forgejo).
+5. **Does the license restrict how you can use the software?** BSL and SSPL have usage restrictions that may affect your deployment model.
+6. **Where is the controlling entity incorporated?** If it's a US company, the CLOUD Act and other regulations could be relevant for any data they handle through telemetry, license verification, or support agreements.
+
+## What I Recommend
+
+For infrastructure that handles sensitive data under EU jurisdiction:
+
+- **Prefer permissive or copyleft licenses** (MIT, Apache 2.0, GPL, AGPL). These give you maximum freedom and create no dependency on any specific company.
+- **When using AGPL software**, understand the code-sharing obligations and decide if they work for your project.
+- **Avoid BSL/SSPL/ELv2 for critical infrastructure** unless you have a clear understanding of the restrictions and a migration plan if the license changes.
+- **Prefer foundation-governed projects** (Apache Foundation, Eclipse Foundation, Linux Foundation) over single-company projects. Foundations provide governance stability.
+- **Always check for community forks** when a project relicenses. The fork is often the safer long-term bet.
+
+## Conclusion
+
+Open-source software is a powerful tool for data sovereignty, but the license is part of the equation. A permissively licensed tool deployed on European infrastructure gives you strong sovereignty guarantees. A source-available tool controlled by a US company gives you access to the code but not necessarily freedom from jurisdictional risk.
+
+The good news is that for most categories of infrastructure software, genuinely open-source alternatives exist. The key is reading the license, understanding who controls the project, and making deliberate choices rather than assuming "open-source" automatically means "sovereign."
+
+## References
+
+- [Open Source Initiative – License List](https://opensource.org/licenses/) – Canonical list of OSI-approved licenses
+- [SSPL Is Not an Open Source License](https://opensource.org/blog/the-sspl-is-not-an-open-source-license/) – OSI's position on the Server Side Public License
+- [HashiCorp BSL FAQ](https://www.hashicorp.com/bsl) – HashiCorp's explanation of their relicensing
+- [OpenTofu Manifesto](https://opentofu.org/manifesto) – Community response to HashiCorp's license change
+- [European Alternatives to US Tech: A Practical Guide](/posts/european-alternatives-to-us-tech-a-practical-guide/) – The companion post covering European service providers

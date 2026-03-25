@@ -1,0 +1,178 @@
+---
+title: "European Alternatives to US Tech: A Practical Guide"
+description: "A curated list of European cloud providers, AI services, and digital tools that offer solid alternatives to dominant US platforms."
+pubDate: "2026-03-11"
+published: true
+tags: ["privacy", "cloud", "self-hosting", "architecture", "web"]
+---
+
+Lately, I've been increasingly uneasy about what's happening in our world with the constant growth of digital surveillance. Beyond my own data privacy concerns, I've watched how countries like the United States use their regulations to abuse the data rights of companies and consumers alike. The CLOUD Act, FISA Section 702, the Patriot Act... These aren't abstract legal frameworks. They're tools that **grant US authorities access to data regardless of where it's stored**, as long as the company has any legal presence in the United States.
+
+As a software engineer, though, I can't fully detach myself from the digital infrastructure of the so-called Magnificent Seven. Sooner or later, I end up using Google Cloud, AWS, or Azure in some project. The integration is deep, the tooling is mature, and the ecosystem is vast. Pretending otherwise would be dishonest.
+
+But here's my situation: I'm a full-time developer. I build my own applications. I work with digital collectives that genuinely need data privacy protection, like activists, journalists, communities that could face real consequences if their data ended up in the wrong hands. I also consult for startups that are thinking about these questions from day one. So how do I protect all of this from risks originating in US jurisdiction?
+
+That question led me down a rabbit hole of European alternatives to US tech infrastructure. And, **what I found was more mature than I expected**. This isn't a manifesto against US services. AWS, Google Cloud, and Azure are **excellent** platforms. But having options matters, especially when the legal framework governing your infrastructure carries risks you can't control.
+
+In this post I want to share a practical guide to European alternatives across various categories: cloud infrastructure, object storage, databases, authentication, AI services, CDN, DNS, email, collaboration tools, and more. I'll also discuss the trade-offs and migration considerations for each category. My goal is to provide a resource for developers and organizations who want to reduce their dependence on US tech while still building robust applications.
+
+## The Legal Problem
+
+Before listing alternatives, it's worth understanding exactly what we're trying to avoid. The US legal framework for data access is broad and has been used in ways that many would consider abusive. These laws are dense with legal jargon that most of us struggle to parse. However, from the references I consulted while researching this topic, I managed to capture these specific excerpts.
+
+**The CLOUD Act (2018)** explicitly states that it applies to "all electronic communication service or remote computing service providers that operate or have a legal presence in the US." The law requires these providers to "preserve, backup, or disclose the contents of a wire or electronic communication and any record or other information pertaining to a customer or subscriber" regardless of where the data is physically stored. Courts can also require parent companies to provide data held by their subsidiaries, meaning corporate structures offer no protection. Perhaps most troubling, orders can include nondisclosure requirements, providers can be legally prohibited from telling you that your data has been accessed.
+
+The European Data Protection Supervisor has explicitly stated that the CLOUD Act conflicts with GDPR. The German Commissioner for Data Protection went further, warning against using AWS for storing sensitive Federal Police data.
+
+**FISA Section 702** permits the Attorney General and Director of National Intelligence to jointly authorize targeting of "persons reasonably believed to be located outside the United States to acquire foreign intelligence information." The key phrase is "non-US persons". If you're not American, you have essentially no legal protection. No individual warrants are required. The authorization happens through programmatic certifications that cover broad categories of targets, not specific individuals.
+
+The documented abuses are staggering. FBI queries using Section 702 data have included searches on 16,000 identifiers, though internal review could legally justify only seven of those queries. That's a 99.96% rate of queries that didn't meet the FBI's own standards. Despite this, President Biden reauthorized Section 702 in April 2024 for another two years.
+
+Daniel Ellsberg, who leaked the Pentagon Papers, compared this surveillance apparatus to the East German Stasi. It was a provocative comparison, but looking at the scope and the documented abuses, not an unreasonable one.
+
+With all that in mind, the motivation to find alternatives is clear. If your data is stored with a US company, it's potentially accessible under these laws. By using European providers that don't have a legal presence in the US, you can significantly reduce this risk. It's not a perfect solution, but it's a meaningful step towards regaining control over your data and infrastructure.
+
+## Cloud Infrastructure
+
+When it comes to raw compute and infrastructure, Europe has several mature providers that compete well on both features and price.
+
+**Hetzner** is probably the best value proposition in European cloud hosting. Based in Germany, they offer dedicated servers, cloud instances, and managed Kubernetes at prices that often undercut American competitors by a significant margin. Their cloud instances start at a few euros per month, and their dedicated servers are particularly cost-effective for workloads that benefit from predictable performance. The trade-off is a smaller feature set compared to AWS, but for many applications, you don't need Lambda or DynamoDB.
+
+**OVHcloud** is one of the largest European cloud providers, headquartered in France. They offer a full stack: bare metal, public cloud, private cloud, and a range of managed services. They've had some high-profile incidents over the years, but they remain a serious player with data centers across Europe. Their pricing is competitive, and they've invested heavily in sovereign cloud offerings for organizations with strict data residency requirements.
+
+**Scaleway** is another French provider that has carved out a niche with developers. Their interface is clean, their documentation is solid, and they offer some interesting products like serverless containers and managed Kubernetes. They also have GPU instances for machine learning workloads. Scaleway tends to attract startups and developers who want something more polished than traditional hosting but don't need the full complexity of a hyperscaler.
+
+**Exoscale** operates out of Switzerland, which adds another dimension for organizations that value Swiss data protection laws. They focus on simplicity and reliability rather than trying to match AWS feature-for-feature. If you need compute, storage, and managed databases in a jurisdiction known for strong privacy protections, Exoscale is worth considering.
+
+**IONOS Cloud** is the cloud division of 1&1, one of Germany's largest hosting companies. They offer infrastructure-as-a-service with data centers in Germany and other European locations. Their enterprise focus means they have certifications and compliance capabilities that matter for regulated industries.
+
+## Object Storage
+
+If you're looking for S3-compatible object storage, European options exist that can serve as drop-in replacements for many use cases.
+
+**Scaleway Object Storage** provides S3-compatible storage at competitive prices. The API compatibility means most S3 tools and libraries work without modification. They also offer cold storage tiers for archival use cases.
+
+**OVHcloud Object Storage** similarly offers S3-compatible APIs with storage in European data centers. Their pricing model is straightforward, and they have options for both high-performance and archival storage.
+
+For those who want full control, **Garage** is an open-source, S3-compatible distributed object storage system that you can self-host on any of the European cloud providers mentioned above. It's lightweight, and by deploying it on European infrastructure, your data stays under EU jurisdiction regardless of where the project itself originates.
+
+## Databases
+
+Most European cloud providers offer managed PostgreSQL and MySQL instances. Beyond that, some specialized options are worth knowing about.
+
+**Aiven** is a Finnish company that provides managed open-source databases (PostgreSQL, MySQL, Redis, Kafka, and more) hosted entirely on European infrastructure. Their platform simplifies operations while keeping your data under European jurisdiction. Aiven is a strong option for teams that want the convenience of a managed service with solid tooling.
+
+The managed database offerings from **Hetzner**, **Scaleway**, and **OVHcloud** also provide PostgreSQL and MySQL as fully European options. These are more traditional managed databases, but they're reliable, straightforward, and keep your data firmly within European jurisdiction.
+
+If you need horizontal scaling, **CrateDB** is an Austrian distributed SQL database designed for time-series and real-time analytics. They offer both a managed cloud service with European data centers and a self-hosted open-source edition.
+
+## Authentication and Identity
+
+Identity is a critical piece of infrastructure, and depending on American services like Auth0 or Okta isn't always ideal.
+
+**Keycloak** is the open-source answer. It's a full-featured identity and access management solution that handles OAuth2, OpenID Connect, SAML, and user federation. Running Keycloak yourself means you control where user data lives and under which jurisdiction. The learning curve is steeper than managed services, but the flexibility and control are significant.
+
+**ZITADEL** is a Swiss identity management platform that offers both cloud and self-hosted options. Their cloud service stores data in European data centers, and their open-source version can be deployed anywhere. The UX is more modern than Keycloak, and they've designed it to be multi-tenant from the start.
+
+**Authelia** and **Authentik** are lighter-weight self-hosted options for authentication, particularly useful if you're running a homelab or small-scale infrastructure.
+
+## AI and Machine Learning
+
+The AI space has been dominated by American companies, but European alternatives are emerging, and self-hosting has become increasingly viable.
+
+**Mistral AI** is the flagship European AI company, based in France. Their models (Mistral, Mixtral, and newer offerings) are competitive with OpenAI's GPT models for many tasks. They offer an API service, but their models are also available with permissive licenses for self-hosting. If you need a capable language model and want to avoid dependence on American providers, Mistral is the obvious choice.
+
+**Aleph Alpha** is a German AI company focused on enterprise use cases, particularly for organizations that need explainability and sovereign AI deployments. Their focus on European enterprise compliance makes them relevant for regulated industries.
+
+For self-hosting, the ecosystem has matured dramatically. **LocalAI** provides a local, OpenAI-compatible API for running models without external dependencies. **llama.cpp** enables running models efficiently on consumer hardware and is the engine behind many local inference tools. Both are open-source projects that you can deploy on any European cloud provider, keeping your data and inference entirely under EU jurisdiction. Combined with open models from Mistral or other European providers, you can build AI-powered applications on your own infrastructure without sending data to any third party.
+
+If you need embeddings for search or RAG applications, open models can be served locally with minimal setup. For vector storage, **pgvector** adds vector capabilities to PostgreSQL, keeping your entire stack within your control.
+
+An important note about open-source tools: the fact that a project is open-source doesn't automatically mean it's free from jurisdictional concerns. Some licenses include clauses that could create dependencies on specific entities or jurisdictions. I wrote a dedicated post about this: [Open-Source Licenses and Data Sovereignty: What You Need to Know](/posts/open-source-licenses-and-data-sovereignty/).
+
+## CDN and Edge
+
+Content delivery doesn't have to mean Cloudflare or AWS CloudFront.
+
+**Bunny CDN** is based in Slovenia and offers competitive pricing with edge locations worldwide. Their feature set covers what most applications need: caching, DDoS protection, and edge storage. The dashboard is clean, and the pricing model is straightforward pay-as-you-go.
+
+**Gcore** operates out of Luxembourg and provides CDN, streaming, and edge compute. They have a large network of edge locations and competitive pricing, particularly for media delivery.
+
+**KeyCDN** is a Swiss CDN provider known for simplicity and transparent pricing. They don't try to be everything, but what they do, they do well.
+
+## DNS
+
+**Bunny DNS** (from the same company as Bunny CDN) offers authoritative DNS with a focus on performance and simplicity.
+
+**deSEC** is a German free DNS hosting service that supports DNSSEC and focuses on privacy. It's run as a non-profit project.
+
+For self-hosting, **PowerDNS** and **Knot DNS** are open-source authoritative DNS servers that you can run on European infrastructure.
+
+## Email
+
+Email is tricky because deliverability matters enormously, and the big American providers (Gmail, Office 365) have built significant infrastructure around spam filtering and reputation management.
+
+**Proton Mail** is the obvious European alternative for privacy-focused email, based in Switzerland. Beyond consumer email, they offer Proton for Business with custom domains and organizational features.
+
+**Mailbox.org** is a German email provider with strong privacy commitments and a long track record.
+
+**Tutanota** (now Tuta) is another German encrypted email provider with business offerings.
+
+For transactional email (sending from applications), the European options are more limited. **Mailjet** was French (now owned by Sinch, a Swedish company) and offers email APIs with European data centers. **Sendinblue** (now Brevo) is French and provides transactional email alongside marketing automation.
+
+Self-hosting email is technically possible but operationally challenging due to deliverability concerns. If you go this route, **Mail-in-a-Box**, **Mailu**, or **iRedMail** can simplify the setup, but maintaining email reputation requires ongoing attention.
+
+## Collaboration and Productivity
+
+The Google Workspace and Microsoft 365 alternatives space has options, though none quite match the integration of the dominant players.
+
+**Nextcloud** is the most complete self-hosted alternative, offering file storage, calendar, contacts, video calls, and document editing. It's German-developed, actively maintained, and used by many organizations that need to keep data on-premises. The trade-off is that self-hosting requires maintenance, though managed Nextcloud hosting is available from various European providers.
+
+**CryptPad** is a French end-to-end encrypted collaboration suite for documents, spreadsheets, and presentations. Everything is encrypted client-side, so even the service operator can't see your content.
+
+**OnlyOffice** provides office applications that can be self-hosted or used with their cloud service (servers in Europe available). Their document editing integrates with Nextcloud.
+
+## Version Control and CI/CD
+
+**Codeberg** is a German non-profit that provides free Git hosting built on Forgejo. Codeberg is an excellent option for open-source projects and organizations that want hosted version control under European jurisdiction without self-hosting.
+
+**Forgejo** is an open-source Git forge that can be self-hosted on European infrastructure for organizations that want full control over their code. It's lightweight, community-driven, and provides repositories, issue tracking, and CI/CD capabilities. As with any open-source tool in this guide, what matters is where you deploy it and under which jurisdiction your data lives.
+
+**Woodpecker CI** is an open-source CI/CD system that's easy to self-host, forked from Drone when that project changed its licensing.
+
+## What's Actually Practical
+
+I want to be honest about trade-offs. Not all of these alternatives are drop-in replacements, and the switching costs vary significantly.
+
+For cloud infrastructure, moving from AWS to Hetzner or Scaleway is straightforward if your application is reasonably portable. If you're deeply integrated with proprietary services like Lambda, Step Functions, or DynamoDB, migration requires architectural changes.
+
+For AI, the self-hosting and European API options have reached the point where they're genuinely viable for production use. Mistral's models are good. LocalAI and llama.cpp make local deployment simple. This is an area where the gap with American providers has closed significantly.
+
+For email and collaboration, the alternatives exist but require accepting some feature gaps or increased operational burden. This is where the American providers' integration advantages are most apparent.
+
+My approach has been gradual: start new projects on European infrastructure when practical, and migrate existing services when the effort-to-benefit ratio makes sense. Not everything needs to move at once, and frankly, some things don't need to move at all.
+
+The European tech ecosystem is healthier than it's ever been. Whether your motivation is data residency, cost, supporting European tech, or simply preferring to diversify your dependencies, the options are real and production-ready.
+
+## References
+
+### Legal Framework
+
+- [CLOUD Act (H.R.4943)](https://www.congress.gov/bill/115th-congress/house-bill/4943) – Full text of the Clarifying Lawful Overseas Use of Data Act
+- [CLOUD Act White Paper](https://www.justice.gov/CLOUDAct) – U.S. Department of Justice official documentation
+- [EDPB-EDPS Joint Response on the US CLOUD Act (PDF)](https://edps.europa.eu/sites/edp/files/publication/19-07-10_edpb_edps_cloudact_annex_en.pdf) – European Data Protection authorities' analysis
+- [FISA Amendments Act of 2008](https://en.wikipedia.org/wiki/FISA_of_1978_Amendments_Act_of_2008) – Wikipedia overview of Section 702 and related provisions
+- [FISA Court Opinion on FBI Abuse (Dec 2019, PDF)](https://www.intelligence.gov/assets/documents/702%20Documents/declassified/2019_702_Cert_FISC_Opinion_06Dec19_OCR.pdf) – Declassified ruling documenting the 16,000 queries issue
+
+### EU-US Data Transfer Cases
+
+- [Max Schrems](https://en.wikipedia.org/wiki/Max_Schrems) – Background on the privacy activist behind Schrems I and Schrems II
+- [Schrems II Judgment (Case C-311/18)](https://curia.europa.eu/juris/liste.jsf?num=C-311/18) – CJEU ruling that invalidated Privacy Shield
+- [EU-US Data Transfers: Time to Prepare for More Trouble](https://noyb.eu/en/eu-us-data-transfers-time-prepare-more-trouble-come) – noyb analysis on Trans-Atlantic Data Privacy Framework fragility
+
+### Organizations and Resources
+
+- [noyb – European Center for Digital Rights](https://noyb.eu/) – Max Schrems' organization focused on GDPR enforcement
+- [EFF: NSA Spying](https://www.eff.org/nsa-spying) – Electronic Frontier Foundation documentation on surveillance programs
+- [european-alternatives.eu](https://european-alternatives.eu/) – Directory of European alternatives to US tech (recommended by noyb)
+- [Center for Democracy & Technology on Section 702 Abuse](https://cdt.org/insights/fisa-court-opinion-outlines-fbi-abuse-of-key-intelligence-surveillance-authority/) – Analysis of FISA Court findings
