@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 import mdx from "@astrojs/mdx";
 import sitemap from "@astrojs/sitemap";
 import svelte from "@astrojs/svelte";
-import tailwind from "@astrojs/tailwind";
+import tailwindcss from "@tailwindcss/vite";
 import {
 	transformerMetaHighlight,
 	transformerNotationHighlight,
@@ -37,7 +37,7 @@ export default defineConfig({
 		ssr: {
 			noExternal: [`${BASE}/pagefind/pagefind.js`],
 		},
-		plugins: [pagefind()],
+		plugins: [pagefind(), tailwindcss()],
 		build: {
 			rollupOptions: {
 				external: [`${BASE}/pagefind/pagefind.js`],
@@ -50,7 +50,6 @@ export default defineConfig({
 		}),
 		mdx(),
 		sitemap(),
-		tailwind(),
 		svelte(),
 	],
 	markdown: {

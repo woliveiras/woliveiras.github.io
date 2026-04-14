@@ -1,3 +1,6 @@
+allowBuilds:
+  esbuild: true
+  sharp: true
 # Prevent installing new versions of packages for at least 72 hours (4320 minutes)
 # after the last release. This allows time for testing and feedback before new
 # versions are widely adopted.

@@ -25,7 +25,7 @@ const pages = posts.reduce(
 	>,
 );
 
-export const { getStaticPaths, GET } = OGImageRoute({
+export const { getStaticPaths, GET } = await OGImageRoute({
 	// Tell us the name of your dynamic route segment.
 	// In this case it’s `route`, because the file is named `[...route].ts`.
 	param: "route",
@@ -43,7 +43,10 @@ export const { getStaticPaths, GET } = OGImageRoute({
 	},
 
 	// For each page, this callback will be used to customize the OpenGraph image.
-	getImageOptions: (_, page) => ({
+	getImageOptions: (
+		_: string,
+		page: { title: string; description: string; useHero: boolean; heroImage?: string },
+	) => ({
 		title: page.title,
 		description: page.description,
 		bgImage: {

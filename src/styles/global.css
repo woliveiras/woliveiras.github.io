@@ -1,3 +1,11 @@
+@import "tailwindcss";
+@config "../../tailwind.config.mjs";
+
+@plugin "@tailwindcss/typography";
+@plugin "@tailwindcss/forms";
+
+@custom-variant dark (&.dark);
+
 svg[id^="mermaid"] {
 	margin: 50px auto;
 }

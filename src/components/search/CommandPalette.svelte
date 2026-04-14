@@ -128,9 +128,9 @@ $: if ($showSearch) {
       </button>
 
       <div
-        class="mx-auto max-w-xl transform divide-y divide-base-100 dark:divide-white/10 overflow-hidden rounded-xl bg-white dark:bg-base-900 shadow-2xl ring-1 ring-black dark:ring-white/20 ring-opacity-5 transition-all"
+        class="mx-auto max-w-xl transform divide-y divide-base-100 dark:divide-white/10 overflow-hidden rounded-xl bg-white dark:bg-base-900 shadow-2xl ring-1 ring-black/5 dark:ring-white/20 transition-all"
       >
-        <div class="relative flex flex-grow items-stretch focus-within:z-10">
+        <div class="relative flex grow items-stretch focus-within:z-10">
           <input
             on:keydown={(event) => {
               if (event.key == "Enter") {

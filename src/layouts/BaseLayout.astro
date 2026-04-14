@@ -26,6 +26,7 @@ const { title, description, image } = Astro.props;
     </script>
 
     <style is:global>
+      @reference "../styles/global.css";
       html.dark .astro-code,
       html.dark .astro-code span {
         color: var(--shiki-dark);
@@ -37,8 +38,8 @@ const { title, description, image } = Astro.props;
       }
 
       pre {
-        @apply overflow-hidden !important;
-        @apply border border-base-300 dark:border-base-700 bg-base-200/50 dark:bg-base-950/30 rounded-xl !important;
+        @apply overflow-hidden!;
+        @apply border! border-base-300! dark:border-base-700! bg-base-200/50! dark:bg-base-950/30! rounded-xl!;
       }
 
       .line.highlighted {
