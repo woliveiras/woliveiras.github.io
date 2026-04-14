@@ -44,7 +44,7 @@
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.4.4",
-		"@sveltejs/vite-plugin-svelte": "^5.1.1",
+		"@sveltejs/vite-plugin-svelte": "^6.2.4",
 		"@tailwindcss/typography": "^0.5.19",
 		"@types/hast": "^3.0.4",
 		"baseline-browser-mapping": "^2.10.0",
