@@ -4,7 +4,7 @@
 @plugin "@tailwindcss/typography";
 @plugin "@tailwindcss/forms";
 
-@custom-variant dark (&.dark);
+@custom-variant dark (&:where(.dark, .dark *));
 
 svg[id^="mermaid"] {
 	margin: 50px auto;
