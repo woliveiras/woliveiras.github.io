@@ -65,11 +65,6 @@ const { active } = Astro.props;
         active={active === "projects"}
         class="text-sm font-semibold leading-6">Projects</HeaderLink
       >
-      <HeaderLink
-        href={BASE + "/devlog"}
-        active={active === "devlog"}
-        class="text-sm font-semibold leading-6">Log</HeaderLink
-      >
       <HeaderDropdown
         label="Series"
         items={SERIES.map((s: { name: string; href: string }) => ({ name: s.name, href: BASE + s.href }))}

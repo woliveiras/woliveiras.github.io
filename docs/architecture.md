@@ -5,7 +5,7 @@ Static site built with **Astro 5**, TypeScript, Svelte, and Tailwind CSS. Deploy
 ## Key Directories
 
 - `src/content/blog/` — MDX blog posts (main content)
-- `src/content/info/`, `src/content/projects/`, `src/content/devlog/` — Other content collections
+- `src/content/info/`, `src/content/projects/` — Other content collections
 - `src/components/` — Astro and Svelte components (including search)
 - `src/embeds/` — Custom MDX embed integrations (YouTube, Excalidraw, LinkCard)
 - `src/layouts/` — Page layouts (`BlogPost.astro`, `BaseLayout.astro`, etc.)
