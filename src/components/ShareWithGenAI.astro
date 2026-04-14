@@ -1,0 +1,61 @@
+---
+interface Props {
+	slug: string;
+	title: string;
+}
+
+const { slug, title } = Astro.props;
+
+const blogUrl = `https://woliveiras.github.io/posts/${slug}/`;
+
+const prompt = `I'm reading this blog post: "${title}" at ${blogUrl}
+Help me understand the concepts explained in this article. Be ready to explain concepts, give examples, or help debug based on it.`;
+
+const encodedPrompt = encodeURIComponent(prompt);
+
+const aiLinks = [
+	{
+		name: "ChatGPT",
+		url: `https://chatgpt.com/?q=${encodedPrompt}`,
+		icon: "/src/assets/icons/chatgpt.svg",
+	},
+	{
+		name: "Claude",
+		url: `https://claude.ai/new?q=${encodedPrompt}`,
+		icon: "/src/assets/icons/claude.svg",
+	},
+	{
+		name: "Gemini",
+		url: `https://gemini.google.com/app?q=${encodedPrompt}`,
+		icon: "/src/assets/icons/gemini.svg",
+	},
+	{
+		name: "Perplexity",
+		url: `https://www.perplexity.ai/search?q=${encodedPrompt}`,
+		icon: "/src/assets/icons/perplexity.svg",
+	},
+];
+
+const icons = import.meta.glob<string>("/src/assets/icons/*.svg", {
+	query: "?raw",
+	import: "default",
+	eager: true,
+});
+---
+
+<div class="not-prose flex flex-wrap items-center gap-3 mt-8 pt-6 border-t border-base-300 dark:border-base-700">
+	<span class="text-sm text-base-500 dark:text-base-400">Discuss with AI:</span>
+	{
+		aiLinks.map((link) => (
+			<a
+				href={link.url}
+				target="_blank"
+				rel="noopener noreferrer"
+				class="inline-flex items-center gap-2 px-3 py-1.5 text-sm bg-base-100 dark:bg-base-800 hover:bg-base-200 dark:hover:bg-base-700 text-base-600 dark:text-base-300 rounded-md transition-colors"
+			>
+				<span class="[&>svg]:w-4 [&>svg]:h-4 [&>svg]:fill-current opacity-70" set:html={icons[link.icon]} />
+				{link.name}
+			</a>
+		))
+	}
+</div>
