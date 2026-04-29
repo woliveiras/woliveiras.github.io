@@ -125,6 +125,18 @@ The VS Code documentation provides excellent guidance. Here's a distilled versio
 | **Focus on non-obvious rules** | Skip things linters already enforce; spend tokens on what a linter can't catch | Architecture decisions, framework-specific patterns, business logic rules |
 | **Keep it concise** | The file is included in every request; long files consume context window tokens | Aim for 1–2 pages max |
 
+### The context cost of "always loaded"
+
+`copilot-instructions.md` is **loaded on every single request**, regardless of what you're working on. That's not a problem for a focused, lean file. But it means the cost compounds: a 300-line instructions file eats 300 lines of context window space on a Python script, a TypeScript component, an infrastructure file, and a test — even if only one of those has rules that matter.
+
+Two practical implications:
+
+**1. Don't add language-specific rules to `copilot-instructions.md` in a polyglot project.** If your TypeScript conventions belong in `copilot-instructions.md` but 40% of your codebase is Python or Go, you're loading irrelevant rules on every Python request. Those rules belong in a path-specific `.instructions.md` file (covered next).
+
+**2. `copilot-instructions.md` and `AGENTS.md` are both always-loaded and are not de-duplicated.** If both files contain the same rule ("use named exports"), Copilot receives it twice. This doesn't break anything, but it wastes tokens and can cause subtle confusion if the two files say slightly different things about the same topic. Keep `copilot-instructions.md` for Copilot-specific behavioral rules (tone, code style preferences), and `AGENTS.md` for operational project knowledge (build commands, architecture, gotchas). Don't repeat the same content in both.
+
+The right mental model: `copilot-instructions.md` is a monthly subscription — it bills on every request. Only put in it what earns its cost across all types of work in the repository.
+
 ---
 
 ## `.instructions.md`: path-specific instructions

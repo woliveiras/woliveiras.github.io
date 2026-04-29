@@ -137,6 +137,73 @@ Only `preToolUse` hooks can produce meaningful output. To deny a tool execution,
 
 The `permissionDecision` field accepts `"allow"`, `"deny"`, or `"ask"` — though currently only `"deny"` is processed. If your script exits without output (or outputs `"allow"`), the tool execution proceeds normally.
 
+### Output: injecting context into the agent
+
+`preToolUse` blocking is the most visible hook capability, but **context injection** is the most powerful one for improving agent quality.
+
+Any hook type that fires before or during a turn can return an `additionalContext` field. The agent receives this text as extra context alongside its current task — without you having to type it into the chat.
+
+```json
+{
+  "hookSpecificOutput": {
+    "hookEventName": "SessionStart",
+    "additionalContext": "Current branch: feature/auth-refactor | Node: v22.3.0 | Last commit: fix: resolve token expiry race condition"
+  }
+}
+```
+
+The hook lifecycle and what each stage can inject:
+
+| Hook | `additionalContext` | `decision: "block"` | Notes |
+|---|---|---|---|
+| `sessionStart` | Before first turn | No | Best for dynamic project state |
+| `userPromptSubmit` | Alongside the prompt | Yes (blocks prompt) | Useful for auto-attaching context |
+| `postToolUse` | After tool result | Yes (replaces tool result) | Run linters, inject failure details |
+| `Stop` (session end) | Continue session with reason | Yes (continues session) | Re-trigger if tests fail |
+| `SubagentStart` (VS Code) | Into sub-agent's context | No | Sub-agents get their own injection |
+| `PreCompact` (VS Code) | Before compaction | No | Export critical context before truncation |
+
+### The `PreCompact` hook: your last chance before the context shrinks
+
+When the context window fills up (around 95% capacity), the agent automatically compacts the conversation — it summarizes older turns to make room for new work. Important details get lost in that summarization.
+
+The `PreCompact` hook fires **immediately before compaction**. It's the only point in the lifecycle where you can export or preserve context that would otherwise be summarized away. Use it to write critical state to a file, post a summary to an external system, or log what the agent was working on:
+
+```sh title=".github/hooks/scripts/pre-compact.sh"
+#!/bin/bash
+INPUT=$(cat)
+SESSION_ID=$(echo "$INPUT" | jq -r '.sessionId')
+TRANSCRIPT=$(echo "$INPUT" | jq -r '.transcript_path')
+
+# Save a checkpoint summary before the context is compacted
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+cp "$TRANSCRIPT" "./logs/session-checkpoint-${TIMESTAMP}.jsonl"
+echo "Checkpoint saved before compaction: $TIMESTAMP" >> ./logs/compaction.log
+```
+
+This is particularly valuable for **long-running agentic sessions** — multi-hour sessions building a feature, running a full test suite, or coordinating multiple sub-agents. Without a PreCompact hook, you may find the agent has "forgotten" early context by the time it reaches the final steps.
+
+### The `SessionStart` hook: dynamic context injection
+
+The most high-value use of `additionalContext` is in the `sessionStart` hook. This fires once, before the agent reads any file or takes any action — making it the ideal injection point for dynamic project state that AGENTS.md can't capture (because AGENTS.md is static).
+
+```sh title=".github/hooks/scripts/inject-session-context.sh"
+#!/bin/bash
+BRANCH=$(git branch --show-current 2>/dev/null || echo "unknown")
+NODE_VER=$(node -v 2>/dev/null || echo "unknown")
+LAST_COMMIT=$(git log -1 --oneline 2>/dev/null || echo "no commits")
+FAILING_TESTS=$(npx vitest run --reporter=dot 2>&1 | grep -c "FAIL" || echo "0")
+
+CONTEXT="Branch: $BRANCH | Runtime: Node $NODE_VER | Last commit: $LAST_COMMIT"
+if [ "$FAILING_TESTS" -gt 0 ]; then
+  CONTEXT="$CONTEXT | WARNING: $FAILING_TESTS failing tests"
+fi
+
+echo "{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"$CONTEXT\"}}"
+```
+
+The agent now begins every session knowing the current branch, runtime version, last commit, and whether tests are passing — without you having to type any of it. This is the right complement to AGENTS.md: the file holds what never changes (build commands, architecture, conventions); the hook injects what changes every session (state).
+
 ### Reading input in scripts
 
 The standard pattern in Bash:
@@ -157,6 +224,8 @@ $toolArgs = $input.toolArgs
 ```
 
 The key detail: input comes from stdin. Use `cat` (Bash) or `ReadToEnd()` (PowerShell) to capture it, then parse with `jq` or `ConvertFrom-Json`.
+
+**One critical formatting rule**: hook output must be compact single-line JSON. Multi-line JSON will fail to parse. Use `jq -c` in Bash or `ConvertTo-Json -Compress` in PowerShell when constructing JSON output.
 
 ---
 

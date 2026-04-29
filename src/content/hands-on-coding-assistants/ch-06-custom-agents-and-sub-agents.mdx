@@ -379,6 +379,47 @@ The subagents feature is **synchronous**. The main agent waits for results befor
 | **Specialization** | Each subagent can use a different custom agent with different tools, instructions, and even models. |
 | **Cost reduction** | Only the final summary is added to the main agent's context, not the full conversation history of each subagent. |
 
+### The context cost of multi-agent systems
+
+Subagents isolate context. But they don't eliminate the token cost of what they return. Understanding that cost helps you design workflows that don't defeat their own purpose.
+
+**The scale of the problem:** multi-agent systems use approximately 15× more tokens than regular chat interactions (Anthropic Engineering). That's not a reason to avoid them — it's a reason to design them intentionally.
+
+**Subagents return summaries, not raw output.** This is the core of the token savings. The subagent might read 40 files, run 15 searches, and explore three dead ends — none of that appears in the main agent's context. Only the final result comes back. If you ask a subagent to "analyze the authentication system for security issues," the main agent receives "Found 3 issues: [concise list]", not the full exploration transcript.
+
+**But anti-patterns still cause context explosion:**
+- Spawning many subagents that each return long, detailed results → the main agent's context fills up anyway
+- Using subagents for tasks that need tight back-and-forth with the main agent → overhead exceeds benefit
+- Deep nesting without a purpose — VS Code enforces a maximum depth of 5 levels (`chat.subagents.allowInvocationsFromSubagents` must be enabled for any nesting at all)
+
+**When to use inline vs. subagent — a decision table:**
+
+| Use the main conversation | Use a subagent |
+|---|---|
+| Needs frequent back-and-forth | Produces verbose output you don't need in main context |
+| Multiple phases share significant context | Work is self-contained with a clear deliverable |
+| Quick, targeted change | Needs restricted tools or a different model |
+| Latency matters (subagents rebuild context from scratch) | Parallel independent investigation |
+
+### Model routing: cheaper models for worker agents
+
+Custom agents can specify a model via the `model` frontmatter field. This matters for cost. When a coordinator delegates to a worker agent, the worker doesn't need the most powerful (and expensive) model — it has a focused, narrow task.
+
+```markdown title=".github/agents/test-runner.agent.md"
+---
+name: Test Runner
+user-invokable: false
+model: claude-haiku-4-5
+tools: ['terminal', 'read']
+---
+Run the test suite and return only: total tests, passing, failing,
+and the full output for any failing tests.
+```
+
+The coordinator uses the full model for reasoning and synthesis. Worker agents use faster, cheaper models for execution. This is the same principle as using spot instances for parallelizable batch jobs: match the cost tier to the task complexity.
+
+VS Code enforces one constraint: a sub-agent's model cannot exceed the cost tier of the main model. You can route down (cheaper) but not up (more expensive) within a session.
+
 ### The `runSubagent` tool
 
 Subagents are typically **agent-initiated**, not manually invoked. The main agent decides when to use them based on your instructions or the task complexity. To enable this, make sure the `'agent/runSubagent'` tool (or the `agent` tool set) is available in your agent's `tools` list.

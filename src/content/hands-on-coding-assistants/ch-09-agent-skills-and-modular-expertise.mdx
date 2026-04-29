@@ -154,6 +154,40 @@ description: Helps with PDFs.
 | `license` | License for the skill | `Apache-2.0` |
 | `compatibility` | Environment requirements | `Requires git and gh CLI` |
 | `metadata` | Arbitrary key-value pairs | `author: my-team` |
+| `context` | Execution context: `inline` (default) or `fork` | `fork` |
+
+### `context: fork` — running a skill in its own context
+
+By default, skill instructions are injected inline into the current agent's context window (mode `inline`). This is fine for short skills that provide a few rules or commands.
+
+For skills that read many files, run lengthy investigations, or produce a focused deliverable (a report, a diff, a test summary), use `context: fork`:
+
+```yaml
+---
+name: security-audit
+description: >
+  Performs a security audit of the codebase — checks for OWASP Top 10 vulnerabilities,
+  exposed secrets, and insecure dependencies. Use when asked to audit security,
+  review code for vulnerabilities, or before a release.
+context: fork
+---
+```
+
+With `context: fork`, the skill executes in a **dedicated sub-agent**. All its file reads, tool calls, and intermediate reasoning load into the sub-agent's context — not yours. The parent agent receives only the skill's final output.
+
+This mirrors exactly what custom agents do when a coordinator delegates to a worker sub-agent (Ch 6). The difference is you get the same context isolation automatically, just by setting a frontmatter field — no agent orchestration required.
+
+**When to use `fork`:**
+- The skill reads a large number of files (code audit, dependency analysis, full codebase search)
+- The skill produces one focused artifact (a report, a structured list, a refactoring diff)
+- You don't want the skill's exploration to pollute the main conversation
+
+**When to keep `inline` (default):**
+- The skill provides a few targeted rules the agent needs to know mid-task
+- The skill output feeds directly into the current turn's reasoning
+- The skill is short and narrow
+
+`context: fork` requires the `github.copilot.chat.skillTool.enabled` VS Code setting. It's marked experimental but stable for production use as of early 2026.
 
 ### Invocation control matrix
 

@@ -19,6 +19,8 @@ This chapter collects every external reference cited in the series. Links are or
 - [GitHub Blog — Research: quantifying GitHub Copilot's impact in the enterprise with Accenture (2024)](https://github.blog/news-insights/research/research-quantifying-github-copilots-impact-in-the-enterprise-with-accenture/) — 8.69% increase in PRs; 15% increase in merge rate; 84% increase in successful builds; 95% developer satisfaction
 - [The SPACE of developer productivity — ACM Queue](https://queue.acm.org/detail.cfm?id=3454124) — framework for measuring developer productivity across satisfaction, performance, activity, communication, and efficiency
 - [Stack Overflow — 2024 Developer Survey](https://survey.stackoverflow.co/2024/) — 76% of developers using or planning to use AI tools; codebase understanding among top use cases
+- [Anthropic Engineering — How we built our multi-agent research system](https://www.anthropic.com/engineering/built-multi-agent-research-system) — real-world multi-agent architecture, token usage patterns, 15× cost multiplication
+- [Anthropic Engineering — Building effective agents](https://www.anthropic.com/research/building-effective-agents) — principles for agentic systems: simplicity, minimal footprint, failure handling
 
 ---
 
@@ -38,6 +40,8 @@ This chapter collects every external reference cited in the series. Links are or
 - [GitHub Changelog — Copilot Memory early access (2025)](https://github.blog/changelog/2025-12-19-copilot-memory-early-access-for-pro-and-pro/) — repository-specific context
 - [GitHub Changelog — GitHub Agentic Workflows technical preview (2026)](https://github.blog/changelog/2026-02-13-github-agentic-workflows-are-now-in-technical-preview/) — Markdown-based automation with AI agents
 - [Wikipedia — GitHub Copilot](https://en.wikipedia.org/wiki/GitHub_Copilot) — full timeline and implementation details
+- [VS Code — February 2025 release notes (v1.98)](https://code.visualstudio.com/updates/v1_98) — agent mode, custom instructions, `applyTo` patterns for conditional instructions
+- [VS Code — April 2025 release notes (v1.100)](https://code.visualstudio.com/updates/v1_100) — `context: fork` for skills, subagent depth limits, hooks preview
 
 ---
 
@@ -94,6 +98,19 @@ This chapter collects every external reference cited in the series. Links are or
 - [GitHub Docs — Creating custom agents for Copilot coding agent](https://docs.github.com/en/copilot/how-tos/use-copilot-agents/coding-agent/create-custom-agents) — agent profiles, configuring, examples
 - [GitHub Docs — Custom agents configuration reference](https://docs.github.com/en/copilot/reference/custom-agents-configuration) — YAML frontmatter properties, tool aliases, MCP server configuration
 - [GitHub — Awesome Copilot](https://github.com/github/awesome-copilot) — community-contributed custom agents, prompt files, instructions, and skills
+- [VS Code — Agents (concepts)](https://code.visualstudio.com/docs/copilot/concepts/agents) — agent types, execution model, context isolation
+- [VS Code — Use tools with agents](https://code.visualstudio.com/docs/copilot/agents/agent-tools) — tool availability, tool approval, MCP tool discovery
+- [VS Code — Customization concepts](https://code.visualstudio.com/docs/copilot/concepts/customization) — all customization mechanisms and when each applies
+- [VS Code — Customize AI in VS Code](https://code.visualstudio.com/docs/copilot/copilot-customization) — overview of all customization types and their scope
+- [GitHub Docs — About customizing GitHub Copilot responses](https://docs.github.com/en/copilot/concepts/prompting/response-customization) — response customization concepts
+- [GitHub Docs — Adding repository custom instructions (how-to)](https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/add-custom-instructions/add-repository-instructions) — step-by-step guide for repository-level instructions
+- [GitHub Docs — Adding personal custom instructions](https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/add-custom-instructions/add-personal-instructions) — user-level preferences and coding style rules
+- [GitHub Docs — Copilot customization cheat sheet](https://docs.github.com/en/copilot/reference/customization-cheat-sheet) — quick-reference for all customization options and scopes
+- [GitHub Docs — About agentic memory for GitHub Copilot](https://docs.github.com/en/copilot/concepts/agents/copilot-memory) — repository-scoped memory that persists across sessions
+- [GitHub Docs — Creating custom agents for Copilot cloud agent in your IDE](https://docs.github.com/en/copilot/how-tos/use-copilot-agents/cloud-agent/create-custom-agents-in-your-ide) — cloud agent configuration from your IDE
+- [GitHub Docs — Concepts for GitHub Copilot cloud agent](https://docs.github.com/en/copilot/concepts/agents/cloud-agent) — cloud agent overview, capabilities, and limitations
+- [GitHub Docs — Connecting cloud agents to external tools](https://docs.github.com/en/copilot/how-tos/use-copilot-agents/cloud-agent/extend-cloud-agent-with-mcp) — MCP in cloud agent workflows
+- [GitHub Docs — Risks and mitigations for GitHub Copilot cloud agent](https://docs.github.com/en/copilot/concepts/agents/cloud-agent/risks-and-mitigations) — security risks and how to mitigate them
 
 ### Agent Skills
 
@@ -101,6 +118,8 @@ This chapter collects every external reference cited in the series. Links are or
 - [Agent Skills specification](https://agentskills.io/specification) — the open standard: directory structure, frontmatter, body content, validation
 - [Agent Skills overview](https://agentskills.io/) — adoption by VS Code/Claude Code/Gemini CLI and 15+ tools
 - [Anthropic — Reference skills](https://github.com/anthropics/skills) — reference skill implementations from Anthropic
+- [Agent Skills — Client showcase](https://agentskills.io/clients) — list of tools that support the SKILL.md open standard
+- [agentskills/agentskills — GitHub](https://github.com/agentskills/agentskills) — community skills repository and reference implementations
 
 ### Code review
 
@@ -117,6 +136,12 @@ This chapter collects every external reference cited in the series. Links are or
 - [Hooks configuration reference](https://docs.github.com/en/copilot/reference/hooks-configuration) — complete hook types reference with input/output formats
 - [Customizing the development environment for Copilot coding agent](https://docs.github.com/en/copilot/customizing-copilot/customizing-the-development-environment-for-copilot-coding-agent) — copilot-setup-steps.yml documentation
 - [GitHub Docs — Best practices for using Copilot to work on tasks](https://docs.github.com/en/copilot/using-github-copilot/using-copilot-coding-agent-to-work-on-tasks/best-practices-for-using-copilot-to-work-on-tasks) — well-scoped issues, task selection, spec-driven approach
+- [VS Code — Agent hooks (Preview)](https://code.visualstudio.com/docs/copilot/customization/hooks) — hooks in VS Code Copilot: trigger types, configuration, `additionalContext` injection
+- [GitHub Docs — About hooks for GitHub Copilot cloud agent](https://docs.github.com/en/copilot/concepts/agents/cloud-agent/about-hooks) — cloud agent hooks: concepts and security model
+- [GitHub Docs — Customizing cloud agent workflows with hooks](https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/customize-cloud-agent/use-hooks) — step-by-step for cloud agent hook configuration
+- [GitHub Docs — MCP and GitHub Copilot cloud agent](https://docs.github.com/en/copilot/concepts/agents/cloud-agent/mcp-and-cloud-agent) — how MCP integrates with cloud agent workflows
+- [OpenAI Codex CLI — Hooks documentation](https://developers.openai.com/codex/hooks) — hook system for Codex CLI: lifecycle events, input/output format
+- [OpenAI Codex CLI — Custom instructions with AGENTS.md](https://developers.openai.com/codex/guides/agents-md) — AGENTS.md support in the Codex CLI
 
 ### Security, governance, and metrics
 
@@ -134,7 +159,13 @@ This chapter collects every external reference cited in the series. Links are or
 ## MCP (Model Context Protocol)
 
 - [Model Context Protocol — Official site](https://modelcontextprotocol.io/) — the MCP specification and documentation
+- [MCP — Introduction (What is MCP?)](https://modelcontextprotocol.io/introduction) — motivation, core concepts, and the protocol at a glance
+- [MCP — Architecture overview](https://modelcontextprotocol.io/docs/learn/architecture) — hosts, clients, servers, transport types
+- [Anthropic — Introducing MCP (2024)](https://www.anthropic.com/news/model-context-protocol) — original announcement and design rationale
 - [VS Code — Add and manage MCP servers](https://code.visualstudio.com/docs/copilot/customization/mcp-servers) — gallery, mcp.json configuration, trust model
+- [VS Code — MCP configuration reference](https://code.visualstudio.com/docs/copilot/reference/mcp-configuration) — full mcp.json schema, server types, environment variables
+- [VS Code — Tools concepts](https://code.visualstudio.com/docs/copilot/concepts/tools) — tool categories, approval model, context impact
+- [VS Code — Language models](https://code.visualstudio.com/docs/copilot/concepts/language-models) — model selection, context window, token management
 - [GitHub Docs — Extending Copilot coding agent with MCP](https://docs.github.com/en/copilot/customizing-copilot/extending-copilot-coding-agent-with-mcp) — repository-level MCP configuration
 - [GitHub MCP Server — Available toolsets](https://github.com/github/github-mcp-server?tab=readme-ov-file#available-toolsets) — GitHub MCP server toolsets
 - [GitHub MCP Server Registry](https://github.com/mcp) — browse available MCP servers
@@ -142,6 +173,32 @@ This chapter collects every external reference cited in the series. Links are or
 - [Notion MCP server](https://github.com/makenotion/notion-mcp-server) — documentation and knowledge base integration
 - [Azure MCP server](https://github.com/Azure/azure-mcp) — Azure infrastructure integration
 - [Cloudflare MCP server](https://github.com/cloudflare/mcp-server-cloudflare) — edge platform integration
+
+### MCP specification
+
+- [MCP — Tools specification (2025-06-18)](https://modelcontextprotocol.io/specification/2025-06-18/server/tools) — tool schema format, annotations, tool call lifecycle
+- [MCP — Resources specification (2025-06-18)](https://modelcontextprotocol.io/specification/2025-06-18/server/resources) — resource URIs, templates, subscriptions
+- [MCP — Prompts specification (2025-06-18)](https://modelcontextprotocol.io/specification/2025-06-18/server/prompts) — prompt templates, arguments, embedding in messages
+- [MCP — Sampling specification (2025-06-18)](https://modelcontextprotocol.io/specification/2025-06-18/client/sampling) — LLM calls from the server side without polluting client context
+- [MCP — Roots specification (2025-06-18)](https://modelcontextprotocol.io/specification/2025-06-18/client/roots) — filesystem access boundaries
+- [MCP — Pagination utilities (2025-06-18)](https://modelcontextprotocol.io/specification/2025-06-18/server/utilities/pagination) — cursor-based pagination for large result sets
+- [MCP — Transports specification](https://modelcontextprotocol.io/docs/concepts/transports) — stdio, SSE, and HTTP transport layers
+- [MCP — Lifecycle specification (2025-06-18)](https://modelcontextprotocol.io/specification/2025-06-18/basic/lifecycle) — initialization, capability negotiation, shutdown
+- [MCP — Security best practices (2025-06-18)](https://modelcontextprotocol.io/specification/2025-06-18/basic/security_best_practices) — trust model, consent, input validation
+- [MCP — Client best practices](https://modelcontextprotocol.io/docs/develop/clients/client-best-practices) — progressive discovery, 150K token problem, virtual tools pattern
+
+### MCP security
+
+- [Invariant Labs — MCP Tool Poisoning Attacks (2025)](https://invariantlabs.ai/blog/mcp-security-notification-tool-poisoning-attacks) — TPA: malicious instructions hidden in tool descriptions, shadowing attacks, rug pull
+
+---
+
+## Claude Code
+
+- [Claude Code — Create custom subagents](https://code.claude.com/docs/en/sub-agents) — subagent configuration, `.agent.md`, tool restrictions, fork mode
+- [Claude Code — Best practices](https://code.claude.com/docs/en/best-practices) — context management, performance in agentic workflows, when to delegate
+- [Claude Code — Explore the context window](https://code.claude.com/docs/en/context-window) — how context fills, auto-compaction strategies, fork mode inheritance
+- [Claude Code — Orchestrate teams of Claude Code sessions](https://code.claude.com/docs/en/agent-teams) — agent teams, coordinator patterns, output aggregation
 
 ---
 
@@ -161,6 +218,14 @@ This chapter collects every external reference cited in the series. Links are or
 - [Vitest](https://vitest.dev/) — Vite-native test framework for TypeScript/JavaScript
 - [Playwright](https://playwright.dev/) — end-to-end testing for web applications
 - [Jest](https://jestjs.io/) — JavaScript testing framework
+
+---
+
+## Other AI coding tools
+
+- [VS Code — AI extensibility overview](https://code.visualstudio.com/api/extension-guides/ai/ai-extensibility-overview) — extension API for building AI tools in VS Code
+- [Cursor — Cloud agents](https://cursor.com/docs/cloud-agent) — Cursor's cloud agent capabilities and configuration
+- [Gemini CLI — GitHub repository](https://github.com/google-gemini/gemini-cli) — Google's open-source AI coding assistant for the terminal
 
 ---
 
