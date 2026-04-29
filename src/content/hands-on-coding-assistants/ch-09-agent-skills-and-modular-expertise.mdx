@@ -39,7 +39,7 @@ Agent Skills is an **open standard** created by Anthropic, released at [agentski
 Skills use a three-level **progressive disclosure** system. This is crucial for understanding why skills scale better than dumping everything into instruction files:
 
 ```mermaid
-flowchart LR
+flowchart TD
   A["Level 1: Discovery<br/>~100 tokens<br/>name + description"] -->|task matches?| B["Level 2: Instructions<br/>SKILL.md body loaded<br/>< 5 000 tokens"]
   B -->|needs resources?| C["Level 3: Resources<br/>scripts, references, assets<br/>loaded on demand"]
 ```
