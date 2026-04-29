@@ -646,6 +646,84 @@ As of April 2026, Copilot Memory is available in early access for Copilot Pro+ u
 
 ---
 
+## When to create agents and skills — and when not to
+
+Ch 6 showed you how to build custom agents and sub-agents. This chapter has covered AGENTS.md as shared context. Before you commit to building either, there's a prior question: does anything need to be created at all?
+
+**Copilot now decides autonomously when to spawn sub-agents.** When you give the agent a complex task, it identifies which subtasks benefit from isolated context, spins up sub-agents to handle them independently, and incorporates their results — all without you needing to design a coordinator-worker structure. The main agent orchestrates automatically.
+
+This changes the calculus from earlier years. Many agents teams used to maintain manually — a "summarizer agent," a "search agent," a "file explorer agent" — are now Copilot's built-in behavior. You don't have to create an agent for a task just because you want it to work in isolation.
+
+### The default: do nothing
+
+If your task:
+- Doesn't repeat across the team on a regular basis
+- Has no special tool restrictions
+- Works fine with a clear prompt
+- Doesn't involve a specific domain procedure the agent would need to learn
+
+...then don't create anything. Write a good prompt. Copilot's built-in agent mode, with access to your AGENTS.md context, handles the vast majority of development tasks without any custom configuration.
+
+### When to create a custom agent (`.agent.md`)
+
+Create a custom agent when you want a **persistent, named persona** that the team can select from the dropdown. The agent defines _who the AI is for this class of task_ — and it stays consistent across every invocation:
+
+| Signal | Example |
+|--------|---------|
+| Same workflow repeated by multiple team members | A "PR Reviewer" agent everyone on the team uses |
+| Tool restrictions needed for safety or governance | A planning agent with only read-only tools |
+| Model routing (faster model for narrow tasks) | A documentation agent using a cheaper/faster model |
+| Handoff between stages in a defined workflow | Plan → Implement → Review chain |
+| You want it hidden from the dropdown but callable as a sub-agent | Internal worker agents that the coordinator invokes |
+
+Custom agents do NOT make sense for:
+- Tasks that only one person does once in a while
+- Tasks the main agent already handles well with a prompt
+- Adding agent files just to add structure when none is needed
+
+### When to create a skill (`SKILL.md`)
+
+Create a skill when you have a **portable, domain-specific procedure** the agent should pull in based on task relevance — not a role, but a capability.
+
+| Signal | Example |
+|--------|---------|
+| Multi-step procedure with scripts or external resources | A "run integration tests" skill that includes the test runner script |
+| Cross-tool portability needed | The same procedure should work in Copilot, Cursor, and Claude Code |
+| Agent should recognize and load it automatically | An "accessibility audit" skill that activates when editing UI components |
+| Domain expertise that doesn't fit in AGENTS.md | A "migration guide" skill specific to your data schema evolution process |
+
+The practical difference: **an agent is a persona you select. A skill is a capability the agent loads when it decides the task calls for it.** Copilot reads skill descriptions and activates them contextually — you don't have to invoke them manually.
+
+### The decision flow
+
+```mermaid
+flowchart TD
+    A[New task or need] --> B{Does the team repeat this<br/>workflow regularly?}
+    B -- No --> C[Write a clear prompt.<br/>No artifact needed.]
+    B -- Yes --> D{Is this a role with<br/>tool/model constraints?}
+    D -- Yes --> E[Create a custom agent<br/>(.agent.md)]
+    D -- No --> F{Is this a domain procedure<br/>portable across tools?}
+    F -- Yes --> G[Create a skill<br/>(SKILL.md)]
+    F -- No --> H{Does it need<br/>to run as a sub-agent<br/>in an orchestration?}
+    H -- Yes --> E
+    H -- No --> C
+```
+
+### What "Copilot auto-spawns" means for your setup
+
+When Copilot automatically spawns a sub-agent, it creates an isolated context for the subtask and returns a summary. This is **transparent** — it appears as a collapsible tool call in the chat UI. You don't need to configure it.
+
+What this means in practice:
+
+- A "summarizer" or "search helper" agent is rarely needed anymore
+- The coordinator-worker pattern only needs explicit agents when you need **tool restrictions** on the workers or want those workers invocable by name across the team
+- For one-off parallelism (e.g., `/fleet` in Copilot CLI), no agent files are required — the built-in behavior handles it
+- Agent files add value when the configuration **needs to be shared, versioned, and consistent across team members**, not for private one-off tasks
+
+The general heuristic: **if you're the only one who would benefit from this agent, don't create it. If the team would invoke it dozens of times a week, make it an agent file checked into source control.**
+
+---
+
 ## Key takeaways
 
 1. **AGENTS.md is a README for robots.** It gives every agent — Copilot, Codex, Jules, Cursor, and more — the project context they need before starting work.
@@ -656,6 +734,7 @@ As of April 2026, Copilot Memory is available in early access for Copilot Pro+ u
 6. **Treat it as living documentation.** Update AGENTS.md whenever build steps, conventions, or architecture change.
 7. **Use AGENTS.md as a documentation index.** Keep AGENTS.md thin. For larger projects, replace inline content with a table linking to `docs/ARCHITECTURE.md`, `docs/SECURITY.md`, `docs/GLOSSARY.md`, etc. Include a "Read when..." column so the agent knows which documents are relevant to which tasks.
 8. **Copilot Memory complements AGENTS.md.** Use AGENTS.md for deliberate, curated project context. Let Memory capture the patterns and corrections that emerge from real use.
+9. **Default to doing nothing.** Copilot auto-spawns sub-agents and handles most tasks with a good prompt and AGENTS.md context. Create a custom agent when a persona needs to be shared and versioned across the team. Create a skill when you have a portable, domain-specific procedure. If only you benefit, use a prompt — not a file.
 
 In Ch 8, we'll explore **repository custom instructions** with `copilot-instructions.md` and path-specific `.instructions.md` files — the complement to AGENTS.md that gives Copilot-specific behavioral guidance for different parts of your codebase.
 
