@@ -2,7 +2,7 @@
 title: "End-to-End Final Project"
 description: "Complete challenge applying the full PDRC cycle with multi-agent collaboration on a real codebase."
 module: 5
-order: 17
+order: 18
 ---
 
 ## Welcome to Module 5: the full cycle
@@ -47,7 +47,7 @@ The Plan phase is where the developer thinks. The AI doesn't write code yet. You
 
 ### Step 1.1: write the specification
 
-Transform the issue into a proper spec using the template from Ch 16. The spec should be detailed enough that someone (or something) unfamiliar with the codebase could implement the feature correctly.
+Transform the issue into a proper spec using the template from Ch 4. The spec should be detailed enough that someone (or something) unfamiliar with the codebase could implement the feature correctly.
 
 ```markdown title="spec-247-task-labels.md"
 # Spec: Task Labels Feature (Issue #247)
@@ -273,7 +273,7 @@ You're back in the driver's seat. The agent produced work; now you evaluate it a
 
 ### Step 3.1: automated review
 
-If you've configured Copilot Code Review (Ch 10), it runs automatically on the PR. Check what it found:
+If you've configured Copilot Code Review (Ch 11), it runs automatically on the PR. Check what it found:
 
 - Style violations?
 - Missing error handling?
@@ -300,7 +300,7 @@ Go through each acceptance criterion in the spec and check whether the PR satisf
 
 **Spec compliance score: 8/11 (73%)**
 
-This is your measurement instrument from Ch 16 in action. The spec told the agent what to do, and now it tells you exactly what was missed.
+This is your measurement instrument from Ch 4 in action. The spec told the agent what to do, and now it tells you exactly what was missed.
 
 ### Step 3.3: security and quality review
 
@@ -462,7 +462,7 @@ Don't try to adopt everything at once. Here's a phased rollout:
 - Run a team retrospective on the first month's metrics
 
 **Month 3: Measurement**
-- Establish your full measurement dashboard (Ch 16)
+- Establish your full measurement dashboard (Ch 17)
 - Compare Month 2 metrics to Month 1 baseline
 - Identify and fix the single biggest bottleneck
 
@@ -475,11 +475,11 @@ Don't try to adopt everything at once. Here's a phased rollout:
 | Under-reviewing | Bugs in production from agent-created PRs | Spec compliance checklist on every PR |
 | Ignoring the agent's failures | Same mistakes repeat across multiple PRs | Update custom instructions after every retrospective |
 | Measuring the wrong thing | Team celebrates "more code" while quality drops | Focus on cycle time, build success, and developer satisfaction |
-| No security review | Secrets in PRs, overly permissive agent access | Run the Ch 15 security audit checklist |
+| No security review | Secrets in PRs, overly permissive agent access | Run the Ch 16 security audit checklist |
 
 ### The role of the developer, revisited
 
-In Ch 1, we said the central idea of this series is: **you stay in control, and the AI amplifies your decisions.** After 17 chapters, that idea should feel concrete:
+In Ch 1, we said the central idea of this series is: **you stay in control, and the AI amplifies your decisions.** After 18 chapters, that idea should feel concrete:
 
 - **You** write the spec. The AI implements it.
 - **You** define the standards. The AI follows them.
@@ -511,7 +511,7 @@ The developer who uses AI well isn't the one who writes the cleverest prompt. It
 | **Review** | Check spec compliance, evaluate quality, assess security | Run automated reviews, highlight potential issues |
 | **Correct** | Provide specific feedback, update instructions, record lessons | Iterate on feedback, push fixes, re-run tests |
 
-The cycle repeats. Each iteration improves the instructions, the agents, and the specs — which improves the next cycle. This is the continuous improvement loop from Ch 16, and it's the real output of this series: not any single piece of code, but a system that gets better every time you use it.
+The cycle repeats. Each iteration improves the instructions, the agents, and the specs — which improves the next cycle. This is the continuous improvement loop from Ch 17, and it's the real output of this series: not any single piece of code, but a system that gets better every time you use it.
 
 ---
 
@@ -527,7 +527,7 @@ Complete the following exercise from beginning to end. Use a real repository if 
 
 3. **Delegate.** Assign the task to the coding agent (or work in agent mode). Let the agent complete the implementation without intervention unless it's stuck.
 
-4. **Review.** Score the PR against your spec (criteria met / total criteria). Run the security checklist from Ch 15. Note every issue you find.
+4. **Review.** Score the PR against your spec (criteria met / total criteria). Run the security checklist from Ch 16. Note every issue you find.
 
 5. **Correct.** Write specific review comments for each issue. Let the agent iterate. Re-review and score again.
 

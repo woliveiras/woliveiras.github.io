@@ -2,7 +2,7 @@
 title: "AGENTS.md & Project Context"
 description: "Using AGENTS.md as a standard for guiding agents with build steps, conventions, and architecture."
 module: 1
-order: 6
+order: 7
 ---
 
 ## The problem: agents don't know your project
@@ -435,7 +435,7 @@ Notice the structure: it tells an agent what the project is, where content goes,
 
 ## Hands-on: create and validate an AGENTS.md
 
-Let's write an AGENTS.md for the `agent-lab` project from Ch 5 (or adapt this to your own project).
+Let's write an AGENTS.md for the `agent-lab` project from Ch 6 (or adapt this to your own project).
 
 ### Step 1: Create the file
 
@@ -472,7 +472,7 @@ src/
   calculator.ts    # Main module: add, subtract, multiply, divide
 src/__tests__/     # Test files (mirror the src/ structure)
 .github/
-  agents/          # Custom agent definitions (see Ch 5)
+  agents/          # Custom agent definitions (see Ch 6)
 
 ## Conventions
 - All functions are pure (no side effects, no global state)
@@ -498,7 +498,7 @@ npm install
 # Verify build
 npx tsc
 
-# Verify tests (if you created them in Ch 5)
+# Verify tests (if you created them in Ch 6)
 npx vitest run
 ```
 
@@ -566,6 +566,6 @@ A good trigger: whenever a PR fails CI because the agent missed something, check
 5. **Auto-generate, then refine.** Use the coding agent or `/init` to generate a first draft, then validate commands and add gotchas from your experience.
 6. **Treat it as living documentation.** Update AGENTS.md whenever build steps, conventions, or architecture change.
 
-In Ch 7, we'll explore **repository custom instructions** with `copilot-instructions.md` and path-specific `.instructions.md` files — the complement to AGENTS.md that gives Copilot-specific behavioral guidance for different parts of your codebase.
+In Ch 8, we'll explore **repository custom instructions** with `copilot-instructions.md` and path-specific `.instructions.md` files — the complement to AGENTS.md that gives Copilot-specific behavioral guidance for different parts of your codebase.
 
 

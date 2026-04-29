@@ -2,14 +2,14 @@
 title: "MCP (Model Context Protocol)"
 description: "Open protocol for connecting AI to external systems — configuration, practical examples, and security."
 module: 3
-order: 13
+order: 14
 ---
 
 ## Welcome to Module 3: extending the loop beyond code
 
 Modules 1 and 2 gave you everything you need to Plan, Delegate, Review, and Correct inside the boundaries of your codebase: instruction files, custom agents, test generation, code review, debugging, refactoring, and documentation. That covers a lot of ground, but it leaves your AI assistant blind to the rest of your engineering ecosystem. It can't check Sentry for the stack trace that explains a bug. It can't look up a Notion design doc. It can't query your Azure resources to understand the infrastructure a service depends on.
 
-Module 3 opens the walls. Starting with this chapter on MCP, then continuing with hooks and automation in Ch 14, you'll learn how to connect Copilot to the external systems that surround your code, and how to orchestrate fully automated workflows that go from issue to pull request without manual intervention.
+Module 3 opens the walls. Starting with this chapter on MCP, then continuing with hooks and automation in Ch 15, you'll learn how to connect Copilot to the external systems that surround your code, and how to orchestrate fully automated workflows that go from issue to pull request without manual intervention.
 
 We begin with the protocol that makes it all possible.
 
@@ -279,7 +279,7 @@ This is Notion's official remote MCP server with OAuth authentication. When usin
 }
 ```
 
-Azure MCP uses the Azure Developer CLI for authentication. You'll need to run `azd coding-agent config` locally to set up the authentication flow and create a `copilot-setup-steps.yml` file (we'll cover this file in detail in Ch 14).
+Azure MCP uses the Azure Developer CLI for authentication. You'll need to run `azd coding-agent config` locally to set up the authentication flow and create a `copilot-setup-steps.yml` file (we'll cover this file in detail in Ch 15).
 
 **Use case**: you're migrating an App Service from one tier to another. The agent can query the current configuration, compare it against the target, and generate the infrastructure-as-code diff — all grounded in the actual state of your Azure subscription, not in assumptions.
 
@@ -685,6 +685,6 @@ MCP is the bridge between your AI coding assistant and the rest of your engineer
 
 5. **Combining multiple MCP servers creates compounding value.** Sentry for error context plus Notion for design docs plus GitHub for project management gives the agent the same information sources you use — making its output dramatically more relevant.
 
-In Ch 14, we'll build on MCP by adding **hooks and automation** — shell commands that execute at key points during agent execution, the `copilot-setup-steps.yml` file that customizes the agent's development environment, and workflows that take an issue all the way from creation to merged PR without manual intervention.
+In Ch 15, we'll build on MCP by adding **hooks and automation** — shell commands that execute at key points during agent execution, the `copilot-setup-steps.yml` file that customizes the agent's development environment, and workflows that take an issue all the way from creation to merged PR without manual intervention.
 
 

@@ -2,14 +2,14 @@
 title: "AI-First Security & Governance"
 description: "Risks, agent firewalls, separating agent access, testing/releasing custom agents, and IP considerations."
 module: 4
-order: 15
+order: 16
 ---
 
 ## Welcome to Module 4: trust at scale
 
 Modules 1 through 3 taught you to Plan, Delegate, Review, Correct, extend the loop with MCP, and automate it with hooks. You can now go from an issue to a merged pull request with minimal manual intervention. That's a powerful capability, and it's exactly the kind of capability that makes security teams and legal departments lose sleep.
 
-Module 4 is about earning, and keeping, their trust. In this chapter we'll cover the risks that come with AI-assisted development, the controls GitHub provides to mitigate them, and the governance structures that let organizations adopt AI coding agents confidently. In Ch 16, we'll shift from security to **impact measurement**, the metrics and feedback loops that prove your AI-assisted workflow is actually making things better.
+Module 4 is about earning, and keeping, their trust. In this chapter we'll cover the risks that come with AI-assisted development, the controls GitHub provides to mitigate them, and the governance structures that let organizations adopt AI coding agents confidently. In Ch 17, we'll shift from security to **impact measurement**, the metrics and feedback loops that prove your AI-assisted workflow is actually making things better.
 
 We start where security professionals start: with the threat model.
 
@@ -48,7 +48,7 @@ When you ask Copilot to help with a piece of code, the model receives context: t
 
 1. **Never commit secrets.** This was already a best practice, but it's now critical. Use `.gitignore` to exclude `.env` files, and use GitHub's push protection (secret scanning) to block commits that contain known secret patterns.
 
-2. **Use environment variables through setup steps.** In Ch 14, you learned about `copilot-setup-steps.yml`. Secrets referenced there use GitHub Actions secrets — they're injected at runtime, not stored in code:
+2. **Use environment variables through setup steps.** In Ch 15, you learned about `copilot-setup-steps.yml`. Secrets referenced there use GitHub Actions secrets — they're injected at runtime, not stored in code:
 
 ```yml title="copilot-setup-steps.yml"
 steps:
@@ -90,7 +90,7 @@ If the agent processes the issue body as part of its context, it might attempt t
 
 1. **Agent firewalls** (covered in detail in the next section) limit which domains the agent can reach. Even if a prompt injection tricks the agent into running `curl`, the firewall blocks the request if the domain isn't on the allowlist.
 
-2. **Hooks for pre-execution validation.** In Ch 14, you built hooks that intercept tool calls. A `preToolUse` hook on the `execute` tool can inspect the command before it runs:
+2. **Hooks for pre-execution validation.** In Ch 15, you built hooks that intercept tool calls. A `preToolUse` hook on the `execute` tool can inspect the command before it runs:
 
 ```json title=".github/hooks/block-curl-to-external.json"
 {
@@ -207,7 +207,7 @@ For most teams, the recommendation is simple: **keep the firewall on and add cus
 
 ## Separating agent access with custom agent profiles
 
-In Ch 8, you learned to create custom agents, specialized profiles that focus on specific tasks. Those same profiles are also a security tool. By controlling which **tools** an agent can access, you control what it can do.
+In Ch 9, you learned to create custom agents, specialized profiles that focus on specific tasks. Those same profiles are also a security tool. By controlling which **tools** an agent can access, you control what it can do.
 
 ### The `tools` property as a security boundary
 
@@ -352,7 +352,7 @@ Here's a practical workflow for teams introducing custom agents:
 
 4. **Release.** Merge to the default branch. The agent is now active for the repository.
 
-5. **Monitor.** Use audit hooks (Ch 14) to log every agent action. Review logs weekly for unexpected behavior.
+5. **Monitor.** Use audit hooks (Ch 15) to log every agent action. Review logs weekly for unexpected behavior.
 
 6. **Iterate.** Update the profile based on what the logs reveal. The cycle repeats.
 
@@ -689,6 +689,6 @@ Security in AI-assisted development isn't a single feature — it's a stack. Eac
 
 None of these layers alone is enough. Combined, they create a defense-in-depth posture that lets organizations adopt AI coding agents confidently.
 
-In Ch 16, we'll shift from controlling risk to **measuring impact**. How do you know your AI-assisted workflow is actually making your team faster, producing better code, and improving developer experience? We'll cover metrics (cycle time, PR lead time, test coverage, bug rate), developer satisfaction, analyzing agent performance, and spec-driven development — the measurement and feedback loops that turn adoption into continuous improvement.
+In Ch 17, we'll shift from controlling risk to **measuring impact**. How do you know your AI-assisted workflow is actually making your team faster, producing better code, and improving developer experience? We'll cover metrics (cycle time, PR lead time, test coverage, bug rate), developer satisfaction, analyzing agent performance, and spec-driven development — the measurement and feedback loops that turn adoption into continuous improvement.
 
 

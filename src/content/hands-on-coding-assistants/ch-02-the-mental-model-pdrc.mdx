@@ -74,6 +74,8 @@ The most common mistake developers make with AI tools is starting with the tool.
 
 5. **Which tool is right for this task?** — A completion is great for filling in a function body. A chat is better for explaining an approach. Agent mode is suited for multi-file changes. A coding agent handles well-scoped issues autonomously. Wrong tool = wasted time.
 
+For anything beyond a trivial task, the output of the Plan phase should be a concrete artifact — a structured document that defines the goal, the acceptance criteria, and the boundaries of the task before any tool is opened. In Ch 4, we'll build this practice into a repeatable workflow called Spec-Driven Development.
+
 ### The planning spectrum
 
 Planning effort should match task complexity:
@@ -368,12 +370,12 @@ Every chapter from here forward maps to one or more phases of PDRC:
 
 | Module | Focus | PDRC emphasis |
 |--------|-------|---------------|
-| **Module 00** (Ch 3–4) | Setup, prompt engineering | **Plan** — configuring tools and learning to prompt effectively |
-| **Module 01** (Ch 5–8) | Custom agents, AGENTS.md, instructions, skills | **Plan** — teaching the AI your context |
-| **Module 02** (Ch 9–12) | Tests, code review, debugging & refactoring, documentation | **Delegate + Review** — effective tasking and output evaluation |
-| **Module 03** (Ch 13–14) | MCP integrations, hooks, agent automation | **Delegate** — extending what the AI can access and do |
-| **Module 04** (Ch 15–16) | Security, governance, impact measurement | **Review** — systematic verification and risk management |
-| **Module 05** (Ch 17) | End-to-end final project | **Correct** — continuous improvement based on data |
+| **Module 00** (Ch 3–5) | Setup, spec-driven development, prompt engineering | **Plan** — configuring tools, specifying tasks, and learning to prompt effectively |
+| **Module 01** (Ch 6–9) | Custom agents, AGENTS.md, instructions, skills | **Plan** — teaching the AI your context |
+| **Module 02** (Ch 10–13) | Tests, code review, debugging & refactoring, documentation | **Delegate + Review** — effective tasking and output evaluation |
+| **Module 03** (Ch 14–15) | MCP integrations, hooks, agent automation | **Delegate** — extending what the AI can access and do |
+| **Module 04** (Ch 16–17) | Security, governance, impact measurement | **Review** — systematic verification and risk management |
+| **Module 05** (Ch 18) | End-to-end final project | **Correct** — continuous improvement based on data |
 
 You'll apply PDRC in every hands-on exercise. By the end of the series, it won't be something you _think about_ — it'll be muscle memory.
 

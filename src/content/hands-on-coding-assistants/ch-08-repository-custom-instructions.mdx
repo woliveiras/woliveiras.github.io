@@ -2,12 +2,12 @@
 title: "Repository Custom Instructions"
 description: "Repository-wide and path-specific instructions with copilot-instructions.md and .instructions.md files."
 module: 1
-order: 7
+order: 8
 ---
 
 ## Why repository instructions exist
 
-In Ch 6, we covered AGENTS.md — a cross-agent file that tells _any_ coding agent how your project works: build steps, architecture, conventions. But AGENTS.md is intentionally agent-agnostic. It doesn't control how Copilot generates code, what tone it uses in reviews, or whether it should prefer functional patterns over classes in a specific folder.
+In Ch 7, we covered AGENTS.md — a cross-agent file that tells _any_ coding agent how your project works: build steps, architecture, conventions. But AGENTS.md is intentionally agent-agnostic. It doesn't control how Copilot generates code, what tone it uses in reviews, or whether it should prefer functional patterns over classes in a specific folder.
 
 **Repository custom instructions** fill that gap. They're Copilot-specific files that shape how Copilot _behaves_; its coding style, framework preferences, error handling patterns, and review criteria. While AGENTS.md says "here's how to build the project," custom instructions say "when you write code here, follow these rules."
 
@@ -382,7 +382,7 @@ Two ways to check:
 
 ## Organization-level instructions
 
-In Ch 5, we covered organization-level agents (via the `.github-private` repository). Organization instructions work the same way, but for instruction files instead of agents.
+In Ch 6, we covered organization-level agents (via the `.github-private` repository). Organization instructions work the same way, but for instruction files instead of agents.
 
 ### How to set it up
 
@@ -582,24 +582,24 @@ EOF
 
 ## The complete instruction file map
 
-Here's how all the instruction files we've covered across Ch 3, Ch 5, Ch 6, and this chapter fit together:
+Here's how all the instruction files we've covered across Ch 3, Ch 6, Ch 7, and this chapter fit together:
 
 ```
 your-repo/
-├── AGENTS.md                     # Ch 6: cross-agent project context
+├── AGENTS.md                     # Ch 7: cross-agent project context
 ├── .github/
-│   ├── copilot-instructions.md         # Ch 7: Copilot-wide behavior
-│   ├── agents/                         # Ch 5: custom agent personas
+│   ├── copilot-instructions.md         # Ch 8: Copilot-wide behavior
+│   ├── agents/                         # Ch 6: custom agent personas
 │   │   ├── planner.agent.md
 │   │   ├── implementer.agent.md
 │   │   ├── test-specialist.agent.md
 │   │   └── reviewer.agent.md
-│   ├── instructions/                   # Ch 7: path-specific rules
+│   ├── instructions/                   # Ch 8: path-specific rules
 │   │   ├── typescript.instructions.md
 │   │   ├── react.instructions.md
 │   │   ├── api.instructions.md
 │   │   └── tests.instructions.md
-│   └── prompts/                        # Ch 5: one-shot commands
+│   └── prompts/                        # Ch 6: one-shot commands
 │       ├── test-this.prompt.md
 │       └── explain.prompt.md
 ```
@@ -635,6 +635,6 @@ Each file has a distinct role:
 5. **Validate with diagnostics.** Use the Chat Diagnostics view and References panel to verify your instruction files are being loaded and applied correctly.
 6. **Keep instructions concise and reasoned.** Include the _why_ behind each rule. Show code examples. Skip what linters already enforce.
 
-In Ch 8, we'll explore **Agent Skills**, a modular, conditionally-activated capabilities that give your agents specialized knowledge (like debugging GitHub Actions or working with specific APIs) only when the task calls for it.
+In Ch 9, we'll explore **Agent Skills**, a modular, conditionally-activated capabilities that give your agents specialized knowledge (like debugging GitHub Actions or working with specific APIs) only when the task calls for it.
 
 

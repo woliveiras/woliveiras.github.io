@@ -2,12 +2,12 @@
 title: "Hooks, Validation & Agent Automation"
 description: "Execute shell commands at key agent execution points, setup steps, and integration with project tools."
 module: 3
-order: 14
+order: 15
 ---
 
 ## From protocol to pipeline
 
-Ch 13 introduced MCP, the protocol that lets Copilot talk to external systems. MCP answers the question "what can the agent access?" This chapter answers the next question: **"what happens before, during, and after the agent acts?"**
+Ch 14 introduced MCP, the protocol that lets Copilot talk to external systems. MCP answers the question "what can the agent access?" This chapter answers the next question: **"what happens before, during, and after the agent acts?"**
 
 Hooks are shell commands that execute at strategic points in the agent's workflow. They let you enforce policies (block dangerous commands), create audit trails (log every tool invocation), and integrate with external systems (notify Slack when a session ends). Combined with `copilot-setup-steps.yml` — the file that customizes the agent's development environment — hooks give you fine-grained control over how the coding agent operates.
 
@@ -228,7 +228,7 @@ if [ "$TOOL_NAME" = "edit" ] || [ "$TOOL_NAME" = "create" ]; then
 fi
 ```
 
-This enforces the boundaries described in your instruction files (Ch 7) at the infrastructure level. Instructions tell the agent what it *should* do; hooks enforce what it *can* do.
+This enforces the boundaries described in your instruction files (Ch 8) at the infrastructure level. Instructions tell the agent what it *should* do; hooks enforce what it *can* do.
 
 ### Pattern 3: audit logging (Correct)
 
@@ -449,7 +449,7 @@ jobs:
         run: pip install -r requirements.txt
 ```
 
-The `environment: copilot` line gives the job access to secrets stored in the Copilot environment (the same one you set up for MCP in Ch 13).
+The `environment: copilot` line gives the job access to secrets stored in the Copilot environment (the same one you set up for MCP in Ch 14).
 
 **Monorepo with multiple languages:**
 
@@ -497,7 +497,7 @@ jobs:
         working-directory: backend
 ```
 
-**Azure MCP authentication (from Ch 13):**
+**Azure MCP authentication (from Ch 14):**
 
 ```yaml title=".github/workflows/copilot-setup-steps.yml"
 name: "Copilot Setup Steps"
@@ -530,7 +530,7 @@ jobs:
           allow-no-subscriptions: true
 ```
 
-This connects to Ch 13's Azure MCP example. The Azure login step runs before the agent starts, so the Azure MCP server can authenticate via the Azure CLI session.
+This connects to Ch 14's Azure MCP example. The Azure login step runs before the agent starts, so the Azure MCP server can authenticate via the Azure CLI session.
 
 ---
 
@@ -616,11 +616,11 @@ Here's how the pieces connect:
 |---|---|---|
 | **Environment setup** | Dependencies installed, tools configured, authentication established | `copilot-setup-steps.yml` |
 | **Session start** | Agent begins, hooks initialize logging and fetch external context | `sessionStart` hooks |
-| **Implementation** | Agent reads the issue, plans, writes code, runs tests | Custom instructions (Ch 7), MCP (Ch 13) |
+| **Implementation** | Agent reads the issue, plans, writes code, runs tests | Custom instructions (Ch 8), MCP (Ch 14) |
 | **Validation** | Every tool call passes through security and boundary checks | `preToolUse` hooks |
 | **Audit** | Every tool result is logged for compliance | `postToolUse` hooks |
 | **PR creation** | Agent opens a PR with description, test results, and issue links | Built-in coding agent behavior |
-| **Automated review** | Copilot Code Review (Ch 10) reviews the PR | Repository settings |
+| **Automated review** | Copilot Code Review (Ch 11) reviews the PR | Repository settings |
 | **Notification** | Team is notified of the PR via Slack/Teams | `sessionEnd` hooks |
 
 ### What you configure once vs. what runs automatically
@@ -629,9 +629,9 @@ Here's how the pieces connect:
 
 1. `copilot-setup-steps.yml` — environment configuration.
 2. `.github/hooks/*.json` — hook definitions.
-3. `.github/copilot-instructions.md` — agent instructions (Ch 7).
-4. MCP configuration in repository settings (Ch 13).
-5. Copilot Code Review enabled in repository settings (Ch 10).
+3. `.github/copilot-instructions.md` — agent instructions (Ch 8).
+4. MCP configuration in repository settings (Ch 14).
+5. Copilot Code Review enabled in repository settings (Ch 11).
 
 **Automated flow (runs for every assigned issue):**
 
@@ -898,7 +898,7 @@ You can also use the GitHub UI to create a PR with these changes.
    - **Setup steps** ran successfully (check the "Copilot Setup Steps" section in logs).
    - **Hooks** are listed in the session info.
    - **Audit logs** appear if you inspect the agent's workspace (the `logs/` directory).
-5. Review the PR. Copilot Code Review (Ch 10) should have already posted its review.
+5. Review the PR. Copilot Code Review (Ch 11) should have already posted its review.
 
 ### What you've built
 
@@ -921,12 +921,12 @@ Hooks and setup steps are the control plane for your AI coding agent. Here's wha
 
 2. **copilot-setup-steps.yml runs before the agent starts.** Use it to install dependencies deterministically, configure authentication, and set up language runtimes. Without it, the agent wastes time guessing how to set up your project.
 
-3. **Security hooks enforce what instructions recommend.** Custom instructions (Ch 7) tell the agent what it *should* do. `preToolUse` hooks enforce what it *can* do. Use both layers together.
+3. **Security hooks enforce what instructions recommend.** Custom instructions (Ch 8) tell the agent what it *should* do. `preToolUse` hooks enforce what it *can* do. Use both layers together.
 
 4. **Audit hooks create compliance trails.** Every tool call can be logged as structured data. This is essential for regulated industries and useful for debugging agent behavior in any organization.
 
 5. **The full loop — issue to merged PR — is achievable.** Combine setup steps (environment), hooks (validation and logging), MCP (external data), custom instructions (behavior), and Copilot Code Review (automated review) for a workflow where the human's role is final review, not manual orchestration.
 
-In Ch 15, we'll shift to the concerns that keep security teams and legal departments up at night: **AI-first security and governance**. We'll cover risks like sensitive data exposure in prompts and code injection, agent firewalls that control which domains the coding agent can access, testing and releasing custom agents in organizations, and the intellectual property implications of AI-generated code.
+In Ch 16, we'll shift to the concerns that keep security teams and legal departments up at night: **AI-first security and governance**. We'll cover risks like sensitive data exposure in prompts and code injection, agent firewalls that control which domains the coding agent can access, testing and releasing custom agents in organizations, and the intellectual property implications of AI-generated code.
 
 

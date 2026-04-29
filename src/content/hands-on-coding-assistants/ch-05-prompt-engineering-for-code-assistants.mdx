@@ -2,16 +2,20 @@
 title: "Prompt Engineering for Code Assistants"
 description: "From basics to advanced prompt structures, context management, and strategies for complex tasks."
 module: 0
-order: 4
+order: 5
 ---
 
-## Your prompt _is_ your plan
+## Your prompt derives from your spec
 
 In Ch 2, we defined the **Plan** phase of PDRC as answering five questions before you open the AI tool: What's the task? What are the acceptance criteria? What's the scope? What context does the AI need? And which tool is right for this task?
 
-Your prompt is the artifact where those answers become instructions. A vague prompt means you skipped the Plan phase — and the rest of the PDRC cycle inherits that debt. You'll spend more time reviewing, more time correcting, and more time wondering why the AI "didn't understand."
+In Ch 4, we made that concrete: you write a spec before delegating. The spec has four sections — Goal, Acceptance Criteria, Technical Notes, Out of Scope — and it answers all five questions in one document.
 
-This chapter is about turning planning into prompts that work on the first try, not the fifth.
+Your prompt is how you hand that spec to the AI tool. Notice the parallel: Goal maps to the goal component of your prompt, Acceptance Criteria and Technical Notes map to constraints and context, and Out of Scope maps to boundaries. If you've written a good spec, writing the prompt becomes straightforward — you're translating a structured document into a conversation, not inventing context from scratch.
+
+A vague prompt is a symptom that the Plan phase was skipped. The rest of the PDRC cycle inherits that debt: more review rounds, more corrections, more time wondering why the AI "didn't understand."
+
+This chapter is about the craft of that translation — how to turn a solid spec into prompts that work on the first try, not the fifth.
 
 ---
 
@@ -442,6 +446,6 @@ After running all three prompts, compare them on these dimensions:
 4. **Decompose before you delegate.** Complex tasks broken into single-responsibility steps produce better results than one monolithic prompt.
 5. **Know when to stop.** If you can't evaluate the output, if iterations aren't improving, or if the task requires human judgment, stop prompting and do the work yourself.
 
-In Ch 5, we'll take the next step: building **custom agents and sub-agents** with `.agent.md` profiles that encode your prompt engineering decisions into reusable, shareable configurations — turning one-off prompts into permanent team knowledge.
+In Ch 6, we'll take the next step: building **custom agents and sub-agents** with `.agent.md` profiles that encode your prompt engineering decisions into reusable, shareable configurations — turning one-off prompts into permanent team knowledge.
 
 

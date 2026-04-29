@@ -2,7 +2,7 @@
 title: "Impact Measurement & Continuous Improvement"
 description: "Defining metrics, developer experience data, analyzing agent performance, and spec-driven development."
 module: 4
-order: 16
+order: 17
 ---
 
 ## From adoption to evidence
@@ -46,7 +46,7 @@ Let's define each one precisely.
 
 **How to measure it:** Most engineering analytics tools (LinearB, Jellyfish, Pluralsight Flow, GitHub's own Copilot Metrics API) calculate this from your Git and CI data.
 
-**What to watch for:** A drop in coding time paired with stable or increasing review time suggests a bottleneck shift — the agent is producing more work than your review process can absorb. The fix is usually more automation (Ch 10's AI-assisted code review) or better scoping of tasks.
+**What to watch for:** A drop in coding time paired with stable or increasing review time suggests a bottleneck shift — the agent is producing more work than your review process can absorb. The fix is usually more automation (Ch 11's AI-assisted code review) or better scoping of tasks.
 
 ### PR lead time
 
@@ -178,7 +178,7 @@ These metrics evaluate how well your specific agent configuration is performing.
 
 ### Agent-specific breakdowns
 
-If you have multiple custom agents (Ch 8), compare their performance.
+If you have multiple custom agents (Ch 9), compare their performance.
 
 Example breakdown:
 
@@ -212,88 +212,32 @@ Tools like LinearB, Jellyfish, Pluralsight Flow, and Haystack connect to your Gi
 For agent-specific metrics, you'll likely need to build lightweight tracking:
 
 1. **Label agent PRs.** The coding agent already labels its PRs. Use these labels to filter your analytics.
-2. **Use audit hooks.** In Ch 14, you built hooks that log every tool call. Parse those logs to calculate intervention frequency, command patterns, and error rates.
+2. **Use audit hooks.** In Ch 15, you built hooks that log every tool call. Parse those logs to calculate intervention frequency, command patterns, and error rates.
 3. **Track issue-to-PR mappings.** When the agent creates a PR from an issue, the PR body references the issue. Use this link to calculate task completion rates.
 
 ---
 
-## Spec-driven development: the Plan that powers everything
+## Spec compliance: measuring the quality of your delegations
 
-Throughout this series, we've emphasized that the **Plan** phase of PDRC is the most important. Spec-driven development formalizes that idea: before delegating any task to an agent, you write a specification that defines what success looks like.
+In Ch 4, you learned to write specifications before delegating tasks to an agent. Every spec you write has acceptance criteria as a checklist. Those checkboxes are not just instructions — they are your measurement instrument.
 
-### Why specs matter more with AI
+After the agent creates its pull request, check the acceptance criteria:
 
-When a human developer picks up a task, they bring context: they know the codebase, they know the team's conventions, they can ask questions when something is unclear. An AI agent has none of this unless you provide it. The spec is how you provide it.
-
-A well-written spec transforms a vague issue into a precise instruction set:
-
-**Bad issue (no spec):**
-> Add user preferences to the settings page.
-
-**Good issue (with spec):**
-> ## User Preferences Feature
->
-> ### Goal
-> Allow users to configure notification preferences (email, push, in-app) from the settings page.
->
-> ### Acceptance criteria
-> - [ ] New "Notifications" section in the settings page, below "Profile"
-> - [ ] Three toggle switches: Email notifications, Push notifications, In-app notifications
-> - [ ] Toggles persist to the user's profile via the existing `PATCH /api/users/:id` endpoint
-> - [ ] Default state: all three enabled for new users
-> - [ ] Unit tests for the new API endpoint behavior
-> - [ ] E2E test for the toggle interaction
->
-> ### Technical notes
-> - Use the existing `ToggleSwitch` component from `src/components/ui/`
-> - Preferences are stored in the `user_preferences` JSON column on the `users` table
-> - See `src/pages/settings/ProfileSection.tsx` for the pattern to follow
->
-> ### Out of scope
-> - Notification delivery logic (separate issue)
-> - Granular notification types (future enhancement)
-
-### The spec as a measurement instrument
-
-Here's the key insight: **a spec with checkboxes is both an instruction for the agent and a measurement tool.** After the agent creates its PR, you can check:
-
-- How many acceptance criteria did the PR satisfy?
-- Which criteria were missed?
+- How many criteria did the PR satisfy?
+- Which were missed or only partially implemented?
 - Were any out-of-scope changes included?
 
-This gives you a precise completion quality score: 5/6 criteria met = 83% spec compliance. Track this over time, and you'll see exactly how your instructions and agent profiles improve (or don't).
+This gives you a **spec compliance score**: 5/6 criteria met = 83% compliance. Tracked across multiple tasks and sprints, spec compliance reveals exactly where your delegation process is working and where it breaks down.
 
-### Spec templates
+### What spec compliance tells you
 
-Create a spec template in your repository that developers fill out before assigning to the agent:
-
-```markdown title=".github/ISSUE_TEMPLATE/agent-task.md"
----
-name: Agent Task
-about: A task to be assigned to the Copilot coding agent
-labels: ["copilot-agent"]
----
-
-## Goal
-
-[One-paragraph description of what this task accomplishes and why]
-
-## Acceptance criteria
-
-- [ ] [Specific, testable criterion]
-- [ ] [Specific, testable criterion]
-- [ ] [Tests: describe what tests should exist]
-
-## Technical notes
-
-- [Files to modify]
-- [Patterns to follow]
-- [Dependencies or constraints]
-
-## Out of scope
-
-- [What this task explicitly does NOT include]
-```
+| Pattern | Likely cause | What to improve |
+| --- | --- | --- |
+| Compliance consistently above 90% | Well-scoped specs, good custom instructions | Expand agent usage to more complex tasks |
+| Compliance drops on larger tasks | Tasks too broad for a single delegation | Break into smaller, single-responsibility specs |
+| Specific criterion type always missed | Custom instructions don't cover it | Add the missing convention to `.github/copilot-instructions.md` |
+| Out-of-scope changes appear frequently | Spec's Out of Scope section too vague | Be more explicit about boundaries in each spec |
+| Compliance varies by agent | Some agents better scoped than others | Refine the underperforming agent's `.agent.md` instructions |
 
 ### Connecting specs to the PDRC cycle
 
@@ -480,6 +424,6 @@ Measurement transforms AI-assisted development from a novelty ("look, the agent 
 
 6. **The PDRC cycle is a measurement cycle.** Plan (write the spec) → Delegate (assign with clear criteria) → Review (score against the spec) → Correct (feed results back into instructions). Each iteration makes the next one better.
 
-In Ch 17, we'll put everything from the entire series together in an **end-to-end final project**. You'll receive a realistic scenario, apply every technique from Modules 1 through 4 — planning with specs, delegating to custom agents, reviewing with AI-assisted tools, correcting with hooks and feedback — and produce a complete, deployable result. It's the full PDRC cycle, measured, from start to finish.
+In Ch 18, we'll put everything from the entire series together in an **end-to-end final project**. You'll receive a realistic scenario, apply every technique from Modules 1 through 4 — planning with specs, delegating to custom agents, reviewing with AI-assisted tools, correcting with hooks and feedback — and produce a complete, deployable result. It's the full PDRC cycle, measured, from start to finish.
 
 

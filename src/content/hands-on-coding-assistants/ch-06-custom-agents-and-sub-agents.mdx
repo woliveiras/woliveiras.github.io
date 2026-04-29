@@ -2,12 +2,12 @@
 title: "Custom Agents & Sub-Agents"
 description: "Building specialized agents with .agent.md for testing, planning, documentation, and security review."
 module: 1
-order: 5
+order: 6
 ---
 
 ## From one-off prompts to reusable specialists
 
-In Ch 4, we learned how to write effective prompts — goal, context, constraints, output format. That works well for individual tasks, but it has a scaling problem: you end up writing the same context, the same constraints, and the same tool permissions into every prompt. Your testing prompts always say "don't modify production code." Your planning prompts always say "use read-only tools." Your review prompts always say "check for security, readability, and performance."
+In Ch 5, we learned how to write effective prompts — goal, context, constraints, output format. That works well for individual tasks, but it has a scaling problem: you end up writing the same context, the same constraints, and the same tool permissions into every prompt. Your testing prompts always say "don't modify production code." Your planning prompts always say "use read-only tools." Your review prompts always say "check for security, readability, and performance."
 
 Custom agents solve this by encoding your prompt engineering decisions into **reusable, shareable `.agent.md` files** that any team member can invoke from a dropdown. Instead of writing a detailed prompt every time, you write it once, save it as an agent, and select it from the menu.
 
@@ -73,7 +73,7 @@ agents: ['*']
 
 ### The body
 
-The body is where you define the agent's behavior in natural language. This is your prompt engineering from Ch 4, encoded permanently:
+The body is where you define the agent's behavior in natural language. This is your prompt engineering from Ch 5, encoded permanently:
 
 ```markdown title=".github/agents/example.agent.md (body)"
 You are a testing specialist focused on improving code quality through
@@ -632,7 +632,7 @@ Let's apply everything in a concrete exercise.
 
 ### Setup
 
-Use the same project from Ch 4, or create a new one:
+Use the same project from Ch 5, or create a new one:
 
 ```sh
 mkdir agent-lab && cd agent-lab
@@ -772,6 +772,6 @@ If any agent violated its constraints (e.g., the planner wrote code), your tool 
 4. **Handoffs create guided workflows.** Chain agents together so the output of one becomes the input of the next, with human control at every transition.
 5. **Start simple.** Four agents (planner, implementer, tester, reviewer) cover most workflows. Add more only when you have a real need.
 
-In Ch 6, we'll shift focus to **`AGENTS.md` and project context** — the file that teaches _all_ agents (including the coding agent on GitHub) how your project works, its build steps, conventions, and architecture.
+In Ch 7, we'll shift focus to **`AGENTS.md` and project context** — the file that teaches _all_ agents (including the coding agent on GitHub) how your project works, its build steps, conventions, and architecture.
 
 

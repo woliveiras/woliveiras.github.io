@@ -2,7 +2,7 @@
 title: "Agent Skills & Modular Expertise"
 description: "Building and using Agent Skills with SKILL.md and scripts for conditional, modular agent capabilities."
 module: 1
-order: 8
+order: 9
 ---
 
 ## From static instructions to on-demand capabilities
@@ -352,7 +352,7 @@ To use a shared skill:
 
 ## Putting it all together: the complete customization map
 
-With Ch 3 through Ch 8, you've now seen every customization mechanism. Here's the full picture:
+With Ch 3 through Ch 9, you've now seen every customization mechanism. Here's the full picture:
 
 | File | Loaded when | Scope | Primary purpose |
 |------|-------------|-------|-----------------|
@@ -385,6 +385,153 @@ flowchart LR
   E & F -->|"explicit invocation"| G
 ```
 
+
+---
+
+## Hands-on: build a spec-writer skill
+
+In Ch 4, you practiced writing specs manually: Goal, Acceptance Criteria, Technical Notes, Out of Scope. After a few iterations, the structure becomes second nature. But the blank page problem persists: when someone drops a vague issue description in front of you, there's still friction in transforming it into a proper spec.
+
+A `spec-writer` skill eliminates that friction. You invoke it with a vague description, and the agent produces a structured spec draft — which you then review and refine before delegating the implementation.
+
+This is the first exercise where you're using a skill to automate something you already know how to do manually. That's the right order: understand the process first, then automate it.
+
+### Step 1: create the directory structure
+
+```sh
+mkdir -p .github/skills/spec-writer
+```
+
+### Step 2: create the SKILL.md
+
+Create `.github/skills/spec-writer/SKILL.md`:
+
+```markdown
+---
+name: spec-writer
+description: >
+  Turns a vague feature request, issue description, or idea into a
+  structured Spec-Driven Development spec. Use when the user says
+  "write a spec", "turn this into a spec", "spec out this feature",
+  or provides a rough description of a task to be delegated to an agent.
+argument-hint: "[paste vague issue or feature description here]"
+---
+
+# Spec Writer
+
+## Purpose
+
+Transform a rough task description into a structured spec ready for
+agent delegation. The spec format follows Spec-Driven Development (SDD):
+four sections that give the agent everything it needs to implement
+correctly without ambiguity.
+
+## Output format
+
+Always produce a spec in this exact structure:
+
+```markdown
+## Goal
+
+[1–3 sentences: what this task accomplishes and why it matters.
+Be concrete about the user or system benefit.]
+
+## Acceptance criteria
+
+- [ ] [Specific, testable criterion — an observable behavior or outcome]
+- [ ] [...]
+- [ ] [Tests: describe what test coverage should exist]
+
+## Technical notes
+
+- [Relevant files, patterns, or conventions to follow]
+- [Constraints: libraries to use, patterns to avoid, performance targets]
+- [Dependencies: APIs, schemas, or services this task touches]
+
+## Out of scope
+
+- [What this task explicitly does NOT include]
+- [Future enhancements that are related but separate]
+```
+
+## Instructions
+
+1. **Read the input carefully.** Identify the core action, the affected
+   system, and the likely users or callers.
+
+2. **Write the Goal.** One to three sentences. What does this do, and why
+   does it matter? Do not describe how to implement it.
+
+3. **Write Acceptance Criteria.** Each criterion must be:
+   - Specific (not "it works" — describe the exact behavior)
+   - Testable (a pass/fail question, not a quality judgment)
+   - Scoped (not broader than the stated goal)
+   Include at least one criterion for tests or verification.
+
+4. **Write Technical Notes.** Ask: what does an agent need to know to
+   stay consistent with this codebase? Reference files, patterns, or
+   constraints from the input. If none are mentioned, note what would
+   typically apply (e.g., "follow existing route patterns").
+
+5. **Write Out of Scope.** Identify at least one thing that is clearly
+   related but should NOT be part of this task. This prevents scope
+   creep on the agent's part.
+
+6. **Flag ambiguities.** After the spec, add a brief "Open questions"
+   section if the input is missing information critical to the spec.
+   For example: "Open questions: Which API endpoint handles user lookup?
+   Is partial-match search expected?"
+
+## Quality bar
+
+A good spec should be precise enough that someone unfamiliar with
+the codebase could implement it correctly, and complete enough that
+the acceptance criteria function as a review checklist.
+
+Do not include implementation details (how to do it — that's the
+agent's job). Do include behavioral contracts (what it does — that's
+your job as the author of the spec).
+```
+
+### Step 3: test the skill
+
+Create a test issue description and invoke the skill directly:
+
+```
+/spec-writer
+
+Users should be able to upload a profile picture. It should be
+resized automatically and stored somewhere. Update their profile
+when done.
+```
+
+Evaluate the output against the Ch 4 quality bar:
+- Is the Goal one to three sentences, describing the what and why?
+- Are the acceptance criteria specific and testable (not "image uploads work")?
+- Does Technical Notes ask the right questions even when the input didn't provide context?
+- Is there at least one meaningful Out of Scope item?
+- Were ambiguities flagged? (The example above has several: max file size? supported formats? storage service?)
+
+**Iterate on the SKILL.md** until the output consistently passes this bar. A few common adjustments:
+
+| Problem in output | Fix in SKILL.md |
+|---|---|
+| Criteria too vague ("upload works") | Strengthen step 3 with examples of what "specific" means |
+| No test criterion generated | Add an explicit rule: "Always include at least one criterion specifying what tests should exist" |
+| Technical Notes left empty | Add: "If no technical context is given, list what you'd need to know to write the spec" |
+| Out of scope is empty | Add: "Always include at least one item, even if you have to infer what's adjacent" |
+
+### Step 4: integrate with your delegation workflow
+
+Once the skill produces reliable specs, your delegation flow becomes:
+
+1. Receive vague issue or feature request
+2. Run `/spec-writer [description]` — agent produces a draft
+3. Review and refine the draft (you own the spec, the agent drafted it)
+4. Use the final spec as the issue body when assigning to the coding agent
+5. After the PR is created, score it against the acceptance criteria
+
+This is Ch 4's Spec-Driven Development cycle, accelerated. You still review and own every spec — the skill handles the blank page.
 
 ---
 
@@ -554,7 +701,7 @@ The agent should execute the `diagnose.sh` script and analyze the output.
 
 ### Step 6: iterate and improve
 
-After using the skill a few times, you'll notice gaps. Maybe you need a section on matrix builds, or caching strategies, or specific workflow patterns your team uses. Update the `SKILL.md`, add more reference files, and commit. Skills are living documents — the same principle we applied to AGENTS.md in Ch 6.
+After using the skill a few times, you'll notice gaps. Maybe you need a section on matrix builds, or caching strategies, or specific workflow patterns your team uses. Update the `SKILL.md`, add more reference files, and commit. Skills are living documents — the same principle we applied to AGENTS.md in Ch 7.
 
 ---
 
@@ -580,6 +727,6 @@ After using the skill a few times, you'll notice gaps. Maybe you need a section 
 5. **Good descriptions drive good activation.** The `description` field is what the agent reads to decide whether to load a skill. Be specific about both capabilities and trigger conditions.
 6. **Skills complete the customization picture.** Combined with AGENTS.md, `copilot-instructions.md`, `.instructions.md`, `.agent.md`, and `.prompt.md`, you now have a complete toolkit — from always-on conventions to conditionally-activated expertise to one-shot prompts.
 
-In Ch 9, we shift from customization to application. We'll take everything we've built in Module 1 and put it to work on **test generation** — the highest-impact use case for AI coding assistants, where the Delegate and Review phases of PDRC really shine.
+In Ch 10, we shift from customization to application. We'll take everything we've built in Module 1 and put it to work on **test generation** — the highest-impact use case for AI coding assistants, where the Delegate and Review phases of PDRC really shine.
 
 
