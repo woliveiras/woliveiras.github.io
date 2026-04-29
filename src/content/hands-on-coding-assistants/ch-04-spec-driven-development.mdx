@@ -320,6 +320,54 @@ persists to their profile and applies on next page load.
 
 ---
 
+## The spec as the issue body
+
+Once you have a spec, the most direct way to hand it to a coding agent is to **put it in the issue body**. This is how the GitHub Copilot Coding Agent, Claude, and Codex receive their primary instruction: from the issue description.
+
+A well-formed issue body is the spec:
+
+```markdown title="GitHub Issue #247"
+## Goal
+
+Add a labels feature to the task management API so users can organize
+and filter tasks by string labels.
+
+## Acceptance criteria
+
+- [ ] POST /api/tasks/:id/labels — adds a label (body: { name: string })
+- [ ] DELETE /api/tasks/:id/labels/:name — removes a label
+- [ ] GET /api/tasks?label=:name — filters by exact label match
+- [ ] Label names: lowercase, max 50 chars, alphanumeric + hyphens
+- [ ] Unit tests for validation logic
+- [ ] Integration tests for all three endpoints
+
+## Technical notes
+
+- Follow the route pattern in src/routes/tasks.js
+- Use the existing validate() middleware
+- Use parameterized queries (no string interpolation in SQL)
+
+## Out of scope
+
+- Label colors or metadata
+- Bulk operations
+```
+
+When you assign this issue to a coding agent, it reads the acceptance criteria exactly as you wrote them. After the PR is created, those same criteria become your review checklist. The spec is not a separate document — **it is the issue, the instruction to the agent, and the review checklist all in one**.
+
+This is the full Spec-Driven Development cycle in practice:
+
+```mermaid
+flowchart LR
+  A["Write spec"] --> B["Paste spec into issue body"]
+  B --> C["Assign issue to agent"]
+  C --> D["Agent creates PR"]
+  D --> E["Review PR against AC checklist"]
+  E --> F["Close issue"]
+```
+
+---
+
 ## What comes next
 
 In Ch 5, we'll look at prompt engineering — the skill of translating a spec into an effective prompt. If you've written a good spec, this becomes straightforward: the Goal becomes the goal component of your prompt, the Acceptance Criteria become the constraints, and the Technical Notes become the context. The spec and the prompt share the same structure.

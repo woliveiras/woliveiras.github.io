@@ -364,6 +364,50 @@ my-repo/
 │   └── copilot-instructions.md   # Copilot-specific behavior
 ```
 
+### 7. Use AGENTS.md as a lightweight documentation index
+
+As your project matures, you'll accumulate knowledge that doesn't belong in AGENTS.md itself — detailed architecture decisions, security policies, glossaries, contribution guides. The temptation is to inline everything. Resist it.
+
+A more scalable pattern: **AGENTS.md stays thin and acts as an index.** Each section gives a one-line description of what the document covers and where to find it. The agent reads the referenced file only when it's relevant to the current task — not on every session.
+
+```markdown title="AGENTS.md"
+# Project context
+
+This is a Node.js API service. See the documentation index below for details.
+
+## Quick reference
+- Build: `pnpm build`
+- Test: `pnpm test`
+- Lint: `pnpm lint`
+
+## Documentation index
+
+| Document | What it covers | Read when... |
+|---|---|---|
+| [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | Service boundaries, data flow, ADRs | Designing or refactoring a feature |
+| [docs/SECURITY.md](./docs/SECURITY.md) | Auth model, input validation rules, secrets handling | Touching auth, inputs, or env vars |
+| [docs/GLOSSARY.md](./docs/GLOSSARY.md) | Domain terms and their precise meanings | Naming things or writing user-facing copy |
+| [docs/CONTRIBUTING.md](./docs/CONTRIBUTING.md) | PR conventions, branch naming, review process | Opening a PR or reviewing one |
+| [docs/DATABASE.md](./docs/DATABASE.md) | Schema conventions, migration workflow, query patterns | Modifying the data model |
+```
+
+The `Read when...` column is the key addition. It tells the agent when the document is relevant, so the agent can make an informed decision about whether to fetch it. Without that guidance, the agent either reads everything (expensive) or reads nothing (uninformed).
+
+#### Why this works
+
+Agents have file-reading capabilities. When you link to a document and describe what it contains, the agent can decide: "this task involves auth — I should read `docs/SECURITY.md` before proceeding." The context cost is only paid for the documents that matter to the current task.
+
+The alternative — inlining all of that content in AGENTS.md — means every task pays the full context cost regardless of relevance. A 500-line AGENTS.md consumes a meaningful chunk of the context window before the agent writes a single line of code.
+
+#### When to use this pattern
+
+This pattern fits best when:
+- Your project has documentation that already exists in `docs/` (or `CONTRIBUTING.md`, `SECURITY.md`, etc.)
+- Different tasks need different subsets of that documentation
+- AGENTS.md is starting to exceed the "2 page" guideline from best practice #4
+
+If your project is small and all the relevant context fits comfortably in two pages, keep it all in AGENTS.md. The index pattern is a scaling strategy, not a default.
+
 ---
 
 ## VS Code integration
@@ -557,6 +601,51 @@ A good trigger: whenever a PR fails CI because the agent missed something, check
 
 ---
 
+## Copilot Memory: persistent context that grows with your codebase
+
+AGENTS.md is context you write and maintain. **Copilot Memory** is context the agent builds and updates automatically.
+
+Launched in early access in December 2025, Copilot Memory allows the agent to learn from your codebase over time and store repository-specific facts that persist across sessions. Where AGENTS.md gives the agent what you consciously decide to document, Memory captures what emerges from repeated interactions: which patterns you consistently prefer, which corrections you make repeatedly, and what project-specific context surfaces across multiple sessions.
+
+### How Memory relates to AGENTS.md and custom instructions
+
+Think of the three systems as layers with different authorship:
+
+| | Author | Persistence | Scope |
+|---|---|---|---|
+| **Custom instructions** (`copilot-instructions.md`) | You | Permanent (until you edit it) | Repository-wide, always loaded |
+| **AGENTS.md** | You | Permanent (until you edit it) | Cross-agent, project context |
+| **Copilot Memory** | The agent (from interactions) | Persistent, auto-updated | Repository-specific, auto-loaded |
+
+Memory doesn't replace either of the other two. It complements them:
+
+- **Custom instructions** hold your deliberate decisions: conventions, patterns, rules.
+- **AGENTS.md** holds your curated project knowledge: architecture, build steps, gotchas.
+- **Memory** holds what the agent learned through use: your correction patterns, preferences that emerge in context, codebase facts that are too dynamic or granular to maintain manually.
+
+### What gets stored in Memory
+
+Memory captures facts at the repository level. Examples of what the agent might learn and store:
+
+- "This project uses `Result<T, E>` return types instead of throwing exceptions"
+- "The developer always prefers early returns over nested conditionals"
+- "Tests in this project are organized by feature, not by test type"
+- "The `UserService` is the authoritative source for user-related operations; don't add user logic elsewhere"
+
+These facts emerge from corrections, explicit instructions, and observed patterns across sessions — not from a single configuration file.
+
+### Memory vs. context window
+
+A common confusion: Memory is **not** the same as session context. Session context is temporary and lives only for the duration of one conversation. Memory persists across sessions and is selectively loaded based on relevance to the current task.
+
+This means Memory doesn't solve the context window management problem from Ch 5. If your session grows too large, Memory doesn't extend the window. But when you start a _new_ session, Memory pre-populates the agent with relevant repository knowledge, so you don't have to re-establish context from scratch every time.
+
+### Current status and availability
+
+As of April 2026, Copilot Memory is available in early access for Copilot Pro+ users. You can view and edit the facts the agent has stored by going to your repository settings under **Copilot > Memory**. If you see a fact that's wrong or outdated, edit or delete it directly — the memory is yours, not a black box.
+
+---
+
 ## Key takeaways
 
 1. **AGENTS.md is a README for robots.** It gives every agent — Copilot, Codex, Jules, Cursor, and more — the project context they need before starting work.
@@ -565,6 +654,8 @@ A good trigger: whenever a PR fails CI because the agent missed something, check
 4. **Use nested files in monorepos.** The nearest AGENTS.md to the edited file takes precedence, so each package can have tailored instructions.
 5. **Auto-generate, then refine.** Use the coding agent or `/init` to generate a first draft, then validate commands and add gotchas from your experience.
 6. **Treat it as living documentation.** Update AGENTS.md whenever build steps, conventions, or architecture change.
+7. **Use AGENTS.md as a documentation index.** Keep AGENTS.md thin. For larger projects, replace inline content with a table linking to `docs/ARCHITECTURE.md`, `docs/SECURITY.md`, `docs/GLOSSARY.md`, etc. Include a "Read when..." column so the agent knows which documents are relevant to which tasks.
+8. **Copilot Memory complements AGENTS.md.** Use AGENTS.md for deliberate, curated project context. Let Memory capture the patterns and corrections that emerge from real use.
 
 In Ch 8, we'll explore **repository custom instructions** with `copilot-instructions.md` and path-specific `.instructions.md` files — the complement to AGENTS.md that gives Copilot-specific behavioral guidance for different parts of your codebase.
 

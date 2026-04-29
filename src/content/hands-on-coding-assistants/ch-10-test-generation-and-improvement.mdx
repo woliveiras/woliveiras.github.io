@@ -7,7 +7,7 @@ order: 10
 
 ## Welcome to Module 2: applying the PDRC loop
 
-Chapters 3 and 4 gave you setup and prompt engineering skills (Module 0), and Chapters 5 through 8 gave you the complete customization toolkit: instruction files, custom agents, AGENTS.md, and skills (Module 1). Starting now, Module 2 puts that foundation to work on the tasks that deliver the most value in daily engineering. We begin with the single highest-impact use case for AI coding assistants: **test generation**.
+Chapters 0 through 5 covered the foundations and the Plan phase — prerequisites, the PDRC mental model, setup, Spec-Driven Development, and prompt engineering (Module 0). Chapters 6 through 9 gave you the complete customization toolkit: custom agents, AGENTS.md, repository instructions, and skills (Module 1). Starting now, Module 2 puts that foundation to work on the tasks that deliver the most value in daily engineering. We begin with the single highest-impact use case for AI coding assistants: **test generation**.
 
 ---
 
@@ -572,6 +572,21 @@ description: >
 4. **Context quality determines test quality.** Provide the source file, existing test patterns, and framework config. The more context, the fewer correction cycles.
 5. **Coverage gap analysis is underused and powerful.** Feed the agent your coverage report and let it specifically target uncovered branches. Two or three iterations can lift a module from 50% to 90%+.
 6. **Always review.** AI-generated tests that pass aren't necessarily good tests. Check for meaningful assertions, independent tests, and coverage of error paths. The Review phase is non-negotiable.
+
+7. **Enforce a coverage floor, not a fixed threshold.** Configure your CI to fail if coverage _drops_ below its current value — not just below an arbitrary number. This creates a ratchet: coverage can only go up. When the agent generates new code, it must also generate the tests, otherwise the floor falls and CI blocks the merge:
+
+   ```typescript title="vitest.config.ts (coverage ratchet pattern)"
+   coverage: {
+     thresholds: {
+       autoUpdate: false,  // update manually after deliberate improvements only
+       lines: 78,          // set to your current baseline
+       functions: 82,
+       branches: 71,
+     }
+   }
+   ```
+
+   The discipline: only update the threshold numbers when you've intentionally improved coverage. Don't auto-update to make CI green — that defeats the ratchet.
 
 In Ch 11, we'll apply the same Review-focused mindset to **code review** — how Copilot Code Review works, how to customize it with instructions, and how to let it automatically review every PR your team opens.
 

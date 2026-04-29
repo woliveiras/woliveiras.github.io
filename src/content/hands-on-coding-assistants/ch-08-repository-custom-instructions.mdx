@@ -635,6 +635,31 @@ Each file has a distinct role:
 5. **Validate with diagnostics.** Use the Chat Diagnostics view and References panel to verify your instruction files are being loaded and applied correctly.
 6. **Keep instructions concise and reasoned.** Include the _why_ behind each rule. Show code examples. Skip what linters already enforce.
 
-In Ch 9, we'll explore **Agent Skills**, a modular, conditionally-activated capabilities that give your agents specialized knowledge (like debugging GitHub Actions or working with specific APIs) only when the task calls for it.
+In Ch 9, we'll explore **Agent Skills**, modular, conditionally-activated capabilities that give your agents specialized knowledge (like debugging GitHub Actions or working with specific APIs) only when the task calls for it.
+
+---
+
+## The minimal footprint principle
+
+Tool scoping (Ch 6) restricts what an agent _can_ do. Custom instructions control what an agent _should_ do. But there's a third lever: telling the agent explicitly to **prefer minimal, targeted changes** over broad ones.
+
+Left to their defaults, agents optimize for completeness. They'll refactor adjacent code they weren't asked to touch, add abstractions "for future flexibility," and reorganize imports across the entire file while they're at it. Each of these decisions might be individually defensible, but collectively they produce diffs that are hard to review and easy to blame if something breaks.
+
+Add a minimal footprint rule to your `copilot-instructions.md`:
+
+```markdown title=".github/copilot-instructions.md (minimal footprint section)"
+## Change scope
+
+- Make the smallest change that satisfies the acceptance criteria.
+- Do not refactor code you were not asked to refactor.
+- Do not add abstractions, helpers, or utilities that aren't required by
+  the current task.
+- Do not reorganize imports, rename variables, or change formatting in
+  files you're not directly modifying.
+- If you notice something worth improving outside the task scope, add a
+  comment like `// TODO: consider extracting X` instead of making the change.
+```
+
+This instruction doesn't prevent the agent from doing good work — it prevents unsolicited scope creep that inflates diffs and makes reviews harder. It also pairs directly with the **Out of Scope** section of your specs (Ch 4): the spec sets the boundary per task, and the instruction enforces the general habit.
 
 

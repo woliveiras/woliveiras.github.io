@@ -264,6 +264,69 @@ For simpler suggestions, Copilot provides **Apply suggestion**, a one-click acti
 
 Copilot Code Review is powerful, but understanding its limitations prevents over-reliance and misplaced trust.
 
+### Hallucination in generated code: what to look for
+
+Before reviewing the review itself, it helps to know the specific failure modes of AI-generated code. These are distinct from normal bugs — they're patterns where the model produces plausible-looking code that is quietly wrong.
+
+| Hallucination type | Example | How to catch it |
+|---|---|---|
+| **Invented API methods** | `array.findAndRemove()` — doesn't exist in JavaScript | Run the code; TypeScript will also flag it |
+| **Wrong library version syntax** | Using React 17 class component syntax in a React 19 project | Check the package.json version, then the docs |
+| **Non-existent config options** | `{ retries: 3, backoffStrategy: "exponential" }` — option names invented | Read the library's actual documentation |
+| **Invented internal APIs** | Calling `this.userService.findByEmailCached()` when that method doesn't exist in your codebase | Grep/search the codebase for the method |
+| **Plausible but incorrect SQL** | `WHERE created_at > NOW() - INTERVAL 30 DAY` (MySQL syntax in a PostgreSQL project) | Verify dialect-specific syntax |
+| **Wrong import paths** | `import { validate } from '../utils/validation'` when the file is at `'../lib/validation'` | Run the build; TypeScript catches this |
+
+**The key signal for hallucinations:** code that _looks_ right but isn't wired to anything real. The model learned common patterns and reproduced them — but used method names, option keys, or import paths that don't exist in your actual codebase.
+
+Copilot Code Review will _not_ catch most of these. It reviews the code as written, not as executed. This is why **running the code** and **running the tests** are non-negotiable steps in your Review phase. Tests catch most hallucinations; a thorough manual read catches the rest.
+
+---
+
+### The three-pass review structure
+
+Reviewing AI-generated code effectively requires a different structure than reviewing human-written code. Human-written code arrived after the author thought it through; AI-generated code arrived after a model predicted the most statistically likely token sequence. The review needs to compensate for that difference.
+
+A practical structure is three sequential passes:
+
+**Pass 1 — Automated (CI)**
+
+Let your pipeline do the mechanical verification. This pass doesn't require a human:
+
+- [ ] Build succeeds
+- [ ] Existing tests pass
+- [ ] New tests pass
+- [ ] Lint/formatting passes
+- [ ] Coverage hasn't dropped (if you have a ratchet configured — Ch 10)
+
+If any of these fail, the PR isn't ready for human review. Automation catches the obvious failures so humans can focus on what automation can't catch.
+
+**Pass 2 — Spec compliance**
+
+Compare the PR against the acceptance criteria from the spec. This pass answers: _did the agent do what it was asked to do?_
+
+For each acceptance criterion:
+- [ ] Was it implemented?
+- [ ] Is it implemented correctly (not just "something that looks like it")?
+- [ ] Did the agent add anything that's explicitly Out of Scope?
+
+This pass should be fast when the spec is well-written: you're checking a list of binary conditions. When it's slow, the spec was probably vague.
+
+**Pass 3 — Quality and judgment**
+
+This is the human review. It answers questions that neither automation nor spec compliance can answer:
+
+- [ ] Would I write this code this way? If not, why not?
+- [ ] Are there any hallucinations (invented APIs, wrong syntax, non-existent imports)?
+- [ ] Does this code fit the codebase? Does it follow the patterns in adjacent files?
+- [ ] Would a teammate understand this in six months?
+- [ ] Are there any security concerns that automated scanning might have missed?
+- [ ] Are the tests testing behavior, or are they testing the implementation?
+
+**Why three passes?** Each pass has a different cost structure. Pass 1 is free (automated). Pass 2 is fast (binary checklist). Pass 3 is where you spend your judgment. Running them in order means you only reach the expensive pass when the cheap passes have already passed — avoiding the situation where a human reviewer spends 20 minutes reviewing code that doesn't even build.
+
+---
+
 ### What Copilot does well
 
 | Strength | Example |

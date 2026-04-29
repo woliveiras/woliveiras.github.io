@@ -927,6 +927,139 @@ Hooks and setup steps are the control plane for your AI coding agent. Here's wha
 
 5. **The full loop — issue to merged PR — is achievable.** Combine setup steps (environment), hooks (validation and logging), MCP (external data), custom instructions (behavior), and Copilot Code Review (automated review) for a workflow where the human's role is final review, not manual orchestration.
 
+---
+
+## Agentic Workflows: repository automation in Markdown
+
+Hooks give you control over what happens _during_ an agent session. Agentic Workflows go one step further: they let you define fully automated multi-step processes that run on GitHub Actions triggers, written in plain Markdown — not YAML.
+
+Launched in technical preview in February 2026, **Agentic Workflows** are the bridge between the customization work you've done in Modules 1 and 3 and true repository-level automation. Where hooks react to agent events, Agentic Workflows define entire orchestration sequences: triage incoming issues, generate a PR from a spec, run the test suite, and ping the reviewer — all without writing a single YAML workflow file.
+
+### What Agentic Workflows are
+
+An Agentic Workflow is a `.workflow.md` file stored in `.github/workflows/` (or `.github/agents/`). It contains:
+
+- A **trigger**: which GitHub event starts the workflow (issue opened, PR commented, label added, schedule, etc.)
+- A **goal**: what the workflow should accomplish, in natural language
+- **Steps**: a sequence of tasks delegated to the AI agent
+- **Constraints**: rules the agent must follow (tool access, file boundaries, exit conditions)
+
+The agent executes the steps using the same tools it has in a normal session: read/write files, run shell commands, call MCP servers, create PRs.
+
+### Example: auto-triage incoming issues
+
+This workflow runs every time a new issue is opened. The agent reads the issue, classifies it, adds appropriate labels, and leaves a comment acknowledging receipt.
+
+```markdown title=".github/workflows/triage.workflow.md"
+---
+trigger:
+  event: issues
+  types: [opened]
+tools: [read, search, github/add_labels, github/create_issue_comment]
+---
+
+# Issue Triage Workflow
+
+## Goal
+Classify and label new issues when they're opened, then acknowledge receipt.
+
+## Steps
+
+1. Read the issue title and body.
+
+2. Classify the issue into one of these categories:
+   - `bug` — something is broken
+   - `feature-request` — new capability requested
+   - `question` — needs clarification or documentation
+   - `improvement` — enhancement to existing functionality
+   - `chore` — maintenance, dependency update, refactor
+
+3. Add the matching label to the issue.
+
+4. If the issue is a `bug`, also check if it matches any open issues.
+   If a duplicate exists, add the `duplicate` label and reference the
+   original in a comment.
+
+5. Leave a comment on the issue:
+   - For `bug`: confirm it's been triaged and ask for reproduction steps
+     if none were provided.
+   - For `feature-request`: acknowledge and mention the next review cycle.
+   - For all others: a brief acknowledgment.
+
+## Constraints
+- Only modify the issue you were triggered on. Do not touch other issues.
+- Do not create new labels — only use existing ones.
+- Do not assign the issue to anyone.
+```
+
+### Example: spec-to-PR automation
+
+This workflow triggers when an issue with the label `agent-ready` is opened or labeled. The agent reads the spec in the issue body, implements it, and opens a PR.
+
+```markdown title=".github/workflows/implement-spec.workflow.md"
+---
+trigger:
+  event: issues
+  types: [labeled]
+  filters:
+    label: agent-ready
+tools: [read, search, edit, execute, github/create_pull_request]
+---
+
+# Implement Spec Workflow
+
+## Goal
+Implement the feature spec in the issue body and open a pull request.
+
+## Steps
+
+1. Read the issue body. Locate the Goal, Acceptance Criteria, Technical
+   Notes, and Out of Scope sections.
+
+2. Use the Planner agent to generate an implementation plan. Review it
+   for accuracy before proceeding.
+
+3. Implement each acceptance criterion in order. Run existing tests after
+   each significant change.
+
+4. Write new tests covering the acceptance criteria.
+
+5. Run the full test suite. All tests must pass before creating a PR.
+
+6. Create a pull request:
+   - Title: the issue title
+   - Body: paste the spec + a summary of implementation decisions
+   - Reference the issue with "Closes #<issue-number>"
+   - Request review from the team's code-review group
+
+## Constraints
+- Follow `.github/copilot-instructions.md` strictly.
+- Only create files specified in Technical Notes or directly required
+  by the acceptance criteria.
+- Do not merge the PR — only create it.
+```
+
+### How Agentic Workflows relate to what you've already built
+
+Agentic Workflows are an orchestration layer on top of everything in this module:
+
+| What you built | What Agentic Workflows use it for |
+|---|---|
+| Custom instructions (`copilot-instructions.md`) | Agent follows them during workflow execution |
+| AGENTS.md | Agent reads it to understand the project |
+| Custom agent profiles (`.agent.md`) | Workflow can invoke named agents for specific steps |
+| MCP servers | Workflow can call MCP tools (e.g., Sentry, Notion) |
+| Hooks | Workflow execution can trigger hooks for validation and audit |
+| Agent Skills | Workflow can invoke skills (e.g., `/spec-writer`) |
+
+A mature repository with all these layers configured can run sophisticated workflows: receive a spec, plan the implementation, write code, run tests, review security, check coverage, and open a PR — entirely autonomously.
+
+### Current status
+
+As of April 2026, Agentic Workflows are in technical preview. The `.workflow.md` format and trigger syntax are evolving. Check the [GitHub documentation](https://docs.github.com/en/copilot/agentic-workflows) for the current specification before writing your own.
+
+---
+
 In Ch 16, we'll shift to the concerns that keep security teams and legal departments up at night: **AI-first security and governance**. We'll cover risks like sensitive data exposure in prompts and code injection, agent firewalls that control which domains the coding agent can access, testing and releasing custom agents in organizations, and the intellectual property implications of AI-generated code.
 
 

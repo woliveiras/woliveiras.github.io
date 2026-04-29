@@ -235,6 +235,31 @@ In Ch 3, we set up `.github/copilot-instructions.md` and path-specific `.instruc
 
 If you're writing the same context into every prompt ("we use Vitest, not Jest" or "always use named exports"), that context belongs in your custom instructions file instead.
 
+### Managing context over a session
+
+A single prompt is one PDRC cycle. A long agent session is many cycles, and each cycle consumes context window tokens. As a session grows, two things happen:
+
+1. **Earlier context gets compressed or evicted.** The model has a fixed context window. When it fills, older content is summarized or dropped. Instructions you gave at the start of the session may no longer have full weight.
+2. **Accumulated wrong assumptions propagate.** If the agent made a wrong assumption in iteration 3, it may carry that assumption silently through iterations 4, 5, and 6, building on a broken foundation.
+
+The signals that a session has run too long:
+
+| Signal | What it means |
+|---|---|
+| Agent contradicts a decision it made 10 turns ago | Earlier context is degraded |
+| Responses become generic, not codebase-specific | Session context overwhelmed by token pressure |
+| Agent starts "reinventing" patterns it already wrote correctly | Context loss |
+| `/context` in the CLI shows 80%+ token usage | Time to compact or restart |
+
+**Practical habits:**
+
+- **Use `/compact`** in the CLI proactively, before you hit the limit. Compaction summarizes the conversation history, preserving the outcomes without the full turn-by-turn context.
+- **Start a new thread for unrelated tasks.** Don't ask the implementation agent to "also fix this unrelated bug" in the same session. The unrelated context pollutes the active task.
+- **Open a fresh session for large tasks.** When you're starting a major feature, start with a clean session and provide the spec as the first message. Don't inherit stale context from debugging a typo three hours ago.
+- **Reference files explicitly, don't rely on session memory.** `#file:src/routes/users.ts` tells the agent exactly what to look at. "The file we discussed earlier" depends on context that may no longer be there.
+
+This isn't a limitation to work around — it's a property to design for. Shorter, well-scoped sessions with explicit context anchors consistently outperform long, sprawling ones.
+
 ---
 
 ## The prompt quality spectrum

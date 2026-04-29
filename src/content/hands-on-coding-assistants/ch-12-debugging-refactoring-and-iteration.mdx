@@ -278,6 +278,96 @@ The `@workspace` scope lets the agent search across files, connect the dots betw
 
 ## Iteration strategies: mastering the Correct phase
 
+### When the agent goes off-rails
+
+Every developer who uses agents long enough encounters the same scenario: you delegated a scoped task, and the agent went beyond the scope — touching files it wasn't supposed to touch, adding abstractions that weren't requested, refactoring code that was working fine, or installing packages you didn't ask for.
+
+This is one of the most common failure modes in agent-oriented development. It's not a bug — it's the agent optimizing for "completeness" without understanding that completeness isn't the goal. Scope compliance is.
+
+**Early warning signs (check these before accepting a large diff):**
+
+| Signal | What it means |
+|---|---|
+| Files appear in the diff that aren't in the spec's Technical Notes | Agent went out of scope |
+| New packages appear in `package.json` / `requirements.txt` | Agent self-installed dependencies |
+| Functions or classes are renamed across the codebase | Agent decided to "clean up" while it was in there |
+| New abstractions appear that aren't referenced by the acceptance criteria | Agent added "future flexibility" you didn't ask for |
+| The diff is 3x larger than you expected for the task | Strong signal of scope creep |
+
+**How to interrupt and recover:**
+
+If you're watching the agent work in real time (VS Code Agent mode or CLI):
+
+1. **Stop the agent** before it commits or stages changes. Click the stop button or press `Ctrl+C`.
+2. **Discard the off-scope changes.** Use `git checkout -- <file>` for specific files, or `git checkout .` to reset the entire working tree.
+3. **Re-scope the spec.** Add explicit Out of Scope items that name the patterns you saw: "Do not rename any existing functions," "Do not add new dependencies," "Only modify files in src/routes/."
+4. **Re-delegate.** Start a fresh session with the tightened spec.
+
+If you only catch scope creep at the PR stage (coding agent on GitHub):
+
+1. **Close the PR without merging.** Don't try to patch it with review comments.
+2. **Strengthen the spec and re-assign.** A PR with scope creep is a signal the spec's boundaries were unclear, not a PR worth salvaging line by line.
+
+The Out of Scope section of your spec (Ch 4) is your primary defense. The minimal footprint instruction in `copilot-instructions.md` (Ch 8) is your secondary defense. Use both.
+
+---
+
+### Agent session boundaries: when to restart
+
+A long agent session accumulates context: previous answers, corrections, files it read, commands it ran. This is useful up to a point. After that point, it becomes a liability.
+
+**When a session has gone stale:**
+
+- The agent starts contradicting decisions it made earlier in the same session
+- Responses become less specific to your codebase and more generic
+- The agent rewrites something it already wrote correctly, without a reason
+- `/context` in the CLI shows 80%+ token usage
+- You're asking about Feature B but the agent keeps referencing context from Feature A
+
+**What to do:**
+
+1. **Run `/compact`** (CLI) to summarize history. This preserves the outcomes while reducing the token footprint. Good for mid-task compaction on large features.
+
+2. **Write a handoff summary** (see next section) and start a fresh session. Good when the task shifts significantly or when you're resuming after a break.
+
+3. **Start completely fresh** for unrelated tasks. Context from the previous task actively hurts the new one.
+
+**The discipline:** treat sessions like pull requests. Each session should have a clear scope, a defined start, and a defined end. Sessions that sprawl across multiple unrelated tasks produce worse results than focused sessions, for the same reason that PRs that mix multiple changes are harder to review.
+
+---
+
+### The handoff summary
+
+When work spans multiple sessions — or when you want to hand off to the asynchronous coding agent with full context — write a **handoff summary** before starting the new session.
+
+A handoff summary is a short document (not a long spec) that answers:
+
+```markdown
+## Handoff: [task name]
+
+### What's done
+- [Completed sub-tasks, with the key decisions made]
+
+### What's next
+- [The next sub-task or the remaining acceptance criteria]
+
+### Key decisions made
+- [Any architectural or implementation decisions the next session should respect]
+- [Files that were intentionally not touched and why]
+
+### Files modified
+- [List of files changed, so the next session knows where the work happened]
+
+### Open issues
+- [Anything unresolved that the next session should know about]
+```
+
+Use this summary as the **first message** of the new session, before any other context. This ensures the agent starts with the facts you care about, rather than building its own model from scratch by reading the entire repository.
+
+For the coding agent on GitHub: paste the handoff summary into the issue body (or a comment) when you re-assign. The agent reads the issue as its primary instruction.
+
+---
+
 The Correct phase is where most engineers either succeed or struggle with AI assistants. The difference between a productive AI collaboration and a frustrating one almost always comes down to iteration skill, knowing how to steer the agent when it goes wrong.
 
 ### Strategy 1: effective re-prompting
