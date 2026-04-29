@@ -701,9 +701,9 @@ flowchart TD
     A[New task or need] --> B{Does the team repeat this<br/>workflow regularly?}
     B -- No --> C[Write a clear prompt.<br/>No artifact needed.]
     B -- Yes --> D{Is this a role with<br/>tool/model constraints?}
-    D -- Yes --> E[Create a custom agent<br/>(.agent.md)]
+    D -- Yes --> E["Create a custom agent<br/>(.agent.md)"]
     D -- No --> F{Is this a domain procedure<br/>portable across tools?}
-    F -- Yes --> G[Create a skill<br/>(SKILL.md)]
+    F -- Yes --> G["Create a skill<br/>(SKILL.md)"]
     F -- No --> H{Does it need<br/>to run as a sub-agent<br/>in an orchestration?}
     H -- Yes --> E
     H -- No --> C
