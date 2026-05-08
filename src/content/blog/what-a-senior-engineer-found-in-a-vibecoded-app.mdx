@@ -1,0 +1,256 @@
+---
+title: "What I Found and Had to Fix After Joining a Vibecoded Project"
+description: "A Design expert built a full healthcare platform with Cursor in weeks. Impressive. Then I read the code before running a single command, and found 4 critical security vulnerabilities, broken RLS, and a rate limiter that did nothing."
+pubDate: "2026-05-08"
+published: true
+tags: ["nextjs", "security", "architecture", "ai-engineering", "engineering-practices", "software-engineering", "performance", "typescript"]
+---
+
+One of the most common debates in the industry right now is whether vibecoding is dangerous. I want to take a different position: it is genuinely impressive, and the people doing it deserve credit. But the conversation often stops there, and I think we lose something important when it does.
+
+This is the story of a platform I joined in April 2026. It was built by someone with deep expertise in Design and zero formal background in software development, using Cursor as the primary tool. In roughly two months, they shipped a full multi-tenant healthcare platform: four user roles, real-time chat, an installable PWA, Google OAuth, tokenized invite flows, OpenAI-powered report generation, and clinic management. In production. With real users.
+
+That is not a trivial thing to build. I want to be clear about that.
+
+What I want to talk about is what I found when I read the code, what I did about it, and why the combination of a senior engineer's judgment and AI assistance got us further, faster, than either would have alone.
+
+## What was built before I arrived
+
+The platform is built for pediatric therapy clinics. It connects parents, therapists, supervisors, and school staff around a child's development. Think scheduling, clinical reports, progress tracking, multi-party chat, LGPD-sensitive data. The kind of system where a security failure is not just a technical problem. A security failure here is a real risk to children's privacy and safety.
+
+The commit history tells an honest story. In two months, Cursor helped deliver route handlers, Supabase RLS policies, React components, authentication flows, invite emails, and database migrations. The velocity was real. The product worked. Users were relying on it.
+
+When I joined on April 10, my job was not to validate that it worked. My job was to find out how.
+
+## The first hour without running anything
+
+Before I opened a terminal, before I ran the first `npm install`, I read code.
+
+Yeap, you read that right. I read code before running anything. Like I done in the stone age's software development before the coding agents and coding assistants. I read the code, the commit history, the database schema, the API routes, the RLS policies. I looked for patterns. I looked for assumptions. I looked for inconsistencies.
+
+This is the part that I think gets underestimated when people talk about what experienced engineers bring to a codebase. When people, blind by the hype or big tech marketing, say "AI can do everything, you don't need engineers anymore," they are usually thinking about the "doing" part (writing code, generating tests, fixing bugs). I don't know if they're wrong... I cannot predict the future. But I do know that the "looking" part is a different skill set, and it is not something AI can replace. It is something that comes from having seen enough code, enough systems, enough failures, to recognize patterns that are invisible to someone who has not.
+
+Here is what I found in just an hour.
+
+### The service role key was leaking in error messages
+
+`SUPABASE_SERVICE_ROLE_KEY` is the equivalent of a database root password. It bypasses every Row Level Security policy you have. Whoever holds it can read, write, or delete any row in any table.
+
+I found it being returned in response bodies in at least 14 API routes. Not in logs. In HTTP responses. The pattern looked like this: a configuration check would run at the start of a handler, find the key missing, and return a 500 with the original error message, which the Supabase client helpfully included the key reference in.
+
+This is not a mistake that appears in code reviews. It appears in `git log` entries like `fix: improve invite email failure handling and diagnostics`. Commits that were doing the right thing (better error messages) but without the experience to recognize that the error message itself was a vulnerability.
+
+### RLS was recursively broken
+
+The policies on the `profiles` table referenced the `profiles` table. A policy evaluates by querying the database. If that query triggers another policy evaluation on the same table, you get infinite recursion. The database kills the query with an error, and the user gets a 500.
+
+The commit history has six entries matching `fix(sql): recursion` before I arrived. Each one was a patch on a symptom: add an exception here, reorder the policies there, wrap something in a function. None of them touched the structural problem, which was that the policies were designed around a circular reference that PostgreSQL simply cannot resolve.
+
+I fixed it once by removing the circular dependency from the schema. It has not recurred.
+
+This is not something you find by running the app. You find it by knowing how PostgreSQL evaluates RLS policies and recognizing that the pattern in front of you violates that evaluation model.
+
+### Rate limiting that did nothing
+
+There was a rate limiter. It used a `Map` in memory to track requests per IP.
+
+On Vercel serverless, each function invocation runs in its own process. Processes do not share memory. The map is empty on every invocation. The rate limiter accepted every request regardless of frequency, because it never saw more than one request from any IP.
+
+This is the kind of issue that is invisible in development (where you test with one browser, one IP, no load) and invisible in production monitoring (no errors, no alerts, everything looks fine). It is only visible to someone who has built rate limiting before and knows the constraints of the deployment environment.
+
+### Multi-tenant isolation with gaps
+
+The code had a function called `userCanEditChildAsStaff`. The logic was correct. A supervisor should only be able to act on children who belong to their clinic.
+
+But it was not called on every endpoint.
+
+Two endpoints I found early: the onboarding merge flow (where a supervisor could merge a child record from any clinic) and the unlink endpoint (which accepted any `child_id` without checking the caller's clinic). A supervisor from Clinic A could operate on data from Clinic B.
+
+The function existed. The enforcement did not.
+
+### No input validation on POST and PATCH routes
+
+Every route handler that accepted a request body destructured it directly and used the values as-is. No schema validation, no type narrowing, no sanitization. The assumption was that the client sent what the server expected.
+
+```typescript
+// what I found in multiple handlers
+const { childId, therapistEmail, role } = await req.json();
+// childId, therapistEmail, role are used directly below
+```
+
+In a system where a therapist's email or a child's ID is passed to database operations, accepting whatever the client sends without validation is a direct path to injection and privilege escalation. Adding Zod at the boundary is a one-time cost per route; not doing it is a permanent liability.
+
+### Missing HTTP security headers
+
+There were no `Content-Security-Policy`, `Strict-Transport-Security`, `X-Frame-Options`, or `X-Content-Type-Options` headers anywhere. For a healthcare platform, the kind of application that can be framed inside an iframe, that handles session cookies, that loads third-party scripts (Supabase realtime, Google OAuth), this is not optional hardening. It is a baseline.
+
+These do not protect against every attack. But their absence means that entire classes of browser-based attacks (clickjacking, MIME sniffing, cross-site script injection) are not being mitigated by any layer of the stack.
+
+### No audit trail for destructive operations
+
+Operations like unlinking a child from a therapist, archiving a patient, or modifying a user's role were executed without any record of who did what and when. No timestamp, no actor, nothing.
+
+In a system with children's health data under LGPD, traceability is not a nice-to-have. If a child's record gets modified incorrectly, there needs to be a way to answer "who changed this, and when?" The absence of an audit trail also means there is no way to detect if someone is abusing elevated access, even if you later discover the access was there to abuse.
+
+## What the codebase looked like structurally
+
+Beyond the individual vulnerabilities, there were systemic patterns that told a story about how the code had been generated.
+
+**`db.ts` was 2,200 lines.** The entire data layer of the application, across every domain, in one file. This is not a design choice, it is what happens when each new feature adds a few more functions without anyone stepping back to ask where those functions belong.
+
+**Three authentication patterns coexisted.** Some routes used `requireAuth`. Some used a different inline pattern. Some called Supabase directly. All of them worked, more or less. None of them were interchangeable, and the inconsistency made auditing harder.
+
+**Next.js App Router was present; its conventions were not.** The project used the App Router but followed Pages Router patterns. Client Components everywhere, including layouts with no interactivity. No route groups. No `loading.tsx`. No `error.tsx`. The framework's capabilities were present but unused, which meant the bundle was larger and the streaming behavior was missing.
+
+**The `supabase/` directory had 69 SQL files** with no distinction between schema definitions, development seeds, production seeds, diagnostic queries, point-in-time fixes, and obsolete files. There was no way to reconstruct the current schema from scratch without running them all and hoping they were idempotent.
+
+**There was no local development environment.** Every schema change went directly to production. No staging, no migrations in sequence, no `supabase db reset` to validate locally before applying.
+
+## What I did in 28 days
+
+I want to be specific here, because the point is not "I fixed a lot of things." The point is what kind of judgment was required to fix them, and how AI fit into that. I changed a lot of code, but I'm focusing here on the critical issues I found and the patterns I changed, not the incidental ones.
+
+### Security: structure over patches
+
+For the RLS recursion, I did not write another policy variant. I mapped the dependency graph of the policies, found the cycle, and removed it by restructuring the schema. GitHub Copilot helped me write the corrected SQL and the tests that validated the fix. The diagnosis was mine.
+
+For multi-tenant isolation, I audited every endpoint against `userCanEditChildAsStaff`, added the missing calls, and created a test suite (`pnpm test:isolation`) that runs against a local Supabase instance and validates that a user from one clinic cannot access data from another. If the isolation breaks, the tests fail. That is different from documenting that isolation should exist.
+
+For the service role key, I audited all 14 routes and removed it from every response body. For rate limiting, I'm replacing the in-memory map with a Redis-backed implementation that actually persists across invocations.
+
+I added an `admin_audit_log` table with immutable entries for destructive operations. In a system with children's health data, traceability is not a normal feature, it is a requirement. And I added a dedicated `ADMIN` role, separate from `SUPERVISOR`, with its own middleware and access surface.
+
+### Performance: the problems that only appear with real data
+
+None of the performance issues were visible in development. They required knowing where to look.
+
+The agenda loaded sessions without pagination. PostgREST has a default limit of 1,000 rows and silently truncates anything beyond that. No error, no warning, just missing data. I implemented a function to fetch in pages until the full range was loaded.
+
+Creating a year of recurring sessions (about 52 per child) in a single PostgREST call timed out in production. It worked in development with small seeds. I split it into a function to work with batches, inserting in chunks of 50 sequentially. The insight came from a postmortem: a user who could not save their agenda.
+
+I added a partial unique index on `(child_id, session_date, start_time)` in the database. The conflict detection existed only in the application layer. Putting it in the database makes it O(log n) and impossible to bypass.
+
+### Architecture: following the framework
+
+The App Router migration was systematic. I moved role layouts to Server Components, introduced `(authenticated)` and `(public)` route groups, added `loading.tsx` and `error.tsx` to every route with data fetching, and applied the colocation conventions (`_components/`, `_lib/` per route). I wrote specs first, got them approved, then implemented.
+
+The result was a correct code. A code that does what the framework's documentation says it should do, which affects SSR, bundle size, streaming, and caching behavior in ways that matter in production.
+
+### Developer experience: building the floor
+
+The most impactful work was the least visible from outside.
+
+I audited all 69 SQL files, categorized each one, and documented the state in `docs/proposals/supabase-audit/` before touching anything. Then I adopted the Supabase CLI: `pnpm db:start` for local containers, `pnpm db:reset` to reconstruct the schema from scratch, versioned migrations with mandatory headers (description, rollback, idempotency declaration).
+
+I set up local development seeds with realistic synthetic data: therapists, children, sessions for the current week, school data. Inbucket as a local SMTP server so invite emails could be tested without sending anything. A deterministic OpenAI mock so report generation could be developed without a real API key or quota.
+
+### Migrating from npm to pnpm
+
+The project used npm. I migrated to pnpm, and immediately the migration surfaced a phantom dependency: `@internationalized/date` was imported directly in three files but was only declared as a transitive dependency of `react-aria-components`. npm resolves phantom dependencies silently, it flattens `node_modules` and the import just works. pnpm does not. With pnpm's strict isolation, the build failed.
+
+This is the kind of invisible risk that accumulates in any project that has never run under strict dependency resolution. The code looks fine. The tests pass (if there are any). The production build works, today, on this exact lockfile. But the moment someone runs `npm ci` on a fresh machine, or a CI environment resolves slightly differently, it breaks in a way that takes time to diagnose.
+
+The fix was simple once found: add `@internationalized/date` as an explicit dependency in `package.json`. The value of the migration was not pnpm itself, it was the strict module resolution that made the implicit assumption visible.
+
+### Biome as the linter and formatter
+
+There was no linter. No formatter. Code style was whatever Cursor had generated, inconsistent across files. Magic numbers in CSS (`text-[13px]` instead of `text-xs` from the design system), inconsistent quote styles, unused imports left in place.
+
+I introduced Biome as the single tool for both linting and formatting. One binary, fast, zero config friction. The important part was not choosing Biome over ESLint plus Prettier, but establishing the principle that the codebase has a consistent style that is enforced automatically, not by convention.
+
+The first `pnpm lint` pass returned hundreds of findings. Most were auto-fixable. A handful were real issues: unreachable code, suspicious equality checks, explicit `any` types in places where the type was actually knowable. Going through those findings manually was its own audit.
+
+I also extended the same discipline to the SQL layer: `scripts/lint-migrations.mjs` validates that every migration file has a mandatory header (description, rollback plan, idempotency note) before the commit. The same culture of automated checks that applies to TypeScript should apply to the database schema.
+
+### CI/CD: making the implicit explicit
+
+There was no CI/CD pipeline. As the deploy is handled by Vercel, the CI/CD was nonexistent. Also, nothing enforced that `pnpm build` passed before code reached production. Nothing enforced that a lint was clean. The only gate was the developer's own discipline.
+
+I set up a GitHub Actions workflow with two jobs:
+
+```yaml
+jobs:
+  check:
+    steps:
+      - run: pnpm lint:ci
+      - run: pnpm build
+  test:
+    steps:
+      - run: pnpm test
+      - run: pnpm test:coverage
+```
+
+This is not sophisticated CI/CD. It is the minimum viable gate: a PR cannot be merged if the build breaks or the linter reports errors. It sounds obvious, but without it every shortcut taken under pressure (skipping the lint run, not checking if the build still passes after a quick fix) becomes invisible until it reaches production.
+
+The coverage threshold in `vitest.config.ts` is part of the same discipline. When coverage of `src/lib/` exceeds the threshold, you update the number, it never goes down. That ratchet is what keeps coverage from becoming a metric that sounds good but means nothing.
+
+## How I used AI as assistant, not protagonist
+
+I want to be precise about this because "I used AI" can mean almost anything.
+
+I diagnosed. AI executed.
+
+The RLS recursion was not something I asked AI to find. I found it by reading the schema. AI helped me write the corrected policies and generate the tests. The work split was: I knew what was wrong and what the fix should look like; AI helped produce the code faster.
+
+### Setting the rules before touching any code
+
+One of the first things I did was write `AGENTS.md`: a file that lives in the repository root and defines the rules any AI agent must follow when working in this codebase. Not suggestions. Rules.
+
+It covers how API routes must be structured, which authentication pattern is canonical, how to access the database (through `db.ts`, not by instantiating raw Supabase clients), which component prefix to use, how to handle multi-tenancy, when to write a spec before writing code. Every convention that matters is documented there, with examples.
+
+Why does this matter? Because without it, every new AI session starts from the patterns already in the codebase. And if those patterns include the bad ones (three auth patterns, raw client instantiation, no input validation), the AI will replicate them confidently. It has no way to know that those patterns are the ones you are trying to eliminate. It only knows what it sees.
+
+With `AGENTS.md`, the agent has a contract. It can propose code that is consistent with where the project is going, not where it came from.
+
+I also created skills, focused instruction files for specific workflows. One for writing unit tests with the correct mock setup. One for writing RLS integration tests against a local Supabase instance. One for the spec-driven workflow. One for architecture decisions. Each skill is a document the agent reads at the start of a relevant task, giving it domain context it would otherwise have to infer (or hallucinate).
+
+The result is that the agent does not start from zero on each session. It starts from a known baseline and don't do mistakes that violate the rules I set.
+
+### Spec-driven development: plan before execute
+
+For any non-trivial change, the workflow is:
+
+1. Trigger the spec generator skill
+2. The agent produces a spec: what is changing, why, what the acceptance criteria are, what the rollback plan is
+3. I review and approve the spec
+4. Only then does the agent begin implementation, with the approved spec as the source of truth
+
+The agent know that it cannot start writing code until the spec is approved, because we have this rule in `AGENTS.md`. The spec is not a formality. It is a critical step that forces the agent to surface its assumptions and the ambiguity in the task before it starts writing code.
+
+This is not bureaucracy. It is the difference between asking someone to "fix the auth problem" and handing them a document that says: "the problem is X, the fix is Y, success means tests A, B, and C pass, and if it goes wrong we revert by doing Z."
+
+Without the spec step, the agent fills in the blanks. Sometimes it fills them in correctly. Sometimes it fills them in with a workaround that looks like a fix but is not. The spec step forces the ambiguity to surface before the code is written, not after.
+
+The `docs/specs/` directory grew to over 100 specs during the 28 days, each with a lifecycle: `Draft → Approved → In Progress → Implemented`. If a spec is not approved, implementation does not start. That sequencing is what keeps the codebase from accumulating changes that nobody can fully explain.
+
+### Knowing when to revert
+
+The commit history has four `Revert` entries before I joined. Each represents a moment when AI proposed a workaround (use service role in more places to avoid the broken RLS) when the correct answer was to fix the cause. Recognizing the difference between a patch and a fix is engineering judgment, not model output.
+
+The skills and the spec workflow do not eliminate this problem entirely. But they reduce it significantly, because the agent is not guessing what you want, it is implementing a plan you already validated. When the implementation diverges from the plan, that is visible. When the plan itself is wrong, the review step is where you catch it, not after the code is merged.
+
+## What vibecoding actually enabled
+
+I want to come back to the original point, because it is easy to read this post as a critique of vibecoding. It is not.
+
+The person who built the platform made decisions that made my work significantly easier, even when those decisions created problems I had to fix.
+
+Cursor helped them choose Supabase, which gave me RLS as a foundation to fix rather than no access control at all. It helped them build real-time features, which meant the architecture supported the user experience from day one. It helped them ship quickly enough that real users were actually using the product, which meant the problems I found were real problems, not hypothetical ones.
+
+The four `Revert` commits are more interesting than they look. They represent moments where the AI tried something, it did not work, and the builder rolled it back and tried a different direction. That is not a failure. That is exactly how iterative development works. The difference is that a senior engineer recognizes faster which approaches are patches and which ones are fixes, and skips the iteration cycle on the structural problems.
+
+What vibecoding is not yet good at is the kind of knowledge that comes from having been burned. Knowing that in-memory rate limiting fails on serverless. Knowing that RLS policies cannot self-reference without recursion. Knowing that PostgREST truncates results silently. Knowing when the framework has a convention that the generated code is violating.
+
+That knowledge is not in the training data for "write me a rate limiter." It is in the experience of having debugged a system where the rate limiter did nothing and having to explain to someone why their "working" code was not protecting anything.
+
+## Conclusion
+
+What I want people to take from this is not "vibecoding is dangerous" or "you need a senior engineer to validate AI output." The honest conclusion is narrower.
+
+The combination that worked here was: a non-developer using AI to build something genuinely useful and complex at impressive speed, followed by an experienced engineer using AI to fix, harden, and extend it at an equally impressive speed. Neither approach would have produced the same result alone.
+
+The vibecoded version worked and was in production. Without the engineering work, it would have stayed there with critical vulnerabilities and accumulated debt that compounds over time. Without the vibecoded foundation, the engineering work would have started from scratch, and the users would have waited much longer.
+
+What makes the difference is not whether you use AI. It is whether the person directing it has the experience to know what questions to ask, what patterns to recognize before running anything, and when to stop patching and fix the actual problem.
+
+That is not something a model learns from a prompt. It is something an engineer learns from a lot of broken production systems.
