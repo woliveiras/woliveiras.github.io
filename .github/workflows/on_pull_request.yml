@@ -13,21 +13,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: latest
+          run_install: false
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
-      - name: Install pnpm
-        run: corepack enable && corepack prepare pnpm@latest --activate
-      - name: Cache pnpm modules
-        uses: actions/cache@v3
-        with:
-          path: ~/.pnpm-store
-          key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-
-      - name: install dependencies
-        run: pnpm install
+          node-version: '24'
+          cache: 'pnpm'
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
       - uses: oke-py/npm-audit-action@v2
         with:
           github_token: ${{ secrets.AUTH_GITHUB_TOKEN }}
@@ -35,22 +32,21 @@ jobs:
           create_issues: false
 
   linting:
-    name: npm prettier:check
+    name: biome lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Use Node.js
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: latest
+          run_install: false
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22.x
-      - name: Cache Node.js modules
-        uses: actions/cache@v3
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-npm-
-      - name: install dependencies
-        run: npm ci
-      - name: biome lint
+          node-version: '24'
+          cache: 'pnpm'
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Biome lint
         run: pnpm run lint
