@@ -192,8 +192,6 @@ const { active } = Astro.props;
     const openBtn = document.querySelector("[data-mobile-menu-toggle]");
     const closeBtn = document.querySelector("[data-mobile-menu-close]");
     const menu = document.querySelector("[data-mobile-menu]");
-    const iconOpen = document.querySelector("[data-mobile-icon-open]");
-    const iconClose = document.querySelector("[data-mobile-icon-close]");
     if (!openBtn || !closeBtn || !menu) return;
 
     // Clone to remove stale listeners
@@ -230,7 +228,6 @@ const { active } = Astro.props;
     // Series accordion inside overlay
     const seriesToggle = document.querySelector("[data-mobile-series-toggle]");
     const seriesList = document.querySelector("[data-mobile-series-list]");
-    const seriesChevron = document.querySelector("[data-mobile-series-chevron]");
     if (seriesToggle && seriesList) {
       const newSeriesToggle = seriesToggle.cloneNode(true) as HTMLElement;
       seriesToggle.parentNode?.replaceChild(newSeriesToggle, seriesToggle);

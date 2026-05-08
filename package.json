@@ -39,7 +39,8 @@
 		"tailwindcss": "^4.2.4",
 		"typescript": "^6.0.3",
 		"unified": "^11.0.5",
-		"unist-util-visit": "^5.1.0"
+		"unist-util-visit": "^5.1.0",
+		"zod": "^4.4.3"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.4.14",
