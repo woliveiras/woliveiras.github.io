@@ -19,24 +19,10 @@ jobs:
       - name: Checkout your repository using git
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-
-      - name: Install pnpm
-        run: corepack enable && corepack prepare pnpm@latest --activate
-      - name: Install dependencies
-        run: pnpm install
-
-      - name: Install Playwright system dependencies
-        run: npx playwright install-deps
-
-      - name: Install Playwright Browsers
-        run: npx playwright install --with-deps chromium
-
       - name: Install, build, and upload your site
-        uses: withastro/action@v4
+        uses: withastro/action@v6
+        with:
+          node-version: 24
 
   deploy:
     needs: build
@@ -47,4 +33,4 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
