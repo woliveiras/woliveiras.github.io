@@ -6,15 +6,13 @@ published: true
 tags: ["nextjs", "security", "architecture", "ai-engineering", "engineering-practices", "software-engineering", "performance", "typescript"]
 ---
 
-Half the industry seems to be arguing about whether vibecoding is dangerous. My take is different: it is genuinely impressive, and the people doing it deserve credit for what they ship. The conversation usually stops there though, and that is where it gets interesting.
+In April 2026 I joined a platform built by someone with deep expertise in Design and zero formal background in software development, using Cursor as their primary tool. In roughly two months they shipped a full multi-tenant healthcare platform running in production with real users: four user roles, real-time chat, an installable PWA, Google OAuth, tokenized invite flows, OpenAI-powered report generation, and clinic management. Building that in two months is not trivial.
 
-In April 2026 I joined a platform that had been built by someone with deep expertise in Design and zero formal background in software development, using Cursor as their primary tool. In roughly two months they shipped a full multi-tenant healthcare platform running in production with real users: four user roles, real-time chat, an installable PWA, Google OAuth, tokenized invite flows, OpenAI-powered report generation, and clinic management. Building that in two months is not trivial, and I do not want to pretend otherwise.
-
-What follows is what I found when I read the code, what I did about it, and why pairing a senior engineer's judgment with AI assistance got us further, faster, than either would have alone.
+What I found when I read the code is what this post is about.
 
 ## What was built before I arrived
 
-The platform is built for pediatric therapy clinics. It connects parents, therapists, supervisors, and school staff around a child's development: scheduling, clinical reports, progress tracking, multi-party chat, LGPD-sensitive data. In a system like this a security failure is not just a technical problem, it is a real risk to children's privacy and safety.
+The platform is built for pediatric therapy clinics. It connects parents, therapists, supervisors, and school staff around a child's development: scheduling, clinical reports, progress tracking, multi-party chat, LGPD-sensitive data. A security failure here is a risk to children's privacy and safety, not just a technical problem.
 
 The commit history is honest about how it got there. Over two months, Cursor helped deliver route handlers, Supabase RLS policies, React components, authentication flows, invite emails, and database migrations. The velocity was real, the product worked, and users were relying on it.
 
@@ -25,8 +23,6 @@ When I joined on April 10, my job was not to confirm that it worked. It was to f
 Before opening a terminal, before running the first `npm install`, I just read code.
 
 That sounds almost old-fashioned now, but it is how we worked before coding agents existed: read the commit history, the database schema, the API routes, the RLS policies, look for patterns, assumptions, inconsistencies. The hype around "AI can do everything, you don't need engineers anymore" is usually about the doing part: writing code, generating tests, fixing bugs. Maybe that part is on the way to being solved, I cannot predict the future. But the looking part is a different skill, and it is the one that is hardest to delegate. It comes from having seen enough code, enough systems, and enough failures to recognize patterns that are invisible to someone who has not.
-
-Here is what I found in just an hour.
 
 ### The service role key was leaking in error messages
 
@@ -48,7 +44,7 @@ This is not something you find by running the app. You find it by knowing how Po
 
 ### Rate limiting that did nothing
 
-There was a rate limiter. It used a `Map` in memory to track requests per IP.
+There was a rate limiter: a `Map` in memory tracking requests per IP.
 
 On Vercel serverless, each function invocation runs in its own process. Processes do not share memory. The map is empty on every invocation. The rate limiter accepted every request regardless of frequency, because it never saw more than one request from any IP.
 
@@ -100,8 +96,6 @@ The `supabase/` directory had grown to 69 SQL files with no distinction between 
 
 ## What I did in 28 days
 
-The point of this section is not "I fixed a lot of things." It is what kind of judgment each fix required, and where AI fit into it. I changed a lot of code in those four weeks, but I am focusing here on the critical issues and the structural patterns I changed, not the incidental ones.
-
 ### Security: structure over patches
 
 For the RLS recursion, I did not write another policy variant. I mapped the dependency graph of the policies, found the cycle, and removed it by restructuring the schema. GitHub Copilot helped me write the corrected SQL and the tests that validated the fix. The diagnosis was mine.
@@ -126,7 +120,7 @@ I added a partial unique index on `(child_id, session_date, start_time)` in the 
 
 The App Router migration was systematic. I moved role layouts to Server Components, introduced `(authenticated)` and `(public)` route groups, added `loading.tsx` and `error.tsx` to every route with data fetching, and applied the colocation conventions (`_components/`, `_lib/` per route). I wrote specs first, got them approved, then implemented.
 
-The result was a correct code. A code that does what the framework's documentation says it should do, which affects SSR, bundle size, streaming, and caching behavior in ways that matter in production.
+The result is code that does what the framework's documentation says it should do: correct SSR, smaller bundle, streaming where it matters, and caching that actually works in production.
 
 ### Developer experience: building the floor
 
@@ -178,9 +172,9 @@ The coverage threshold in `vitest.config.ts` is part of the same discipline. Whe
 
 ## How I used AI as assistant, not protagonist
 
-"I used AI" can mean almost anything, so let me be specific. The split was always the same: I diagnosed, AI executed.
+The split was always the same: I diagnosed, AI executed.
 
-The RLS recursion was not something I asked AI to find, I found it by reading the schema. What AI did was help me write the corrected policies and generate the tests around them. I knew what was wrong and what the fix should look like; AI made producing the code faster.
+The RLS recursion was not something I asked AI to find. I found it by reading the schema. AI helped me write the corrected policies and generate the tests around them. I knew what was wrong and what the fix should look like; AI made producing the code faster.
 
 ### Setting the rules before touching any code
 
@@ -188,13 +182,13 @@ One of the first things I did was write `AGENTS.md`: a file that lives in the re
 
 It covers how API routes must be structured, which authentication pattern is canonical, how to access the database (through `db.ts`, not by instantiating raw Supabase clients), which component prefix to use, how to handle multi-tenancy, when to write a spec before writing code. Every convention that matters is documented there, with examples.
 
-Why does this matter? Because without it, every new AI session starts from the patterns already in the codebase. And if those patterns include the bad ones (three auth patterns, raw client instantiation, no input validation), the AI will replicate them confidently. It has no way to know that those patterns are the ones you are trying to eliminate. It only knows what it sees.
+Without it, every new AI session starts from the patterns already in the codebase. If those patterns include the bad ones (three auth patterns, raw client instantiation, no input validation), the AI replicates them confidently. It has no way to know those are the patterns you are trying to eliminate. It only knows what it sees.
 
 With `AGENTS.md`, the agent has a contract. It can propose code that is consistent with where the project is going, not where it came from.
 
 I also created skills, focused instruction files for specific workflows. One for writing unit tests with the correct mock setup. One for writing RLS integration tests against a local Supabase instance. One for the spec-driven workflow. One for architecture decisions. Each skill is a document the agent reads at the start of a relevant task, giving it domain context it would otherwise have to infer (or hallucinate).
 
-The result is that the agent does not start from zero on each session. It starts from a known baseline and don't do mistakes that violate the rules I set.
+The agent no longer starts from zero on each session. It starts from a known baseline and does not repeat the mistakes the rules explicitly forbid.
 
 ### Spec-driven development: plan before execute
 
@@ -207,7 +201,7 @@ For any non-trivial change, the workflow is:
 
 The agent know that it cannot start writing code until the spec is approved, because we have this rule in `AGENTS.md`. The spec is not a formality. It is a critical step that forces the agent to surface its assumptions and the ambiguity in the task before it starts writing code.
 
-This is not bureaucracy. It is the difference between asking someone to "fix the auth problem" and handing them a document that says: "the problem is X, the fix is Y, success means tests A, B, and C pass, and if it goes wrong we revert by doing Z."
+The difference is between asking someone to "fix the auth problem" and handing them a document that says: "the problem is X, the fix is Y, success means tests A, B, and C pass, and if it goes wrong we revert by doing Z." The spec step is not process for its own sake.
 
 Without the spec step, the agent fills in the blanks. Sometimes it fills them in correctly. Sometimes it fills them in with a workaround that looks like a fix but is not. The spec step forces the ambiguity to surface before the code is written, not after.
 
@@ -221,7 +215,7 @@ The skills and the spec workflow do not eliminate this problem entirely. But the
 
 ## What vibecoding actually enabled
 
-It would be easy to read this post as a critique of vibecoding, but that is not where I land. The person who built the platform made decisions that made my work significantly easier, even when those decisions created problems I had to fix.
+The person who built the platform made decisions that made my work significantly easier, even when those decisions created problems I had to fix.
 
 Cursor helped them choose Supabase, which gave me RLS as a foundation to fix instead of no access control at all. It helped them build real-time features, so the architecture already supported the user experience. And it helped them ship fast enough that there were real users on the product when I arrived, which meant the problems I found were real problems, not hypothetical ones.
 
@@ -233,8 +227,6 @@ That knowledge is not in the training data for "write me a rate limiter." It is 
 
 ## So where does this leave us
 
-The takeaway is not "vibecoding is dangerous" or "you need a senior engineer to validate AI output." The honest version is narrower than either of those.
-
-What worked here was a sequence: a non-developer using AI to build something genuinely useful and complex at impressive speed, then an experienced engineer using AI to fix, harden, and extend it at an equally impressive speed. Neither approach would have produced the same result on its own. The vibecoded version was real, in production, used by real people. Without the engineering work it would have stayed there with critical vulnerabilities and the kind of debt that compounds. Without the vibecoded foundation, the engineering work would have started from scratch, and those users would have waited a lot longer.
+What worked was a sequence: a non-developer using AI to build something real at impressive speed, then an experienced engineer using AI to fix, harden, and extend it. Neither approach alone would have produced the same result. Without the engineering work, the vibecoded version would have stayed in production with critical vulnerabilities and the kind of debt that compounds. Without the vibecoded foundation, the engineering work would have started from scratch and those users would have waited a lot longer.
 
 The difference is not whether you use AI. It is whether the person directing it has the experience to know what questions to ask, what patterns to recognize before running anything, and when to stop patching and fix the actual problem. That is not something a model learns from a prompt. It is something an engineer learns from a lot of broken production systems.
