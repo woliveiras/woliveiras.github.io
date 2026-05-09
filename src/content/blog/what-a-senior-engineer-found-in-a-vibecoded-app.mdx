@@ -6,39 +6,35 @@ published: true
 tags: ["nextjs", "security", "architecture", "ai-engineering", "engineering-practices", "software-engineering", "performance", "typescript"]
 ---
 
-One of the most common debates in the industry right now is whether vibecoding is dangerous. I want to take a different position: it is genuinely impressive, and the people doing it deserve credit. But the conversation often stops there, and I think we lose something important when it does.
+Half the industry seems to be arguing about whether vibecoding is dangerous. My take is different: it is genuinely impressive, and the people doing it deserve credit for what they ship. The conversation usually stops there though, and that is where it gets interesting.
 
-This is the story of a platform I joined in April 2026. It was built by someone with deep expertise in Design and zero formal background in software development, using Cursor as the primary tool. In roughly two months, they shipped a full multi-tenant healthcare platform: four user roles, real-time chat, an installable PWA, Google OAuth, tokenized invite flows, OpenAI-powered report generation, and clinic management. In production. With real users.
+In April 2026 I joined a platform that had been built by someone with deep expertise in Design and zero formal background in software development, using Cursor as their primary tool. In roughly two months they shipped a full multi-tenant healthcare platform running in production with real users: four user roles, real-time chat, an installable PWA, Google OAuth, tokenized invite flows, OpenAI-powered report generation, and clinic management. Building that in two months is not trivial, and I do not want to pretend otherwise.
 
-That is not a trivial thing to build. I want to be clear about that.
-
-What I want to talk about is what I found when I read the code, what I did about it, and why the combination of a senior engineer's judgment and AI assistance got us further, faster, than either would have alone.
+What follows is what I found when I read the code, what I did about it, and why pairing a senior engineer's judgment with AI assistance got us further, faster, than either would have alone.
 
 ## What was built before I arrived
 
-The platform is built for pediatric therapy clinics. It connects parents, therapists, supervisors, and school staff around a child's development. Think scheduling, clinical reports, progress tracking, multi-party chat, LGPD-sensitive data. The kind of system where a security failure is not just a technical problem. A security failure here is a real risk to children's privacy and safety.
+The platform is built for pediatric therapy clinics. It connects parents, therapists, supervisors, and school staff around a child's development: scheduling, clinical reports, progress tracking, multi-party chat, LGPD-sensitive data. In a system like this a security failure is not just a technical problem, it is a real risk to children's privacy and safety.
 
-The commit history tells an honest story. In two months, Cursor helped deliver route handlers, Supabase RLS policies, React components, authentication flows, invite emails, and database migrations. The velocity was real. The product worked. Users were relying on it.
+The commit history is honest about how it got there. Over two months, Cursor helped deliver route handlers, Supabase RLS policies, React components, authentication flows, invite emails, and database migrations. The velocity was real, the product worked, and users were relying on it.
 
-When I joined on April 10, my job was not to validate that it worked. My job was to find out how.
+When I joined on April 10, my job was not to confirm that it worked. It was to find out how.
 
 ## The first hour without running anything
 
-Before I opened a terminal, before I ran the first `npm install`, I read code.
+Before opening a terminal, before running the first `npm install`, I just read code.
 
-Yeap, you read that right. I read code before running anything. Like I done in the stone age's software development before the coding agents and coding assistants. I read the code, the commit history, the database schema, the API routes, the RLS policies. I looked for patterns. I looked for assumptions. I looked for inconsistencies.
-
-This is the part that I think gets underestimated when people talk about what experienced engineers bring to a codebase. When people, blind by the hype or big tech marketing, say "AI can do everything, you don't need engineers anymore," they are usually thinking about the "doing" part (writing code, generating tests, fixing bugs). I don't know if they're wrong... I cannot predict the future. But I do know that the "looking" part is a different skill set, and it is not something AI can replace. It is something that comes from having seen enough code, enough systems, enough failures, to recognize patterns that are invisible to someone who has not.
+That sounds almost old-fashioned now, but it is how we worked before coding agents existed: read the commit history, the database schema, the API routes, the RLS policies, look for patterns, assumptions, inconsistencies. The hype around "AI can do everything, you don't need engineers anymore" is usually about the doing part: writing code, generating tests, fixing bugs. Maybe that part is on the way to being solved, I cannot predict the future. But the looking part is a different skill, and it is the one that is hardest to delegate. It comes from having seen enough code, enough systems, and enough failures to recognize patterns that are invisible to someone who has not.
 
 Here is what I found in just an hour.
 
 ### The service role key was leaking in error messages
 
-`SUPABASE_SERVICE_ROLE_KEY` is the equivalent of a database root password. It bypasses every Row Level Security policy you have. Whoever holds it can read, write, or delete any row in any table.
+`SUPABASE_SERVICE_ROLE_KEY` is the equivalent of a database root password: it bypasses every Row Level Security policy you have, and whoever holds it can read, write, or delete any row in any table.
 
-I found it being returned in response bodies in at least 14 API routes. Not in logs. In HTTP responses. The pattern looked like this: a configuration check would run at the start of a handler, find the key missing, and return a 500 with the original error message, which the Supabase client helpfully included the key reference in.
+I found it being returned in HTTP response bodies (not in logs, in actual responses) in at least 14 API routes. The pattern was always the same: a configuration check at the start of a handler would find the key missing and return a 500 with the original error message attached, and the Supabase client helpfully included the key reference in that message.
 
-This is not a mistake that appears in code reviews. It appears in `git log` entries like `fix: improve invite email failure handling and diagnostics`. Commits that were doing the right thing (better error messages) but without the experience to recognize that the error message itself was a vulnerability.
+This is not a mistake that surfaces in a code review. It surfaces in `git log` entries like `fix: improve invite email failure handling and diagnostics`: commits that were doing the right thing (better error messages) without the experience to notice that the error message itself was the vulnerability.
 
 ### RLS was recursively broken
 
@@ -96,19 +92,15 @@ In a system with children's health data under LGPD, traceability is not a nice-t
 
 Beyond the individual vulnerabilities, there were systemic patterns that told a story about how the code had been generated.
 
-**`db.ts` was 2,200 lines.** The entire data layer of the application, across every domain, in one file. This is not a design choice, it is what happens when each new feature adds a few more functions without anyone stepping back to ask where those functions belong.
+The data layer lived in a single `db.ts` file of 2,200 lines, every domain mixed together. That is not a design choice, it is what happens when each feature adds a few functions and nobody steps back to ask where those functions belong. Three authentication patterns had ended up coexisting in the route handlers: some used `requireAuth`, some had a different inline pattern, some called Supabase directly. All of them worked more or less, none were interchangeable, and the inconsistency made auditing painful.
 
-**Three authentication patterns coexisted.** Some routes used `requireAuth`. Some used a different inline pattern. Some called Supabase directly. All of them worked, more or less. None of them were interchangeable, and the inconsistency made auditing harder.
+Next.js App Router was being used, but the project followed Pages Router patterns inside it: Client Components everywhere (including layouts with no interactivity), no route groups, no `loading.tsx`, no `error.tsx`. The framework's capabilities were present but unused, which meant a larger bundle and no streaming behavior to speak of.
 
-**Next.js App Router was present; its conventions were not.** The project used the App Router but followed Pages Router patterns. Client Components everywhere, including layouts with no interactivity. No route groups. No `loading.tsx`. No `error.tsx`. The framework's capabilities were present but unused, which meant the bundle was larger and the streaming behavior was missing.
-
-**The `supabase/` directory had 69 SQL files** with no distinction between schema definitions, development seeds, production seeds, diagnostic queries, point-in-time fixes, and obsolete files. There was no way to reconstruct the current schema from scratch without running them all and hoping they were idempotent.
-
-**There was no local development environment.** Every schema change went directly to production. No staging, no migrations in sequence, no `supabase db reset` to validate locally before applying.
+The `supabase/` directory had grown to 69 SQL files with no distinction between schema definitions, development seeds, production seeds, diagnostic queries, point-in-time fixes, and obsolete files. Reconstructing the current schema from scratch meant running them all and hoping they were idempotent. There was no local development environment either: every schema change went directly to production, with no staging, no ordered migrations, and no `supabase db reset` to validate anything beforehand.
 
 ## What I did in 28 days
 
-I want to be specific here, because the point is not "I fixed a lot of things." The point is what kind of judgment was required to fix them, and how AI fit into that. I changed a lot of code, but I'm focusing here on the critical issues I found and the patterns I changed, not the incidental ones.
+The point of this section is not "I fixed a lot of things." It is what kind of judgment each fix required, and where AI fit into it. I changed a lot of code in those four weeks, but I am focusing here on the critical issues and the structural patterns I changed, not the incidental ones.
 
 ### Security: structure over patches
 
@@ -186,11 +178,9 @@ The coverage threshold in `vitest.config.ts` is part of the same discipline. Whe
 
 ## How I used AI as assistant, not protagonist
 
-I want to be precise about this because "I used AI" can mean almost anything.
+"I used AI" can mean almost anything, so let me be specific. The split was always the same: I diagnosed, AI executed.
 
-I diagnosed. AI executed.
-
-The RLS recursion was not something I asked AI to find. I found it by reading the schema. AI helped me write the corrected policies and generate the tests. The work split was: I knew what was wrong and what the fix should look like; AI helped produce the code faster.
+The RLS recursion was not something I asked AI to find, I found it by reading the schema. What AI did was help me write the corrected policies and generate the tests around them. I knew what was wrong and what the fix should look like; AI made producing the code faster.
 
 ### Setting the rules before touching any code
 
@@ -231,26 +221,20 @@ The skills and the spec workflow do not eliminate this problem entirely. But the
 
 ## What vibecoding actually enabled
 
-I want to come back to the original point, because it is easy to read this post as a critique of vibecoding. It is not.
+It would be easy to read this post as a critique of vibecoding, but that is not where I land. The person who built the platform made decisions that made my work significantly easier, even when those decisions created problems I had to fix.
 
-The person who built the platform made decisions that made my work significantly easier, even when those decisions created problems I had to fix.
+Cursor helped them choose Supabase, which gave me RLS as a foundation to fix instead of no access control at all. It helped them build real-time features, so the architecture already supported the user experience. And it helped them ship fast enough that there were real users on the product when I arrived, which meant the problems I found were real problems, not hypothetical ones.
 
-Cursor helped them choose Supabase, which gave me RLS as a foundation to fix rather than no access control at all. It helped them build real-time features, which meant the architecture supported the user experience from day one. It helped them ship quickly enough that real users were actually using the product, which meant the problems I found were real problems, not hypothetical ones.
+The four `Revert` commits in the history are more interesting than they look. They are moments where the AI tried something, it did not work, the builder rolled it back, and tried a different direction. That is not a failure, it is exactly how iterative development works. The difference is that a senior engineer recognizes faster which approaches are patches and which ones are fixes, and skips the iteration cycle on the structural problems.
 
-The four `Revert` commits are more interesting than they look. They represent moments where the AI tried something, it did not work, and the builder rolled it back and tried a different direction. That is not a failure. That is exactly how iterative development works. The difference is that a senior engineer recognizes faster which approaches are patches and which ones are fixes, and skips the iteration cycle on the structural problems.
+What vibecoding is not yet good at is the kind of knowledge that comes from having been burned: knowing that in-memory rate limiting fails on serverless, that RLS policies cannot self-reference without recursion, that PostgREST truncates results silently, or that the framework has a convention the generated code is quietly violating.
 
-What vibecoding is not yet good at is the kind of knowledge that comes from having been burned. Knowing that in-memory rate limiting fails on serverless. Knowing that RLS policies cannot self-reference without recursion. Knowing that PostgREST truncates results silently. Knowing when the framework has a convention that the generated code is violating.
+That knowledge is not in the training data for "write me a rate limiter." It is in the experience of having debugged a system where the rate limiter did nothing, and having to explain to someone why their working code was not protecting anything.
 
-That knowledge is not in the training data for "write me a rate limiter." It is in the experience of having debugged a system where the rate limiter did nothing and having to explain to someone why their "working" code was not protecting anything.
+## So where does this leave us
 
-## Conclusion
+The takeaway is not "vibecoding is dangerous" or "you need a senior engineer to validate AI output." The honest version is narrower than either of those.
 
-What I want people to take from this is not "vibecoding is dangerous" or "you need a senior engineer to validate AI output." The honest conclusion is narrower.
+What worked here was a sequence: a non-developer using AI to build something genuinely useful and complex at impressive speed, then an experienced engineer using AI to fix, harden, and extend it at an equally impressive speed. Neither approach would have produced the same result on its own. The vibecoded version was real, in production, used by real people. Without the engineering work it would have stayed there with critical vulnerabilities and the kind of debt that compounds. Without the vibecoded foundation, the engineering work would have started from scratch, and those users would have waited a lot longer.
 
-The combination that worked here was: a non-developer using AI to build something genuinely useful and complex at impressive speed, followed by an experienced engineer using AI to fix, harden, and extend it at an equally impressive speed. Neither approach would have produced the same result alone.
-
-The vibecoded version worked and was in production. Without the engineering work, it would have stayed there with critical vulnerabilities and accumulated debt that compounds over time. Without the vibecoded foundation, the engineering work would have started from scratch, and the users would have waited much longer.
-
-What makes the difference is not whether you use AI. It is whether the person directing it has the experience to know what questions to ask, what patterns to recognize before running anything, and when to stop patching and fix the actual problem.
-
-That is not something a model learns from a prompt. It is something an engineer learns from a lot of broken production systems.
+The difference is not whether you use AI. It is whether the person directing it has the experience to know what questions to ask, what patterns to recognize before running anything, and when to stop patching and fix the actual problem. That is not something a model learns from a prompt. It is something an engineer learns from a lot of broken production systems.
