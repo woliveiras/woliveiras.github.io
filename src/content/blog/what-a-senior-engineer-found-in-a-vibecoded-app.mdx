@@ -229,4 +229,6 @@ That knowledge is not in the training data for "write me a rate limiter." It is 
 
 What worked was a sequence: a non-developer using AI to build something real at impressive speed, then an experienced engineer using AI to fix, harden, and extend it. Neither approach alone would have produced the same result. Without the engineering work, the vibecoded version would have stayed in production with critical vulnerabilities and the kind of debt that compounds. Without the vibecoded foundation, the engineering work would have started from scratch and those users would have waited a lot longer.
 
-The difference is not whether you use AI. It is whether the person directing it has the experience to know what questions to ask, what patterns to recognize before running anything, and when to stop patching and fix the actual problem. That is not something a model learns from a prompt. It is something an engineer learns from a lot of broken production systems.
+So yes, vibecoding can work. But it needs a reviewer who has seen enough broken systems to read code before running it, recognize a structural problem from a symptom, and know when a workaround is making the actual fix harder. That reviewer does not have to be the person building. In this case it was not. But they have to exist, they have to have real access to the codebase, and they have to look before shipping to production with real users.
+
+Without that, the speed is real and the vulnerabilities are real and there is nobody to catch the difference.
