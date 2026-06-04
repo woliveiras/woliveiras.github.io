@@ -1,0 +1,25 @@
+name: Setup Playwright
+description: Cache Playwright browsers and install system dependencies separately from browser binaries
+
+runs:
+  using: composite
+  steps:
+    - name: Cache Playwright browser binaries
+      uses: actions/cache@v4
+      id: playwright-cache
+      with:
+        path: ~/.cache/ms-playwright
+        key: ${{ runner.os }}-playwright-chromium-${{ hashFiles('pnpm-lock.yaml') }}
+        restore-keys: |
+          ${{ runner.os }}-playwright-chromium-
+
+    - name: Install Playwright system dependencies
+      shell: bash
+      timeout-minutes: 10
+      run: pnpm exec playwright install-deps chromium
+
+    - name: Install Playwright Chromium browser
+      if: steps.playwright-cache.outputs.cache-hit != 'true'
+      shell: bash
+      timeout-minutes: 10
+      run: pnpm exec playwright install chromium
