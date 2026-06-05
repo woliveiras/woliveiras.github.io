@@ -9,7 +9,7 @@ on:
 
 jobs:
   scan:
-    name: npm audit
+    name: pnpm audit
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -24,11 +24,8 @@ jobs:
           cache: 'pnpm'
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - uses: oke-py/npm-audit-action@v2
-        with:
-          github_token: ${{ secrets.AUTH_GITHUB_TOKEN }}
-          audit_level: moderate
-          create_issues: false
+      - name: Audit dependencies
+        run: pnpm audit --audit-level moderate
 
   linting:
     name: biome lint
