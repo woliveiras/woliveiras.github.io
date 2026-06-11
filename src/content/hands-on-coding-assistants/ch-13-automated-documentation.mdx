@@ -13,7 +13,7 @@ AI changes this equation. The studies found that **documenting code functionalit
 
 This chapter covers four documentation surfaces where AI delivers immediate value: **code-level documentation** (JSDoc, docstrings, inline comments), **API and schema documentation**, **commit messages**, and **PR descriptions**. For each surface, we'll look at the mechanics, the prompts, the review checklist, and the pitfalls.
 
-In PDRC terms, this chapter exercises the **Delegate → Review** loop most heavily. You delegate documentation writing to the agent, review for accuracy and completeness, and correct where the agent hallucinated or missed context. The Correct phase is lighter than in code generation because documentation errors are easier to spot, you can read a docstring in 10 seconds and know if it's wrong.
+Documentation is a natural fit for the delegation-review pattern: you delegate the writing to the agent, review for accuracy and completeness, and correct where the agent hallucinated or missed context. Documentation errors are easier to spot than code bugs — you can read a docstring in 10 seconds and know if it's wrong.
 
 ---
 
@@ -435,7 +435,7 @@ In this exercise, you'll take an undocumented module, generate comprehensive doc
 
 ### Prerequisites
 
-For running this exercise, you'll need a project with some undocumented code (or use the `PaymentProcessor` from Chapter 11).
+For running this exercise, you'll need a project with some undocumented code (or use the `PaymentProcessor` from Chapter 12).
 
 ### Step 1: assess the documentation gap
 
@@ -525,12 +525,12 @@ For each correction, consider: could a custom instruction prevent this in the fu
 
 ### What you practiced
 
-| PDRC phase | What happened |
-|-----------|--------------|
-| **Plan** | You assessed the documentation gap and created a documentation standard |
-| **Delegate** | You generated docs for functions, types, and the module README |
+| Step | What happened |
+|---|---|
+| **Setup** | You assessed the documentation gap and created a documentation standard |
+| **Generation** | You generated docs for functions, types, and the module README |
 | **Review** | You checked each generated doc against the actual code |
-| **Correct** | You fixed inaccuracies, added missing "why" context, and updated your documentation instructions |
+| **Correction** | You fixed inaccuracies, added missing "why" context, and updated your documentation instructions |
 
 ---
 
@@ -562,7 +562,7 @@ When reviewing pull requests:
 - The "why" comment is required for any non-obvious design decision
 ```
 
-This way, both Copilot Code Review (Chapter 10) and human reviewers enforce documentation standards automatically.
+This way, both Copilot Code Review (Chapter 11) and human reviewers enforce documentation standards automatically.
 
 ### 3. Periodic documentation audits
 

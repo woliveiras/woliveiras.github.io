@@ -5,15 +5,13 @@ module: 2
 order: 12
 ---
 
-## The Correct phase: where engineering knowledge shines
+## When the AI gets it wrong: debugging, refactoring, and iteration
 
-Chapters 9 and 10 focused on Delegate and Review: generating tests, reviewing code, and accepting or dismissing AI suggestions. But what happens when the AI gets it wrong? When the generated code doesn't work, when the refactored module breaks in production, when the agent goes in circles? That's when you enter the **Correct** phase, the most distinctly _human_ part of the PDRC loop.
+Previous chapters covered generating tests and reviewing code. But what happens when the AI gets it wrong? When the generated code doesn't work, when the refactored module breaks in production, when the agent goes in circles? This is where **engineering judgment** — the distinctly human part of the workflow — is non-negotiable.
 
-This chapter is about three things that all live in the Correct phase: **debugging** (finding and fixing what's broken), **refactoring** (restructuring what works but shouldn't stay as-is), and **iteration** (the strategies for steering the agent back on track when it drifts). We'll also cover **codebase onboarding** (using AI to quickly understand unfamiliar projects).
+This chapter covers three things that all require that judgment: **debugging** (finding and fixing what's broken), **refactoring** (restructuring what works but shouldn't stay as-is), and **iteration** (the strategies for steering the agent back on track when it drifts). We'll also cover **codebase onboarding** (using AI to quickly understand unfamiliar projects).
 
 The research paints a clear picture: AI-assisted code refactoring can be completed in **nearly two-thirds less time** than manual refactoring (McKinsey, 2023), developers finish tasks **up to 55% faster** with AI completions (GitHub, 2022), and teams using Copilot see **84% more successful builds** (Accenture RCT, 2024). But the gains aren't automatic. Multiple studies show that time savings shrink dramatically on complex tasks, and **less experienced** developers sometimes perform _worse_ with AI than without it when they lack the skill to evaluate the output. The difference? Iteration skill. Developers who knew how to correct the agent's output by adding context, breaking problems down, recognizing when to intervene manually, captured the gains. Those who blindly accepted AI output or fought the tool in endless re-prompting loops did not.
-
-The Correct phase is where engineering judgment, the human element, is non-negotiable.
 
 ---
 
@@ -68,9 +66,9 @@ This is especially valuable for:
 - **Cryptic messages** — compiler errors in languages like Rust or C++ that require deep type system knowledge
 - **Dependency conflicts** — version mismatch errors in package managers that reference internal resolution logic
 
-### The debugging workflow in PDRC
+### The debugging workflow
 
-Debugging with AI follows a tight PDRC micro-loop:
+Debugging with AI follows a tight cycle:
 
 ```mermaid
 flowchart TD
@@ -125,7 +123,7 @@ Each of these follows well-known rules. AI has seen millions of examples of each
 | **Cross-module** (change interfaces, split services) | Low-medium | Architect-level review |
 | **Full codebase** (monolith → microservices) | Low | Human-driven, AI-assisted |
 
-As with test generation (Chapter 9), AI accuracy decreases as scope increases. Single-function refactoring is nearly always correct. Full-codebase restructuring requires human architectural judgment with AI as a tool, not a driver.
+As with test generation (Chapter 10), AI accuracy decreases as scope increases. Single-function refactoring is nearly always correct. Full-codebase restructuring requires human architectural judgment with AI as a tool, not a driver.
 
 ### Step-by-step: refactoring with AI
 
@@ -133,7 +131,7 @@ Here's the workflow that captures the most value while managing risk:
 
 **1. Establish a safety net first.**
 
-Before refactoring anything, make sure you have tests. If the module has no tests, use the techniques from Chapter 9 to generate them. Your tests are the "before" snapshot — they tell you if the refactoring broke anything.
+Before refactoring anything, make sure you have tests. If the module has no tests, use the techniques from Chapter 10 to generate them. Your tests are the "before" snapshot — they tell you if the refactoring broke anything.
 
 ```
 Generate unit tests for the UserService module that capture its current
@@ -157,7 +155,7 @@ Small refactorings are easy to review, easy to test, and easy to revert if somet
 
 This is non-negotiable. After each refactoring step, run the tests. If they all pass, move on to the next step.
 
-If any test fails, you're in the Correct phase: figure out what the refactoring broke, provide that context to the AI, and iterate.
+If any test fails, iterate: figure out what the refactoring broke, provide that context to the AI, and correct.
 
 **4. Repeat until the module meets your quality bar.**
 
@@ -219,7 +217,7 @@ depend on? Focus on the data flow from an incoming HTTP request to a
 database write and response.
 ```
 
-If the repository has an `AGENTS.md` or `copilot-instructions.md` file (Chapter 7), the agent already has curated context about the project's architecture, conventions, and patterns.
+If the repository has an `AGENTS.md` or `copilot-instructions.md` file (Chapters 7 and 8), the agent already has curated context about the project's architecture, conventions, and patterns.
 
 **2. Trace a specific feature.**
 
@@ -276,7 +274,7 @@ The `@workspace` scope lets the agent search across files, connect the dots betw
 
 ---
 
-## Iteration strategies: mastering the Correct phase
+## Iteration strategies: steering the agent when it drifts
 
 ### When the agent goes off-rails
 
@@ -308,7 +306,7 @@ If you only catch scope creep at the PR stage (coding agent on GitHub):
 1. **Close the PR without merging.** Don't try to patch it with review comments.
 2. **Strengthen the spec and re-assign.** A PR with scope creep is a signal the spec's boundaries were unclear, not a PR worth salvaging line by line.
 
-The Out of Scope section of your spec (Ch 4) is your primary defense. The minimal footprint instruction in `copilot-instructions.md` (Ch 8) is your secondary defense. Use both.
+The Out of Scope section of your spec (Ch 2) is your primary defense. The minimal footprint instruction in `copilot-instructions.md` (Ch 8) is your secondary defense. Use both.
 
 ---
 
@@ -368,7 +366,7 @@ For the coding agent on GitHub: paste the handoff summary into the issue body (o
 
 ---
 
-The Correct phase is where most engineers either succeed or struggle with AI assistants. The difference between a productive AI collaboration and a frustrating one almost always comes down to iteration skill, knowing how to steer the agent when it goes wrong.
+The difference between a productive AI collaboration and a frustrating one almost always comes down to iteration skill: knowing how to steer the agent when it goes wrong.
 
 ### Strategy 1: effective re-prompting
 
@@ -432,7 +430,7 @@ When the agent is stuck, the most time-efficient action is to stop prompting and
 - **You've done three correction rounds** with no convergence
 - **The change is surgical** — a few lines that you can write faster than you can explain
 
-After the manual fix, you can re-engage the AI for the next task. The PDRC loop doesn't require every step to use AI. Using the right tool for each sub-task is the whole point.
+After the manual fix, you can re-engage the AI for the next task. Not every step needs to use AI — using the right tool for each sub-task is the whole point.
 
 ### Strategy 4: the three-strike rule
 
@@ -474,7 +472,7 @@ Over time, your instruction files accumulate your team's collective corrections.
 
 ### The correction cost curve
 
-Here's an important mental model: the Correct phase gets cheaper over time.
+**Corrections are investments.** Every correction that turns into a custom instruction prevents the same mistake for every future interaction. Iteration cost drops over time as your instructions mature.
 
 | Week | Correction rate | Typical correction | Time spent correcting |
 |------|----------------|--------------------|-----------------------|
@@ -482,7 +480,7 @@ Here's an important mental model: the Correct phase gets cheaper over time.
 | Week 4 (instructions improving) | Medium | Edge cases, complex business logic | 20-30% of AI-assisted time |
 | Week 12 (mature instructions) | Low | Novel situations, architectural decisions | 10-15% of AI-assisted time |
 
-This pattern shows up consistently across teams adopting AI tools. GitHub's Accenture study found that developers who had used Copilot longer showed higher PR merge rates and build success, and the 2024 GitHub survey reported that **57% of developers are upskilling** through AI-assisted work. The Correct phase shrinks as your instructions mature, your prompting skill grows, and the AI's context about your project deepens through custom instructions.
+This pattern shows up consistently across teams adopting AI tools. GitHub's Accenture study found that developers who had used Copilot longer showed higher PR merge rates and build success, and the 2024 GitHub survey reported that **57% of developers are upskilling** through AI-assisted work. Correction effort shrinks as your instructions mature, your prompting skill grows, and the AI's context about your project deepens through custom instructions.
 
 ---
 
@@ -699,12 +697,12 @@ Turn these into custom instructions:
 
 ### What you practiced
 
-| PDRC phase | What happened |
-|-----------|--------------|
-| **Plan** | You assessed the legacy module and decided on a three-pass refactoring strategy |
-| **Delegate** | You gave the agent focused, single-pass refactoring prompts |
+| Step | What happened |
+|---|---|
+| **Assessment** | You assessed the legacy module and decided on a three-pass refactoring strategy |
+| **Delegation** | You gave the agent focused, single-pass refactoring prompts |
 | **Review** | You ran the test suite after each pass to catch regressions |
-| **Correct** | You identified what the agent got wrong, re-prompted with specifics, and documented recurring issues as custom instructions |
+| **Correction** | You identified what the agent got wrong, re-prompted with specifics, and documented recurring issues as custom instructions |
 
 The most important takeaway: the corrections you documented in Step 6 are more valuable than the refactoring itself. They prevent the same mistakes next time — for both the AI and your teammates.
 
@@ -712,7 +710,7 @@ The most important takeaway: the corrections you documented in Step 6 are more v
 
 ## Conclusion
 
-The Correct phase is where the PDRC loop gets its integrity. Without effective correction, AI assistance is a coin flip — sometimes helpful, sometimes harmful, and you never quite know which. With a disciplined correction practice, AI becomes a reliable multiplier:
+Iteration and correction are where AI assistance either pays off or collapses. Without effective correction, AI assistance is a coin flip. With a disciplined correction practice, AI becomes a reliable multiplier:
 
 1. **AI debugging is a tight feedback loop.** Use `/fix` for quick issues, inline chat for nuanced investigation, and error explanation for unfamiliar stacktraces. Always provide the exact error and the context — specificity is what makes AI debugging effective.
 
@@ -722,8 +720,8 @@ The Correct phase is where the PDRC loop gets its integrity. Without effective c
 
 4. **Iteration skill separates productive from frustrated.** Re-prompt with context, not hope. Provide examples of what you want. Constrain scope when output is too broad. And follow the three-strike rule: three corrections, then manual override.
 
-5. **Corrections are investments.** Every correction that turns into a custom instruction prevents the same mistake for every future interaction. The Correct phase gets cheaper over time as your instructions mature.
+5. **Corrections are investments.** Every correction that turns into a custom instruction prevents the same mistake for every future interaction. Iteration cost drops over time as your instructions mature.
 
-In Ch 13, we'll shift from correcting code to **documenting** it — AI-assisted code documentation, API docs, commit messages, and PR descriptions. Documentation is where the Delegate and Review phases shine again, because generating docs is high-value, pattern-heavy work that AI handles well and humans review quickly.
+In Ch 13, we'll shift from correcting code to **documenting** it — AI-assisted code documentation, API docs, commit messages, and PR descriptions. Documentation is high-value, pattern-heavy work that AI handles well and humans review quickly.
 
 

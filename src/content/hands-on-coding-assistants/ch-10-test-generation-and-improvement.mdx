@@ -5,9 +5,9 @@ module: 2
 order: 10
 ---
 
-## Welcome to Module 2: applying the PDRC loop
+## Welcome to Module 2: spec-first in daily practice
 
-Chapters 0 through 5 covered the foundations and the Plan phase — prerequisites, the PDRC mental model, setup, Spec-Driven Development, and prompt engineering (Module 0). Chapters 6 through 9 gave you the complete customization toolkit: custom agents, AGENTS.md, repository instructions, and skills (Module 1). Starting now, Module 2 puts that foundation to work on the tasks that deliver the most value in daily engineering. We begin with the single highest-impact use case for AI coding assistants: **test generation**.
+Chapters 0 through 4 covered the foundations — prerequisites, the spec-first workflow, setup, and the harness overview (Module 0). Chapters 5 through 9 gave you the complete toolkit: prompt engineering, custom agents, AGENTS.md, repository instructions, and skills (Module 1). Starting now, Module 2 puts that foundation to work on the tasks that deliver the most value in daily engineering. We begin with the single highest-impact use case for AI coding assistants: **test generation**.
 
 ---
 
@@ -18,10 +18,10 @@ In GitHub's 2024 developer survey (2,000 respondents across the US, Brazil, Indi
 Why? Because test generation sits at the intersection of three forces:
 
 1. **Tests are high-value, low-novelty.** Most test code follows predictable patterns: arrange inputs, act on the system under test, assert on outputs. The cognitive load is in knowing _what_ to test, not in writing the boilerplate.
-2. **Tests are the easiest AI output to verify.** You can run a test suite and get a binary answer: it passes or it fails. Compare that to generated application code, where correctness is harder to judge without manual review. This makes the **Review** phase of PDRC fast and unambiguous.
+2. **Tests are the easiest AI output to verify.** You can run a test suite and get a binary answer: it passes or it fails. Compare that to generated application code, where correctness is harder to judge without manual review. The review step is fast and unambiguous.
 3. **The ROI is immediate and measurable.** Before AI: you had 60% test coverage. After 30 minutes with an agent: you have 85%. The build turns green, the diff is clear, and you can merge with confidence.
 
-In PDRC terms, test generation heavily exercises the **Delegate** and **Review** phases. You delegate the writing of test code to the agent, then review by running the suite. If tests fail or miss cases, you **Correct** and iterate. The Plan phase is lightweight — you already know what code exists and what coverage is missing.
+Test generation is a natural fit for the spec-first workflow: you delegate the test writing to the agent, review by running the suite, and iterate on gaps. The spec is lightweight here — you already know what code exists and what coverage is missing.
 
 ---
 
@@ -49,7 +49,7 @@ flowchart LR
 
 **Unit tests** are where AI shines brightest. The scope is small, the inputs and outputs are clear, and the agent needs minimal context beyond the function signature and its dependencies. **E2E tests** require understanding the full application (routes, auth, state, timing, selectors), which means more planning upfront and more correction afterward.
 
-The PDRC principle here: **start with the easy wins.** Generate unit tests first. Move to integration tests once the unit layer is solid. Tackle E2E tests only when you have clear specs and a running environment.
+**Start with the easy wins.** Generate unit tests first. Move to integration tests once the unit layer is solid. Tackle E2E tests only when you have clear specs and a running environment.
 
 ---
 
@@ -188,7 +188,7 @@ Cover:
 
 Notice how the prompt specifies _what to mock and what not to mock_. This is critical for integration tests. Without this guidance, the agent may either mock everything (turning the test into a unit test) or mock nothing (turning it into an E2E test that needs a real database).
 
-The PDRC approach: in the **Plan** phase, decide your mock boundaries before delegating to the agent. The clearer the boundary, the more useful the generated tests.
+Decide your mock boundaries before delegating to the agent. The clearer the boundary, the more useful the generated tests.
 
 ---
 
@@ -421,7 +421,7 @@ Edge cases: empty collections, posts with missing optional fields
 
 This is the **Plan** phase. It takes 2 minutes and saves 10 minutes of back-and-forth with the agent.
 
-### Step 2: generate unit tests (the Delegate phase)
+### Step 2: generate unit tests
 
 Open Copilot Chat in Agent mode and send a well-structured prompt:
 
@@ -479,7 +479,7 @@ Possible outcomes:
 | Some fail with assertion errors | Decide: is the test wrong or the implementation wrong? Fix accordingly |
 | Most fail | Context was insufficient — give the agent more information about the module's dependencies |
 
-### Step 5: fill coverage gaps (the Correct phase)
+### Step 5: fill coverage gaps
 
 If coverage is below 80%, run coverage and give the report to the agent:
 
@@ -556,7 +556,7 @@ description: >
 | Pitfall | What happens | Fix |
 |---------|-------------|-----|
 | **"Write tests for everything"** | Agent generates hundreds of shallow tests | Be specific about which functions and scenarios |
-| **Accepting tests without reading them** | Weak assertions and missing edge cases slip through | Always review during the PDRC Review phase |
+| **Accepting tests without reading them** | Weak assertions and missing edge cases slip through | Always review AI-generated tests before merging |
 | **Testing implementation details** | Tests break on every refactor even when behavior is unchanged | Assert on outputs and observable behavior, not internals |
 | **Ignoring the test framework** | Agent uses Jest syntax when you use Vitest (or vice versa) | Specify the framework in the prompt or in `copilot-instructions.md` |
 | **No mock boundaries** | Integration tests mock everything or nothing | Explicitly state what to mock and what to test end-to-end |
@@ -571,7 +571,7 @@ description: >
 3. **AI-assisted TDD inverts the workflow.** Describe the behavior → generate tests → implement against them. Tests-as-specification constrain AI hallucinations because failures surface immediately.
 4. **Context quality determines test quality.** Provide the source file, existing test patterns, and framework config. The more context, the fewer correction cycles.
 5. **Coverage gap analysis is underused and powerful.** Feed the agent your coverage report and let it specifically target uncovered branches. Two or three iterations can lift a module from 50% to 90%+.
-6. **Always review.** AI-generated tests that pass aren't necessarily good tests. Check for meaningful assertions, independent tests, and coverage of error paths. The Review phase is non-negotiable.
+6. **Always review.** AI-generated tests that pass aren't necessarily good tests. Check for meaningful assertions, independent tests, and coverage of error paths. Reviewing agent output is non-negotiable.
 
 7. **Enforce a coverage floor, not a fixed threshold.** Configure your CI to fail if coverage _drops_ below its current value — not just below an arbitrary number. This creates a ratchet: coverage can only go up. When the agent generates new code, it must also generate the tests, otherwise the floor falls and CI blocks the merge:
 

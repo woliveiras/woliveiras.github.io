@@ -11,9 +11,15 @@ You already know how to write software. The question is: **how do you work _with
 
 Coding assistants are everywhere. Autocomplete suggestions, inline chat, autonomous agents that open pull requests while you sleep. The tooling has evolved fast, faster than most teams' ability to use it well. The result is a gap: developers adopt the tools but don't change _how_ they think about the work. They accept suggestions without reviewing them. They prompt vaguely and get vague results. They let the agent run wild and then spend hours cleaning up the mess.
 
-This series exists to close that gap. Every chapter is built around a single idea: **you stay in control, and the AI amplifies your decisions**. I'll share the mental model I use daily when working with coding agents — something I call PDRC (Plan, Delegate, Review, Correct). It's not an industry standard or an academic framework; it's just the way I learned to make my workflow more efficient after months of trial and error with these tools. We'll apply it across real-world tasks: writing tests, reviewing code, debugging, documenting, configuring agents, and measuring impact.
+This series exists to close that gap. Every chapter is built around a single idea: **you stay in control, and the AI amplifies your decisions**. We'll build that idea around three concrete practices:
 
-But before we get to the mental model (that's Ch 2), we need to understand what these tools actually are, where they shine, and where they will waste your time.
+1. **Spec-Driven Development** — write success criteria before delegating anything
+2. **Plan → Build mode** — use the built-in workflow your tools already provide to validate an approach before executing it
+3. **The harness** — a portable system of skills, instructions, and agent profiles that makes the spec-first workflow repeatable across every project
+
+We'll apply these across real-world tasks: writing tests, reviewing code, debugging, documenting, configuring agents, and measuring impact.
+
+But before we get to the workflow (that's Ch 2), we need to understand what these tools actually are, where they shine, and where they will waste your time.
 
 ---
 
@@ -90,7 +96,7 @@ This is the most autonomous level. GitHub's Copilot Coding Agent was announced i
 
 Since then, the ecosystem has expanded rapidly. By February 2026, GitHub introduced **Agentic Workflows**, repository automation written in plain Markdown that runs via GitHub Actions with AI agents. Anthropic's Claude and OpenAI's Codex became available as **alternative coding agents** directly on github.com. And features like **Agent Skills** (reusable instruction folders) and **Copilot Memory** (repository-specific context that persists across sessions) made agents significantly more context-aware.
 
-**The critical difference:** you're not reviewing in real time. The agent works asynchronously, and you review the output after the fact. This makes the **Review** and **Correct** steps of PDRC even more important, because by the time you see the code, the agent has already made dozens of decisions you didn't approve individually.
+**The critical difference:** you're not reviewing in real time. The agent works asynchronously, and you review the output after the fact. This makes reviewing against your spec even more important — by the time you see the code, the agent has already made dozens of decisions you didn't approve individually. The spec you wrote before delegating is what lets you evaluate whether those decisions were correct.
 
 ---
 
@@ -194,7 +200,7 @@ Stenberg described the cost: each well-crafted fake report took real developer t
 
 The scale of the problem grew. By January 2026, the project **ended its bug bounty program entirely**, stating it was "an attempt to reduce the noise." The word "slop" (Merriam-Webster's 2025 Word of the Year) became the shorthand for this kind of AI-generated low-quality output that shifts its cost to the recipient.
 
-**PDRC lens:** The reporters delegated entirely to an LLM (skipped Plan), submitted the raw output (skipped Review), and never verified the claims (skipped Correct). The entire cost landed on the maintainers.
+**What went wrong:** The reporters had no spec — no success criteria to verify the report against, no threat model to check claims against. They delegated entirely to an LLM and submitted the raw output without verifying any of the claims. The entire cost of verification landed on the maintainers.
 
 #### OpenClaw: when an autonomous agent becomes a security nightmare
 
@@ -213,7 +219,7 @@ One of OpenClaw's own maintainers warned on Discord: _"if you can't understand h
 
 In a separate incident, a user discovered that his OpenClaw agent had created a dating profile on MoltMatch (an AI agent dating platform) and was screening potential matches **without his explicit direction**. The agent acted autonomously beyond what the user intended — exactly the kind of behavior that escapes detection when there's no Review step.
 
-**PDRC lens:** Users delegated life-management tasks to an autonomous agent without reviewing what skills it loaded, what permissions it needed, or what it was actually doing in the background. No Plan (threat model), no Review (skill audit), no Correct (permission boundaries).
+**What went wrong:** Users delegated life-management tasks to an autonomous agent without reviewing what skills it loaded, what permissions it needed, or what it was actually doing in the background. There was no spec defining what the agent was and wasn't allowed to do, no review of the skills before they ran, and no permission boundaries to contain the damage.
 
 The OpenClaw story also hit close to home for AI professionals themselves. In February 2026, Business Insider reported that a **Meta AI alignment director** shared her own OpenClaw nightmare: the agent deleted emails from her account without permission, and she _"had to RUN to my Mac mini"_ to stop it. This is someone whose literal job is AI safety — and even she was caught off guard by an autonomous agent acting beyond its intended scope.
 
@@ -227,7 +233,7 @@ Amazon's response was to call it "user error, not AI error" and a "coincidence" 
 
 This is AWS — one of the most sophisticated engineering organizations on the planet — operating its own infrastructure, using its own AI tool. If it can happen there, it can happen anywhere.
 
-**PDRC lens:** The engineers Delegated (let the agent resolve an issue), but skipped Plan (no scope boundary for what the agent was allowed to do), skipped Review (no second pair of eyes before changes went live), and had no Correct mechanism (no rollback plan if the agent's "fix" made things worse). A simple approval gate could have caught a "delete and recreate" action before it caused 13 hours of downtime.
+**What went wrong:** The engineers let the agent resolve an issue without defining what it was allowed to do. There was no scope constraint (no spec saying "do not delete or recreate environments"), no second pair of eyes before changes went live, and no rollback plan if the agent's "fix" made things worse. A simple approval gate at the plan stage could have caught a "delete and recreate" action before it caused 13 hours of downtime.
 
 #### "Workslop": AI-generated work that creates more work
 
@@ -237,17 +243,17 @@ The findings are stark: **40% of participating employees had received workslop**
 
 BetterUp defines workslop as _"AI-generated content that looks good, but lacks substance."_ It is the professional equivalent of accepting all Copilot suggestions: the output appears complete, but the thinking behind it is absent.
 
-**PDRC lens:** The "slopper" Planned (they had a task), Delegated (they used an LLM), but skipped Review and Correct. The cost didn't disappear, it was externalized to colleagues.
+**What went wrong:** The "slopper" had a task and used an LLM to complete it, but skipped the step that matters: reviewing the output against the actual goal before handing it off. The cost didn't disappear, it was externalized to colleagues.
 
 ### The pattern across all these cases
 
 Every failure follows the same structure:
 
-| Step skipped | What happened | Who paid the cost |
+| What was missing | What happened | Who paid the cost |
 |---|---|---|
-| **Plan** | No threat model, no scope definition | The agent acted with unbounded authority (OpenClaw); the AI deleted and recreated an environment (AWS) |
-| **Review** | Output accepted without verification | Hallucinated vulnerabilities wasted maintainer time (cURL); a Meta director's emails were deleted (OpenClaw) |
-| **Correct** | No iteration, no quality check | Colleagues spent hours fixing workslop (HBR study); 13 hours of AWS downtime (AWS) |
+| **A spec with scope boundaries** | No threat model, no scope definition | The agent acted with unbounded authority (OpenClaw); the AI deleted and recreated an environment (AWS) |
+| **Review against acceptance criteria** | Output accepted without verification | Hallucinated vulnerabilities wasted maintainer time (cURL); a Meta director's emails were deleted (OpenClaw) |
+| **Iteration on quality** | No correction loop, no quality check | Colleagues spent hours fixing workslop (HBR study); 13 hours of AWS downtime (AWS) |
 
 The tools themselves aren't the problem. The absence of human judgment at critical checkpoints is.
 
@@ -257,14 +263,14 @@ The tools themselves aren't the problem. The absence of human judgment at critic
 
 By the end of this series, you will:
 
-1. **Have a mental model** (PDRC) for deciding when and how to use AI on any coding task
-2. **Know how to configure** your tools, repositories, and agents to reflect your team's context
+1. **Have a structured workflow** (spec-first + Plan→Build mode) for deciding when and how to use AI on any coding task
+2. **Know how to build a harness** — the system of instructions, agents, and skills that makes the workflow repeatable across projects
 3. **Be able to generate, review, and iterate** on AI-assisted tests, code reviews, documentation, and refactors
 4. **Understand the security and governance** implications of AI-assisted development
 5. **Measure the impact** of AI tools on your team's productivity with concrete metrics
 
-What you will _not_ get is a magic prompt that solves everything. The tools are force multipliers, they multiply whatever you bring to them. Bring clear thinking and structured intent, and you'll get impressive results. Bring vague prompts and uncritical acceptance, and you'll get impressive-looking garbage.
+What you will _not_ get is a magic prompt that solves everything. The tools are force multipliers — they multiply whatever you bring to them. Bring clear thinking and structured intent, and you'll get impressive results. Bring vague prompts and uncritical acceptance, and you'll get impressive-looking garbage.
 
-Let's start with the mental model that makes the difference. Next up: **Chapter 2 — The Mental Model: Plan, Delegate, Review, Correct (PDRC)**.
+Let's start with the workflow that makes the difference. Next up: **Chapter 2 — The Spec-First Workflow**.
 
 

@@ -11,9 +11,7 @@ Every time an AI coding agent opens your repository for the first time, it knows
 
 This exploration is expensive. It burns context window tokens on file reads that could be spent on the actual task. It slows down the agent, increases the chance of errors, and often leads to PRs that fail CI because the agent missed a build step or violated a convention that was never documented.
 
-**AGENTS.md solves this by giving the agent a map of your project before it starts working.** It's a structured Markdown file placed at the root of your repository that describes everything an agent needs to orient itself: how to build, how to test, what conventions to follow, and where the important code lives.
-
-In PDRC terms, AGENTS.md is a **persistent Plan artifact**. It front-loads the context that every Plan phase needs, so agents (and the humans using them) don't waste time rediscovering the same information for every task.
+**AGENTS.md solves this by giving the agent a map of your project before it starts working.** It's a structured Markdown file placed at the root of your repository that describes everything an agent needs to orient itself: how to build, how to test, what conventions to follow, and where the important code lives. It's the foundation layer of the harness: the persistent, always-available context that every agent interaction builds on.
 
 ---
 

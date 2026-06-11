@@ -9,9 +9,7 @@ order: 8
 
 In Ch 7, we covered AGENTS.md — a cross-agent file that tells _any_ coding agent how your project works: build steps, architecture, conventions. But AGENTS.md is intentionally agent-agnostic. It doesn't control how Copilot generates code, what tone it uses in reviews, or whether it should prefer functional patterns over classes in a specific folder.
 
-**Repository custom instructions** fill that gap. They're Copilot-specific files that shape how Copilot _behaves_; its coding style, framework preferences, error handling patterns, and review criteria. While AGENTS.md says "here's how to build the project," custom instructions say "when you write code here, follow these rules."
-
-In PDRC terms, custom instructions are **persistent constraints for the Delegate phase**. They ensure that every time you delegate a task to Copilot, the same conventions, patterns, and quality standards apply without you having to repeat them in every prompt.
+**Repository custom instructions** fill that gap. They're Copilot-specific files that shape how Copilot _behaves_: its coding style, framework preferences, error handling patterns, and review criteria. While AGENTS.md says "here's how to build the project," custom instructions say "when you write code here, follow these rules." They're the behavioral layer of the harness: always-on rules that apply without you having to repeat them in every prompt.
 
 ---
 
@@ -672,6 +670,6 @@ Add a minimal footprint rule to your `copilot-instructions.md`:
   comment like `// TODO: consider extracting X` instead of making the change.
 ```
 
-This instruction doesn't prevent the agent from doing good work — it prevents unsolicited scope creep that inflates diffs and makes reviews harder. It also pairs directly with the **Out of Scope** section of your specs (Ch 4): the spec sets the boundary per task, and the instruction enforces the general habit.
+This instruction doesn't prevent the agent from doing good work — it prevents unsolicited scope creep that inflates diffs and makes reviews harder. It also pairs directly with the **Out of Scope** section of your specs (Ch 2): the spec sets the boundary per task, and the instruction enforces the general habit.
 
 

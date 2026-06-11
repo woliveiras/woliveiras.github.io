@@ -1,17 +1,17 @@
 ---
 title: "End-to-End Final Project"
-description: "Complete challenge applying the full PDRC cycle with multi-agent collaboration on a real codebase."
+description: "Complete challenge applying the full spec-first workflow with multi-agent collaboration on a real codebase."
 module: 5
 order: 18
 ---
 
 ## Welcome to Module 5: the full cycle
 
-This is the chapter where everything connects. Across 17 chapters and 5 modules, you've learned the prerequisites and foundations (Module 0), customized agents and project context (Module 1), applied PDRC to daily engineering tasks (Module 2), extended the loop with MCP, hooks, and automation (Module 3), and governed the system with security controls and measurement (Module 4).
+This is the chapter where everything connects. Across 17 chapters and 5 modules, you've learned the prerequisites and foundations (Module 0), customized agents and built the harness (Module 1), applied the spec-first workflow to daily engineering tasks (Module 2), extended the system with MCP, hooks, and automation (Module 3), and governed it with security controls and measurement (Module 4).
 
-Now you'll run the complete cycle on a single realistic project. No new concepts. No new tools. Just the disciplined application of everything you've practiced, measured against the criteria you define.
+Now you'll run the complete workflow on a single realistic project. No new concepts. No new tools. Just the disciplined application of everything you've practiced, measured against the criteria you define.
 
-The chapter is structured as a guided project with explicit checkpoints. You can work through it on any codebase, like your own, a side project, or the sample scenario provided below. The goal isn't the specific code. It's the workflow: **Plan, Delegate, Review, Correct** with evidence at every step.
+The chapter is structured as a guided project with explicit checkpoints. You can work through it on any codebase — your own, a side project, or the sample scenario provided below. The goal isn't the specific code. It's the workflow: **write a spec → Plan mode → implement → review against criteria → correct** with evidence at every step.
 
 ---
 
@@ -35,19 +35,19 @@ A product manager has filed the following issue:
 >
 > This issue is ready for development.
 
-Your job: take this issue through the full PDRC cycle using AI-assisted development, as if you were onboarding your team to this workflow for the first time.
+Your job: take this issue through the full spec-first workflow using AI-assisted development, as if you were onboarding your team to this workflow for the first time.
 
 > **Adapting to your own project:** If you prefer to work on your own codebase, substitute the scenario above with a real feature request or bug from your issue tracker. The steps below are written generically enough to apply to any project. The important thing is the process, not the specific application.
 
 ---
 
-## Phase 1: Plan
+## Phase 1: Write the spec
 
-The Plan phase is where the developer thinks. The AI doesn't write code yet. You do the design work that makes delegation effective.
+This is where the developer thinks. The AI doesn't write code yet. You do the design work that makes delegation effective.
 
 ### Step 1.1: write the specification
 
-Transform the issue into a proper spec using the template from Ch 4. The spec should be detailed enough that someone (or something) unfamiliar with the codebase could implement the feature correctly.
+Transform the issue into a proper spec using the template from Ch 2. The spec should be detailed enough that someone (or something) unfamiliar with the codebase could implement the feature correctly.
 
 ```markdown title="spec-247-task-labels.md"
 # Spec: Task Labels Feature (Issue #247)
@@ -214,9 +214,9 @@ Review the planner's output. For each risk or ambiguity, make a decision and **u
 
 Add these decisions to the spec's technical notes section. The spec is now a complete, unambiguous instruction set.
 
-### Plan phase checklist
+### Spec phase checklist
 
-Before moving to Delegate, verify:
+Before moving to Plan mode, verify:
 
 - [ ] Spec has clear acceptance criteria with checkboxes
 - [ ] Technical notes reference specific files, patterns, and conventions
@@ -226,11 +226,19 @@ Before moving to Delegate, verify:
 
 ---
 
-## Phase 2: Delegate
+## Phase 2: Plan mode → implement
 
 Now the AI writes code. Your job shifts from author to supervisor.
 
-### Step 2.1: delegate to the coding agent
+### Step 2.1: use Plan mode first
+
+Before assigning the issue to the coding agent, use Plan mode in VS Code Chat (or `Shift+Tab` in Copilot CLI) to get the agent's implementation approach:
+
+> Switch to Plan mode and paste the spec. Review: which files will change? In what order? Does the plan match your technical notes?
+
+If the plan looks wrong — wrong files, wrong order, wrong approach — correct it now. This is the cheapest point to catch a misunderstanding. Once you're satisfied with the plan, proceed.
+
+### Step 2.2: delegate to the coding agent
 
 Create a GitHub issue with the full spec as the body (or update the existing issue). Assign it to the coding agent. If you have multiple agents, assign to the `implementer` agent specifically.
 
@@ -240,7 +248,7 @@ On GitHub.com, assign Copilot to the issue. In VS Code agent mode, you can paste
 
 ### Step 2.2: monitor — don't micromanage
 
-While the agent works, resist the urge to intervene at every step. The whole point of the Plan phase was to give the agent clear enough instructions that it can work autonomously.
+While the agent works, resist the urge to intervene at every step. The whole point of writing the spec and reviewing the plan was to give the agent clear enough instructions to work autonomously.
 
 Check in at natural checkpoints:
 - After the migration is created
@@ -256,7 +264,7 @@ If you set up the `test-writer` agent, you can use a two-pass approach:
 
 This mirrors how human teams work — one developer implements, another reviews and strengthens the tests.
 
-### Delegate phase checklist
+### Implementation phase checklist
 
 Before moving to Review, verify:
 
@@ -300,7 +308,7 @@ Go through each acceptance criterion in the spec and check whether the PR satisf
 
 **Spec compliance score: 8/11 (73%)**
 
-This is your measurement instrument from Ch 4 in action. The spec told the agent what to do, and now it tells you exactly what was missed.
+This is your measurement instrument from Ch 2 in action. The spec told the agent what to do, and now it tells you exactly what was missed.
 
 ### Step 3.3: security and quality review
 
@@ -312,9 +320,7 @@ Beyond spec compliance, check the fundamentals:
 - [ ] Error responses don't leak internal details (stack traces, query text)
 - [ ] No unnecessary dependencies added
 
-### Review phase checklist
-
-Before moving to Correct, you should have:
+### Before moving to correction, you should have:
 
 - [ ] A spec compliance score (met/total criteria)
 - [ ] A list of specific issues to fix
@@ -323,7 +329,7 @@ Before moving to Correct, you should have:
 
 ---
 
-## Phase 4: Correct
+## Phase 4: Correct and iterate
 
 This phase closes the loop. You feed specific, actionable feedback back to the agent.
 
@@ -363,7 +369,7 @@ After the agent pushes fixes, run through the spec compliance check again:
 
 The PR is now ready to merge.
 
-### Correct phase checklist
+### Correction checklist
 
 - [ ] All failed criteria have specific, actionable feedback
 - [ ] The agent addressed every review comment
@@ -375,7 +381,7 @@ The PR is now ready to merge.
 
 ## Phase 5: Retrospective
 
-The PDRC cycle for this task is complete. Now step back and evaluate the process itself.
+The workflow for this task is complete. Now step back and evaluate the process itself.
 
 ### What to record
 
@@ -434,7 +440,7 @@ Look at your retrospective and identify the moments when human judgment was esse
 3. **Evaluating quality.** The automated checks passed, but the spec compliance check caught the missing criteria.
 4. **Writing actionable feedback.** Vague feedback ("fix the search") produces vague fixes. Specific feedback ("use ILIKE, add this test case") produces correct fixes.
 
-These are the moments the PDRC mental model is designed to protect. The developer's role isn't typing code — it's making decisions and verifying outcomes.
+These are the moments the spec-first workflow is designed to protect. The developer's role isn't typing code — it's making decisions and verifying outcomes.
 
 ---
 
@@ -470,7 +476,7 @@ Don't try to adopt everything at once. Here's a phased rollout:
 
 | Pitfall | Symptom | Fix |
 | --- | --- | --- |
-| Skipping the Plan phase | High correction rounds, scope creep in PRs | Require specs for all agent-assigned issues |
+| Skipping the spec | High correction rounds, scope creep in PRs | Require specs for all agent-assigned issues |
 | Over-delegating | Agent assigned complex architectural tasks | Start with well-defined, bounded tasks |
 | Under-reviewing | Bugs in production from agent-created PRs | Spec compliance checklist on every PR |
 | Ignoring the agent's failures | Same mistakes repeat across multiple PRs | Update custom instructions after every retrospective |
@@ -495,27 +501,28 @@ The developer who uses AI well isn't the one who writes the cleverest prompt. It
 
 | Module | Chapters | Core skill |
 | --- | --- | --- |
-| **0 — Foundations** | 0-4 | Prerequisites, PDRC mental model, setup, prompt engineering |
-| **1 — Agent Customization** | 5-8 | Custom agents, AGENTS.md, repository instructions, skills |
-| **2 — AI in the Daily Cycle** | 9-12 | Test generation, code review, debugging & refactoring, documentation |
-| **3 — Beyond Code** | 13-14 | MCP for external tools, hooks for automation, issue-to-PR pipelines |
-| **4 — Trust at Scale** | 15-16 | Security, governance, firewalls, IP, impact measurement, spec-driven development |
-| **5 — Full Cycle** | 17 | End-to-end application of everything, retrospective, team adoption |
+| **0 — Foundations** | 0-4 | Prerequisites, spec-first workflow, setup, the harness |
+| **1 — Agent Customization** | 5-9 | Prompt engineering, custom agents, AGENTS.md, repository instructions, skills |
+| **2 — AI in the Daily Cycle** | 10-13 | Test generation, code review, debugging & refactoring, documentation |
+| **3 — Beyond Code** | 14-15 | MCP for external tools, hooks for automation, issue-to-PR pipelines |
+| **4 — Trust at Scale** | 16-17 | Security, governance, firewalls, IP, impact measurement |
+| **5 — Full Cycle** | 18 | End-to-end application of everything, retrospective, team adoption |
 
-### The PDRC mental model — one last time
+### The spec-first workflow — one last time
 
-| Phase | What you do | What the AI does |
+| Step | What you do | What the AI does |
 | --- | --- | --- |
-| **Plan** | Write specs, define acceptance criteria, resolve ambiguities | Analyze the codebase, suggest implementation plans, flag risks |
-| **Delegate** | Assign tasks, choose agents, set boundaries | Write code, run tests, create PRs |
+| **Write spec** | Define acceptance criteria, technical notes, out of scope | Analyze the codebase, flag risks, suggest implementation plans |
+| **Plan mode** | Review and approve the implementation approach | Build a structured plan, ask clarifying questions |
+| **Implement** | Assign the task, monitor at checkpoints | Write code, run tests, create PRs |
 | **Review** | Check spec compliance, evaluate quality, assess security | Run automated reviews, highlight potential issues |
-| **Correct** | Provide specific feedback, update instructions, record lessons | Iterate on feedback, push fixes, re-run tests |
+| **Correct** | Provide specific feedback, update the harness, record lessons | Iterate on feedback, push fixes, re-run tests |
 
 The cycle repeats. Each iteration improves the instructions, the agents, and the specs — which improves the next cycle. This is the continuous improvement loop from Ch 17, and it's the real output of this series: not any single piece of code, but a system that gets better every time you use it.
 
 ---
 
-## Final hands-on: your full PDRC cycle
+## Final hands-on: your full workflow
 
 Complete the following exercise from beginning to end. Use a real repository if possible.
 
@@ -523,17 +530,19 @@ Complete the following exercise from beginning to end. Use a real repository if 
 
 1. **Pick a task.** Choose a feature request, bug fix, or improvement from your project's issue tracker. If you don't have one, use the task labels scenario from this chapter.
 
-2. **Plan.** Write a spec with acceptance criteria, technical notes, and out-of-scope section. Use the planner agent (or Copilot Chat) to validate the plan and flag ambiguities. Resolve all ambiguities before proceeding.
+2. **Write a spec.** Use the template from Ch 2: acceptance criteria, technical notes, and out-of-scope section. Use the planner agent (or Copilot Chat) to validate the approach and flag ambiguities. Resolve all ambiguities before proceeding.
 
-3. **Delegate.** Assign the task to the coding agent (or work in agent mode). Let the agent complete the implementation without intervention unless it's stuck.
+3. **Plan mode.** Switch to Plan mode. Review the agent's implementation approach against your spec. Approve when it looks correct.
 
-4. **Review.** Score the PR against your spec (criteria met / total criteria). Run the security checklist from Ch 16. Note every issue you find.
+4. **Implement.** Assign the task to the coding agent (or switch to Build mode). Let the agent complete the implementation without intervention unless it's stuck.
 
-5. **Correct.** Write specific review comments for each issue. Let the agent iterate. Re-review and score again.
+5. **Review.** Score the PR against your spec (criteria met / total criteria). Run the security checklist from Ch 16. Note every issue you find.
 
-6. **Retrospect.** Write a retrospective covering: timeline, spec compliance (before and after), what worked, what needed intervention, what you'd change, and metrics.
+6. **Correct.** Write specific review comments for each issue. Let the agent iterate. Re-review and score again.
 
-7. **Improve.** Based on the retrospective, make at least one change to your custom instructions, agent profiles, or spec template. Commit it to the repository.
+7. **Retrospect.** Write a retrospective covering: timeline, spec compliance (before and after), what worked, what needed intervention, what you'd change, and metrics.
+
+8. **Improve the harness.** Based on the retrospective, make at least one change to your custom instructions, agent profiles, or spec template. Commit it to the repository.
 
 ### Deliverables checklist
 
@@ -542,15 +551,17 @@ Complete the following exercise from beginning to end. Use a real repository if 
 - [ ] Merged PR that satisfies all acceptance criteria
 - [ ] Spec compliance scores (first pass and final)
 - [ ] Retrospective document
-- [ ] At least one instruction/agent/template improvement committed
+- [ ] At least one harness improvement committed
 
 ---
 
 ## Conclusion
 
-You started this series knowing how to write software. You're leaving it knowing how to **direct** software, how to think about the work at a higher level, delegate with precision, review with structure, and correct with specificity.
+You started this series knowing how to write software. You're leaving it knowing how to **direct** software — how to think about the work at a higher level, delegate with precision, review with structure, and correct with specificity.
 
-The tools will keep evolving. Models will get smarter. Agents will become more autonomous. New features will ship every month. But the PDRC mental model doesn't depend on any specific tool or model. It depends on the fundamental principle that drove every chapter: **the developer who plans well, delegates clearly, reviews rigorously, and corrects specifically will always get better results than the developer who just types a prompt and hopes for the best.**
+The tools will keep evolving. Models will get smarter. Agents will become more autonomous. New features will ship every month. But the spec-first workflow doesn't depend on any specific tool or model. It depends on the fundamental principle that drove every chapter: **the developer who writes clear specs, uses Plan mode, builds a solid harness, and reviews rigorously will always get better results than the developer who just types a prompt and hopes for the best.**
+
+If you want a head start on the harness for your next project, [Geremmyas](https://woliveiras.com.br/posts/introducing-geremmyas-spec-driven-development-ai-assistants/) installs a production-ready version of everything from Modules 0–1 in a single command.
 
 Build the system. Trust the process. Measure the results. Improve and repeat.
 

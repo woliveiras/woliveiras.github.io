@@ -35,14 +35,14 @@ An MCP server can expose three types of capabilities:
 
 For GitHub Copilot's coding agent, **tools are the primary capability**. When you configure an MCP server, you're telling Copilot: "here are functions you can call autonomously to gather information or perform actions."
 
-### Where MCP fits in PDRC
+### How MCP fits into the spec-first workflow
 
-MCP transforms every phase of the loop:
+MCP extends what the agent can access at every stage:
 
-- **Plan**: the agent can query Sentry for recent errors, read Notion design docs, or check Azure resource states before planning its approach.
-- **Delegate**: prompts can include live data from external systems, making delegations far more precise ("fix the error from Sentry issue PROJ-1234" becomes actionable because the agent can fetch the full stack trace).
-- **Review**: the agent can verify its work against external systems (did the fix resolve the Sentry error? does the PR description match the Notion spec?).
-- **Correct**: feedback from external tools feeds directly into correction loops.
+- **Before implementation**: the agent can query Sentry for recent errors, read Notion design docs, or check Azure resource states before planning its approach.
+- **During implementation**: prompts can include live data from external systems, making delegations far more precise ("fix the error from Sentry issue PROJ-1234" becomes actionable because the agent can fetch the full stack trace).
+- **During review**: the agent can verify its work against external systems (did the fix resolve the Sentry error? does the PR description match the Notion spec?).
+- **Feedback loop**: results from external tools feed directly into subsequent corrections.
 
 Without MCP, the agent works from whatever context you paste into the prompt. With MCP, the agent can go get its own context.
 
@@ -192,7 +192,7 @@ If you've already configured MCP servers in VS Code, you can adapt the same conf
 
 ## Practical examples: connecting Copilot to your ecosystem
 
-Let's walk through four real-world MCP integrations, from bug tracking to infrastructure. Each example shows the configuration JSON, explains which tools are enabled and why, and illustrates a concrete use case through the PDRC lens.
+Let's walk through four real-world MCP integrations, from bug tracking to infrastructure. Each example shows the configuration JSON, explains which tools are enabled and why, and illustrates a concrete use case.
 
 ### Example 1: Sentry (error tracking)
 
@@ -228,14 +228,14 @@ For interactive clients like VS Code, you can use the remote endpoint instead (`
 
 Notice we're **not** enabling every Sentry tool with `["*"]`. We're allowlisting only the two read-only tools that the agent needs. This is intentional — more on this in the security section.
 
-**PDRC in action:**
+**In practice:**
 
 Imagine you open a GitHub issue: "Users are getting a 500 error on the `/checkout` endpoint. Sentry issue: PROJ-4521."
 
-- **Plan**: the agent reads the issue, then calls `get_issue_details("PROJ-4521")` to fetch the full stack trace from Sentry. It identifies the error: a `NullPointerException` in `PaymentService.processOrder()` where `order.getShippingAddress()` returns null.
-- **Delegate**: the agent generates a fix — adding a null check and a descriptive error message before the address is accessed.
-- **Review**: you review the PR. The stack trace is referenced in the PR description. The fix matches the exact code path from Sentry.
-- **Correct**: if the fix is incomplete (say, the null check should also log a warning), you comment on the PR and the agent iterates.
+- The agent reads the issue, then calls `get_issue_details("PROJ-4521")` to fetch the full stack trace from Sentry. It identifies the error: a `NullPointerException` in `PaymentService.processOrder()` where `order.getShippingAddress()` returns null.
+- The agent generates a fix — adding a null check and a descriptive error message before the address is accessed.
+- You review the PR. The stack trace is referenced in the PR description. The fix matches the exact code path from Sentry.
+- If the fix is incomplete, you comment on the PR and the agent iterates.
 
 Without Sentry MCP, you'd need to open Sentry, find the issue, copy the stack trace, paste it into the prompt, and hope the agent interprets it correctly. With MCP, the agent does this itself.
 
@@ -312,7 +312,7 @@ Every MCP integration follows the same flow:
 1. **Configure** the server (JSON in repo settings or `.vscode/mcp.json`).
 2. **Set secrets** (Copilot environment for coding agent, VS Code inputs or env files for local).
 3. **Allowlist tools** (be specific; avoid wildcard `*` unless you trust every tool the server exposes).
-4. **Use it through PDRC** — the agent now has tools it can call autonomously during Plan and Delegate phases.
+4. **Use it** — the agent now has tools it can call autonomously to gather context and take actions.
 
 ---
 

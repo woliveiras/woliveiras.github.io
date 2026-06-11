@@ -11,7 +11,7 @@ You've configured instructions, created custom agents, set up MCP connections, a
 
 "Working" doesn't mean "the agent runs." It means your team ships faster, the code is better, and developers are happier. Proving that requires measurement, and the right measurements depend on what you're optimizing for.
 
-This chapter covers the metrics that matter, how to collect them, how to analyze agent-specific performance, and how spec-driven development turns the PDRC mental model from a way of thinking into a measurable process. By the end, you'll have a measurement system that justifies your team's investment in AI-assisted development and surfaces what to improve next.
+This chapter covers the metrics that matter, how to collect them, how to analyze agent-specific performance, and how Spec-Driven Development turns the workflow from a way of thinking into a measurable process. By the end, you'll have a measurement system that justifies your team's investment in AI-assisted development and surfaces what to improve next.
 
 ---
 
@@ -178,7 +178,7 @@ These metrics evaluate how well your specific agent configuration is performing.
 
 ### Agent-specific breakdowns
 
-If you have multiple custom agents (Ch 9), compare their performance.
+If you have multiple custom agents (Ch 6), compare their performance.
 
 Example breakdown:
 
@@ -219,7 +219,7 @@ For agent-specific metrics, you'll likely need to build lightweight tracking:
 
 ## Spec compliance: measuring the quality of your delegations
 
-In Ch 4, you learned to write specifications before delegating tasks to an agent. Every spec you write has acceptance criteria as a checklist. Those checkboxes are not just instructions — they are your measurement instrument.
+In Ch 2, you learned to write specifications before delegating tasks to an agent. Every spec you write has acceptance criteria as a checklist. Those checkboxes are not just instructions — they are your measurement instrument.
 
 After the agent creates its pull request, check the acceptance criteria:
 
@@ -239,16 +239,16 @@ This gives you a **spec compliance score**: 5/6 criteria met = 83% compliance. T
 | Out-of-scope changes appear frequently | Spec's Out of Scope section too vague | Be more explicit about boundaries in each spec |
 | Compliance varies by agent | Some agents better scoped than others | Refine the underperforming agent's `.agent.md` instructions |
 
-### Connecting specs to the PDRC cycle
+### How specs make the workflow measurable
 
-| PDRC phase | How specs help |
+| Workflow step | How specs help |
 | --- | --- |
-| **Plan** | The spec IS the plan. Writing it forces you to think through the problem before the agent touches any code. |
-| **Delegate** | The spec becomes the issue body. The agent reads it as its primary instruction. |
+| **Write spec** | Forces you to think through the problem before the agent touches any code. The spec IS the plan. |
+| **Delegate (issue body)** | The spec becomes the agent's primary instruction. Clear criteria = consistent behavior. |
 | **Review** | The acceptance criteria become your review checklist. Did the PR do what the spec said? |
 | **Correct** | Unmet criteria become specific, actionable feedback. "Criterion 3 is not satisfied — missing unit test for error case." |
 
-This is the full loop we've been building toward since Ch 1. The spec makes every phase concrete and measurable.
+This is the full loop we've been building toward since Ch 1. The spec makes every step concrete and measurable.
 
 ---
 
@@ -311,7 +311,7 @@ Every quarter, zoom out:
 - Are developers more satisfied?
 - Has the agent configuration stabilized, or are you still making frequent changes?
 
-If you're still making frequent changes after six months, the setup is probably fighting your workflow rather than supporting it. Revisit your PDRC fundamentals (Ch 1-4).
+If you're still making frequent changes after six months, the setup is probably fighting your workflow rather than supporting it. Revisit the spec-first fundamentals (Ch 1-4).
 
 ---
 
@@ -403,7 +403,7 @@ Commit your baseline document and spec template. In two weeks, pull the same met
 - Identifying data sources already available in your development pipeline
 - Choosing metrics that balance velocity, quality, experience, and agent effectiveness
 - Collecting a baseline before making changes (the only way to measure improvement)
-- Creating spec templates that make the Plan phase concrete and measurable
+- Creating spec templates that make the workflow concrete and measurable
 - Connecting measurement to a specific improvement action
 
 ---
@@ -422,8 +422,8 @@ Measurement transforms AI-assisted development from a novelty ("look, the agent 
 
 5. **Developer experience is not optional.** A team that ships faster but hates the process will find ways to route around the tools. Survey regularly and take the qualitative feedback seriously.
 
-6. **The PDRC cycle is a measurement cycle.** Plan (write the spec) → Delegate (assign with clear criteria) → Review (score against the spec) → Correct (feed results back into instructions). Each iteration makes the next one better.
+6. **The spec-first workflow is a measurement cycle.** Write the spec → assign with clear criteria → review (score against the spec) → correct (feed results back into instructions). Each iteration makes the next one better.
 
-In Ch 18, we'll put everything from the entire series together in an **end-to-end final project**. You'll receive a realistic scenario, apply every technique from Modules 1 through 4 — planning with specs, delegating to custom agents, reviewing with AI-assisted tools, correcting with hooks and feedback — and produce a complete, deployable result. It's the full PDRC cycle, measured, from start to finish.
+In Ch 18, we'll put everything from the entire series together in an **end-to-end final project**. You'll receive a realistic scenario, apply every technique from Modules 1 through 4, and produce a complete, deployable result — measured from start to finish.
 
 

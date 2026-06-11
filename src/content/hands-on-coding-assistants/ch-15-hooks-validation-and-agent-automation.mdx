@@ -11,7 +11,7 @@ Ch 14 introduced MCP, the protocol that lets Copilot talk to external systems. M
 
 Hooks are shell commands that execute at strategic points in the agent's workflow. They let you enforce policies (block dangerous commands), create audit trails (log every tool invocation), and integrate with external systems (notify Slack when a session ends). Combined with `copilot-setup-steps.yml` — the file that customizes the agent's development environment — hooks give you fine-grained control over how the coding agent operates.
 
-In PDRC terms, this chapter is about strengthening the **Review** and **Correct** phases at the infrastructure level. Instead of reviewing agent output manually after the fact, hooks let you inject automated checks that run *during* agent execution. The agent still does the work (Delegate), but your hooks validate that work in real time.
+Hooks are the enforcement layer of the harness. Instructions tell agents what to do; hooks enforce what they can do. Instead of reviewing agent output manually after the fact, hooks inject automated checks that run *during* agent execution.
 
 ---
 
@@ -231,9 +231,9 @@ The key detail: input comes from stdin. Use `cat` (Bash) or `ReadToEnd()` (Power
 
 ## Practical hook patterns
 
-Let's walk through four patterns that solve real engineering problems. Each one maps to a PDRC concern.
+Let's walk through four patterns that solve real engineering problems.
 
-### Pattern 1: security guardrails (Review)
+### Pattern 1: security guardrails
 
 The most common use case for `preToolUse` hooks: blocking dangerous commands before they execute.
 
@@ -275,9 +275,9 @@ The hook file that registers it:
 }
 ```
 
-**Why this matters**: the agent has access to a bash shell. Without guardrails, a misinterpreted prompt could lead to destructive commands. This hook adds an automated Review layer that catches dangerous patterns before they execute. You can customize the regex to match your project's specific risks (for example, blocking `aws s3 rm` commands in a cloud project).
+**Why this matters**: the agent has access to a bash shell. Without guardrails, a misinterpreted prompt could lead to destructive commands. This hook adds an automated enforcement layer that catches dangerous patterns before they execute. You can customize the regex to match your project's specific risks (for example, blocking `aws s3 rm` commands in a cloud project).
 
-### Pattern 2: file boundary enforcement (Review)
+### Pattern 2: file boundary enforcement
 
 Sometimes you want the agent to only edit files in specific directories. For example, a frontend agent should only touch `src/` and `test/`, not `infrastructure/` or `.github/`.
 
@@ -299,7 +299,7 @@ fi
 
 This enforces the boundaries described in your instruction files (Ch 8) at the infrastructure level. Instructions tell the agent what it *should* do; hooks enforce what it *can* do.
 
-### Pattern 3: audit logging (Correct)
+### Pattern 3: audit logging
 
 For compliance-sensitive environments, you need a complete record of what the agent did during a session. Hooks are perfect for this:
 
@@ -401,7 +401,7 @@ The hook registration:
 }
 ```
 
-The same pattern works for Microsoft Teams, PagerDuty, or any service that accepts webhook calls. In PDRC terms, this extends the Delegate phase: the agent delegates error notifications to your team's communication channels.
+The same pattern works for Microsoft Teams, PagerDuty, or any service that accepts webhook calls. The agent delegates error notifications to your team's communication channels without any manual action.
 
 ---
 

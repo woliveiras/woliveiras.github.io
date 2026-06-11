@@ -7,11 +7,9 @@ order: 11
 
 ## AI as your first reviewer
 
-In the previous chapter, we used AI to generate tests and then reviewed those tests by running the suite. The Review phase was essentially binary: pass or fail. Code review is different. It demands nuanced judgment: is this naming clear? Is this pattern consistent with the codebase? Could this query be exploited? For decades, that kind of judgment required a human reviewer. Now, AI can provide a meaningful first pass, catching issues before your teammates even open the pull request.
+In the previous chapter, we used AI to generate tests and then reviewed those tests by running the suite. The review was essentially binary: pass or fail. Code review is different. It demands nuanced judgment: is this naming clear? Is this pattern consistent with the codebase? Could this query be exploited? For decades, that kind of judgment required a human reviewer. Now, AI can provide a meaningful first pass, catching issues before your teammates even open the pull request.
 
-This chapter focuses on **Copilot Code Review**: how it works, what it catches (and misses), how to customize its behavior with the instruction files you built in Module 1, and how to configure automatic reviews so every PR gets AI feedback without anyone lifting a finger. We'll also cover the **"Implement suggestion"** feature, where Copilot's coding agent takes review comments and turns them into actual code changes, closing the loop from Review back to Delegate.
-
-In PDRC terms, this chapter emphasizes the **Review** phase more than any other. But it also shows how Review feeds back into Delegate and Correct: the agent reviews code, you correct the review comments that are wrong, and the agent implements the suggestions you accept.
+This chapter focuses on **Copilot Code Review**: how it works, what it catches (and misses), how to customize its behavior with the instruction files you built in Module 1, and how to configure automatic reviews so every PR gets AI feedback without anyone lifting a finger. We'll also cover the **"Implement suggestion"** feature, where Copilot's coding agent takes review comments and turns them into actual code changes — closing the review loop all the way back to implementation.
 
 ---
 
@@ -142,7 +140,7 @@ When reviewing pull requests, prioritize the following:
 
 ### Scoped instructions with `.instructions.md`
 
-Remember from Chapter 7 that `.instructions.md` files apply to files in their directory and subdirectories. This is powerful for code review:
+Remember from Chapter 8 that `.instructions.md` files apply to files matching their `applyTo` glob patterns. This is powerful for code review:
 
 ```markdown title="src/api/.instructions.md"
 ## API layer review rules
@@ -240,7 +238,7 @@ One of the standout features in Copilot Code Review is the **"Implement suggesti
 3. Implement the suggested change
 4. Open a new pull request against your branch with the fix applied
 
-This closes the PDRC loop: Copilot **Reviews** the code → you decide the suggestion is valid → Copilot **Delegates** the implementation to the coding agent → you **Review** the resulting PR → merge. The Correct phase happens only if the implementation doesn't match what you expected.
+This closes the loop: Copilot reviews the code → you decide the suggestion is valid → Copilot implements the fix in a new branch → you review the resulting PR → merge.
 
 ### When to use "Implement suggestion"
 
@@ -279,7 +277,7 @@ Before reviewing the review itself, it helps to know the specific failure modes 
 
 **The key signal for hallucinations:** code that _looks_ right but isn't wired to anything real. The model learned common patterns and reproduced them — but used method names, option keys, or import paths that don't exist in your actual codebase.
 
-Copilot Code Review will _not_ catch most of these. It reviews the code as written, not as executed. This is why **running the code** and **running the tests** are non-negotiable steps in your Review phase. Tests catch most hallucinations; a thorough manual read catches the rest.
+Copilot Code Review will _not_ catch most of these. It reviews the code as written, not as executed. This is why **running the code** and **running the tests** are non-negotiable steps in your review. Tests catch most hallucinations; a thorough manual read catches the rest.
 
 ---
 
@@ -426,7 +424,7 @@ flowchart TD
 
 3. **Treat false positives as instruction gaps.** If Copilot keeps flagging something that's correct for your codebase, don't just dismiss it, add an instruction that teaches it the exception. Over time, your instructions become a living document of team conventions.
 
-4. **Don't skip Review on the reviewer.** Copilot's review comments are AI output. They go through PDRC just like generated code: you Plan what to review, Copilot Delegates the review, you Review the review comments, and you Correct any that are wrong.
+4. **Don't skip reviewing the reviewer.** Copilot's review comments are AI output. Apply the same scrutiny you give to generated code: validate the comment before implementing it, and correct any that are wrong.
 
 ---
 
@@ -570,12 +568,12 @@ For each comment, practice the three responses:
 
 ### What you practiced
 
-| PDRC phase | What happened |
-|-----------|--------------|
-| **Plan** | You wrote custom instructions defining what "good code" means for this repo |
-| **Delegate** | You configured Copilot to automatically review every PR |
+| Step | What happened |
+|---|---|
+| **Setup** | You wrote custom instructions defining what "good code" means for this repo |
+| **Automation** | You configured Copilot to automatically review every PR |
 | **Review** | You triaged Copilot's comments — accepting, implementing, or dismissing each one |
-| **Correct** | You refined your instructions based on false positives and gaps |
+| **Harness improvement** | You refined your instructions based on false positives and gaps |
 
 ---
 
@@ -602,7 +600,7 @@ The result: human reviewers spend less time on mechanical feedback and more time
 
 ## Conclusion
 
-Copilot Code Review brings the Review phase of PDRC to pull requests at scale. Let's recap the key points:
+Copilot Code Review brings automated, spec-aware review to pull requests at scale. Let's recap the key points:
 
 1. **Copilot reviews code like a teammate** — inline comments, suggested changes, and security analysis on every PR. It analyzes the full repository context, not just the diff in isolation.
 2. **Custom instructions make reviews specific to your team.** Generic feedback is less useful than feedback grounded in your actual standards. The instruction files from Module 1 directly power review quality.
@@ -611,6 +609,6 @@ Copilot Code Review brings the Review phase of PDRC to pull requests at scale. L
 5. **Copilot never approves.** It always leaves "Comment" reviews, never blocks merging, and never replaces human reviewers. This is intentional, AI augments the review process, it doesn't own the merge decision.
 6. **Review the reviewer.** Copilot's review comments are AI output. Apply the same critical thinking to them that you would to any generated code.
 
-In Ch 12, we'll shift focus to the **Correct** phase — debugging, refactoring legacy code, and the iteration strategies that make the difference between an engineer who fights the AI and one who collaborates with it effectively.
+In Ch 12, we'll shift focus to debugging, refactoring legacy code, and the iteration strategies that make the difference between an engineer who fights the AI and one who collaborates with it effectively.
 
 

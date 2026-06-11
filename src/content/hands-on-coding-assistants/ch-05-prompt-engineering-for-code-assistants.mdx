@@ -1,19 +1,17 @@
 ---
 title: "Prompt Engineering for Code Assistants"
 description: "From basics to advanced prompt structures, context management, and strategies for complex tasks."
-module: 0
+module: 1
 order: 5
 ---
 
 ## Your prompt derives from your spec
 
-In Ch 2, we defined the **Plan** phase of PDRC as answering five questions before you open the AI tool: What's the task? What are the acceptance criteria? What's the scope? What context does the AI need? And which tool is right for this task?
-
-In Ch 4, we made that concrete: you write a spec before delegating. The spec has four sections — Goal, Acceptance Criteria, Technical Notes, Out of Scope — and it answers all five questions in one document.
+In Ch 2, we introduced the spec-first workflow and the four-section spec: Goal, Acceptance Criteria, Technical Notes, Out of Scope. The spec defines what "done" looks like before you open any AI tool.
 
 Your prompt is how you hand that spec to the AI tool. Notice the parallel: Goal maps to the goal component of your prompt, Acceptance Criteria and Technical Notes map to constraints and context, and Out of Scope maps to boundaries. If you've written a good spec, writing the prompt becomes straightforward — you're translating a structured document into a conversation, not inventing context from scratch.
 
-A vague prompt is a symptom that the Plan phase was skipped. The rest of the PDRC cycle inherits that debt: more review rounds, more corrections, more time wondering why the AI "didn't understand."
+A vague prompt is a symptom that the spec was skipped. Without clear acceptance criteria, you'll spend more rounds correcting misalignments, wondering why the AI "didn't understand."
 
 This chapter is about the craft of that translation — how to turn a solid spec into prompts that work on the first try, not the fifth.
 
@@ -55,7 +53,7 @@ You don't need to add the directives `Goal`, `Context`, `Constraints`, and `Outp
 
 ## Five prompt strategies that actually matter
 
-GitHub's documentation, VS Code's prompt crafting guide, and research from teams using Copilot at scale converge on five strategies that consistently improve output quality. These aren't theoretical, they're the patterns that reduce your Review and Correct cycles.
+GitHub's documentation, VS Code's prompt crafting guide, and research from teams using Copilot at scale converge on five strategies that consistently improve output quality. These are the patterns that consistently reduce your review and correction cycles.
 
 ### 1. Start general, then get specific
 
@@ -150,7 +148,7 @@ Step 3: "Add login with JWT. Use the same auth pattern as src/middleware/auth.ts
 (... continue step by step)
 ```
 
-Each step is a single-responsibility delegation. The model does one thing well, you review it, and the next step builds on verified code. This is PDRC at the task level: Plan each step, Delegate it, Review the output, Correct before moving on.
+Each step is a single-responsibility delegation. The model does one thing well, you review it, and the next step builds on verified code. Plan each step, write it as a prompt, review the output, correct before moving on.
 
 GitHub's own documentation recommends exactly this: _"If you want Copilot to complete a complex or large task, break the task into multiple simple, small tasks."_
 
@@ -237,7 +235,7 @@ If you're writing the same context into every prompt ("we use Vitest, not Jest" 
 
 ### Managing context over a session
 
-A single prompt is one PDRC cycle. A long agent session is many cycles, and each cycle consumes context window tokens. As a session grows, two things happen:
+A single prompt is one write–review cycle. A long agent session is many cycles, and each cycle consumes context window tokens. As a session grows, two things happen:
 
 1. **Earlier context gets compressed or evicted.** The model has a fixed context window. When it fills, older content is summarized or dropped. Instructions you gave at the start of the session may no longer have full weight.
 2. **Accumulated wrong assumptions propagate.** If the agent made a wrong assumption in iteration 3, it may carry that assumption silently through iterations 4, 5, and 6, building on a broken foundation.
@@ -266,7 +264,7 @@ This isn't a limitation to work around — it's a property to design for. Shorte
 
 To make the difference concrete, here's the same task at three quality levels. The task: add a retry mechanism to an HTTP client.
 
-### Level 1: Vague (skipped the Plan phase)
+### Level 1: Vague (no spec)
 
 ```text
 Add retry logic to the HTTP client.
@@ -279,7 +277,7 @@ Add retry logic to the HTTP client.
 - No logging
 - May not integrate with your existing HTTP client at all
 
-**PDRC cost:** You'll spend more time in Review spotting issues and in Correct fixing them than you saved by writing a short prompt.
+**Review cost:** You'll spend more time spotting issues and fixing them than you saved by writing a short prompt.
 
 ### Level 2: Specific (good Plan, basic Delegate)
 
@@ -298,7 +296,7 @@ Add retry logic to the fetchWithAuth function in src/lib/http-client.ts.
 - Uses your logger
 - Integrates with the existing function
 
-**PDRC cost:** One round of review, maybe a small correction for an edge case.
+**Review cost:** One round of review, maybe a small correction for an edge case.
 
 ### Level 3: Complete (thorough Plan, precise Delegate)
 
@@ -325,7 +323,7 @@ Don't modify the fetchWithAuth signature — wrap the internal fetch call.
 
 **What you'll likely get:** Production-ready code on the first pass. Correct edge cases, proper error types, comprehensive tests.
 
-**PDRC cost:** Minimal review, likely zero corrections. The time invested in the prompt pays for itself immediately.
+**Review cost:** Minimal review, likely zero corrections. The time invested in the prompt pays for itself immediately.
 
 ---
 

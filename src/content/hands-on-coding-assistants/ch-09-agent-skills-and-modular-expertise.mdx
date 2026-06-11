@@ -9,9 +9,9 @@ order: 9
 
 In the last three chapters we built an instruction stack: AGENTS.md for cross-agent project context, `copilot-instructions.md` for Copilot-wide conventions, and `.instructions.md` files for path-specific rules. That stack defines **how your agent should behave all the time**. But real work is spikier than that. Debugging a flaky GitHub Actions workflow, generating PDF invoices, running a database migration; these are specialized tasks that need specialized knowledge, and loading that knowledge on every single prompt would waste context tokens on irrelevant material.
 
-**Agent Skills solve this.** A skill is a folder of instructions, scripts, and resources that the agent discovers at startup but only loads when the task calls for it. You can think of skills as plug-in expertise: modular, conditionally-activated, and reusable across tools.
+**Agent Skills solve this.** A skill is a folder of instructions, scripts, and resources that the agent discovers at startup but only loads when the task calls for it. You can think of skills as plug-in expertise: modular, conditionally-activated, and reusable across tools. They're the expertise layer of the harness — specialized knowledge that loads on-demand without bloating every interaction.
 
-In PDRC terms, skills extend the **Delegate** phase. Instead of pasting detailed how-to content into every prompt, you teach the agent a procedure once and let it pull that procedure in whenever it recognizes the pattern. Less repetition, more reliable results.
+Skills let you teach the agent a procedure once — how to write a spec, how to debug a CI workflow, how to set up a new project — and let it pull that knowledge in whenever it recognizes the pattern. Less repetition, more reliable results.
 
 ---
 
@@ -424,7 +424,7 @@ flowchart LR
 
 ## Hands-on: build a spec-writer skill
 
-In Ch 4, you practiced writing specs manually: Goal, Acceptance Criteria, Technical Notes, Out of Scope. After a few iterations, the structure becomes second nature. But the blank page problem persists: when someone drops a vague issue description in front of you, there's still friction in transforming it into a proper spec.
+In Ch 2, you practiced writing specs manually: Goal, Acceptance Criteria, Technical Notes, Out of Scope. After a few iterations, the structure becomes second nature. But the blank page problem persists: when someone drops a vague issue description in front of you, there's still friction in transforming it into a proper spec.
 
 A `spec-writer` skill eliminates that friction. You invoke it with a vague description, and the agent produces a structured spec draft — which you then review and refine before delegating the implementation.
 
@@ -539,7 +539,7 @@ resized automatically and stored somewhere. Update their profile
 when done.
 ```
 
-Evaluate the output against the Ch 4 quality bar:
+Evaluate the output against the Ch 2 quality bar:
 - Is the Goal one to three sentences, describing the what and why?
 - Are the acceptance criteria specific and testable (not "image uploads work")?
 - Does Technical Notes ask the right questions even when the input didn't provide context?
@@ -565,7 +565,7 @@ Once the skill produces reliable specs, your delegation flow becomes:
 4. Use the final spec as the issue body when assigning to the coding agent
 5. After the PR is created, score it against the acceptance criteria
 
-This is Ch 4's Spec-Driven Development cycle, accelerated. You still review and own every spec — the skill handles the blank page.
+This is Ch 2's Spec-Driven Development cycle, accelerated. You still review and own every spec — the skill handles the blank page.
 
 ---
 
@@ -761,6 +761,8 @@ After using the skill a few times, you'll notice gaps. Maybe you need a section 
 5. **Good descriptions drive good activation.** The `description` field is what the agent reads to decide whether to load a skill. Be specific about both capabilities and trigger conditions.
 6. **Skills complete the customization picture.** Combined with AGENTS.md, `copilot-instructions.md`, `.instructions.md`, `.agent.md`, and `.prompt.md`, you now have a complete toolkit — from always-on conventions to conditionally-activated expertise to one-shot prompts.
 
-In Ch 10, we shift from customization to application. We'll take everything we've built in Module 1 and put it to work on **test generation** — the highest-impact use case for AI coding assistants, where the Delegate and Review phases of PDRC really shine.
+In Ch 10, we shift from customization to application. We'll take everything we've built in Module 1 and put it to work on **test generation** — the highest-impact use case for AI coding assistants, where the delegation and review patterns we've established really shine.
+
+> **If you want a ready-made harness:** [Geremmyas](https://woliveiras.com.br/posts/introducing-geremmyas-spec-driven-development-ai-assistants/) ships a production version of everything we built in Modules 0 and 1 — AGENTS.md, instructions, a `spec-writer` skill, guardrail hooks, and reviewer agent profile — as a single install command. Use it to bootstrap any new project with the full spec-first workflow already in place.
 
 

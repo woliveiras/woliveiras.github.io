@@ -5,13 +5,13 @@ module: 0
 order: 3
 ---
 
-## Why setup is a Plan step
+## Why setup matters
 
 Most developers install Copilot, sign in, and start typing. They never configure anything beyond the defaults. Then they wonder why the AI keeps suggesting code in the wrong style, doesn't know about their testing framework, or ignores their team's conventions.
 
-Setup is not overhead. It's the **Plan** phase of PDRC applied to your entire development environment. Every minute you spend configuring custom instructions, connecting MCP servers, and verifying your CLI installation pays for itself across every task you delegate from this point forward.
+Setup is not overhead. Every minute you spend configuring custom instructions, connecting MCP servers, and verifying your CLI installation pays for itself across every task you delegate from this point forward.
 
-In PDRC terms: you're teaching the AI _how you work_ before you ask it to work for you.
+This chapter covers the practical configuration work — getting tools running, creating the first instruction files, and verifying the environment. In the chapters that follow, we'll build on this foundation to create a full harness.
 
 ---
 
@@ -84,9 +84,11 @@ Open the Chat panel with `Shift+Cmd+I` (macOS) or `Shift+Ctrl+I` (Windows/Linux)
 
 - **Agent** mode — Copilot reads your workspace, runs terminal commands, installs dependencies, and iterates on errors autonomously
 - **Ask** mode — get answers and code suggestions (no file modifications)
-- **Plan** mode — Copilot builds a structured plan before making any changes, then asks for your approval
+- **Plan** mode — Copilot builds a structured implementation plan, asks clarifying questions, and waits for your approval before writing anything
 
-For this series, we'll primarily use **Agent mode** for complex tasks and **Ask** for exploration and learning. Agent mode is where PDRC matters most, the agent has significant autonomy, so your Plan and Review phases need to be solid.
+For this series, the standard workflow is **Plan mode first, Agent mode second**: use Plan mode to validate the implementation approach against your spec, then switch to Agent mode to execute. We'll use **Ask** for exploration and learning.
+
+Plan mode is where you catch misunderstandings cheaply — before any file has been modified. If the plan doesn't match what your spec says, you correct it before a single line is written.
 
 ---
 
@@ -171,16 +173,18 @@ copilot -p "Show me this week's commits and summarize them" --allow-tool 'shell(
 copilot --autopilot --yolo --max-autopilot-continues 10 -p "Run the tests and fix any failures"
 ```
 
-### Plan mode — PDRC built into the CLI
+### Plan mode — the right way to start
 
-Plan mode is particularly relevant for this series. Press `Shift+Tab` in the interactive interface to cycle into **plan mode**. In this mode:
+Plan mode is particularly important in this series. Press `Shift+Tab` in the interactive interface to cycle into **plan mode**. In this mode:
 
 1. Copilot analyzes your request
 2. Asks clarifying questions
 3. Builds a structured implementation plan
 4. Waits for your approval before writing any code
 
-This is PDRC's Plan phase, automated. You still review and approve the plan before Copilot begins delegating the execution to itself. If the plan looks wrong, you correct it _before_ any code is written, catching misunderstandings at the cheapest possible point.
+This is the built-in version of the spec-first workflow: you validate the approach before the agent acts on it. If the plan looks wrong, you correct it at the cheapest possible point — before any code has been written.
+
+Press `Shift+Tab` again to switch to **autopilot mode** — full autonomy without approval prompts. Useful for well-understood, low-risk tasks, but use with care.
 
 ### Key slash commands
 
@@ -224,7 +228,7 @@ But always review the tool list and understand the implications before pre-appro
 
 Custom instructions are the single highest-leverage configuration you can do. They tell every Copilot interaction (completions, chat, agent mode, CLI, coding agent) how your project works, what conventions to follow, and what to avoid.
 
-This files will be automatically included in the context of every Copilot prompt for this repository. The more specific and accurate your instructions, the less time you spend in the Review and Correct phases.
+These files will be automatically included in the context of every Copilot prompt for this repository. The more specific and accurate your instructions, the less time you spend reviewing and correcting agent output.
 
 ### Types of instruction files
 
@@ -276,7 +280,7 @@ The database is PostgreSQL. We deploy to Google Cloud.
 - Always use parameterized queries, never string interpolation for SQL
 ```
 
-This file gives Copilot a clear mental model of the project structure, tech stack, coding conventions, and build steps. When you ask Copilot to "Add a new API route for user registration," it references this file and knows exactly where to put the code, how to write it, and how to test it. Without these instructions, Copilot might guess wrong and produce code that doesn't fit the project's style or structure, leading to more time spent in Review and Correct phases.
+This file gives Copilot a clear mental model of the project structure, tech stack, coding conventions, and build steps. When you ask Copilot to "Add a new API route for user registration," it references this file and knows exactly where to put the code, how to write it, and how to test it. Without these instructions, Copilot might guess wrong and produce code that doesn't fit the project's style or structure, leading to more time spent reviewing and correcting.
 
 ### Path-specific instructions
 
@@ -379,7 +383,7 @@ Alternatively, manually configure servers in `.vscode/mcp.json`:
 }
 ```
 
-**Commit this file to source control** to share MCP configurations with your team. This is another Plan step: you're deciding once which tools the team needs, and everyone benefits.
+**Commit this file to source control** to share MCP configurations with your team. This is a one-time setup decision: you decide which tools the team needs, and everyone benefits.
 
 > **Security warning:** MCP servers can run arbitrary code on your machine. Only install servers from trusted sources, and review the configuration before starting them. VS Code shows a trust prompt for each new server.
 
@@ -484,6 +488,6 @@ After completing this chapter, your environment should include:
 
 This is your toolbox for the rest of the series. Every chapter from here builds on this foundation.
 
-In Ch 4, we'll cover **spec-driven development** — the practice of writing a structured specification before delegating any meaningful task to an agent. In Ch 5, we'll cover **prompt engineering** — how to structure your prompts, manage context, and decompose complex tasks. In Ch 6, we'll build **custom agents and sub-agents** with `.agent.md` profiles that turn your prompt patterns into reusable team knowledge.
+In Ch 4, we'll take a strategic look at how instructions, agents, and skills work together as a **harness** — and how to build yours progressively. In Ch 5, we'll cover **prompt engineering** — how to structure your prompts, manage context, and decompose complex tasks. In Ch 6, we'll build **custom agents and sub-agents** with `.agent.md` profiles that turn your prompt patterns into reusable team knowledge.
 
 

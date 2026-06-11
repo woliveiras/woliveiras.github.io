@@ -11,7 +11,7 @@ In Ch 5, we learned how to write effective prompts — goal, context, constraint
 
 Custom agents solve this by encoding your prompt engineering decisions into **reusable, shareable `.agent.md` files** that any team member can invoke from a dropdown. Instead of writing a detailed prompt every time, you write it once, save it as an agent, and select it from the menu.
 
-In PDRC terms, custom agents are **pre-built Plan + Delegate configurations**. The agent file _is_ the plan: it defines the role, the constraints, the tools, and the behavioral instructions. Selecting the agent _is_ the delegation: you hand off the task with all context pre-loaded.
+Custom agents are reusable roles in your harness: each agent file defines a persona with a specific scope — which tools it can use, what model it runs on, how it behaves. Selecting the agent pre-loads all context for that role, so you're not writing it again from scratch.
 
 ---
 
@@ -133,7 +133,7 @@ For MCP server tools, use the `<server-name>/*` format to include all tools from
 
 ## Building your first agents
 
-Let's build four agents that cover the most common workflows: planning, implementing, testing, and reviewing. These map directly to the PDRC cycle.
+Let's build four agents that cover the most common workflows: planning, implementing, testing, and reviewing.
 
 ### How to create a custom agent in VS Code
 
@@ -551,7 +551,7 @@ For each endpoint:
 
 When you invoke this agent and ask it to design an API, it produces the design and then presents two buttons: **Implement API** (hands off to the implementer) and **Write API Docs** (hands off to a documentation agent). The `send: false` setting on each handoff means you see the pre-filled prompt and can edit it before sending — you control whether and when to transition.
 
-We already used this same pattern in the planner and implementer agents earlier in this chapter. The key configuration is the `handoffs` array: each entry defines a `label` (button text), the target `agent`, the `prompt` (pre-filled context for the next agent), and whether to `send` automatically or let the user review first. This is PDRC with guardrails: the workflow _suggests_ the next step, but you decide whether to take it.
+We already used this same pattern in the planner and implementer agents earlier in this chapter. The key configuration is the `handoffs` array: each entry defines a `label` (button text), the target `agent`, the `prompt` (pre-filled context for the next agent), and whether to `send` automatically or let the user review first. This creates a guided sequential workflow — the system suggests the next step, but you decide whether to take it.
 
 ---
 
