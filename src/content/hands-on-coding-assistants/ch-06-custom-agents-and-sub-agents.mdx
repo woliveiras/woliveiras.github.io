@@ -66,7 +66,7 @@ agents: ['*']
 | `tools` | No | List of available tools. If omitted, _all_ tools are available. |
 | `model` | No | AI model to use. Can be a single string or a prioritized array (first available wins). |
 | `agents` | No | Which custom agents can be invoked as subagents. `*` = all, `[]` = none. |
-| `user-invokable` | No | Whether the agent appears in the dropdown (`true` by default). Set `false` for subagent-only agents. |
+| `user-invocable` | No | Whether the agent appears in the dropdown (`true` by default). Set `false` for subagent-only agents. |
 | `disable-model-invocation` | No | Prevents the agent from being auto-invoked as a subagent by other agents. |
 | `handoffs` | No | Suggested next actions that transition between agents (buttons shown after a response). |
 | `target` | No | Restrict to `vscode` or `github-copilot` environment only. |
@@ -408,7 +408,7 @@ Custom agents can specify a model via the `model` frontmatter field. This matter
 ```markdown title=".github/agents/test-runner.agent.md"
 ---
 name: Test Runner
-user-invokable: false
+user-invocable: false
 model: claude-haiku-4-5
 tools: ['terminal', 'read']
 ---
@@ -557,12 +557,12 @@ We already used this same pattern in the planner and implementer agents earlier 
 
 ## Subagent-only agents
 
-Not every agent needs to appear in the dropdown. Some agents exist purely as workers for other agents. Use `user-invokable: false` to create hidden agents:
+Not every agent needs to appear in the dropdown. Some agents exist purely as workers for other agents. Use `user-invocable: false` to create hidden agents:
 
 ```markdown title=".github/agents/security-checker.agent.md"
 ---
 name: Security Checker
-user-invokable: false
+user-invocable: false
 tools: ['read', 'search']
 ---
 
@@ -801,7 +801,7 @@ If any agent violated its constraints (e.g., the planner wrote code), your tool 
 | **Instructions too vague** | Agent ignores role boundaries when the task is complex | Be specific about what the agent should and should NOT do |
 | **Too many agents** | Team members don't know which agent to pick, or agents overlap | Start with 3–4 agents that map to your actual workflow (plan, implement, test, review) |
 | **No handoffs** | Manual context-copying between agents, leads to loss of continuity | Add handoff chains between related agents |
-| **Subagent-only agents in dropdown** | Cluttered agent picker with agents that shouldn't be used directly | Set `user-invokable: false` for worker-only agents |
+| **Subagent-only agents in dropdown** | Cluttered agent picker with agents that shouldn't be used directly | Set `user-invocable: false` for worker-only agents |
 
 ---
 

@@ -8,6 +8,8 @@ import { SITE_DESCRIPTION, SITE_TITLE } from "../../config.json";
 
 const chapters = await getCollection("series");
 const sorted = chapters.sort((a, b) => a.data.order - b.data.order);
+const appendixChapters = sorted.filter((ch) => ch.id.startsWith("ch-99-"));
+const contentChapters = sorted.filter((ch) => !ch.id.startsWith("ch-99-"));
 
 const modules = [
 	{
@@ -73,7 +75,7 @@ const modules = [
       </p>
 
       <p>
-        Across <strong>19 chapters and 6 modules</strong>, you'll learn a
+        Across <strong>19 chapters, 6 modules, and a references appendix</strong>, you'll learn a
         repeatable workflow built on three practices: <strong>Spec-Driven
           Development</strong
         >, the <strong>Plan → Build mode</strong> of AI agents, and a portable
@@ -124,7 +126,7 @@ const modules = [
 
       {
         modules.map((mod) => {
-          const moduleChapters = sorted.filter(
+          const moduleChapters = contentChapters.filter(
             (ch) => ch.data.module === mod.number,
           );
           return (
@@ -149,6 +151,26 @@ const modules = [
             </section>
           );
         })
+      }
+      {
+        appendixChapters.length > 0 && (
+          <section>
+            <h2>Appendix</h2>
+            <ul>
+              {appendixChapters.map((ch) => (
+                <li>
+                  <a href={`/hands-on-coding-assistants/${ch.id}/`}>
+                    {ch.data.title}
+                  </a>
+                  <br />
+                  <span class="text-sm text-base-500">
+                    {ch.data.description}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )
       }
       <hr />
       <section class="text-sm text-base-500 dark:text-base-400">

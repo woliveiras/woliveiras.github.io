@@ -179,7 +179,7 @@ A PR cannot merge unless all steps pass.
 
 In monorepos, a single root-level AGENTS.md often isn't specific enough. Each package has its own build steps, testing framework, and conventions. The solution: **nested AGENTS.md files**.
 
-```
+```text
 my-monorepo/
 ├── AGENTS.md                    # Root: shared conventions, monorepo commands
 ├── packages/
@@ -232,9 +232,9 @@ pnpm turbo run test --filter=api      # Test one package
 
 ---
 
-## Auto-generating AGENTS.md with the coding agent
+## Auto-generating Copilot instructions, then adapting to AGENTS.md
 
-You don't have to write AGENTS.md from scratch. GitHub provides an official prompt that instructs the Copilot coding agent to analyze your repository and generate a comprehensive instructions file. This is the recommended starting point for existing projects.
+You don't have to write AGENTS.md from scratch. GitHub provides an official prompt that instructs the Copilot coding agent to analyze your repository and generate a comprehensive Copilot instructions file. This is the recommended starting point for existing projects, and it gives you most of the operational content you need for AGENTS.md.
 
 ### How to use it
 
@@ -354,7 +354,7 @@ But be careful: agents parse Markdown links and may follow them, consuming token
 
 GitHub also recognizes `CLAUDE.md` and `GEMINI.md` at the repository root for agent-specific instructions. Use these when a particular agent needs different guidance:
 
-```
+```text
 my-repo/
 ├── AGENTS.md          # Universal instructions (all agents)
 ├── CLAUDE.md          # Claude-specific overrides (if needed)
@@ -735,5 +735,4 @@ The general heuristic: **if you're the only one who would benefit from this agen
 9. **Default to doing nothing.** Copilot auto-spawns sub-agents and handles most tasks with a good prompt and AGENTS.md context. Create a custom agent when a persona needs to be shared and versioned across the team. Create a skill when you have a portable, domain-specific procedure. If only you benefit, use a prompt — not a file.
 
 In Ch 8, we'll explore **repository custom instructions** with `copilot-instructions.md` and path-specific `.instructions.md` files — the complement to AGENTS.md that gives Copilot-specific behavioral guidance for different parts of your codebase.
-
 

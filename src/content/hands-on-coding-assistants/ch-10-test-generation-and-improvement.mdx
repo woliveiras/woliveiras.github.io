@@ -80,7 +80,7 @@ sequenceDiagram
 
 **1. Write the spec as a prompt.** Describe what the function/module should do, including edge cases. Be specific about behavior boundaries:
 
-```
+```text
 Write a comprehensive test suite for a `calculateDiscount` function with these rules:
 - Takes `price` (number) and `customerType` ("regular" | "premium" | "vip")
 - Regular customers get no discount
@@ -122,7 +122,7 @@ The quality of generated tests depends directly on the context you give the agen
 
 Here's a real-world prompt that generates high-quality unit tests:
 
-```
+```text
 Write comprehensive unit tests for the `getBlogPosts` function in #file:src/utils.ts.
 
 Use Vitest as the test runner. Follow the patterns in #file:src/utils.test.ts
@@ -164,7 +164,7 @@ Integration tests verify that modules work together correctly. They require more
 
 ### The integration test prompt pattern
 
-```
+```text
 Write integration tests for the user registration flow.
 
 The flow involves:
@@ -200,7 +200,7 @@ E2E tests are the most context-hungry. The agent needs to understand routes, sel
 
 **1. Provide explicit selectors and routes:**
 
-```
+```text
 Write Playwright E2E tests for the blog post page.
 
 Routes:
@@ -223,7 +223,7 @@ Test:
 
 **3. Account for async behavior.** Remind the agent about waits:
 
-```
+```text
 Use `await page.waitForSelector()` before assertions. The blog uses
 client-side search that loads asynchronously after page mount.
 ```
@@ -265,7 +265,7 @@ python -m pytest --cov=src --cov-report=term-missing
 
 Open the coverage report (or the summary) and ask the agent to analyze it:
 
-```
+```text
 Here's my current test coverage report. Identify the uncovered lines and
 branches, then write tests to cover them. Focus on the files with coverage
 below 80%.
@@ -411,7 +411,7 @@ Before opening Chat, take 2 minutes to survey the module:
 
 Write down a quick inventory:
 
-```
+```text
 Module: src/utils.ts
 Functions: getBlogPosts(), formatDate(), getUniqueTags()
 Dependencies: Astro content collections API
@@ -425,7 +425,7 @@ This is the **Plan** phase. It takes 2 minutes and saves 10 minutes of back-and-
 
 Open Copilot Chat in Agent mode and send a well-structured prompt:
 
-```
+```text
 Write a comprehensive unit test suite for the following functions
 in #file:src/utils.ts:
 
@@ -483,7 +483,7 @@ Possible outcomes:
 
 If coverage is below 80%, run coverage and give the report to the agent:
 
-```
+```text
 Here's the coverage output for src/utils.ts. Lines 24-28 and 45-52
 are uncovered. Write additional tests to cover those lines.
 ```

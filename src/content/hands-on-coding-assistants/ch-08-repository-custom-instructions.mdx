@@ -43,7 +43,7 @@ This is the simplest and most impactful file. It applies to every Copilot intera
 
 ### Where to place it
 
-```
+```text
 your-repo/
 └── .github/
     └── copilot-instructions.md
@@ -143,7 +143,7 @@ Path-specific instructions are the precision tool. They activate only when Copil
 
 ### Where to place them
 
-```
+```text
 your-repo/
 └── .github/
     └── instructions/
@@ -155,7 +155,7 @@ your-repo/
 
 Files must have the `.instructions.md` extension and live in `.github/instructions/` (the default location). You can organize them in subdirectories:
 
-```
+```text
 .github/
 └── instructions/
     ├── frontend/
@@ -533,7 +533,7 @@ export function divide(a: number, b: number): number {
   return a / b;
 }
 EOF
-```
+```text
 
 Note the `excludeAgent: "code-review"`: these instructions guide the coding agent when writing code, but code review uses its own criteria.
 
@@ -557,7 +557,7 @@ excludeAgent: "coding-agent"
   types, UPPER_SNAKE_CASE constants).
 - No console.log or debugger statements in production code.
 EOF
-```
+```text
 
 ### Step 5: Test the instructions
 
@@ -612,7 +612,7 @@ your-repo/
 │   └── prompts/                        # Ch 6: one-shot commands
 │       ├── test-this.prompt.md
 │       └── explain.prompt.md
-```
+```text
 
 Each file has a distinct role:
 - **AGENTS.md** → "How this project works" (any agent)
@@ -668,7 +668,7 @@ Add a minimal footprint rule to your `copilot-instructions.md`:
   files you're not directly modifying.
 - If you notice something worth improving outside the task scope, add a
   comment like `// TODO: consider extracting X` instead of making the change.
-```
+```text
 
 This instruction doesn't prevent the agent from doing good work — it prevents unsolicited scope creep that inflates diffs and makes reviews harder. It also pairs directly with the **Out of Scope** section of your specs (Ch 2): the spec sets the boundary per task, and the instruction enforces the general habit.
 

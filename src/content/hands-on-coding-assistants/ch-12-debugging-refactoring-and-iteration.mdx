@@ -23,7 +23,7 @@ Debugging is the canonical Correct activity: something is broken and you need to
 
 In Copilot Chat (VS Code, JetBrains, Visual Studio), the `/fix` slash command is purpose-built for debugging. Select the problematic code, type `/fix`, and optionally describe the symptom:
 
-```
+```text
 /fix This function throws "TypeError: Cannot read property 'name' of undefined"
 when the user has no profile
 ```
@@ -38,11 +38,11 @@ Copilot analyzes the selected code, the error message, and the surrounding conte
 
 For more nuanced debugging, inline chat lets you ask questions about specific code:
 
-```
+```text
 Why does this loop run one extra time when the input array is empty?
 ```
 
-```
+```text
 This regex matches URLs but breaks on query strings with encoded characters. What's wrong?
 ```
 
@@ -52,7 +52,7 @@ The key insight: **the more specific your question, the better the answer.** Vag
 
 When you encounter a stack trace or error message, AI can translate it into plain language:
 
-```
+```text
 Explain this error:
 
 FATAL ERROR: Reached heap limit Allocation failed - JavaScript heap out of memory
@@ -133,7 +133,7 @@ Here's the workflow that captures the most value while managing risk:
 
 Before refactoring anything, make sure you have tests. If the module has no tests, use the techniques from Chapter 10 to generate them. Your tests are the "before" snapshot — they tell you if the refactoring broke anything.
 
-```
+```text
 Generate unit tests for the UserService module that capture its current
 behavior. Focus on the public API: createUser, updateUser, deleteUser,
 and getUserById. Include edge cases for missing fields and duplicate emails.
@@ -143,7 +143,7 @@ and getUserById. Include edge cases for missing fields and duplicate emails.
 
 Don't ask "refactor this entire 500-line file." Instead:
 
-```
+```text
 Extract the email validation logic from createUser() into a separate
 validateEmail() function. Keep the same behavior, don't change what's
 considered a valid email address.
@@ -173,7 +173,7 @@ That's not new, it's how engineers have always refactored. The difference is tha
 These prompt templates work well for common refactoring tasks:
 
 **Modernize syntax:**
-```
+```text
 Refactor this module to use modern TypeScript patterns:
 - Convert callbacks to async/await
 - Replace `any` types with proper interfaces
@@ -182,14 +182,14 @@ Refactor this module to use modern TypeScript patterns:
 ```
 
 **Reduce complexity:**
-```
+```text
 This function has a cyclomatic complexity of 15. Refactor it to reduce
 complexity below 5. Use early returns, extract helper functions, and
 replace the switch statement with a lookup object. Preserve all behavior.
 ```
 
 **Extract patterns:**
-```
+```text
 This file contains a UserRepository class with 400 lines. Extract the
 caching logic into a separate CacheManager class. The UserRepository
 should use CacheManager through dependency injection. Write both classes
@@ -210,7 +210,7 @@ GitHub's 2022 study found that **73% of developers said Copilot helped them stay
 
 Ask the agent to explain the overall architecture:
 
-```
+```text
 Explain the architecture of this project. What are the main modules,
 how do they interact, and what external services does the application
 depend on? Focus on the data flow from an incoming HTTP request to a
@@ -223,7 +223,7 @@ If the repository has an `AGENTS.md` or `copilot-instructions.md` file (Chapters
 
 Rather than trying to understand everything, pick one feature and trace it end to end:
 
-```
+```text
 Trace the user registration flow from the API endpoint to the database.
 Show me every file involved, the order they're called, and what each
 one does. Include middleware, validation, and any event dispatching.
@@ -235,7 +235,7 @@ This gives you a concrete "slice" through the codebase — one path you fully un
 
 Tests are documentation:
 
-```
+```text
 Explain the testing strategy in this project. What test frameworks are
 used? Where do unit tests, integration tests, and E2E tests live?
 What's the coverage like? Show me an example of each type.
@@ -245,7 +245,7 @@ What's the coverage like? Show me an example of each type.
 
 Every codebase has code that looks wrong but exists for a reason:
 
-```
+```text
 This module uses a custom connection pool instead of the ORM's built-in
 pooling. Is there an obvious reason for this? Check the git history and
 comments for context.
@@ -255,17 +255,17 @@ comments for context.
 
 In VS Code, the `@workspace` agent gives Copilot Chat access to your entire project. This is the most useful tool for codebase onboarding:
 
-```
+```text
 @workspace Where is authentication handled? Show me the middleware and
 how it integrates with the route definitions.
 ```
 
-```
+```text
 @workspace What database migrations exist and what schema changes did
 they introduce?
 ```
 
-```
+```text
 @workspace How is error handling implemented across the API layer?
 Is there a consistent pattern?
 ```
@@ -373,7 +373,7 @@ The difference between a productive AI collaboration and a frustrating one almos
 When the AI's output isn't right, the worst thing you can do is repeat the same prompt and hope for a different result. Effective re-prompting adds information:
 
 **Add the error or failure context:**
-```
+```text
 The previous refactoring broke the test suite. Here's the failing test:
 
   FAIL src/services/UserService.test.ts
@@ -387,7 +387,7 @@ validateEmail as well.
 ```
 
 **Provide an example of what you want:**
-```
+```text
 The naming convention you used doesn't match our codebase. Here's how
 we name things:
 
@@ -399,7 +399,7 @@ Please redo the refactoring with these conventions.
 ```
 
 **Constrain the scope:**
-```
+```text
 Your previous response tried to refactor the entire file. That's too
 much in one change. Let's do this step by step:
 
@@ -591,7 +591,7 @@ export function refundPayment(paymentId: any, reason: any) {
 
 Before refactoring, capture the current behavior:
 
-```
+```text
 Generate comprehensive unit tests for the PaymentProcessor module.
 Cover all public functions: processPayment and refundPayment. Include:
 - Happy path with all fields present
@@ -618,7 +618,7 @@ This is your safety net. Every test that passes now must still pass after refact
 
 Start small:
 
-```
+```text
 Refactor payment-processor.ts — FIRST PASS ONLY:
 1. Replace all `var` with `const` or `let`
 2. Replace `any` types with proper TypeScript interfaces
@@ -632,7 +632,7 @@ types and naming only.
 
 Run tests. If any fail, you're in Correct mode:
 
-```
+```text
 The test "should accept customer_id field" is now failing because
 you removed the snake_case fallback. The interface should use camelCase
 but the function must still accept both formats for backward compatibility.
@@ -642,7 +642,7 @@ data.customerId before processing.
 
 ### Step 4: second refactoring pass — extract functions
 
-```
+```text
 Refactor payment-processor.ts — SECOND PASS:
 1. Extract input validation into a validatePaymentInput() function
 2. Extract tax calculation into calculateTax(amount: number) function
@@ -659,7 +659,7 @@ Run tests again. This pass is where AI commonly introduces bugs — extracted fu
 
 ### Step 5: third refactoring pass — error handling and patterns
 
-```
+```text
 Refactor payment-processor.ts — THIRD PASS:
 1. Replace console.log with a proper logger interface
    (accept a Logger parameter with info/warn/error methods)

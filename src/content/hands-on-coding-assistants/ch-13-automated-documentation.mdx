@@ -25,7 +25,7 @@ Code-level documentation lives closest to the code it describes. It includes fun
 
 In VS Code, you can generate documentation for any function using inline chat or the `/doc` slash command:
 
-```
+```text
 /doc
 ```
 
@@ -62,7 +62,7 @@ The `/doc` command produces a basic docblock. For richer documentation, use expl
 
 **Document complex behavior:**
 
-```
+```text
 Document the retry logic in this function. Explain the backoff
 strategy, the maximum number of retries, and what happens when
 all retries are exhausted. Include an example showing both the
@@ -71,7 +71,7 @@ success and failure paths.
 
 **Document side effects:**
 
-```
+```text
 This function has side effects that aren't obvious from the
 signature. Document what it mutates, what events it emits,
 and what external services it calls. Focus on what a caller
@@ -80,7 +80,7 @@ needs to know to use it safely.
 
 **Document the "why":**
 
-```
+```text
 This code uses a custom connection pool instead of the ORM's
 built-in pooling. Add an inline comment explaining why. Check
 the git history for context about when this was introduced
@@ -148,7 +148,7 @@ API documentation is where AI-assisted generation provides real leverage. A typi
 
 Given a route handler, ask the agent to generate comprehensive API documentation:
 
-```
+```text
 Generate API documentation for this endpoint in Markdown format. Include:
 - HTTP method and path
 - Description of what the endpoint does
@@ -193,7 +193,7 @@ curl -X POST https://api.example.com/api/v1/users \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"email": "new@example.com", "name": "New User"}'
-```
+```text
 
 
 ### Generating schema documentation
@@ -206,7 +206,7 @@ Generate documentation for all types in this file. For each type:
 - Table with field name, type, required/optional, and description
 - Example JSON that conforms to the type
 - Note any validation rules (min/max, regex patterns, enums)
-```
+```text
 
 ### OpenAPI/Swagger generation
 
@@ -217,7 +217,7 @@ Generate an OpenAPI 3.0 YAML specification for all endpoints in
 the src/api/routes/ directory. Include request/response schemas,
 authentication requirements, and example values. Use $ref for
 shared schemas.
-```
+```text
 
 This is a high-leverage prompt: a single interaction produces a machine-readable API spec that can power documentation sites, client SDK generation, and API testing. Review it carefully, AI sometimes misses authentication middleware or gets response codes wrong.
 
@@ -238,7 +238,7 @@ Generate a README.md for this project. Include:
 
 Use the existing `package.json`, `tsconfig.json`, and directory structure
 as sources of truth. Don't add anything that isn't actually in the project.
-```
+```text
 
 The last instruction is critical: AI will happily add sections about Docker, CI/CD, and deployment even if your project doesn't have them. Constraining the output to "what actually exists" produces a README that's useful from day one.
 
@@ -267,7 +267,7 @@ feat: add input validation for user registration endpoint
 - Add password strength requirements (min 8 chars, 1 uppercase, 1 number)
 - Return 400 with specific error messages for each validation rule
 - Add unit tests for all validation cases
-```
+```text
 
 ### On GitHub.com
 
@@ -294,7 +294,7 @@ Rules:
 - Body: wrap at 80 characters, explain WHY not WHAT
 - Reference issue numbers when applicable: "Closes #123"
 - For breaking changes, add "BREAKING CHANGE:" in the footer
-```
+```text
 
 With these instructions, Copilot generates messages that match your team's format — reducing the "fix commit message style" comments in code review.
 
@@ -362,7 +362,7 @@ For teams that want consistent PR descriptions, combine Copilot's generation wit
 - [ ] Documentation updated if needed
 - [ ] No hardcoded secrets or credentials
 - [ ] Breaking changes documented
-```
+```text
 
 This template creates a clear division of labor: Copilot fills in the _What_ and _How_ sections (mechanical diff analysis), while the author fills in _Why_ and _Testing_ (context that only a human has).
 
@@ -380,7 +380,7 @@ When generating PR summaries:
 - Note any environment variable changes
 - If the PR touches database migrations, describe the schema changes
 - Keep the summary concise — bullets, not paragraphs
-```
+```text
 
 ---
 
@@ -400,7 +400,7 @@ For each file, list:
 3. Priority (public API = high, internal helper = medium, type = low)
 
 Output the plan as a Markdown checklist I can work through.
-```
+```text
 
 This gives you a map of the documentation gaps before you write anything.
 
@@ -413,7 +413,7 @@ Generate JSDoc documentation for all exported functions in
 src/services/auth-service.ts. Follow the existing documentation
 style from src/services/user-service.ts. Include @param, @returns,
 @throws, and @example for each function.
-```
+```text
 
 The key phrase is "follow the existing documentation style from...". This gives the agent a concrete example to match, producing consistent output across the module.
 
@@ -447,7 +447,7 @@ Analyze src/services/payment-processor.ts and tell me:
 2. Which are missing documentation?
 3. What types/interfaces need documentation?
 4. Are there any inline comments that explain design decisions?
-```
+```text
 
 ### Step 2: write documentation instructions
 
@@ -475,7 +475,7 @@ applyTo: "**/*.ts"
 - Use inline comments for "why", not "what"
 - Reference issue numbers for workarounds: // Workaround for #423
 - Mark temporary code with // TODO(author): description
-```
+```text
 
 ### Step 3: generate documentation for each function
 
@@ -486,7 +486,7 @@ Generate JSDoc documentation for the processPayment function
 following the documentation standard in docs/.instructions.md.
 Include parameter descriptions, return value, thrown errors,
 side effects, and a usage example.
-```
+```text
 
 ### Step 4: generate type documentation
 
@@ -496,7 +496,7 @@ in src/services/payment-processor.ts. For each type, include:
 - One-sentence description
 - Example JSON that conforms to the type
 - Note any validation constraints
-```
+```text
 
 ### Step 5: generate a module README
 
@@ -509,7 +509,7 @@ documents the Payment service. Include:
 - Configuration requirements (environment variables)
 - Common usage patterns with code examples
 - Error handling approach
-```
+```text
 
 ### Step 6: review and correct
 
@@ -560,7 +560,7 @@ When reviewing pull requests:
 - Flag modified functions where the docs don't match the new behavior
 - Flag new endpoints without API documentation
 - The "why" comment is required for any non-obvious design decision
-```
+```text
 
 This way, both Copilot Code Review (Chapter 11) and human reviewers enforce documentation standards automatically.
 
@@ -573,7 +573,7 @@ Analyze the entire src/services/ directory. For each exported
 function, check if the JSDoc documentation matches the current
 implementation. Flag any mismatches, missing docs, or outdated
 examples.
-```
+```text
 
 This is a high-leverage use of AI: it can compare docs against code across an entire module faster than any human review.
 

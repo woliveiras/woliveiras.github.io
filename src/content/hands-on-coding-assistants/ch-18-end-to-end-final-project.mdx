@@ -7,7 +7,7 @@ order: 18
 
 ## Welcome to Module 5: the full cycle
 
-This is the chapter where everything connects. Across 17 chapters and 5 modules, you've learned the prerequisites and foundations (Module 0), customized agents and built the harness (Module 1), applied the spec-first workflow to daily engineering tasks (Module 2), extended the system with MCP, hooks, and automation (Module 3), and governed it with security controls and measurement (Module 4).
+This is the chapter where everything connects. Across Modules 0-4, you've learned the prerequisites and foundations, customized agents and built the harness, applied the spec-first workflow to daily engineering tasks, extended the system with MCP, hooks, and automation, and governed it with security controls and measurement.
 
 Now you'll run the complete workflow on a single realistic project. No new concepts. No new tools. Just the disciplined application of everything you've practiced, measured against the criteria you define.
 
@@ -131,7 +131,7 @@ steps:
 
 **Agent profiles:**
 
-```yaml title=".github/agents/planner.md"
+```yaml title=".github/agents/planner.agent.md"
 ---
 name: planner
 description: Analyzes issues and generates implementation plans. Read-only.
@@ -149,7 +149,7 @@ You are an implementation planner. Given a spec or issue:
 Never modify files. Only analyze and recommend.
 ```
 
-```yaml title=".github/agents/implementer.md"
+```yaml title=".github/agents/implementer.agent.md"
 ---
 name: implementer
 description: Implements features following project conventions.
@@ -166,7 +166,7 @@ Run the test suite after every significant change.
 If tests fail, fix the issue before moving on.
 ```
 
-```yaml title=".github/agents/test-writer.md"
+```yaml title=".github/agents/test-writer.agent.md"
 ---
 name: test-writer
 description: Writes and improves tests. No production code changes.
@@ -564,5 +564,4 @@ The tools will keep evolving. Models will get smarter. Agents will become more a
 If you want a head start on the harness for your next project, [Geremmyas](https://woliveiras.com.br/posts/introducing-geremmyas-spec-driven-development-ai-assistants/) installs a production-ready version of everything from Modules 0–1 in a single command.
 
 Build the system. Trust the process. Measure the results. Improve and repeat.
-
 

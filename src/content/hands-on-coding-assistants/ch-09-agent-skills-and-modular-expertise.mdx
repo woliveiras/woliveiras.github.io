@@ -19,7 +19,7 @@ Skills let you teach the agent a procedure once — how to write a spec, how to 
 
 An Agent Skill is a directory containing at minimum a `SKILL.md` file. A Markdown file with YAML frontmatter that describes what the skill does, when to use it, and step-by-step instructions for the task. Optionally, the directory can include scripts, reference documents, templates, and other resources.
 
-```
+```text
 .github/skills/webapp-testing/
 ├── SKILL.md               # Required — instructions and metadata
 ├── scripts/
@@ -149,7 +149,7 @@ description: Helps with PDFs.
 | Field | Purpose | Example |
 |-------|---------|---------|
 | `argument-hint` | Hint text shown when the skill is invoked as a slash command | `[workflow file] [run URL]` |
-| `user-invokable` | Controls whether the skill appears in the `/` slash command menu. Default: `true` | `false` (hides from menu but still auto-activates) |
+| `user-invocable` | Controls whether the skill appears in the `/` slash command menu. Default: `true` | `false` (hides from menu but still auto-activates) |
 | `disable-model-invocation` | Controls whether the agent can auto-load the skill. Default: `false` | `true` (manual `/` only) |
 | `license` | License for the skill | `Apache-2.0` |
 | `compatibility` | Environment requirements | `Requires git and gh CLI` |
@@ -187,13 +187,13 @@ This mirrors exactly what custom agents do when a coordinator delegates to a wor
 - The skill output feeds directly into the current turn's reasoning
 - The skill is short and narrow
 
-`context: fork` requires the `github.copilot.chat.skillTool.enabled` VS Code setting. It's marked experimental but stable for production use as of early 2026.
+`context: fork` requires the `github.copilot.chat.skillTool.enabled` VS Code setting. It is documented as experimental, so use it selectively and verify support in your team's VS Code and Copilot versions before relying on it for critical workflows.
 
 ### Invocation control matrix
 
-The combination of `user-invokable` and `disable-model-invocation` gives you four modes:
+The combination of `user-invocable` and `disable-model-invocation` gives you four modes:
 
-| `user-invokable` | `disable-model-invocation` | `/` menu | Auto-activate | Best for |
+| `user-invocable` | `disable-model-invocation` | `/` menu | Auto-activate | Best for |
 |---|---|---|---|---|
 | `true` (default) | `false` (default) | Yes | Yes | General-purpose skills |
 | `false` | `false` | No | Yes | Background knowledge the agent loads when relevant |
@@ -345,11 +345,11 @@ If you have a `github-actions-debugging` skill installed, the agent recognizes k
 
 Type `/` in the chat input to see all available skills (and prompt files). Select a skill to invoke it explicitly. You can add context after the command:
 
-```
+```text
 /github-actions-debugging the workflow in .github/workflows/deploy.yml is timing out
 ```
 
-```
+```text
 /webapp-testing for the login page
 ```
 
@@ -360,7 +360,7 @@ The `argument-hint` frontmatter field controls the placeholder text your users s
 | Scenario | Recommended mode |
 |----------|-----------------|
 | General-purpose skill useful across many tasks | Auto-activate + slash command (defaults) |
-| Background knowledge only relevant sometimes | `user-invokable: false` — agent loads it automatically, no clutter in the `/` menu |
+| Background knowledge only relevant sometimes | `user-invocable: false` — agent loads it automatically, no clutter in the `/` menu |
 | Dangerous operation (deletes data, deploys) | `disable-model-invocation: true` — require explicit `/` invocation |
 
 ---
@@ -486,7 +486,7 @@ Be concrete about the user or system benefit.]
 
 - [What this task explicitly does NOT include]
 - [Future enhancements that are related but separate]
-```
+```text
 
 ## Instructions
 
@@ -531,7 +531,7 @@ your job as the author of the spec).
 
 Create a test issue description and invoke the skill directly:
 
-```
+```text
 /spec-writer
 
 Users should be able to upload a profile picture. It should be
@@ -724,7 +724,7 @@ Try these prompts to see the skill in action:
 The agent should automatically load the skill and follow the debugging procedure.
 
 **Manual invocation test:**
-```
+```text
 /github-actions-debugging the test workflow in .github/workflows/ci.yml fails with exit code 1
 ```
 
@@ -764,5 +764,4 @@ After using the skill a few times, you'll notice gaps. Maybe you need a section 
 In Ch 10, we shift from customization to application. We'll take everything we've built in Module 1 and put it to work on **test generation** — the highest-impact use case for AI coding assistants, where the delegation and review patterns we've established really shine.
 
 > **If you want a ready-made harness:** [Geremmyas](https://woliveiras.com.br/posts/introducing-geremmyas-spec-driven-development-ai-assistants/) ships a production version of everything we built in Modules 0 and 1 — AGENTS.md, instructions, a `spec-writer` skill, guardrail hooks, and reviewer agent profile — as a single install command. Use it to bootstrap any new project with the full spec-first workflow already in place.
-
 
