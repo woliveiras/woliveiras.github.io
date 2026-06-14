@@ -11,6 +11,8 @@ Most developers install Copilot, sign in, and start typing. They never configure
 
 Setup is not overhead. Every minute you spend configuring custom instructions, connecting MCP servers, and verifying your CLI installation pays for itself across every task you delegate from this point forward.
 
+Think of setup as a control surface. If the assistant does not know your commands, conventions, and safety boundaries, it will infer them. In a greenfield toy project that may be harmless. In a real repository, inferred context becomes wrong files, wrong tests, wrong dependencies, and avoidable review work.
+
 This chapter covers the practical configuration work — getting tools running, creating the first instruction files, and verifying the environment. In the chapters that follow, we'll build on this foundation to create a full harness.
 
 ---
@@ -222,6 +224,8 @@ copilot --allow-tool 'shell(git)' --allow-tool 'write' --deny-tool 'shell(rm)' -
 
 But always review the tool list and understand the implications before pre-approving.
 
+The safe default is narrow approval. Pre-approve tools only after you know exactly which commands the task needs. A coding agent with broad shell access is no longer a text generator; it is a process that can mutate your working tree.
+
 ---
 
 ## Step 3: Custom instructions — teaching the AI your context
@@ -280,7 +284,9 @@ The database is PostgreSQL. We deploy to Google Cloud.
 - Always use parameterized queries, never string interpolation for SQL
 ```
 
-This file gives Copilot a clear mental model of the project structure, tech stack, coding conventions, and build steps. When you ask Copilot to "Add a new API route for user registration," it references this file and knows exactly where to put the code, how to write it, and how to test it. Without these instructions, Copilot might guess wrong and produce code that doesn't fit the project's style or structure, leading to more time spent reviewing and correcting.
+This file gives Copilot a clear mental model of the project structure, tech stack, coding conventions, and build steps. When you ask Copilot to "Add a new API route for user registration," it references this file and knows where to put the code, how to write it, and how to test it. Without these instructions, Copilot guesses. Guessing is where most correction cost starts.
+
+This aligns with the public guidance from [VS Code](https://code.visualstudio.com/docs/agents/best-practices), [GitHub Copilot](https://docs.github.com/en/copilot/get-started/best-practices), and [Google Cloud](https://cloud.google.com/blog/topics/developers-practitioners/five-best-practices-for-using-ai-coding-assistants): configure the project, provide context, plan before implementation, and verify the output.
 
 ### Path-specific instructions
 
@@ -385,7 +391,7 @@ Alternatively, manually configure servers in `.vscode/mcp.json`:
 
 **Commit this file to source control** to share MCP configurations with your team. This is a one-time setup decision: you decide which tools the team needs, and everyone benefits.
 
-> **Security warning:** MCP servers can run arbitrary code on your machine. Only install servers from trusted sources, and review the configuration before starting them. VS Code shows a trust prompt for each new server.
+> **Security warning:** MCP servers can run arbitrary code on your machine or expose privileged data to the assistant. Only install servers from trusted sources, review the configuration before starting them, and prefer read-only scopes until you have a clear reason to grant write access. VS Code shows a trust prompt for each new server.
 
 ### MCP in Copilot CLI
 
@@ -436,6 +442,8 @@ copilot -p "What is 2+2?" --allow-tool 'shell'
 # If you created .github/copilot-instructions.md, it should be listed in the references
 # If not, we'll create one in the next step
 ```
+
+Do not skip this verification step. The point is not merely confirming that Copilot responds. The point is proving that the assistant can see the right context, that your instructions are being loaded, and that tool execution behaves the way you expect before you give it meaningful work.
 
 ### Create a test custom instructions file
 
@@ -489,5 +497,4 @@ After completing this chapter, your environment should include:
 This is your toolbox for the rest of the series. Every chapter from here builds on this foundation.
 
 In Ch 4, we'll take a strategic look at how instructions, agents, and skills work together as a **harness** — and how to build yours progressively. In Ch 5, we'll cover **prompt engineering** — how to structure your prompts, manage context, and decompose complex tasks. In Ch 6, we'll build **custom agents and sub-agents** with `.agent.md` profiles that turn your prompt patterns into reusable team knowledge.
-
 

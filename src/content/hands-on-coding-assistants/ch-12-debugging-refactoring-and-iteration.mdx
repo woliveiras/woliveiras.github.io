@@ -11,7 +11,9 @@ Previous chapters covered generating tests and reviewing code. But what happens 
 
 This chapter covers three things that all require that judgment: **debugging** (finding and fixing what's broken), **refactoring** (restructuring what works but shouldn't stay as-is), and **iteration** (the strategies for steering the agent back on track when it drifts). We'll also cover **codebase onboarding** (using AI to quickly understand unfamiliar projects).
 
-The research paints a clear picture: AI-assisted code refactoring can be completed in **nearly two-thirds less time** than manual refactoring (McKinsey, 2023), developers finish tasks **up to 55% faster** with AI completions (GitHub, 2022), and teams using Copilot see **84% more successful builds** (Accenture RCT, 2024). But the gains aren't automatic. Multiple studies show that time savings shrink dramatically on complex tasks, and **less experienced** developers sometimes perform _worse_ with AI than without it when they lack the skill to evaluate the output. The difference? Iteration skill. Developers who knew how to correct the agent's output by adding context, breaking problems down, recognizing when to intervene manually, captured the gains. Those who blindly accepted AI output or fought the tool in endless re-prompting loops did not.
+The research is useful here because it is mixed. Peng et al. found large speedups on a bounded coding task. Cui et al. found enterprise productivity gains across field experiments. METR found experienced maintainers were slower with AI on mature open-source tasks. The difference is not whether the tool is "good." The difference is whether the task is bounded, the context is visible, and the developer can steer correction without creating a bigger mess.
+
+That is why this chapter is mostly about iteration discipline. The developers who capture value are not the ones who accept the first generated patch. They are the ones who can add missing context, reduce scope, create a safety net, and recognize the moment manual intervention is cheaper than another prompt.
 
 ---
 
@@ -99,7 +101,9 @@ For these, AI is a useful collaborator (explain the architecture, suggest where 
 
 ## Legacy code refactoring
 
-If debugging is about fixing what's broken, refactoring is about improving what works but is hard to maintain, extend, or understand. This is where AI delivers some of its most significant productivity gains. Multiple studies consistently show refactoring as the task where AI saves the most time, with reductions of 50-65% compared to fully manual approaches.
+If debugging is about fixing what's broken, refactoring is about improving what works but is hard to maintain, extend, or understand. AI is useful here because many refactorings are pattern-heavy. The risk is that the agent changes behavior while making the code look cleaner.
+
+Treat refactoring as a preservation task. The behavior is the contract. The diff is only acceptable if the safety net proves the contract still holds.
 
 ### Why AI excels at refactoring
 
@@ -202,7 +206,9 @@ and show me how the constructor changes.
 
 Before you can debug or refactor code, you need to understand it. Codebase onboarding — the process of becoming productive in an unfamiliar codebase — is traditionally one of the most time-consuming activities in software engineering. New hires spend weeks or months building mental models. Even experienced engineers slow down significantly when switching projects.
 
-GitHub's 2022 study found that **73% of developers said Copilot helped them stay in the flow** when working across unfamiliar files, and separate research showed developers using AI were **25-30% more likely to complete complex tasks** in unfamiliar codebases within a given time frame. The 2024 Stack Overflow Developer Survey reinforced this: **76% of developers** report using or planning to use AI tools, with "learning a codebase" and "understanding unfamiliar code" among the top use cases. This makes codebase onboarding one of the highest-ROI applications of AI coding assistants.
+Codebase onboarding is a good use of AI, but only if you treat the answer as a map to verify. Rasnayaka et al. found that LLMs helped with early development, syntax, and debugging, while integration still required human work. Skill-formation research adds the caution: if the assistant gives you the answer without making you build the mental model, you may move faster today and understand less tomorrow.
+
+Use AI onboarding to create paths through the codebase, not to replace reading the code.
 
 ### Strategies for AI-powered onboarding
 
@@ -331,6 +337,8 @@ A long agent session accumulates context: previous answers, corrections, files i
 3. **Start completely fresh** for unrelated tasks. Context from the previous task actively hurts the new one.
 
 **The discipline:** treat sessions like pull requests. Each session should have a clear scope, a defined start, and a defined end. Sessions that sprawl across multiple unrelated tasks produce worse results than focused sessions, for the same reason that PRs that mix multiple changes are harder to review.
+
+This is the small-batch principle applied to agent sessions. DORA's AI research warns that AI adoption can increase batch size and review burden. A long session that edits twenty files is just a large PR with a chat transcript attached. Keep the session small enough that you can still reason about it.
 
 ---
 
@@ -480,7 +488,7 @@ Over time, your instruction files accumulate your team's collective corrections.
 | Week 4 (instructions improving) | Medium | Edge cases, complex business logic | 20-30% of AI-assisted time |
 | Week 12 (mature instructions) | Low | Novel situations, architectural decisions | 10-15% of AI-assisted time |
 
-This pattern shows up consistently across teams adopting AI tools. GitHub's Accenture study found that developers who had used Copilot longer showed higher PR merge rates and build success, and the 2024 GitHub survey reported that **57% of developers are upskilling** through AI-assisted work. Correction effort shrinks as your instructions mature, your prompting skill grows, and the AI's context about your project deepens through custom instructions.
+The exact numbers will differ by team, but the pattern is the one you want to measure: correction effort should shrink as your instructions mature, your prompting skill grows, and the AI's context about your project becomes more accurate. If correction effort does not shrink, the workflow is not learning from its own failures.
 
 ---
 
@@ -723,5 +731,3 @@ Iteration and correction are where AI assistance either pays off or collapses. W
 5. **Corrections are investments.** Every correction that turns into a custom instruction prevents the same mistake for every future interaction. Iteration cost drops over time as your instructions mature.
 
 In Ch 13, we'll shift from correcting code to **documenting** it — AI-assisted code documentation, API docs, commit messages, and PR descriptions. Documentation is high-value, pattern-heavy work that AI handles well and humans review quickly.
-
-

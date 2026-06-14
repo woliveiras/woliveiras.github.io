@@ -7,13 +7,15 @@ order: 13
 
 ## The documentation gap, and why AI closes it
 
-Every engineering team agrees that documentation matters. Almost no engineering team writes enough of it. The reason is simple economics: documentation is high-value but low-urgency. It never blocks the current sprint, so it perpetually lives at the bottom of the backlog. Meanwhile, the codebase grows, new people join, and everyone pays the cost of tribal knowledge.
+Every engineering team agrees that documentation matters. Almost no engineering team writes enough of it. The reason is simple economics: documentation is high-value but low-urgency. It rarely blocks the current sprint, so it lives at the bottom of the backlog. Meanwhile, the codebase grows, new people join, and everyone pays the cost of tribal knowledge.
 
-AI changes this equation. The studies found that **documenting code functionality can be completed in half the time** with AI assistance. This is the second-largest productivity gain after code refactoring. And it makes sense: documentation is a classic Delegate task. It's pattern-heavy (describe what this function does, list its parameters, show an example), it's high-volume (every function, every endpoint, every config option), and it's easy to Review (read the generated doc and check if it's accurate).
+AI changes the economics because documentation has a lot of structured, repetitive work: describe parameters, summarize endpoints, extract commands, produce examples, and turn a diff into a PR narrative. That makes it a good delegation target.
+
+But the review bar is higher than most teams apply. Generated documentation often sounds confident while describing behavior the code does not have. Treat generated documentation as untrusted output, the same way you treat generated code. The assistant can draft the words. You own the accuracy.
 
 This chapter covers four documentation surfaces where AI delivers immediate value: **code-level documentation** (JSDoc, docstrings, inline comments), **API and schema documentation**, **commit messages**, and **PR descriptions**. For each surface, we'll look at the mechanics, the prompts, the review checklist, and the pitfalls.
 
-Documentation is a natural fit for the delegation-review pattern: you delegate the writing to the agent, review for accuracy and completeness, and correct where the agent hallucinated or missed context. Documentation errors are easier to spot than code bugs — you can read a docstring in 10 seconds and know if it's wrong.
+Documentation is a natural fit for the delegation-review pattern: you delegate the writing to the agent, review for accuracy and completeness, and correct where the agent hallucinated or missed context. Documentation errors are often easier to spot than code bugs, but they are not harmless. A wrong README command wastes onboarding time. A wrong API contract breaks client teams. A wrong security note can create a production incident.
 
 ---
 
@@ -138,6 +140,8 @@ AI-generated documentation has a specific failure mode: it tends to describe the
 
 The sweet spot: let AI generate the boilerplate (parameter descriptions, return types, basic summary), then you add the "why", the context about design decisions, trade-offs, and historical reasons that only a human knows.
 
+That "why" is where senior documentation lives. AI can infer what a function does from the body. It cannot know why the team accepted a trade-off, why a migration had to be reversible, or why a legacy endpoint cannot change shape until a mobile app version ages out.
+
 ---
 
 ## API and schema documentation
@@ -241,6 +245,8 @@ as sources of truth. Don't add anything that isn't actually in the project.
 ```text
 
 The last instruction is critical: AI will happily add sections about Docker, CI/CD, and deployment even if your project doesn't have them. Constraining the output to "what actually exists" produces a README that's useful from day one.
+
+My review rule for generated docs is strict: every command must be runnable, every path must exist, every environment variable must appear in a real config or example file, and every claim about behavior must be traceable to code, tests, or a decision record.
 
 ---
 
@@ -583,7 +589,7 @@ This is a high-leverage use of AI: it can compare docs against code across an en
 
 Documentation is the purest expression of the Delegate → Review pattern. The output is English (or your team's language), not code, so reviewing it is faster and more accessible. Here's what to remember:
 
-1. **AI halves documentation time.** McKinsey found documenting code functionality takes half the time with AI assistance. This turns documentation from "something we'll do later" into "something we do now."
+1. **AI makes documentation cheap enough to do at the right time.** Use it to draft the repetitive structure, then review every claim against the code and add the human context.
 
 2. **Four documentation surfaces benefit immediately.** Code-level docs (JSDoc/docstrings), API docs, commit messages, and PR descriptions. Each has a clear delegation pattern and a clear review checklist.
 
@@ -596,5 +602,3 @@ Documentation is the purest expression of the Delegate → Review pattern. The o
 6. **Document at code-time, not later.** The cheapest moment to document code is when you just wrote it. AI makes this almost free.
 
 In Ch 14, we'll leave the code-and-docs world and enter **MCP (Model Context Protocol)** — the open protocol that connects AI assistants to external systems. MCP lets Copilot talk to Sentry for debugging, Notion for documentation, Azure for infrastructure, and any other service you need. It's the extensibility layer that turns a coding assistant into a full engineering companion.
-
-

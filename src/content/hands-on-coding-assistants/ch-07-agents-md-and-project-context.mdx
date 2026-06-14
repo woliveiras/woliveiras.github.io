@@ -132,6 +132,8 @@ pnpm lint:check           # Check without fixing (used in CI)
 
 **Why this matters:** GitHub's official guidance says that documenting build steps, including common failures and workarounds, is the single most effective way to reduce rejected PRs from the coding agent. The agent will attempt to run these commands, verify they pass, and fix failures before submitting.
 
+Write commands exactly as a teammate would run them. Avoid "run the tests" if the real command is `pnpm vitest run --coverage` or `make test-unit`. Ambiguous commands create agent exploration, and exploration creates wasted time and tokens.
+
 ### Layer 3: Architecture and layout (where is everything?)
 
 Help the agent find what it needs without searching:
@@ -172,6 +174,24 @@ The GitHub Actions workflow (`.github/workflows/ci.yml`) runs on every PR:
 
 A PR cannot merge unless all steps pass.
 ```
+
+### Evidence before done
+
+Add a short "Definition of done" section to every serious `AGENTS.md`:
+
+```markdown
+## Definition of done
+
+Before reporting completion, agents must:
+- Explain what changed and why.
+- List every file modified.
+- Run the smallest relevant verification command first.
+- Run the full project verification before final handoff when practical.
+- Report exact failing commands instead of claiming success.
+- Never hide skipped tests, failing lint, or type errors.
+```
+
+This section prevents a common failure mode: the assistant says "done" because it edited files, while the repository cannot build. Editing is not completion. Evidence is completion.
 
 ---
 
@@ -735,4 +755,3 @@ The general heuristic: **if you're the only one who would benefit from this agen
 9. **Default to doing nothing.** Copilot auto-spawns sub-agents and handles most tasks with a good prompt and AGENTS.md context. Create a custom agent when a persona needs to be shared and versioned across the team. Create a skill when you have a portable, domain-specific procedure. If only you benefit, use a prompt — not a file.
 
 In Ch 8, we'll explore **repository custom instructions** with `copilot-instructions.md` and path-specific `.instructions.md` files — the complement to AGENTS.md that gives Copilot-specific behavioral guidance for different parts of your codebase.
-

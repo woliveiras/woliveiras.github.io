@@ -19,6 +19,8 @@ This series exists to close that gap. Every chapter is built around a single ide
 
 We'll apply these across real-world tasks: writing tests, reviewing code, debugging, documenting, configuring agents, and measuring impact.
 
+The research does not support a lazy claim like "AI makes every developer faster." It supports a sharper claim: AI helps when the task is scoped, the context is explicit, the batch is small, and verification is part of the workflow. It can slow experienced developers down when the codebase is mature, the task is high-context, and the generated diff creates more review work than it saves.
+
 But before we get to the workflow (that's Ch 2), we need to understand what these tools actually are, where they shine, and where they will waste your time.
 
 ---
@@ -129,20 +131,20 @@ The important thing is not _which_ tool you use, but _how_ you use it. A well-st
 
 ## Where AI delivers proven value
 
-This isn't speculation. Multiple studies from GitHub and McKinsey give us hard data on where AI coding tools actually move the needle.
+The evidence is strongest when the task is bounded and success can be checked. That is the first principle of the whole series.
 
 ### The numbers
 
-| Task | Impact | Source |
-|------|--------|--------|
-| Code documentation | Completed in **~50% of the time** | McKinsey, 2023 |
-| Writing new code | Completed in **nearly half the time** | McKinsey, 2023 |
-| Code refactoring | Completed in **~1/3 of the time** (2/3 time reduction) | McKinsey, 2023 |
-| Complex tasks completion rate | **25–30% more likely** to finish within deadline | McKinsey, 2023 |
-| Developer happiness and flow state | **2x more likely** to report fulfillment | McKinsey, 2023 |
-| AI coding tool adoption | **92%** of developers using AI tools at work | GitHub Survey, 2023 |
-| Perceived benefits | **70%** see significant advantage at work | GitHub Survey, 2023 |
-| Team collaboration | **81%** expect AI tools to increase collaboration | GitHub Survey, 2023 |
+| Finding | What was measured | What I take from it |
+|---|---|---|
+| Developers completed a bounded JavaScript HTTP-server task **55.8% faster** with Copilot | Controlled experiment by Peng et al. | AI can be very effective on constrained implementation tasks. Do not generalize this number to broad product work. |
+| Developers using Copilot completed **26.08% more tasks** across three field experiments | Cui et al., with developers at Microsoft, Accenture, and a Fortune 100 company | Real enterprise gains exist, but adoption, experience level, and process maturity change the result. |
+| Google engineers were estimated to finish an AI-assisted task about **21% faster**, with uncertainty after controls | Google randomized controlled trial | Measured gains are plausible, but they are not automatic. |
+| Experienced maintainers on mature open-source projects were **19% slower** with early-2025 AI tools | METR randomized controlled trial | In high-context codebases, review and correction cost can exceed generation savings. |
+| AI-generated code studies found substantial security weakness rates | Pearce et al.; Perry et al.; repository studies of Copilot-generated snippets | Treat generated code as untrusted input. Security review is part of the workflow, not an advanced add-on. |
+| DORA found AI can amplify existing delivery strengths and weaknesses | DORA 2025 reports | A weak delivery system does not become strong because an assistant writes code faster. |
+
+Primary sources: [Peng et al.](https://arxiv.org/abs/2302.06590), [Cui et al.](https://economics.mit.edu/sites/default/files/inline-files/draft_copilot_experiments.pdf), [Google's randomized trial](https://arxiv.org/html/2410.12944v2), [METR's experienced-developer study](https://arxiv.org/abs/2507.09089), [Pearce et al.](https://arxiv.org/abs/2108.09293), [Perry et al.](https://arxiv.org/abs/2211.03622), and [DORA 2025](https://dora.dev/research/2025/dora-report/).
 
 ### What this means in practice
 
@@ -156,17 +158,19 @@ The biggest productivity gains cluster around tasks that are **repetitive, well-
 
 Notice a pattern: these are all tasks where the _what_ is clear and the _how_ follows established conventions. The AI doesn't need to understand your business domain to generate a test for a pure function.
 
+The senior-engineer move is task selection. Do not ask, "Can AI do this?" Ask, "Can I specify this clearly, verify it objectively, and review the diff without increasing risk?" If the answer is no, start with analysis, tests, or a smaller slice.
+
 ---
 
 ## What AI does NOT do well
 
-This is the part most evangelists skip. Understanding the limitations is just as important as understanding the capabilities, because **using AI on the wrong task wastes more time, money and natural resources than doing it manually**.
+This is the part most evangelists skip. Understanding the limitations is just as important as understanding the capabilities, because **using AI on the wrong task wastes more time, money, and natural resources than doing it manually**.
 
 ### Complex architectural decisions
 
 An AI can generate a microservice. It cannot tell you whether your system _should_ be split into microservices. Architecture decisions require understanding organizational constraints, team topology, deployment infrastructure, and long-term maintenance costs. These are context-heavy decisions that no model has access to.
 
-McKinsey's research confirms this: **time savings shrank to less than 10% on tasks that developers rated as highly complex**, particularly when unfamiliar frameworks were involved.
+The empirical pattern is consistent: gains shrink when the task becomes high-context. METR's 2025 study is the cleanest warning here. Experienced developers working in familiar, mature repositories expected AI to help, but the measured result was slower completion.
 
 ### Organizational context
 
@@ -184,7 +188,7 @@ One participant put it simply: _"[Generative AI] is least helpful when the probl
 
 This isn't a tool limitation, it's a human one. The GitHub Survey found that developers consistently rank **code quality** as the most important metric. But when you accept every suggestion without reading it, quality degrades silently. Bad patterns compound. Technical debt accumulates. And by the time you notice, the damage is spread across dozens of files.
 
-The McKinsey research found that code quality was **marginally better** in AI-assisted code, but only because developers **actively iterated** with the tools to achieve that quality. The quality doesn't come from the AI. It comes from the developer's review.
+Security studies make the same point from a harsher angle. Pearce et al. found vulnerable code in a large share of Copilot-generated programs across security scenarios, and Perry et al. found that users with an AI assistant wrote less secure code while being more likely to believe it was secure. The quality doesn't come from the AI. It comes from the developer's review, tests, and refusal to accept plausible code blindly.
 
 ### Real-world failures: what happens without human review
 
@@ -271,6 +275,6 @@ By the end of this series, you will:
 
 What you will _not_ get is a magic prompt that solves everything. The tools are force multipliers — they multiply whatever you bring to them. Bring clear thinking and structured intent, and you'll get impressive results. Bring vague prompts and uncritical acceptance, and you'll get impressive-looking garbage.
 
+That is the portfolio-level claim of this series: a strong AI-assisted developer is not the person who prompts the most. It is the person who can turn messy intent into a spec, choose the right level of autonomy, constrain the assistant, verify the result, and explain the trade-offs in the final PR.
+
 Let's start with the workflow that makes the difference. Next up: **Chapter 2 — The Spec-First Workflow**.
-
-

@@ -15,6 +15,8 @@ A **harness** is a pre-configured system of instructions, agents, and skills tha
 
 This chapter is a strategic map of the harness: what layers it has, how they connect, and what you'll build in the chapters that follow.
 
+The harness is also how you avoid turning AI adoption into a personality contest. Without a shared harness, each developer invents their own prompt style, their own safety rules, and their own definition of "done." That does not scale. A principal-level AI workflow makes the good path the default path.
+
 ---
 
 ## The three layers
@@ -127,6 +129,8 @@ With a harness:
 
 This is the difference between using AI tools and building a **system** with AI tools.
 
+Research from DORA frames AI as an amplifier of existing delivery strengths and weaknesses. The harness is how you make sure there is something worth amplifying: reliable tests, explicit conventions, scoped permissions, repeatable review, and measurable outcomes.
+
 ---
 
 ## Geremmyas: a production harness
@@ -160,6 +164,20 @@ As you encounter situations in practice, use this map to decide what the right a
 | The same task happens identically every time | Automate it: Agentic Workflow or hook |
 
 If you're unsure, start with the foundation layer. It has the broadest impact and is the fastest to add.
+
+### The maintenance loop
+
+A harness that nobody maintains becomes stale documentation with executable consequences. Review it on a schedule, and also review it after every serious agent failure.
+
+Use this loop:
+
+1. **Capture the failure**: what did the agent misunderstand, skip, or overreach?
+2. **Classify it**: missing project context, missing path-specific rule, missing skill, missing hook, or weak spec?
+3. **Patch the harness**: update the smallest layer that would have prevented the failure.
+4. **Add a verification command**: make the corrected behavior observable.
+5. **Remove dead rules**: stale instructions waste context and create conflicts.
+
+The best instruction file is not the longest one. It is the one that prevents the next expensive mistake.
 
 ---
 

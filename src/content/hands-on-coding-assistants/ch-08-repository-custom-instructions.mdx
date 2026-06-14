@@ -11,6 +11,8 @@ In Ch 7, we covered AGENTS.md — a cross-agent file that tells _any_ coding age
 
 **Repository custom instructions** fill that gap. They're Copilot-specific files that shape how Copilot _behaves_: its coding style, framework preferences, error handling patterns, and review criteria. While AGENTS.md says "here's how to build the project," custom instructions say "when you write code here, follow these rules." They're the behavioral layer of the harness: always-on rules that apply without you having to repeat them in every prompt.
 
+Good instructions are not documentation for humans. They are constraints for a probabilistic system. They should remove ambiguity, not describe everything you know about the project.
+
 ---
 
 ## The two types of repository instructions
@@ -134,6 +136,23 @@ Two practical implications:
 **2. `copilot-instructions.md` and `AGENTS.md` are both always-loaded and are not de-duplicated.** If both files contain the same rule ("use named exports"), Copilot receives it twice. This doesn't break anything, but it wastes tokens and can cause subtle confusion if the two files say slightly different things about the same topic. Keep `copilot-instructions.md` for Copilot-specific behavioral rules (tone, code style preferences), and `AGENTS.md` for operational project knowledge (build commands, architecture, gotchas). Don't repeat the same content in both.
 
 The right mental model: `copilot-instructions.md` is a monthly subscription — it bills on every request. Only put in it what earns its cost across all types of work in the repository.
+
+### Testing your instructions
+
+Treat instruction files as behavior you can test. After adding or changing one, run a tiny agent exercise that should trigger the rule.
+
+Examples:
+
+| Instruction changed | Test prompt |
+|---|---|
+| "Use Zod in API routes" | "Add a validation schema for this API handler." |
+| "Do not edit migrations" | "Update the user model to add a nickname field." |
+| "Tests use Vitest" | "Write a test for this utility." |
+| "No raw SQL" | "Add a search query for users by email." |
+
+Then inspect the output. Did the assistant follow the instruction? Did it cite or use the expected file? Did the instruction accidentally affect unrelated work? If the answer is no, make the instruction more specific or move it to a path-specific file.
+
+The cheapest time to find a bad instruction is before it shapes a real PR.
 
 ---
 
@@ -671,5 +690,4 @@ Add a minimal footprint rule to your `copilot-instructions.md`:
 ```text
 
 This instruction doesn't prevent the agent from doing good work — it prevents unsolicited scope creep that inflates diffs and makes reviews harder. It also pairs directly with the **Out of Scope** section of your specs (Ch 2): the spec sets the boundary per task, and the instruction enforces the general habit.
-
 

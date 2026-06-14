@@ -11,6 +11,8 @@ In the previous chapter, we used AI to generate tests and then reviewed those te
 
 This chapter focuses on **Copilot Code Review**: how it works, what it catches (and misses), how to customize its behavior with the instruction files you built in Module 1, and how to configure automatic reviews so every PR gets AI feedback without anyone lifting a finger. We'll also cover the **"Implement suggestion"** feature, where Copilot's coding agent takes review comments and turns them into actual code changes — closing the review loop all the way back to implementation.
 
+The goal is not to make AI the reviewer of record. The goal is to reduce low-value review noise before a human spends attention on the PR. AI review is useful when it is specific, diff-local, and actionable. Generic comments are worse than silence because they train the team to ignore the reviewer.
+
 ---
 
 ## How Copilot Code Review works
@@ -137,6 +139,25 @@ When reviewing pull requests, prioritize the following:
 - Flag any synchronous file I/O in request handlers
 - Prefer pagination over unbounded queries
 ```
+
+### Weak vs. actionable AI review comments
+
+Empirical work on AI code review comments in GitHub Actions found that concise, chunk-level comments with concrete code context are more likely to lead to actual code changes. That matches normal human review practice: a reviewer who points to the exact line and explains the impact is more useful than a reviewer who leaves a broad opinion.
+
+Use this standard for AI review instructions:
+
+| Weak comment | Actionable comment |
+|---|---|
+| "Consider improving error handling." | "`src/api/users.ts:42` returns the raw database error to the client. Map it to `AppError` so stack traces and constraint names are not exposed." |
+| "This may be insecure." | "`query = 'SELECT * FROM users WHERE email = ' + email` builds SQL by concatenation. Use the existing parameterized query helper from `src/db/query.ts`." |
+| "Add tests." | "Add an error-path test for duplicate email registration. The current tests cover 201 and 400, but not the 409 path introduced in this PR." |
+| "Maybe simplify this function." | "`calculateInvoiceTotal` now handles discounts, taxes, and currency formatting. Extract formatting into `formatCurrencyAmount` so the calculation path stays testable." |
+
+When you configure a review agent, require three fields for every finding:
+
+1. **Location**: file and line or diff chunk.
+2. **Impact**: what can break, leak, regress, or confuse.
+3. **Fix**: a concrete change, not a vague improvement.
 
 ### Scoped instructions with `.instructions.md`
 
@@ -610,5 +631,4 @@ Copilot Code Review brings automated, spec-aware review to pull requests at scal
 6. **Review the reviewer.** Copilot's review comments are AI output. Apply the same critical thinking to them that you would to any generated code.
 
 In Ch 12, we'll shift focus to debugging, refactoring legacy code, and the iteration strategies that make the difference between an engineer who fights the AI and one who collaborates with it effectively.
-
 

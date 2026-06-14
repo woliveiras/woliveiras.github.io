@@ -13,6 +13,8 @@ Hooks are shell commands that execute at strategic points in the agent's workflo
 
 Hooks are the enforcement layer of the harness. Instructions tell agents what to do; hooks enforce what they can do. Instead of reviewing agent output manually after the fact, hooks inject automated checks that run *during* agent execution.
 
+This distinction matters. An instruction is a request to the model. A hook is code. When the risk is high, prefer code.
+
 ---
 
 ## What are hooks?
@@ -284,6 +286,8 @@ The hook file that registers it:
 
 **Why this matters**: the agent has access to a bash shell. Without guardrails, a misinterpreted prompt could lead to destructive commands. This hook adds an automated enforcement layer that catches dangerous patterns before they execute. You can customize the regex to match your project's specific risks (for example, blocking `aws s3 rm` commands in a cloud project).
 
+Do not make this hook clever. Make it conservative, predictable, and easy to review. Security hooks that rely on subtle parsing become another thing the agent can accidentally route around. Block obvious destructive patterns, log suspicious commands, and require human approval for anything with production blast radius.
+
 ### Pattern 2: file boundary enforcement
 
 Sometimes you want the agent to only edit files in specific directories. For example, a frontend agent should only touch `src/` and `test/`, not `infrastructure/` or `.github/`.
@@ -305,6 +309,8 @@ fi
 ```
 
 This enforces the boundaries described in your instruction files (Ch 8) at the infrastructure level. Instructions tell the agent what it *should* do; hooks enforce what it *can* do.
+
+Boundary hooks are especially useful for specialized agents. A docs agent should not edit migrations. A test writer should not modify production code. A reviewer should not write at all. The same rule should appear in the agent profile and in the enforcement hook when the cost of violation is high.
 
 ### Pattern 3: audit logging
 
@@ -371,6 +377,8 @@ jq -n \
 ```
 
 This creates a structured audit trail that you can feed into your compliance tools, SIEM systems, or simply review when something goes wrong.
+
+Audit logs are also your improvement data. When the same command is blocked repeatedly, either the hook is too strict or the agent instructions are too vague. Feed that signal back into the harness instead of dismissing it as noise.
 
 ### Pattern 4: external notifications (Delegate)
 
@@ -1137,4 +1145,3 @@ As of April 2026, Agentic Workflows are in technical preview. The `.workflow.md`
 ---
 
 In Ch 16, we'll shift to the concerns that keep security teams and legal departments up at night: **AI-first security and governance**. We'll cover risks like sensitive data exposure in prompts and code injection, agent firewalls that control which domains the coding agent can access, testing and releasing custom agents in organizations, and the intellectual property implications of AI-generated code.
-

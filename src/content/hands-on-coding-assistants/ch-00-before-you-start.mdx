@@ -11,6 +11,10 @@ You already write software. You're comfortable with a code editor, a terminal, a
 
 If you can clone a repo, install dependencies, and open a pull request — you have everything you need to follow along. If terms like "PR," "CI," or "environment variable" are unfamiliar, you'll want to learn the basics first.
 
+This series is not about making an assistant produce the most code. It is about using AI without lowering the engineering bar. The workflow assumes that you still own the design, the trade-offs, the security posture, and the final diff. The assistant can draft, search, test, explain, and automate. You remain accountable for what ships.
+
+The posture I recommend is simple: treat every AI output as a hypothesis. Verify it against the spec, the codebase, the tests, and the risk model before you accept it.
+
 ---
 
 ## Required tools
@@ -108,6 +112,12 @@ The series teaches AI-assisted engineering workflows — not programming fundame
 - **Testing concepts** — what unit tests, integration tests, and E2E tests are. Chapter 10 explains the workflow but assumes you know the basic taxonomy.
 - **CI/CD basics** — what GitHub Actions does and why you'd want automated pipelines. Chapters 14 and 15 touch on automation and CI-adjacent concepts.
 - **Another programming language** — some examples use Python, Go, or SQL to show that the workflows are language-agnostic. You don't need to know these languages — the principles transfer.
+
+### Mindset required
+
+You will get more from the series if you are willing to slow down at the right moments. AI-assisted work fails when the developer optimizes for generation speed instead of delivery quality. The habits that matter most are old engineering habits: write down intent, keep changes small, run the checks, review the diff, and measure what happened.
+
+That matters because the evidence is mixed. Controlled experiments show real speedups on bounded tasks, while studies with experienced developers on mature codebases also show slowdowns when review and correction cost dominate. The workflow in this series is designed for that reality.
 
 ---
 

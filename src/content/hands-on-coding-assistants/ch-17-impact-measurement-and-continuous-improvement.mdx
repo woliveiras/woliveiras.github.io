@@ -13,6 +13,8 @@ You've configured instructions, created custom agents, set up MCP connections, a
 
 This chapter covers the metrics that matter, how to collect them, how to analyze agent-specific performance, and how Spec-Driven Development turns the workflow from a way of thinking into a measurable process. By the end, you'll have a measurement system that justifies your team's investment in AI-assisted development and surfaces what to improve next.
 
+Measure before you scale adoption. METR found developers expected AI to speed them up even when measured task time increased. DORA found AI can amplify existing delivery problems. The lesson is direct: perceived productivity is useful feedback, but it is not proof.
+
 ---
 
 ## What to measure (and what not to)
@@ -21,7 +23,7 @@ This chapter covers the metrics that matter, how to collect them, how to analyze
 
 The instinct when adopting a productivity tool is to measure output. More lines of code. More pull requests. More commits. This instinct is wrong for AI-assisted development.
 
-Research from GitHub's survey of 500 enterprise developers found that **only one-third of developers think code volume is a good performance metric** — and they're right. An agent can generate hundreds of lines that a human would have written in twenty. More code doesn't mean better code, and in many cases it means worse code.
+Code volume is the easiest thing to measure and one of the worst things to optimize. An agent can generate hundreds of lines that a human would have written in twenty. More code doesn't mean better code, and in many cases it means more review burden.
 
 The metrics that actually tell you whether AI-assisted development is working fall into four categories:
 
@@ -33,6 +35,20 @@ The metrics that actually tell you whether AI-assisted development is working fa
 | **Agent effectiveness** | Is the agent doing its job well? | Task completion rate, review rounds before merge, intervention frequency |
 
 Let's define each one precisely.
+
+### Perceived productivity vs. measured productivity
+
+Track both, but never confuse them.
+
+| Signal | What it tells you | What it does not tell you |
+|---|---|---|
+| Developer says "I feel faster" | The workflow may reduce friction or cognitive load | Whether cycle time, quality, or review cost improved |
+| PRs are opened faster | Coding time may have dropped | Whether merge time or production quality improved |
+| More code is generated | The assistant is active | Whether the code is useful |
+| Lead time drops and quality stays stable | The system likely improved | Which part of the workflow caused the improvement |
+| Review rounds increase | The assistant may be shifting work to reviewers | Whether the original implementation was faster |
+
+Use subjective feedback to find friction. Use delivery and quality metrics to decide whether the system improved.
 
 ---
 
@@ -69,7 +85,7 @@ Let's define each one precisely.
 
 **Why it matters:** Throughput is where the volume conversation becomes useful, not "how many lines" but "how many complete, reviewed, tested changes reached production."
 
-**Reference point:** In a randomized controlled trial with Accenture, developers using Copilot saw an **8.69% increase in pull requests** and a **15% increase in PR merge rate**, meaning not only were more PRs created, but more of them passed review.
+**What to watch for:** Throughput without quality is not success. If PR count rises while build success falls, review rounds increase, or bug escape rate climbs, the agent is increasing batch pressure rather than improving delivery.
 
 ---
 
@@ -80,8 +96,6 @@ Let's define each one precisely.
 **What it is:** The percentage of CI builds that pass on the first attempt.
 
 **Why it matters:** Agent-generated code that breaks the build wastes reviewer time and CI resources. A rising build success rate means the agent is producing code that works.
-
-**Reference point:** In the Accenture study, developers using Copilot saw an **84% increase in successful builds**, suggesting that AI-assisted code was not sacrificing quality for speed.
 
 **How to use it:** Track build success rate separately for agent-created PRs vs. human-created PRs. If the agent's rate is significantly lower, the problem is usually in custom instructions (missing build commands, wrong test runners) or setup steps (dependencies not available).
 
@@ -125,13 +139,11 @@ The simplest measurement: ask your developers directly. Run a brief survey (3-5 
 4. **What's the biggest friction point in your current workflow?** (Free text)
 5. **What task do you wish the agent handled better?** (Free text)
 
-**Reference point:** In the Accenture study, **95% of developers reported enjoying coding more** with Copilot, and **90% felt more fulfilled in their jobs**. If your numbers are significantly lower, investigate what's different about your setup.
+Treat the survey as diagnostic, not decorative. If developers say AI helps but the delivery metrics do not move, ask where the value is showing up. It may be learning, onboarding, documentation, or confidence rather than throughput.
 
 ### Flow state and cognitive load
 
 Flow state, the experience of deep, uninterrupted focus, is one of the strongest predictors of developer satisfaction and output quality.
-
-GitHub's research found that developers using Copilot reported **maintaining flow state more consistently** and experienced **reduced cognitive load on repetitive tasks**. Specifically, 70% of developers reported **significantly less mental effort on repetitive tasks**, and 54% **spent less time searching for information or examples**.
 
 You can measure this indirectly:
 - **Context switches per day:** Track how often developers switch between tasks, tools, or conversations. Fewer switches suggest better flow.
@@ -140,9 +152,14 @@ You can measure this indirectly:
 
 ### The upskilling effect
 
-One of the less obvious benefits of AI-assisted development: it helps developers learn. In GitHub's survey, **57% of developers said AI coding tools help them improve their coding language skills**, the top reported benefit, even above productivity gains.
+One of the less obvious risks of AI-assisted development is weaker skill formation. Research on learning a new async Python library found that developers using AI scored lower on a follow-up skill evaluation than developers who coded manually. Track learning deliberately instead of assuming it happens.
 
-Track how many developers are working in languages or frameworks they weren't previously comfortable with. If the agent handles the boilerplate, developers can focus on understanding the architecture and business logic.
+Useful signals:
+
+- Can developers explain generated code during review?
+- Can they debug a failing generated test without asking the assistant first?
+- Are they becoming more comfortable with unfamiliar areas of the codebase, or only delegating them?
+- Do onboarding sessions use AI to build maps and ask questions, or to skip understanding?
 
 ---
 
@@ -425,5 +442,4 @@ Measurement transforms AI-assisted development from a novelty ("look, the agent 
 6. **The spec-first workflow is a measurement cycle.** Write the spec → assign with clear criteria → review (score against the spec) → correct (feed results back into instructions). Each iteration makes the next one better.
 
 In Ch 18, we'll put everything from the entire series together in an **end-to-end final project**. You'll receive a realistic scenario, apply every technique from Modules 1 through 4, and produce a complete, deployable result — measured from start to finish.
-
 

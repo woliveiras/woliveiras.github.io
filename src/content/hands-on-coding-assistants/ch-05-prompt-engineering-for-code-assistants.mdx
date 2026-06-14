@@ -15,6 +15,8 @@ A vague prompt is a symptom that the spec was skipped. Without clear acceptance 
 
 This chapter is about the craft of that translation — how to turn a solid spec into prompts that work on the first try, not the fifth.
 
+The mistake I see most often is treating prompt engineering as wordsmithing. It is not. For coding assistants, prompt quality mostly comes from engineering quality: clear contracts, visible context, small scope, and an objective way to check the answer.
+
 ---
 
 ## The anatomy of an effective prompt
@@ -357,6 +359,27 @@ A common anti-pattern: you've spent 20 minutes refining a prompt and the output 
 
 **Heuristic:** If the third iteration doesn't show meaningful improvement, switch strategies. Decompose the task, try a different tool, add more context, or just write it yourself.
 
+### Learning mode vs. delivery mode
+
+Use a different prompt style when your goal is learning. Skill-formation research found that developers can complete AI-assisted tasks while learning less, especially when the assistant hides the reasoning. That is acceptable for a low-risk delivery task you already understand. It is a bad trade for a technology you are trying to master.
+
+In **delivery mode**, ask for implementation, tests, and verification:
+
+```text
+Implement the agreed plan. Keep the diff limited to the listed files.
+Run the test command and report the result.
+```
+
+In **learning mode**, ask for reasoning before code:
+
+```text
+Before writing code, explain the design options for this async Python
+library. Show the smallest example that demonstrates the pattern, then
+quiz me on the failure modes. Do not implement the production change yet.
+```
+
+Use learning mode when the domain is new, the failure mode is expensive, or you cannot confidently review the output. The goal is comprehension first, code second.
+
 ---
 
 ## Hands-on: three prompts, one problem
@@ -470,5 +493,4 @@ After running all three prompts, compare them on these dimensions:
 5. **Know when to stop.** If you can't evaluate the output, if iterations aren't improving, or if the task requires human judgment, stop prompting and do the work yourself.
 
 In Ch 6, we'll take the next step: building **custom agents and sub-agents** with `.agent.md` profiles that encode your prompt engineering decisions into reusable, shareable configurations — turning one-off prompts into permanent team knowledge.
-
 

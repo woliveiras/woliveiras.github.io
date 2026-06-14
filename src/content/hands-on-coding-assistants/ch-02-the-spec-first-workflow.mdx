@@ -11,7 +11,7 @@ Most developers adopt AI coding tools the same way: install the extension, accep
 
 This works fine for trivial tasks. But the moment the stakes go up — production code, security-sensitive logic, multi-team codebases — vibes-based AI usage becomes a liability. You start accepting bad suggestions because they _look_ right. You stop reading diffs because "the AI wrote it." You accumulate technical debt silently, one accepted suggestion at a time.
 
-Research backs this up. A 2025 study from UC San Diego and Cornell ("Professional Software Developers Don't Vibe, They Control") found that experienced developers treat agents exactly like junior developers: they give clear instructions, stay in the loop, and verify the output. They plan before they delegate. They review before they accept. The developers who got bad results were the ones who handed off without structure and trusted the output without verification.
+Research backs this up, but not in the simplistic "AI always makes you faster" way. Controlled studies show speedups on bounded tasks. METR's 2025 randomized study found the opposite for experienced developers working in mature open-source repositories: participants expected AI to help, but measured completion time increased. DORA's research gives the organizational version of the same warning: AI amplifies the delivery system you already have.
 
 The solution isn't to stop using AI. It's to use it _within a structure_ that keeps you in control. This chapter describes that structure: the **spec-first workflow**.
 
@@ -179,7 +179,7 @@ The single most destructive habit in AI-assisted development is accepting AI-gen
 - **Security vulnerabilities** — the AI introduced an injection point or a hardcoded credential
 - **Convention drift** — AI-generated code introduces inconsistencies in naming, patterns, structure over time
 
-The McKinsey data is direct: AI-assisted code was marginally higher quality only when developers **actively iterated** with the tools. When they just accepted — quality was _worse_ than non-AI code.
+The security evidence is direct: generated code can be vulnerable, and developers using AI can become more confident in less secure output. When you accept without reading, you combine automation bias with production code. That is a bad trade.
 
 ### Why it happens
 
@@ -196,13 +196,34 @@ The spec-first workflow interrupts these biases. The spec establishes the target
 
 Not every task needs the full ceremony. Calibrate based on risk:
 
-| Risk level | Approach | Example |
+| Task | AI fit | Required guardrails |
 |---|---|---|
-| **Low** | Lightweight — well-formed prompt, quick scan of output | Generating a test for a pure utility function |
-| **Medium** | Standard — explicit spec, review the diff, one round of correction | Adding a new endpoint, refactoring a module |
-| **High** | Full workflow — written spec, Plan mode review, thorough acceptance criteria check | Security-critical code, authentication, payment logic, database migrations |
+| Generate tests for existing behavior | High | Run tests, inspect assertions, check edge cases |
+| Draft docs from existing code | High | Human edit for accuracy and voice |
+| Implement an isolated utility | High | Unit tests, type check, edge-case review |
+| Brownfield feature slice | Medium | Spec, Plan mode, small diff, integration tests |
+| Large refactor | Medium/high risk | Characterization tests, phased plan, rollback path |
+| Auth, crypto, payments, permissions | High risk | Manual design approval, security review, static analysis |
+| Database migration | High risk | Reversible migration, backup plan, staging test |
+| Production operation | Very high risk | Human approval, no autonomous destructive commands |
 
-The workflow is a spectrum. Use your judgment — but _have_ a structure for how you engage with AI. The alternative is "accept all," and we've seen where that leads.
+The workflow is a spectrum. Use judgment, but have a structure for how you engage with AI. The alternative is "accept all," and we've seen where that leads.
+
+My default rule is: if a bad answer can corrupt data, expose secrets, weaken authorization, or create an outage, the agent may help plan and draft, but it does not get autonomy.
+
+### Calibrated skepticism
+
+Calibrated skepticism means neither rejecting AI output by default nor trusting it by default. It means treating every output as a hypothesis that must be validated against the spec, codebase, tests, and security model.
+
+This matters because AI output often looks more complete than it is. Perry et al. found that developers using AI assistants could produce less secure code while feeling more confident in the result. That is the dangerous combination: lower quality, higher confidence.
+
+Use this review loop:
+
+1. **Spec check**: does the diff satisfy every acceptance criterion?
+2. **Scope check**: did it touch anything out of scope?
+3. **Evidence check**: which tests, type checks, linters, or scanners prove the claim?
+4. **Risk check**: what could fail in production even if the tests pass?
+5. **Ownership check**: can you explain the design in the PR without hiding behind "the AI wrote it"?
 
 ---
 

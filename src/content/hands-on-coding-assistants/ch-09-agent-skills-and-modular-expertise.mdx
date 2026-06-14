@@ -13,6 +13,8 @@ In the last three chapters we built an instruction stack: AGENTS.md for cross-ag
 
 Skills let you teach the agent a procedure once — how to write a spec, how to debug a CI workflow, how to set up a new project — and let it pull that knowledge in whenever it recognizes the pattern. Less repetition, more reliable results.
 
+The best skills are boring in the right way. They capture a workflow that already works, including the commands, failure modes, and review criteria. A skill should not invent a process; it should make a proven process repeatable.
+
 ---
 
 ## What are Agent Skills?
@@ -261,6 +263,21 @@ pnpm exec playwright test
 3. **Add a "Common issues" section.** This prevents the agent from getting stuck on known problems.
 4. **Reference companion files with relative paths.** Link to scripts and references in the same skill directory: `[helper script](./scripts/helper.sh)`.
 5. **Keep it under 500 lines.** If larger, move detailed material into `references/` files and link to them. Progressive disclosure works at the file level too.
+
+### Skill quality bar
+
+Before a skill becomes part of a team harness, check it against this bar:
+
+| Dimension | Requirement |
+|---|---|
+| Trigger clarity | The description says exactly when to use the skill and includes the words users actually say. |
+| Procedure | The body gives ordered steps, not vague principles. |
+| Verification | The skill states which command, output, or artifact proves the task is complete. |
+| Failure handling | Known errors and recovery steps are documented. |
+| Scope | The skill says what not to touch. |
+| Security | Any credential, network, filesystem, or production action requires explicit approval. |
+
+This bar matters because skills are portable. A weak skill does not stay local; it spreads across projects and repeats the same mistake at higher speed.
 
 ---
 
@@ -764,4 +781,3 @@ After using the skill a few times, you'll notice gaps. Maybe you need a section 
 In Ch 10, we shift from customization to application. We'll take everything we've built in Module 1 and put it to work on **test generation** — the highest-impact use case for AI coding assistants, where the delegation and review patterns we've established really shine.
 
 > **If you want a ready-made harness:** [Geremmyas](https://woliveiras.com.br/posts/introducing-geremmyas-spec-driven-development-ai-assistants/) ships a production version of everything we built in Modules 0 and 1 — AGENTS.md, instructions, a `spec-writer` skill, guardrail hooks, and reviewer agent profile — as a single install command. Use it to bootstrap any new project with the full spec-first workflow already in place.
-

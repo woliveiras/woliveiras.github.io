@@ -13,7 +13,7 @@ Chapters 0 through 4 covered the foundations — prerequisites, the spec-first w
 
 ## Why test generation is the #1 productivity use case
 
-In GitHub's 2024 developer survey (2,000 respondents across the US, Brazil, India, and Germany), **more than 98% of organizations reported having experimented with using AI coding tools to generate test cases**. The majority of respondents said their organizations use AI for test generation at least "sometimes". No other use case — not code completion, not documentation, not refactoring — showed adoption this universal.
+Test generation is where AI assistance has one of the cleanest engineering payoffs. Not because generated tests are automatically good. They are not. The payoff is that tests give you an executable way to challenge generated implementation code.
 
 Why? Because test generation sits at the intersection of three forces:
 
@@ -22,6 +22,8 @@ Why? Because test generation sits at the intersection of three forces:
 3. **The ROI is immediate and measurable.** Before AI: you had 60% test coverage. After 30 minutes with an agent: you have 85%. The build turns green, the diff is clear, and you can merge with confidence.
 
 Test generation is a natural fit for the spec-first workflow: you delegate the test writing to the agent, review by running the suite, and iterate on gaps. The spec is lightweight here — you already know what code exists and what coverage is missing.
+
+This fits the broader research pattern from the series research sources: AI works best on constrained tasks with clear verification. A generated test is still untrusted output, but it is easier to inspect than a generated architecture decision. You can read the assertions, run the suite, and reject tests that only chase coverage.
 
 ---
 
@@ -294,6 +296,8 @@ it("runs calculateDiscount", () => {
 
 During the **Review** phase, watch for tests that lack meaningful assertions. Every `it()` block should contain at least one `expect()` that verifies a _specific, meaningful_ outcome.
 
+My standard for AI-generated tests is stricter than my standard for hand-written first drafts: every test must fail for a meaningful bug. If I cannot name the bug a test would catch, I delete or rewrite the test.
+
 ---
 
 ## Writing effective test generation prompts
@@ -389,6 +393,19 @@ it("should debounce input", async () => {
 The agent might write 15 tests for the same happy path with slightly different data. This adds noise without adding confidence.
 
 **Fix:** "Remove redundant tests. Keep one happy-path test per scenario. Add tests for the uncovered error paths instead."
+
+### 5. Tests that encode the agent's wrong assumption
+
+The most dangerous generated test is one that makes incorrect behavior look official. This happens when the agent invents a requirement, then writes a test that locks it in.
+
+```typescript
+// The spec never said admins bypass rate limiting.
+it("allows admins to bypass rate limiting", () => {
+  expect(canBypassRateLimit({ role: "admin" })).toBe(true);
+});
+```
+
+**Fix:** Review tests against the spec before reviewing the implementation. Generated tests are not the source of truth. The spec is.
 
 ---
 
@@ -566,7 +583,7 @@ description: >
 
 ## Key takeaways
 
-1. **Test generation is the highest-ROI use case.** More than 98% of organizations are already experimenting with it. The ROI is immediate: you can literally run the tests and see whether they work. No other AI use case gives you a feedback loop this fast.
+1. **Test generation is a high-leverage use case because it has a fast feedback loop.** You can run the tests, inspect the assertions, and reject weak coverage immediately. No other AI use case gives you a tighter check on generated output.
 2. **Start with unit tests, expand outward.** Unit tests are where AI accuracy is highest and review is easiest. Build coverage there first, then move to integration and E2E.
 3. **AI-assisted TDD inverts the workflow.** Describe the behavior → generate tests → implement against them. Tests-as-specification constrain AI hallucinations because failures surface immediately.
 4. **Context quality determines test quality.** Provide the source file, existing test patterns, and framework config. The more context, the fewer correction cycles.
@@ -589,5 +606,3 @@ description: >
    The discipline: only update the threshold numbers when you've intentionally improved coverage. Don't auto-update to make CI green — that defeats the ratchet.
 
 In Ch 11, we'll apply the same Review-focused mindset to **code review** — how Copilot Code Review works, how to customize it with instructions, and how to let it automatically review every PR your team opens.
-
-

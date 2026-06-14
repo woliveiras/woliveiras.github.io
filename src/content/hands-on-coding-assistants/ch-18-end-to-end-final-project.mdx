@@ -13,6 +13,8 @@ Now you'll run the complete workflow on a single realistic project. No new conce
 
 The chapter is structured as a guided project with explicit checkpoints. You can work through it on any codebase — your own, a side project, or the sample scenario provided below. The goal isn't the specific code. It's the workflow: **write a spec → Plan mode → implement → review against criteria → correct** with evidence at every step.
 
+Run this project in small batches. The final artifact should not be one giant agent diff that nobody wants to review. Each checkpoint should produce a clear state: what changed, which acceptance criteria are satisfied, which commands ran, and what risk remains.
+
 ---
 
 ## The scenario
@@ -224,6 +226,15 @@ Before moving to Plan mode, verify:
 - [ ] Implementation plan exists (from planner agent or your own analysis)
 - [ ] All ambiguities are resolved and documented in the spec
 
+**Checkpoint 1: Spec approved**
+
+Record:
+
+- What changed in the original issue?
+- Which decisions did you make?
+- Which items are explicitly out of scope?
+- What would make this task unsafe to delegate?
+
 ---
 
 ## Phase 2: Plan mode → implement
@@ -246,7 +257,7 @@ On GitHub.com, assign Copilot to the issue. In VS Code agent mode, you can paste
 
 > Implement the feature described in this spec. Follow the implementation plan: migration first, then model, then routes, then tests. Run the test suite after each step.
 
-### Step 2.2: monitor — don't micromanage
+### Step 2.3: monitor — don't micromanage
 
 While the agent works, resist the urge to intervene at every step. The whole point of writing the spec and reviewing the plan was to give the agent clear enough instructions to work autonomously.
 
@@ -255,7 +266,17 @@ Check in at natural checkpoints:
 - After the model/route code is written
 - After tests are written and run
 
-### Step 2.3: multi-agent collaboration (optional)
+For each checkpoint, ask for evidence:
+
+```text
+Before continuing, summarize:
+- Files changed in this checkpoint
+- Acceptance criteria satisfied
+- Commands run and exact results
+- Risks or assumptions still open
+```
+
+### Step 2.4: multi-agent collaboration (optional)
 
 If you set up the `test-writer` agent, you can use a two-pass approach:
 
@@ -272,6 +293,17 @@ Before moving to Review, verify:
 - [ ] The PR description references the original issue and spec
 - [ ] The agent ran the test suite and it passes
 - [ ] No unrelated changes were made (scope stays within the spec)
+
+**Checkpoint 2: Implementation evidence**
+
+Record:
+
+- Migration created and rollback verified
+- Service/model slice implemented
+- API slice implemented
+- Tests added or updated
+- Full verification command and result
+- Any command that failed before passing
 
 ---
 
@@ -327,6 +359,15 @@ Beyond spec compliance, check the fundamentals:
 - [ ] Automated review results (if configured)
 - [ ] A security and quality assessment
 
+**Checkpoint 3: Review complete**
+
+Record:
+
+- Spec compliance score
+- Automated review findings accepted, rejected, or deferred
+- Security findings and mitigation
+- Manual review notes that require human judgment
+
 ---
 
 ## Phase 4: Correct and iterate
@@ -376,6 +417,15 @@ The PR is now ready to merge.
 - [ ] Spec compliance is at 100% (or you've documented why certain criteria were intentionally deferred)
 - [ ] The test suite passes
 - [ ] A human has given final approval
+
+**Checkpoint 4: Correction complete**
+
+Record:
+
+- Criteria fixed in the correction round
+- New tests added because of review
+- Remaining risks, if any
+- Final commands run before merge
 
 ---
 
@@ -564,4 +614,3 @@ The tools will keep evolving. Models will get smarter. Agents will become more a
 If you want a head start on the harness for your next project, [Geremmyas](https://woliveiras.com.br/posts/introducing-geremmyas-spec-driven-development-ai-assistants/) installs a production-ready version of everything from Modules 0–1 in a single command.
 
 Build the system. Trust the process. Measure the results. Improve and repeat.
-

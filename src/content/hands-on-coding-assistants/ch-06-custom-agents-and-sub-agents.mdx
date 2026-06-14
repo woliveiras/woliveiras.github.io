@@ -13,6 +13,8 @@ Custom agents solve this by encoding your prompt engineering decisions into **re
 
 Custom agents are reusable roles in your harness: each agent file defines a persona with a specific scope — which tools it can use, what model it runs on, how it behaves. Selecting the agent pre-loads all context for that role, so you're not writing it again from scratch.
 
+The serious version of custom agents is not "give the model a fun personality." It is role design. A good agent has a narrow job, a small tool surface, a clear output contract, and a known handoff point. If you cannot describe what the agent is not allowed to do, the role is probably too broad.
+
 ---
 
 ## What is a custom agent?
@@ -116,6 +118,8 @@ An agent with all tools enabled can read, write, delete, run terminal commands, 
 
 **The principle: give each agent the minimum set of tools it needs to do its job.**
 
+This is also a productivity principle. Broad tools increase the number of possible actions the agent can take, which increases review burden. A planner with write access will eventually write. A reviewer with edit access will eventually "helpfully" patch code. Tool scope protects both security and workflow clarity.
+
 ### Common tool sets by agent role
 
 | Agent role | Tools | Why |
@@ -128,6 +132,20 @@ An agent with all tools enabled can read, write, delete, run terminal commands, 
 | **Documentation** | `read`, `search`, `edit` | Can read code and write doc files, but doesn't need terminal access. |
 
 For MCP server tools, use the `<server-name>/*` format to include all tools from a specific server, or reference individual tools like `github/list_issues`.
+
+### Agent quality bar
+
+Before you add an agent to the repository, review it like production code:
+
+| Question | Why it matters |
+|---|---|
+| What task does this agent own? | Prevents overlapping roles and confusing handoffs. |
+| What tools does it actually need? | Enforces least privilege and reduces accidental mutation. |
+| What output format does it produce? | Makes results comparable and reviewable. |
+| What evidence must it provide? | Forces tests, commands, file references, or explicit assumptions. |
+| When should it stop and ask? | Prevents silent assumptions on ambiguous or risky work. |
+
+If an agent cannot pass this review, keep using a prompt until the repeated pattern is clearer.
 
 ---
 
@@ -467,6 +485,8 @@ without confirming the current one is complete.
 ```
 
 The `agents` property restricts which subagents the coordinator can use — preventing it from accidentally invoking unrelated agents.
+
+Do not let a coordinator hide risk. A coordinator that delegates to several workers still needs to return a concise final report: what changed, which checks ran, which acceptance criteria are satisfied, and what remains uncertain. Otherwise the workflow only moved complexity from your screen into invisible subagent transcripts.
 
 ### Pattern 2: Multi-perspective review
 
@@ -814,5 +834,4 @@ If any agent violated its constraints (e.g., the planner wrote code), your tool 
 5. **Start simple.** Four agents (planner, implementer, tester, reviewer) cover most workflows. Add more only when you have a real need.
 
 In Ch 7, we'll shift focus to **`AGENTS.md` and project context** — the file that teaches _all_ agents (including the coding agent on GitHub) how your project works, its build steps, conventions, and architecture.
-
 

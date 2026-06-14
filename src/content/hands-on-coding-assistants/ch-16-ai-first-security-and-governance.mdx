@@ -19,6 +19,8 @@ We start where security professionals start: with the threat model.
 
 Traditional code security focuses on what humans write: injection flaws, authentication bugs, dependency vulnerabilities. AI-assisted development keeps all of those problems and adds new ones. The AI agent reads your codebase, generates code, runs terminal commands, and, if you've configured MCP and hooks, talks to external services. Every one of those interactions is a potential vector.
 
+The core rule is blunt: **AI output is untrusted input.** Generated code, generated shell commands, generated SQL, generated documentation, generated PR descriptions, MCP tool results, and issue comments read by an agent all need validation before they influence production systems.
+
 The risks fall into three categories:
 
 | Category | What can go wrong | Example |
@@ -30,6 +32,8 @@ The risks fall into three categories:
 None of these risks are hypothetical. Let's look at each one and the controls that address it.
 
 > **OWASP GenAI Security Project.** If you want a structured, industry-standard framework for these risks, OWASP maintains two complementary top-10 lists: the [Top 10 for LLM Applications](https://genai.owasp.org/llm-top-10/) (covering risks like prompt injection, data poisoning, and insecure output handling) and the [Top 10 for Agentic Applications](https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/) (covering risks specific to autonomous AI agents — excessive permissions, uncontrolled tool use, insufficient sandboxing, and more). Both are peer-reviewed, open source, and regularly updated. They also publish a [Practical Guide for Secure MCP Server Development](https://genai.owasp.org/resource/a-practical-guide-for-secure-mcp-server-development/). The full project lives at [genai.owasp.org](https://genai.owasp.org/).
+
+For governance language, use the [NIST AI Risk Management Framework](https://www.nist.gov/itl/ai-risk-management-framework): govern, map, measure, and manage. That framing helps security, legal, and engineering discuss the same workflow without reducing it to "trust the model" or "ban the model."
 
 ---
 
@@ -113,6 +117,8 @@ The script can deny any command that contains suspicious patterns (piping to `cu
 
 4. **Limit the agent's tools.** Custom agent profiles (covered later in this chapter) let you restrict which tools an agent can use. An agent that only has `read` and `search` access can't execute commands at all.
 
+5. **Treat external context as hostile until checked.** Issue bodies, comments, docs pages, API responses, and MCP tool descriptions can carry instructions. Tell agents explicitly to summarize external content as data, not to obey instructions embedded inside it.
+
 ---
 
 ## Risk 3: supply chain attacks through dependencies
@@ -141,6 +147,8 @@ When the coding agent writes code, it often adds `import` statements and may run
 ```
 
 4. **The agent firewall's recommended allowlist** already includes the major package registries (npm, PyPI, crates.io, Maven Central, etc.), so the agent can install packages from legitimate sources while being blocked from arbitrary URLs.
+
+5. **Require a dependency justification in the PR.** If the agent adds a package, the PR description should explain why standard library or existing dependencies were insufficient, which version was added, and which security/license checks passed.
 
 ---
 
@@ -355,6 +363,8 @@ Here's a practical workflow for teams introducing custom agents:
 5. **Monitor.** Use audit hooks (Ch 15) to log every agent action. Review logs weekly for unexpected behavior.
 
 6. **Iterate.** Update the profile based on what the logs reveal. The cycle repeats.
+
+Governance should not make safe work impossible. The rule of thumb I use: low-risk changes should move quickly through automated checks; high-risk changes should hit explicit human approval. Auth, payments, data deletion, migrations, production operations, and broad MCP write access belong in the second category.
 
 ### Naming conflicts and resolution order
 
@@ -690,5 +700,4 @@ Security in AI-assisted development isn't a single feature — it's a stack. Eac
 None of these layers alone is enough. Combined, they create a defense-in-depth posture that lets organizations adopt AI coding agents confidently.
 
 In Ch 17, we'll shift from controlling risk to **measuring impact**. How do you know your AI-assisted workflow is actually making your team faster, producing better code, and improving developer experience? We'll cover metrics (cycle time, PR lead time, test coverage, bug rate), developer satisfaction, analyzing agent performance, and spec-driven development — the measurement and feedback loops that turn adoption into continuous improvement.
-
 

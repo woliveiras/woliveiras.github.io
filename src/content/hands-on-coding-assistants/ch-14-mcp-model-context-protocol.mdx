@@ -11,6 +11,8 @@ Modules 1 and 2 gave you everything you need to Plan, Delegate, Review, and Corr
 
 Module 3 opens the walls. Starting with this chapter on MCP, then continuing with hooks and automation in Ch 15, you'll learn how to connect Copilot to the external systems that surround your code, and how to orchestrate fully automated workflows that go from issue to pull request without manual intervention.
 
+Opening the walls changes the risk model. MCP tools are not just context. They are privileged integrations into issue trackers, observability systems, cloud accounts, databases, browsers, and internal documentation. Treat an MCP server as part of your software supply chain.
+
 We begin with the protocol that makes it all possible.
 
 ---
@@ -45,6 +47,8 @@ MCP extends what the agent can access at every stage:
 - **Feedback loop**: results from external tools feed directly into subsequent corrections.
 
 Without MCP, the agent works from whatever context you paste into the prompt. With MCP, the agent can go get its own context.
+
+That is useful, but it also means the agent can retrieve poisoned context. Issues, docs, comments, API responses, and tool metadata can all contain prompt injection. The safe MCP posture is: retrieve narrowly, prefer read-only tools, inspect tool output before acting, and keep write-capable tools behind explicit approval.
 
 ---
 
@@ -314,6 +318,8 @@ Every MCP integration follows the same flow:
 3. **Allowlist tools** (be specific; avoid wildcard `*` unless you trust every tool the server exposes).
 4. **Use it** — the agent now has tools it can call autonomously to gather context and take actions.
 
+Add a fifth step for professional use: **audit it**. Record which tools were enabled, which token scopes they received, who approved the integration, and how to disable it quickly. The official [MCP security best practices](https://modelcontextprotocol.io/docs/tutorials/security/security_best_practices) emphasize consent, least privilege, scoped authorization, and confused-deputy mitigations for exactly this reason.
+
 ---
 
 ## Customizing the built-in GitHub MCP server
@@ -418,6 +424,8 @@ But the more insidious problem is token cost. Research from the MCP Client Best 
 > "Loading all tools upfront consumes ~150,000 tokens on definitions alone, while progressive discovery uses ~2,000 tokens by loading only what the task requires."
 
 At typical pricing, 150,000 tokens in definitions on every request — regardless of task — is expensive. For most coding sessions, 140,000 of those tokens are irrelevant noise.
+
+Large tool surfaces also degrade judgment. The agent has more possible actions to choose from, more schemas competing for attention, and more ways to solve the wrong problem. Progressive discovery is both a cost practice and a reliability practice.
 
 ### What to do: progressive discovery
 
@@ -773,5 +781,4 @@ MCP is the bridge between your AI coding assistant and the rest of your engineer
 6. **Combining multiple MCP servers creates compounding value.** Sentry for error context plus Notion for design docs plus GitHub for project management gives the agent the same information sources you use — making its output dramatically more relevant.
 
 In Ch 15, we'll build on MCP by adding **hooks and automation** — shell commands that execute at key points during agent execution, the `copilot-setup-steps.yml` file that customizes the agent's development environment, and workflows that take an issue all the way from creation to merged PR without manual intervention.
-
 
