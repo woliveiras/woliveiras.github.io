@@ -1,0 +1,298 @@
+---
+title: "A Hype Check on Loop Engineering"
+description: "Loop engineering is the new phrase in AI coding circles. Here is what is real, what is exaggerated, and how senior engineers should think about agent loops."
+pubDate: "2026-06-14"
+published: true
+tags: ["ai-agents", "ai-engineering", "automation", "engineering-practices", "software-engineering"]
+---
+
+Loop engineering became one of those phrases that suddenly appeared everywhere in AI coding discussions. In June 2026, several posts framed it as the next step after prompt engineering: instead of typing prompts into coding agents all day, you design loops that prompt the agents for you.
+
+The idea is interesting. It also arrived with the usual amount of acceleration, exaggeration, social media compression, conference quotes, and short-form commentary. That's totally normal, but makes it hard to separate a real change signal from noise.
+
+My current reading is this: **loop engineering is a new term for a practice that has been maturing through agentic loops, ReAct, Reflexion, hooks, skills, worktrees, and goal mode**. It is not just prompt engineering with a different name. It is also not a completely new revolution in software engineering.
+
+My working definition, synthesized from the sources I read, is: **loop engineering is designing the system that decides when, how, with what context, with which checks, and until what stopping condition an agent should work, instead of manually prompting it turn by turn**.
+
+That definition puts the responsibility back where it belongs. The engineering work is not "make the model smarter". The engineering work is shaping the environment, the feedback, the permissions, the memory, the verifier, and the halting condition around the model.
+
+This is where the terminology can get confusing: **loop engineering is not the same thing as using subagents**. A subagent is one possible component inside a loop, usually a specialized agent for planning, implementation, review, testing, research, or security analysis. A loop is the control system around the work. It decides whether to call one agent, several subagents, a deterministic command, a hook, or a human reviewer.
+
+You can have a useful loop with no subagents at all. For example, a single coding agent can read a failing test, make a small fix, run the test, inspect the result, and repeat until the test passes or the attempt limit is reached. Subagents become useful when you want stronger separation of responsibilities, such as one agent making a change and another reviewing it.
+
+This is familiar territory for those working with AI Coding Assistants. We already design loops all the time: test loops, deploy loops, incident loops, review loops, benchmark loops, migration loops. The new part is that coding agents can now participate in more of those loops directly. That raises the ceiling. It also raises the blast radius.
+
+## What Actually Changed
+
+The new "old" interaction model for coding agents looked like this:
+
+```text
+human writes prompt -> agent responds -> human corrects -> agent continues
+```
+
+That model depends on your attention. The agent waits for you to provide the next instruction, interpret the previous result, and decide whether the work is good enough.
+
+With loop engineering, the workflow starts to look more like this:
+
+```text
+trigger -> agent plans/acts -> environment responds -> verifier evaluates -> state is updated -> loop continues or stops
+```
+
+The important change is not that the agent writes more code. The important change is that the agent is placed inside a control system. The system provides the trigger, context, tool access, evaluation signal, state, and termination logic.
+
+In a normal chat workflow, you are the control system. You keep the task in your head. You decide what to ask next. You inspect the output. You decide when to stop.
+
+In a loop-based workflow, some of that control is encoded outside your head. The loop might read a failing test, ask the agent to repair the smallest relevant slice, run the test again, ask a verifier to review the diff, update a progress file, and continue until the test passes or the budget is exhausted.
+
+If you read my series on Hands-on Coding Assistants, you will recognize that you have already been doing something like this while working with [Spec Driven Development](/hands-on-coding-assistants/ch-02-the-spec-first-workflow/).
+
+## A Hype Check
+
+The fastest way to misunderstand loop engineering is to treat it as a blanket instruction to run agents unattended. The more useful framing is to ask which claims survive contact with production engineering.
+
+| Claim | My reading |
+|---|---|
+| "Loop engineering replaces prompt engineering" | Exaggerated. Prompting still exists, but strong prompts become components inside a larger system. |
+| "It is just a cron job with AI" | Incomplete. A cron job schedules work. A loop observes feedback, evaluates progress, updates state, and decides whether to continue. |
+| "It is the next layer after harness engineering" | Reasonable. A harness teaches an agent how to work inside a repository. A loop decides when and why to invoke that harness. |
+| "You can leave agents running while you sleep" | Sometimes. That only makes sense for isolated, verifiable tasks with tight permissions, budgets, and stop conditions. |
+| "Every engineering task should become a loop" | No. Loop design pays off for work that is repetitive, valuable, and objectively reviewable. |
+
+The third row is where I think the signal is strongest. In my own work, I already think in terms of a harness: project instructions, AGENTS.md, skills, hooks, custom agents, commands, review checklists, and verification steps. Loop engineering sits above that. It asks when that harness should be invoked automatically and how the result should be judged.
+
+A harness is the agent's operating context. A loop is the control flow around that context.
+
+## Prompt, Workflow, Harness, Loop
+
+The vocabulary around AI agents is becoming overloaded, so the following paragraphs help to separate the layers.
+
+A **prompt** is one instruction given to a model or agent. It can be excellent, detailed, and reusable, but it usually describes a single interaction.
+
+An **agentic workflow** is a structured sequence of steps. It might say: read the issue, inspect the code, write a plan, implement, run tests, summarize the diff. The path is mostly known in advance, even if the model fills in details inside each step.
+
+A **harness** is the environment that makes an agent useful inside a real project. It includes repo instructions, coding conventions, test commands, permissions, skills, MCP servers, hooks, and review rules. The harness reduces repeated explanation and makes good behavior more likely across sessions.
+
+A **subagent** is a specialized agent used for a narrower role inside a larger task. You might have a reviewer subagent, a test-writer subagent, a security subagent, or a research subagent. Subagents are useful for specialization and independent review, but they are not required for loop engineering.
+
+A **loop** is the repeated control cycle that drives agents through a goal until a stopping condition is met. It needs an input source, a goal, a way to act, an observation channel, a verifier, state, limits, and a stop condition.
+
+These layers are not competitors. A good loop usually contains prompts, calls workflows, depends on a harness, and produces artifacts that humans review. It may call subagents, but that is an implementation choice, not the definition of the loop.
+
+The mistake is trying to skip directly from "I wrote a good prompt" to "I have an autonomous engineer". The missing engineering is everything in between.
+
+## Anatomy of a Coding Loop
+
+Instead of only discussing the hype, I wanted to understand what a coding loop actually looks like. I read the posts, looked at the examples, and tried to design a few loops myself.
+
+What I found about the coding loop is that it has a boring shape. That is a good thing. Boring systems are easier to reason about.
+
+It starts with a **trigger**. The trigger can be manual, scheduled, event-based, or generated by another system. A developer can start a loop from a failing test. A GitHub label can start a triage loop. A dependency update can start a migration loop. A scheduled automation can start a documentation freshness check.
+
+Then the loop needs a **goal**. The goal must be more precise than "make it better". A good goal describes the desired state and the evidence that will prove it. For a failing test loop, the goal might be: "make `PaymentService.refund` pass the existing regression test without changing the public API or weakening assertions."
+
+The loop then provides **context**. This is where AGENTS.md, repository instructions, design docs, issue bodies, code references, logs, release notes, and prior attempts matter (the harness). Without context, the agent improvises. With too much context, the agent drowns. Context engineering becomes part of loop engineering because every iteration has a cost.
+
+The agent performs an **action**. It reads files, edits code, runs commands, writes a report, opens a PR, or, in a more advanced setup, delegates a narrow subtask to a specialized subagent.
+
+The environment returns an **observation**. Tests pass or fail. The compiler emits errors. A benchmark improves or regresses. A reviewer finds a risky change. A dependency changelog contradicts the agent's assumption.
+
+Then a **verifier** evaluates the result. The verifier can be deterministic, like `pnpm test`, `tsc`, `biome`, a contract test, or a screenshot comparison. It can also be judgment-based, like an AI reviewer checking whether the diff matches a spec. Strong loops combine both: deterministic checks first, judgment checks second.
+
+Finally, the loop updates **state** and decides whether to continue. State might include what was tried, what failed, what changed, what remains, current token cost, elapsed time, and whether progress is still being made.
+
+The stop condition is the part we need to be explicit about. A loop that cannot halt is not autonomy. It is a billing and risk machine.
+
+## Closed Loops and Open Loops
+
+Closed loops are the right default for production engineering.
+
+In a closed loop, the path is constrained. You know what the loop is allowed to touch, which checks it must run, how many times it may iterate, what budget it can spend, and when it must ask for help. A test repair loop is a closed loop. A dependency upgrade loop can be a closed loop if the package set, test commands, rollback plan, and maximum diff size are defined.
+
+Open loops are different. They give the agent a wider space to explore. A research loop that scans documentation, proposes design options, compares trade-offs, and drafts a migration plan is more open. It may be valuable, but it is harder to bound. The output is more likely to require human interpretation.
+
+The distinction is about **verifiability**.
+
+When the output can be judged by a stable rubric, closed loops work well. When the output depends on strategy, product judgment, architecture trade-offs, or organizational context, the loop should produce options and evidence rather than mergeable code.
+
+This is where experience matters. A less experienced engineer listening to the hype may ask, "Can I automate this?" An experienced engineer should ask, "What feedback signal would make this loop converge?"
+
+## Maker, Checker, Verifier
+
+The maker/checker/verifier pattern is one of the ways to keep agent loops grounded. It is also the place where subagents often enter the picture, so it is worth being precise: maker, checker, and verifier are roles in the loop. They can be implemented by separate subagents, by one agent following separate steps, by deterministic commands, or by humans.
+
+The **maker** changes the system. It writes code, updates docs, edits configuration, or proposes a migration. The maker should be optimized for productive implementation, not final judgment.
+
+The **checker** reviews the maker's output against the spec and project conventions. This can be another agent with a different prompt, a custom subagent, a skill that performs structured code review, or a human reviewer. The checker looks for missed acceptance criteria, unnecessary scope expansion, risky patterns, and places where the solution is more complex than the problem.
+
+The **verifier** runs objective checks. It executes tests, type checks, linters, formatters, security scanners, benchmarks, screenshot comparisons, or contract tests. The verifier is where possible ambiguity should become evidence.
+
+In a strong loop, the maker does not grade its own homework. It may self-review before handing off, but the loop should not rely only on the same agent's confidence. Independent checking matters because agents are very good at producing plausible explanations for incomplete work.
+
+This is not a theoretical concern. As soon as the loop can modify files and continue without you, the cost of false confidence increases. A maker that believes the task is done will stop too early. A maker that believes it is still close will keep spending tokens. A checker and verifier reduce both failure modes.
+
+## Stop Conditions and Budget Limits
+
+Most loop failures are not dramatic. They are mundane: the loop keeps trying variations after progress has stopped, widens scope to make a test pass, edits unrelated files, or burns through a token budget while "almost there".
+
+A good loop has several stopping rules.
+
+It should stop when the success condition is met. That sounds obvious, but the success condition must be written in a way the loop can evaluate. "Improve quality" is weak. "All acceptance criteria in `specs/refund-flow.md` are satisfied, `pnpm test -- refund` passes, and the diff only touches `src/payments` and related tests" is much stronger.
+
+It should stop when the failure condition is met. A loop should pause if the same test fails after three different attempts, if the diff grows beyond an agreed size, if a command requires credentials outside the sandbox, or if the agent needs to change a public contract that was declared out of scope.
+
+It should stop when the budget is exhausted. Budget is not only money. It includes tokens, wall-clock time, number of iterations, number of files changed, CI minutes, external API calls, and human review time.
+
+It should also stop when progress becomes ambiguous. This is the condition teams often forget working with autonomous agents. If the loop cannot explain what improved in the last iteration, continuing is usually noise.
+
+In my experience, the best stop conditions read like an operational contract:
+
+```text
+Continue while each iteration produces measurable progress toward the declared goal: fewer targeted test failures, fewer compiler errors in scoped files, or a narrower check passing, without expanding the agreed scope.
+
+Stop after 5 iterations, 30 minutes, 5 changed files, or one iteration with no measurable progress.
+
+Pause immediately if the fix requires changing the public API, weakening or deleting a test, touching auth, permissions, payments, migrations, production credentials, or adding a production dependency.
+```
+
+That is not glamorous. It is the kind of detail that keeps autonomous work from becoming uncontrolled work.
+
+## Safe Execution
+
+Loop engineering is inseparable from security and operational safety. Once an agent can run commands repeatedly, every weak boundary becomes more important.
+
+Worktrees are a practical first boundary. Each loop should work in an isolated branch or worktree so its changes are reviewable, discardable, and separable from human work. Parallel agent work without isolated workspaces is asking for merge conflicts, hidden state, and hard-to-debug behavior.
+
+Sandboxing is the second boundary. A coding agent with shell access can do roughly what you can do from a terminal. That includes deleting files, reading secrets, calling network endpoints, installing packages, and exfiltrating data if prompt injection or tool misuse occurs. Sandboxing should restrict filesystem access and network access. Filesystem isolation without network isolation is incomplete because a compromised process can still send data out. Network isolation without filesystem isolation is incomplete because a compromised process can still read sensitive local files.
+
+Credentials are the third boundary. A loop should not receive broad credentials because it is convenient. If it needs GitHub access, scope the token to one repo and the minimum actions required. If it needs cloud access, use a test account, a temporary credential, a low budget, and explicit deny rules for destructive operations. If it needs package registry access, make sure publish permissions are not present unless publishing is the goal.
+
+The security model should match the task. A documentation freshness loop does not need production database access. A dependency upgrade loop does not need permission to deploy. A failing test repair loop does not need permission to rotate secrets.
+
+Agent autonomy should expand only after the environment is constrained.
+
+## Practical Examples
+
+The examples below are not copied from a specific vendor workflow. They are synthesized from the patterns above and from the kinds of bounded engineering tasks where agent loops have a credible feedback signal.
+
+They're the loops I created for my own projects while writing this post, and they'll be available in [Geremmyas's GitHub repo](https://github.com/woliveiras/geremmyas) as soon as possible.
+
+### Failing Test Repair Loop
+
+A failing test repair loop is one of the cleanest places to start because the feedback signal is explicit.
+
+The trigger is a failing test command. The goal is to make that test pass without weakening the test or changing public behavior outside the bug fix. The context includes the failing output, the relevant files, recent commits, and the project instructions. The maker proposes a minimal fix. The verifier runs the specific failing test, then the related test file, then the broader package test if the targeted checks pass. The checker reviews the diff against the original failure.
+
+The loop should keep a short attempt log:
+
+```text
+attempt 1: added null guard, targeted test still fails because refund state is persisted before validation
+attempt 2: moved validation before persistence, targeted test passes, related test reveals missing idempotency case
+attempt 3: preserved idempotency branch, targeted and related tests pass
+```
+
+That log helps the next iteration avoid repeating failed paths, and it helps the human reviewer understand the reasoning behind the final diff.
+
+The stop rules are straightforward. Stop when targeted and related tests pass. Pause if the fix requires changing a public API. Stop after a small number of failed attempts. Escalate if the agent wants to delete or rewrite the test.
+
+This is a good loop because the agent can iterate and the environment can tell it whether it is getting closer.
+
+### Dependency Upgrade Loop
+
+Dependency upgrades look simple until they touch transitive behavior, build tooling, type definitions, or runtime assumptions. They are also repetitive enough to justify loop design.
+
+A dependency upgrade loop should start with a narrow package set. "Upgrade everything" is too broad for an unattended loop. "Upgrade `zod` from version X to version Y and preserve existing validation behavior" is tractable.
+
+The loop should read release notes before editing code. It should update the dependency, run install, run type checks, run tests, and inspect breaking changes. If the package affects runtime behavior, the loop should run a small smoke test or integration path, not only compile.
+
+The checker should look for compatibility hacks. Agents sometimes make tests pass by loosening types, weakening assertions, or wrapping errors without preserving semantics. The verifier should run the same commands a human maintainer would run before approving the upgrade.
+
+The stop condition should include a rollback path. If the upgrade cannot be completed within the budget, the loop should leave a clear report: what was attempted, which breaking change blocked progress, which files were touched, and whether the dependency was restored.
+
+Dependency loops are useful because they turn tedious trial-and-error into a bounded process. They are risky when they silently change behavior to satisfy the build.
+
+### PR Review Loop
+
+A PR review loop should not be a rubber stamp, because its value is in consistent, repeatable scrutiny.
+
+The trigger is a new pull request or a label requesting AI review. The loop reads the PR description, issue, diff, tests, project instructions, and review checklist. The checker compares the diff against the stated goal and acceptance criteria. The verifier looks at CI, test coverage changes, lint output, type checks, and risky file paths. If the PR touches auth, permissions, payments, migrations, or infrastructure, the loop should escalate rather than pretend the risk is ordinary.
+
+The output should be a review that separates blockers from suggestions. It should cite files and behavior, not produce vague commentary. A good PR review loop should also notice when there is nothing useful to say. Generating review noise is easy; reducing reviewer burden is the point.
+
+The stop condition is important here too. The loop should stop after posting one high-quality review unless new commits arrive. It should not keep re-reviewing the same diff and producing slightly different comments.
+
+This is where loop engineering can improve team consistency. The loop applies the same review rubric every time. Human reviewers can then spend more attention on product judgment, architecture, and risk.
+
+## Metrics That Matter
+
+If a loop is worth building, it is worth measuring.
+
+The first metric is **completion rate**: how often the loop reaches the defined success condition without human intervention. This should be measured per loop type, not across all agent work. A test repair loop and a dependency upgrade loop have different baselines.
+
+The second metric is **halt quality**. Did the loop stop for the right reason? A loop that stops early and claims success is dangerous. A loop that stops because it hit a budget and leaves a useful report is healthy.
+
+The third metric is **cost per completed task**. Include token cost, CI minutes, external API calls, and human review time. A loop that saves coding time but doubles review time has [moved the bottleneck](/posts/code-review-in-the-ai-era-we-need-to-change/).
+
+The fourth metric is **review burden**. Count how many comments, correction rounds, and human commits are needed after the loop finishes. The loop is not successful if humans repeatedly have to untangle oversized diffs.
+
+The fifth metric is **comprehension debt**. This one is harder to quantify but important. If code lands and nobody on the team can explain why it works, the loop has created future risk. Track it through review questions: can the owner explain the change, the failure mode, the alternatives rejected, and the rollback path?
+
+The sixth metric is **failure concentration**. If the same loop fails in the same way repeatedly, the fix is probably not a better model. The fix is a better harness, a smaller task boundary, a stronger verifier, or a clearer stop condition.
+
+## Failure Modes
+
+The most common loop failure is **goal drift**. The loop starts by fixing a failing test and ends by changing adjacent behavior because that was the easiest way to make the error disappear.
+
+Another failure is **verification theater**. The loop runs commands, but the commands do not prove the goal. A build passing does not prove a migration preserved behavior. A unit test passing does not prove a permission change is safe.
+
+Loops also suffer from **scope creep by iteration**. Each individual change looks small, but after several iterations the diff has crossed module boundaries, added dependencies, changed tests, and modified behavior that was never part of the task.
+
+There is also **self-confirming review**. If the same agent creates the change, reviews the change, and decides whether the change is complete, the loop can become confident and wrong. Separate checker and verifier roles reduce this risk.
+
+Another failure is **cost blindness**. Long-running loops make small mistakes expensive because they repeat those mistakes. Token budgets, iteration caps, and no-progress checks are not optional details.
+
+The final failure mode is **permission mismatch**. The loop has more access than the task requires. This is where prompt injection, tool misuse, secret exposure, and accidental destructive operations become real operational risks.
+
+None of these failures mean loop engineering is a bad idea. They mean it is engineering.
+
+## Where I Would Use It Today
+
+I started with loops where the feedback is objective and the blast radius is low.
+
+A failing test repair loop is a good first candidate. A documentation freshness loop is another. A dependency upgrade loop can work if the package set is narrow and the test suite is strong. A PR review loop can be useful if the output is concise and tied to a stable checklist.
+
+I would avoid giving an open-ended loop responsibility for architecture decisions, production operations, auth flows, data migrations, billing logic, or anything involving broad credentials. Agents can help analyze those tasks. They should not own the loop without strong human checkpoints.
+
+The practical rule is simple: if a task cannot be expressed with a goal, verifier, budget, and stop condition, keep it interactive.
+
+## Conclusion
+
+Loop engineering is worth paying attention to, but not because it gives us autonomous software engineers. It is worth paying attention to because it names a real shift in where the engineering work is moving.
+
+The leverage is no longer only in writing better prompts. The leverage is in designing the system around the agent: context, tools, state, verification, permissions, budgets, and stopping conditions.
+
+That should make us more careful, not less, because the blast radius of a loop is larger than the blast radius of a single prompt. A single prompt can be wrong, but it is usually easy to fix. A loop can be wrong in ways that are subtle, expensive, and hard to detect.
+
+The best version of loop engineering is disciplined automation around tasks that already have good feedback loops. The worst version is unattended agent work wrapped in a fashionable term.
+
+Good engineers should be interested in the first version and skeptical of the second.
+
+## References
+
+- Addy Osmani, [_Loop Engineering_](https://addyosmani.com/blog/loop-engineering/), June 2026.
+- MindStudio, [_What Is Loop Engineering? The New Meta for AI Coding Agents_](https://www.mindstudio.ai/blog/what-is-loop-engineering-ai-coding-agents), June 2026.
+- Firecrawl, [_Loop Engineering: Should You Stop Prompting Agents and Start Designing Loops_](https://www.firecrawl.dev/blog/loop-engineering), June 2026.
+- Kilo, [_What Is Loop Engineering? AI Feedback Loops_](https://kilo.ai/articles/what-is-loop-engineering), June 2026.
+- Simon Willison, [_Designing agentic loops_](https://simonwillison.net/2025/Sep/30/designing-agentic-loops/), September 2025.
+- OpenAI, [_Codex: Follow a goal_](https://developers.openai.com/codex/use-cases/follow-goals).
+- OpenAI, [_Codex: Prompting and Goal mode_](https://developers.openai.com/codex/prompting).
+- OpenAI, [_Codex: Agent Skills_](https://developers.openai.com/codex/skills).
+- OpenAI, [_Codex: Hooks_](https://developers.openai.com/codex/hooks).
+- OpenAI, [_Codex: Sandbox_](https://developers.openai.com/codex/concepts/sandboxing).
+- Anthropic, [_Claude Code: Keep Claude working toward a goal_](https://code.claude.com/docs/en/goal).
+- Anthropic, [_Claude Code: Automate actions with hooks_](https://code.claude.com/docs/en/hooks-guide).
+- Anthropic, [_Beyond permission prompts: making Claude Code more secure and autonomous_](https://www.anthropic.com/engineering/claude-code-sandboxing), October 2025.
+- OWASP, [_Top 10 for Agentic Applications for 2026_](https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/), December 2025.
+- OWASP, [_Top 10 for Large Language Model Applications_](https://owasp.org/www-project-top-10-for-large-language-model-applications/).
+- Yao et al., [_ReAct: Synergizing Reasoning and Acting in Language Models_](https://arxiv.org/abs/2210.03629), 2022.
+- Shinn et al., [_Reflexion: Language Agents with Verbal Reinforcement Learning_](https://arxiv.org/abs/2303.11366), 2023.
+- Zhou et al., [_Language Agent Tree Search Unifies Reasoning Acting and Planning in Language Models_](https://arxiv.org/abs/2310.04406), 2023.
