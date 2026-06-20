@@ -4,7 +4,6 @@ import {
 	MANUAL_DARK_MODE,
 	SEARCH_ENABLED,
 	SERIES,
-	SITE_FAVICON,
 	SITE_NAME,
 } from "../config.json";
 import CodeCopyButton from "./CodeCopyButton.astro";
@@ -27,7 +26,12 @@ const { active } = Astro.props;
         <span class="sr-only">go to home</span>
 
         <div class="text-3xl flex items-center gap-x-2">
-          {SITE_FAVICON}
+          <img
+            src={BASE + "/woliveiras-logo.svg"}
+            alt=""
+            aria-hidden="true"
+            class="size-10 shrink-0 object-contain dark:invert"
+          />
           <span class="hidden md:block text-xl text-base-950 dark:text-base-50"
             >{SITE_NAME}</span
           >
@@ -92,7 +96,12 @@ const { active } = Astro.props;
       <a href={BASE + "/"} class="p-1.5">
         <span class="sr-only">go to home</span>
         <div class="text-3xl flex items-center gap-x-2">
-          {SITE_FAVICON}
+          <img
+            src={BASE + "/woliveiras-logo.svg"}
+            alt=""
+            aria-hidden="true"
+            class="size-10 shrink-0 object-contain dark:invert"
+          />
         </div>
       </a>
       <button
