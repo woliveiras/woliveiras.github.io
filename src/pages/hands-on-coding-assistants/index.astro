@@ -6,48 +6,48 @@ import BaseLayout from "$layouts/BaseLayout.astro";
 import ProseWrapper from "$layouts/ProseWrapper.astro";
 import { SITE_DESCRIPTION, SITE_TITLE } from "../../config.json";
 
-const chapters = await getCollection("series");
+const chapters = await getCollection("codingAssistantsSeries");
 const sorted = chapters.sort((a, b) => a.data.order - b.data.order);
 const appendixChapters = sorted.filter((ch) => ch.id.startsWith("ch-99-"));
 const contentChapters = sorted.filter((ch) => !ch.id.startsWith("ch-99-"));
 
 const modules = [
-	{
-		number: 0,
-		title: "Foundations & Philosophy",
-		description:
-			"Core concepts, the spec-first workflow, setup, and the harness overview.",
-	},
-	{
-		number: 1,
-		title: "Agent Customization",
-		description:
-			"Custom agents, AGENTS.md, repository instructions, and agent skills.",
-	},
-	{
-		number: 2,
-		title: "AI in the Daily Development Cycle",
-		description:
-			"Test generation, code review, debugging, refactoring, and documentation.",
-	},
-	{
-		number: 3,
-		title: "Extensibility & Integrations",
-		description:
-			"MCP (Model Context Protocol), hooks, validation, and agent automation.",
-	},
-	{
-		number: 4,
-		title: "Security, Governance & Impact Measurement",
-		description:
-			"AI-first security, governance, IP policy, impact metrics, and continuous improvement.",
-	},
-	{
-		number: 5,
-		title: "Full Cycle",
-		description:
-			"End-to-end final project applying the complete spec-first workflow on a real codebase.",
-	},
+  {
+    number: 0,
+    title: "Foundations & Philosophy",
+    description:
+      "Core concepts, the spec-first workflow, setup, and the harness overview.",
+  },
+  {
+    number: 1,
+    title: "Agent Customization",
+    description:
+      "Custom agents, AGENTS.md, repository instructions, and agent skills.",
+  },
+  {
+    number: 2,
+    title: "AI in the Daily Development Cycle",
+    description:
+      "Test generation, code review, debugging, refactoring, and documentation.",
+  },
+  {
+    number: 3,
+    title: "Extensibility & Integrations",
+    description:
+      "MCP (Model Context Protocol), hooks, validation, and agent automation.",
+  },
+  {
+    number: 4,
+    title: "Security, Governance & Impact Measurement",
+    description:
+      "AI-first security, governance, IP policy, impact metrics, and continuous improvement.",
+  },
+  {
+    number: 5,
+    title: "Full Cycle",
+    description:
+      "End-to-end final project applying the complete spec-first workflow on a real codebase.",
+  },
 ];
 ---
 
@@ -75,14 +75,14 @@ const modules = [
       </p>
 
       <p>
-        Across <strong>19 chapters, 6 modules, and a references appendix</strong>, you'll learn a
-        repeatable workflow built on three practices: <strong>Spec-Driven
-          Development</strong
+        Across <strong>19 chapters, 6 modules, and a references appendix</strong
+        >, you'll learn a repeatable workflow built on three practices: <strong
+          >Spec-Driven Development</strong
         >, the <strong>Plan → Build mode</strong> of AI agents, and a portable
-        <strong>harness</strong> of skills, instructions, and agent profiles —
-        then apply it hands-on to every stage of the development cycle: from writing
-        your first spec to shipping a full feature with multi-agent collaboration,
-        automated code review, security hooks, and measurable impact.
+        <strong>harness</strong> of skills, instructions, and agent profiles — then
+        apply it hands-on to every stage of the development cycle: from writing your
+        first spec to shipping a full feature with multi-agent collaboration, automated
+        code review, security hooks, and measurable impact.
       </p>
 
       <h3>What you'll walk away with</h3>

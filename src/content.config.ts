@@ -1,6 +1,6 @@
 import { defineCollection } from "astro:content";
-import { z } from "zod";
 import { glob } from "astro/loaders";
+import { z } from "zod";
 
 const blog = defineCollection({
 	loader: glob({ pattern: "**/[^_]*.{md,mdx}", base: "./src/content/blog/" }),
@@ -50,7 +50,7 @@ const blog = defineCollection({
 
 const posts = defineCollection({});
 
-const series = defineCollection({
+const codingAssistantsSeries = defineCollection({
 	loader: glob({
 		pattern: "**/[^_]*.{md,mdx}",
 		base: "./src/content/hands-on-coding-assistants/",
@@ -63,4 +63,17 @@ const series = defineCollection({
 	}),
 });
 
-export const collections = { blog, posts, series };
+const observabilitySeries = defineCollection({
+	loader: glob({
+		pattern: "**/[^_]*.{md,mdx}",
+		base: "./src/content/observability-ai-agents/",
+	}),
+	schema: z.object({
+		title: z.string(),
+		description: z.string(),
+		module: z.number(),
+		order: z.number(),
+	}),
+});
+
+export const collections = { blog, posts, codingAssistantsSeries, observabilitySeries };

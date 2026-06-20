@@ -1,0 +1,184 @@
+---
+import { getCollection } from "astro:content";
+import Footer from "$components/Footer.astro";
+import Header from "$components/Header.astro";
+import BaseLayout from "$layouts/BaseLayout.astro";
+import ProseWrapper from "$layouts/ProseWrapper.astro";
+import { SITE_DESCRIPTION, SITE_TITLE } from "../../config.json";
+
+const chapters = await getCollection("observabilitySeries");
+const sorted = chapters.sort((a, b) => a.data.order - b.data.order);
+const appendixChapters = sorted.filter((ch) => ch.id.startsWith("ch-99-"));
+const contentChapters = sorted.filter((ch) => !ch.id.startsWith("ch-99-"));
+
+const modules = [
+	{
+		number: 0,
+		title: "Foundations",
+		description:
+			"The production framing, the telemetry structure, and the signals worth tracking first.",
+	},
+	{
+		number: 1,
+		title: "Safety, Privacy & Evaluation",
+		description:
+			"What not to capture, how PII leaks into telemetry, and how evaluation becomes an observability signal.",
+	},
+	{
+		number: 2,
+		title: "Security & Cost Controls",
+		description:
+			"Guardrail telemetry, security signals, cost attribution, budget limits, and loop controls.",
+	},
+	{
+		number: 3,
+		title: "Hands-on Implementation",
+		description:
+			"LangGraph, OpenTelemetry, Langfuse, LLM spans, tool spans, retrieval spans, and production hardening.",
+	},
+	{
+		number: 4,
+		title: "Operations",
+		description:
+			"Dashboards, alerts, and runbooks for operating AI agents day to day.",
+	},
+];
+---
+
+<BaseLayout
+	title={`Observability for AI Agents - ${SITE_TITLE}`}
+	description={SITE_DESCRIPTION}
+>
+	<Header active="series" />
+
+	<main class="max-w-2xl lg:max-w-3xl mx-auto mt-8 px-4">
+		<ProseWrapper>
+			<h1>Observability for AI Agents in Production</h1>
+			<p class="text-lg text-base-500 dark:text-base-400 italic !mt-0">
+				Applying observability to agentic systems
+			</p>
+
+			<p>
+				AI agents fail differently from traditional services. A request can return
+				HTTP 200, finish within the latency budget, and still be wrong, unsafe, too
+				expensive, or impossible to debug. Traditional APM covers infrastructure
+				health. Agent observability also has to show decisions, tool calls,
+				retrieval, loops, and cost.
+			</p>
+
+			<p>
+				This series shows how to apply observability to production agentic systems.
+				It starts with traces, spans, sessions, cost, safety, and metadata-first
+				telemetry. Then it applies those ideas in a LangGraph + OpenTelemetry +
+				Langfuse stack that shows what the agent did, why it did it, how much it
+				cost, and where it needs attention.
+			</p>
+
+			<h3>What the series covers</h3>
+			<ul>
+				<li>
+					A trace-first view of decisions, tool chains, retrieval, cost, and safety
+					events.
+				</li>
+				<li>
+					A metadata-over-content strategy that protects user data while preserving
+					enough signal to debug production behavior.
+				</li>
+				<li>
+					A prioritized signal list for LLM calls, tools, retrieval, sessions, loops,
+					guardrails, budgets, and handoffs.
+				</li>
+				<li>
+					A practical implementation path using LangGraph, OpenTelemetry semantic
+					conventions, and Langfuse.
+				</li>
+				<li>
+					Dashboard, alert, and runbook patterns for operating agents day to day.
+				</li>
+			</ul>
+
+			<p>
+				The applied chapters use Python and LangGraph. The same instrumentation
+				approach can be adapted to other agent frameworks and OTLP-compatible
+				backends. The aim is simple: make agent behavior auditable without turning
+				your observability system into a second copy of user data.
+			</p>
+
+			<hr />
+
+			{
+				modules.map((mod) => {
+					const moduleChapters = contentChapters.filter(
+						(ch) => ch.data.module === mod.number,
+					);
+					return (
+						<section>
+							<h2>
+								Module {String(mod.number).padStart(2, "0")} - {mod.title}
+							</h2>
+							<p>{mod.description}</p>
+							<ul>
+								{moduleChapters.map((ch) => (
+									<li>
+										<a href={`/observability-ai-agents/${ch.id}/`}>
+											Ch {ch.data.order}: {ch.data.title}
+										</a>
+										<br />
+										<span class="text-sm text-base-500">
+											{ch.data.description}
+										</span>
+									</li>
+								))}
+							</ul>
+						</section>
+					);
+				})
+			}
+			{
+				appendixChapters.length > 0 && (
+					<section>
+						<h2>Appendix</h2>
+						<ul>
+							{appendixChapters.map((ch) => (
+								<li>
+									<a href={`/observability-ai-agents/${ch.id}/`}>
+										{ch.data.title}
+									</a>
+									<br />
+									<span class="text-sm text-base-500">
+										{ch.data.description}
+									</span>
+								</li>
+							))}
+						</ul>
+					</section>
+				)
+			}
+			<hr />
+			<section class="text-sm text-base-500 dark:text-base-400">
+				<p>
+					<strong>License & Attribution</strong><br />
+					This series content is licensed under
+					<a
+						href="https://creativecommons.org/licenses/by/4.0/"
+						target="_blank"
+						rel="noopener noreferrer"
+					>
+						Creative Commons Attribution 4.0 International (CC BY 4.0)
+					</a>. You are free to share and adapt this material for any purpose,
+					including commercial use, as long as you give appropriate credit.
+				</p>
+				<p>
+					Please cite as: <em
+						>"Observability for AI Agents in Production" by William Oliveira - <a
+							href="https://woliveiras.com/observability-ai-agents/"
+							>woliveiras.com</a
+						></em
+					>
+				</p>
+			</section>
+		</ProseWrapper>
+	</main>
+
+	<Footer />
+</BaseLayout>

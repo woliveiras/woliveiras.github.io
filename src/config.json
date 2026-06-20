@@ -30,6 +30,10 @@
 		{
 			"name": "Hands-on Coding Assistants",
 			"href": "/hands-on-coding-assistants"
+		},
+		{
+			"name": "Observability for AI Agents",
+			"href": "/observability-ai-agents"
 		}
 	]
 }
