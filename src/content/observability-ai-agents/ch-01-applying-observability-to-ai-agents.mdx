@@ -5,6 +5,8 @@ module: 0
 order: 1
 ---
 
+## Why agent observability is different
+
 An agent endpoint can return HTTP 200 while the task fails. The model can select the wrong tool, retrieve an obsolete policy, repeat a step until a budget limit is reached, or produce a fluent answer that contradicts the system of record. Service telemetry records a successful request. The user experiences a failed outcome.
 
 Agent observability connects those two views.

@@ -5,6 +5,8 @@ module: 0
 order: 2
 ---
 
+## The Telemetry data model
+
 Most telemetry problems begin as modeling problems. If a conversation is represented as a parent span, a durable task as an HTTP request, or a quality score as a metric without its evaluation context, the resulting data may look valid while describing the system incorrectly.
 
 This chapter defines the roles and boundaries of resources, traces, spans, span events, logs, metrics, baggage, conversations, durable tasks, links, and evaluation results. It then shows how those objects relate, which relationships belong to OpenTelemetry, which are application or backend conventions, and where operation-specific attributes should be recorded. By the end, the reader should be able to decide whether a fact belongs on a resource, span, event, log, metric, or evaluation record without inventing false parent-child relationships.
