@@ -1,66 +1,76 @@
 ---
 title: "Before You Start"
-description: "Prerequisites, tools, accounts, and production assumptions for following the observability series."
+description: "Audience, prerequisites, reference stack, and terminology for the observability series."
 module: 0
 order: 0
 ---
 
-## Who this series is for
+This series is for software engineers who build or operate AI agents. It assumes that a model already participates in a workflow that can call tools, retrieve data, maintain state, or hand work to another component. The goal is to make that workflow explainable in production without copying every prompt and response into a telemetry backend.
 
-This series is for engineers who already have agents running, or are close to putting them in production, and are starting to feel the visibility gap. The agent calls a model, chooses tools, reads context, writes output, maybe loops, maybe escalates, and the dashboard still mostly shows latency and a status code.
+The conceptual chapters apply to most agent frameworks and model providers. The implementation chapters use one concrete stack so every command and code sample can be followed end to end.
 
-You do not need to be an observability specialist to follow along, but the examples assume comfort with backend development, structured logging, APIs, and the idea of distributed tracing. The applied chapters use Python, LangGraph, OpenTelemetry, Docker Compose, and Langfuse.
+## What you need to know
 
-## What this series assumes
+The series assumes working knowledge of:
 
-You already understand the basics of LLM-powered applications:
+- Python applications and virtual environments.
+- HTTP APIs and JSON payloads.
+- Structured logs, metrics, and distributed traces.
+- LLM inference, tool calling, retrieval-augmented generation, and conversation state.
 
-- A model call has inputs, outputs, token usage, latency, and a finish reason.
-- An agent can call tools, retrieve documents, keep short-term state, and run multiple steps before answering.
-- Production systems need security controls, budget controls, and incident response, not just a good demo.
+OpenTelemetry terminology is introduced as it is used. Prior experience with an OpenTelemetry SDK or Collector is helpful but not required.
 
-Terms like trace, span, attribute, PII, retrieval, guardrail, and LLM-as-judge appear throughout the series. The chapters introduce them in context, but the pace assumes you are already comfortable reading technical material.
+## Reference stack
 
-## Required tools for the hands-on chapters
+| Layer | Choice in this series | Why it is here |
+|---|---|---|
+| Runtime | Python 3.11 or newer | Current async context propagation and typing support. |
+| Agent orchestration | LangGraph | Explicit nodes, state, branches, and durable execution. |
+| Model provider | OpenAI Responses API | Typed response items, tool calls, streaming events, and usage data. |
+| Telemetry | OpenTelemetry | Vendor-neutral APIs, context propagation, OTLP, and semantic conventions. |
+| Collector | OpenTelemetry Collector | Central processing, filtering, batching, and export. |
+| Backend | Langfuse | Trace inspection and evaluation features for LLM applications. |
+| Local services | Docker Compose | Reproducible development environment. |
 
-The first eight chapters are conceptual and design-focused. The implementation starts in Chapter 9.
+OpenAI is the provider used by the runnable example, not a requirement of the observability model. Provider-specific fields stay at the integration boundary. Application spans and custom attributes remain provider-neutral where a stable convention exists.
 
-For the hands-on part, install:
+## Required tools
+
+Confirm the local toolchain before the implementation module:
 
 ```sh
 python --version
-# Expected: Python 3.11 or higher
-
 docker --version
-# Expected: Docker installed and running
-
 docker compose version
-# Expected: Docker Compose v2
 ```
 
-You will also need access to an LLM provider. The examples are written so the provider can be swapped, but you should have one model available before starting the implementation chapters.
+You also need an OpenAI API key with access to the model configured for the example. Keep the key in a local environment file or secret manager. Never place it in source control, span attributes, logs, exception messages, or screenshots.
 
-## The example stack
+## Three labels used throughout the series
 
-The hands-on path uses:
+Technical guidance becomes misleading when standards, recommendations, and local decisions are presented as equivalent. Each chapter uses these meanings:
 
-| Layer | Tool | Why |
-|---|---|---|
-| Agent framework | LangGraph | Explicit state and control flow make agent traces easier to reason about. |
-| Telemetry API | OpenTelemetry | It gives us vendor-neutral terms for traces, spans, and attributes. |
-| Observability backend | Langfuse | It is designed for LLM applications and can be self-hosted for the series. |
-| Local environment | Docker Compose | It keeps the observability backend reproducible. |
+| Label | Meaning |
+|---|---|
+| Standard | A requirement or recommendation defined by a referenced specification. |
+| Recommended baseline | A defensible starting point that must be adapted to the system's risk and workload. |
+| Example decision | A choice made for the reference implementation, not a universal rule. |
 
-Langfuse is the backend used in the examples. The telemetry structure stays portable because the instrumentation goes through OpenTelemetry.
+OpenTelemetry GenAI semantic conventions are still evolving. Attribute names, requirement levels, and stability are checked against the version linked in each chapter. Pin instrumentation versions and treat a semantic-convention upgrade as a schema migration.
 
-## Questions this series will help you answer
+## What the series produces
 
-- Which agents or workflows do you want to observe?
-- Which tools can those agents call?
-- Which data can appear in user input, tool results, retrieval context, and model output?
-- Who can inspect traces?
-- What is the maximum acceptable cost per request, session, or day?
+By the end, the reference agent has:
+
+- One end-to-end trace for each task execution.
+- Spans for model calls, tool execution, retrieval, workflow nodes, and guardrails.
+- Correlation across conversation turns and asynchronous boundaries.
+- Metrics for latency, token usage, cost, errors, quality, and safety controls.
+- Content capture disabled by default, with explicit redaction and access boundaries when enabled.
+- Evaluations linked to production traces and release datasets.
+- Dashboards, SLOs, alerts, release gates, and incident runbooks.
+- Tests that fail when instrumentation loses context or emits unsafe attributes.
 
 ---
 
-**Next up**: [Ch 1 - Applying Observability to AI Agents](/observability-ai-agents/ch-01-applying-observability-to-ai-agents/) - the production framing and why traces become the primary unit of understanding.
+**Next up**: [Ch 1 - Why Agent Observability Is Different](/observability-ai-agents/ch-01-applying-observability-to-ai-agents/) explains why a healthy endpoint can still represent a failed agent task.
