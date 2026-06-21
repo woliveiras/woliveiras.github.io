@@ -1,0 +1,305 @@
+---
+title: "Signals for Agent Systems"
+description: "A prioritized signal catalog for model calls, tools, retrieval, workflows, tasks, conversations, and fleets."
+module: 0
+order: 5
+---
+
+## Signals for agent systems
+
+An agent SDK can expose hundreds of fields from model requests, tool calls, retrieval operations, workflow state, and provider responses. Recording all of them does not make the system observable. A field becomes useful only when it answers an operational question, supports an investigation, or triggers a decision.
+
+OpenTelemetry uses the word *signal* for telemetry types such as traces, metrics, and logs. In this chapter, an *operational signal* means the fact being observed, such as task outcome, token usage, retrieval latency, guardrail decision, or evaluation score. The same fact can have more than one representation: token usage can be an attribute on one model span and also contribute to an aggregated histogram.
+
+This chapter defines an implementable signal catalog for model calls, tools, retrieval, workflows, complete traces, conversations, and the agent fleet. It separates fields defined by OpenTelemetry from project-specific attributes and derived measurements. The goal is a small telemetry contract with explicit sources, formulas, dimensions, owners, and investigation paths.
+
+## Start with an operational question
+
+Do not start by copying every field exposed by an SDK. Start with a question and define the measurement precisely enough that two engineers would calculate the same value.
+
+| Operational question | Measurement definition | Investigation path |
+|---|---|---|
+| Are tasks reaching an accepted outcome? | Eligible tasks ending in an accepted outcome divided by all eligible tasks reaching a terminal state. | Open failed, abandoned, and escalated traces grouped by task type and workflow version. |
+| Where is user-visible time spent? | End-to-end task latency plus latency by model, tool, retrieval, queue, and approval operation. | Inspect the critical path of traces above the latency objective. |
+| Why did cost per task change? | Provider-reported billable tokens and price-catalog version aggregated per terminal task. | Inspect model routing, retries, loops, cache usage, and conversation-context growth. |
+| Which dependency is failing? | Failed dependency operations divided by completed operations, grouped by bounded error category. | Open representative traces and correlated sanitized error logs. |
+| Did answer quality regress? | Evaluation pass rate for one evaluator, rubric version, and dataset cohort. | Compare failed evaluation records and their source traces with the previous release. |
+| Are safety controls executing as designed? | Guardrail decisions grouped by policy version, decision, and bounded reason. | Inspect unexpected allow, block, bypass, and unavailable-policy traces. |
+
+Every production signal should have a record like this:
+
+```yaml
+name: task_accepted_outcome_rate
+population: terminal support tasks
+numerator: outcomes in [resolved, correctly_escalated]
+denominator: outcomes in [resolved, correctly_escalated, abandoned, failed]
+dimensions: [deployment.environment.name, app.task.type, app.workflow.version]
+owner: support-agent-team
+response: inspect failed traces, then compare workflow and model versions
+```
+
+This is a project signal definition, not OpenTelemetry configuration. Without a population, denominator, owner, and response, a dashboard can display a number that different teams interpret differently.
+
+## Choose the representation from the query
+
+One fact does not belong on every telemetry type.
+
+| Representation | Use it for | Do not use it for |
+|---|---|---|
+| Span attribute | Detail about one timed operation, including high-cardinality identifiers needed for investigation. | Fleet-wide aggregation over unbounded identifiers. |
+| Span event | A meaningful occurrence during a span, such as a retry or checkpoint, when the timestamp matters. | Repeating stream chunks or verbose debug output. |
+| Metric | Aggregated rates, counts, and distributions over bounded dimensions. | Prompt content, response IDs, conversation IDs, document IDs, or free-form errors. |
+| Correlated log | Sanitized diagnostic detail that does not fit the span attribute budget. | A second unstructured copy of every span. |
+| Evaluation record | A versioned judgment about quality, safety, or task success. | Transport errors and infrastructure health. |
+
+The operation span is usually the source record. Metrics are projections of many operations, and trace-, conversation-, and fleet-level signals are derived after lower-level telemetry exists.
+
+## Model-call signals
+
+The current OpenTelemetry GenAI conventions define the core model-call schema, but those conventions remain in development. Pin the adopted version as described in Chapter 3.
+
+### Attributes on each model span
+
+| Attribute | Source | Operational use | Cardinality rule |
+|---|---|---|---|
+| `gen_ai.operation.name` | Instrumentation; for example `chat` or `generate_content`. | Separate inference from embeddings, retrieval, tools, and agents. | Use documented operation names. |
+| `gen_ai.provider.name` | Instrumentation's view of the provider boundary. | Attribute latency and errors to the dependency being called. | Bounded provider catalog. |
+| `gen_ai.request.model` | Exact model value sent in the request. | Compare intended routing and release configuration. | Bounded deployment catalog. |
+| `gen_ai.response.model` | Exact value returned by the provider. | Detect provider snapshots, fallbacks, or routing changes. | Span attribute; allow on metrics only after confirming a bounded catalog. |
+| `gen_ai.usage.input_tokens` | Provider usage response when available. | Calculate context growth and billable input volume. | Integer measurement, never a dimension. |
+| `gen_ai.usage.output_tokens` | Provider usage response when available. | Calculate output volume and billable usage. | Integer measurement, never a dimension. |
+| `gen_ai.usage.cache_read.input_tokens` | Provider cache-usage response when supported. | Measure how much input came from a provider-managed cache. | Integer measurement. |
+| `gen_ai.response.finish_reasons` | Provider response. | Find truncation, tool-call, and policy termination patterns. | Keep on spans unless the normalized value set is bounded. |
+| `gen_ai.response.time_to_first_chunk` | Instrumentation around a streaming response. | Separate initial responsiveness from total generation time. | Double in seconds. |
+| `gen_ai.response.id` | Provider response. | Provider support cases and response-level correlation. | High cardinality; span only. |
+| `error.type` | Provider error code, exception type, or documented low-cardinality classification. | Group failed operations without parsing error messages. | Never use the full exception message. |
+
+Prefer usage returned by the provider. Do not run a tokenizer solely to manufacture an exact-looking count unless the model, tokenizer version, message formatting, hidden provider additions, and billing semantics are known. If an estimate is operationally useful, name it as an estimate and keep it separate from provider-reported usage.
+
+Input messages, output messages, system instructions, and tool definitions are opt-in content fields. They are not part of the metadata baseline and require the capture policy defined in Chapters 7 and 8.
+
+## Metrics defined by the current GenAI conventions
+
+The development GenAI conventions define ten histogram metrics across five instrumentation perspectives. The requirement applies only when the instrumented component implements or can observe that operation. An application calling a hosted model API is a client; it does not become a model server merely because it receives tokens.
+
+| Perspective | Metric | Requirement | Unit | Measurement boundary |
+|---|---|---|---|---|
+| Client | `gen_ai.client.token.usage` | Recommended when token usage is readily available. | `{token}` | Provider-reported billable input and output usage, separated by `gen_ai.token.type`. |
+| Client | `gen_ai.client.operation.duration` | Required for instrumented GenAI client operations. | `s` | Time observed by the client for one GenAI operation, including remote-call latency. |
+| Client | `gen_ai.client.operation.time_to_first_chunk` | Recommended for streaming operations. | `s` | Time from issuing the client request until the first response chunk arrives. |
+| Client | `gen_ai.client.operation.time_per_output_chunk` | Recommended for streaming operations. | `s` | Time between consecutive output chunks after the first chunk. |
+| Model server | `gen_ai.server.request.duration` | Recommended for instrumented model servers. | `s` | Server-side request duration through the last byte or output token. |
+| Model server | `gen_ai.server.time_to_first_token` | Recommended for model servers generating tokens. | `s` | Server time to generate the first token, including queue and prefill work. |
+| Model server | `gen_ai.server.time_per_output_token` | Recommended for model servers generating tokens. | `s` | Decode time per output token after the first token for successful responses. |
+| Workflow | `gen_ai.workflow.duration` | Required when the component implements workflow operations. | `s` | End-to-end duration of one workflow invocation. |
+| Agent | `gen_ai.invoke_agent.duration` | Required when the component implements agent invocation operations. | `s` | Time from invocation start until the final response chunk or terminal error. |
+| Tool | `gen_ai.execute_tool.duration` | Recommended when tool execution is observable. | `s` | Duration of one logical tool execution. |
+
+### Client and server metrics observe different boundaries
+
+Client time to first chunk includes network transport and provider behavior as observed by the calling application. Server time to first token measures inference-server work before the first token exists. They are related but not interchangeable:
+
+```txt
+client time to first chunk
+= outbound transport
++ server queue and prefill
++ first-token generation
++ inbound transport and buffering
+```
+
+Emit `gen_ai.server.*` only inside a model-serving component that can observe those server phases. A service calling OpenAI or another hosted provider should emit client metrics and use provider-supplied server telemetry only when the provider exposes it with documented semantics. Do not rename client chunk timings to server token timings.
+
+### Workflow, agent, and tool durations can be nested
+
+A workflow can invoke an agent, which can execute several tools and model calls. Their durations answer different questions and must not be summed as if they were disjoint:
+
+```txt
+workflow duration
+└── agent invocation duration
+    ├── model operation duration
+    ├── tool execution duration
+    └── model operation duration
+```
+
+Use the workflow histogram for end-to-end orchestration latency. Use agent and tool histograms to locate the contributing operation. Parallel child operations can overlap, so critical-path analysis remains necessary for latency attribution.
+
+### Metrics not defined by the standard catalog
+
+The current convention does not define standard metrics for monetary cost, task outcome rate, retrieval result count, retrieval quality, conversation resolution, evaluation pass rate, guardrail decisions, or telemetry delivery health. These remain project or backend signals. Name them under a documented project namespace, define their formulas and dimensions, and do not present them as OpenTelemetry GenAI standard metrics.
+
+There is also no dedicated standard `gen_ai.retrieval.duration` metric in the current catalog. Retrieval latency remains available from the retrieval span duration and can contribute to the generic client operation duration where that convention applies.
+
+For every standard metric, use only the attributes permitted by its adopted convention version. Do not add response ID, conversation ID, raw finish text, user ID, task ID, or document ID as dimensions.
+
+## Tool-execution signals
+
+One tool execution should produce one logical `execute_tool` span. If the tool performs an HTTP or database call, protocol instrumentation creates child spans for those physical dependencies.
+
+```txt
+span.name = "execute_tool fetch_order_status"
+span.kind = INTERNAL
+gen_ai.operation.name = "execute_tool"
+gen_ai.tool.name = "fetch_order_status"
+gen_ai.tool.type = "function"
+gen_ai.tool.call.id = "call_7f31"
+app.tool.side_effect = "read"
+app.tool.authorization.decision = "allowed"
+app.tool.approval.outcome = "not_required"
+```
+
+The `gen_ai.*` fields above follow the development convention. The `app.*` fields are project-specific controls and need a documented value catalog. Tool arguments and results are opt-in content; do not record them merely because the framework exposes them.
+
+Technical execution and business outcome are separate:
+
+- Set span status to error and record `error.type` when execution fails, times out, or returns a protocol-level error.
+- An authorization component that correctly denies a call has executed successfully. Record the denial as a policy outcome, not automatically as an instrumentation error.
+- A tool can execute successfully while returning “order not found.” Record that domain result using a bounded project outcome if it changes product behavior.
+
+Measure logical tool duration, physical dependency duration, retry count, approval wait time, authorization decisions, and idempotency conflicts separately. Otherwise a five-second approval wait can be misdiagnosed as five seconds of tool latency.
+
+For `gen_ai.execute_tool.duration`, use only dimensions allowed by the adopted schema and keep tool names bounded. Dynamically generated tool names create an unbounded metric series.
+
+## Retrieval signals
+
+A retrieval span describes one request to obtain grounding data from a search system, vector store, or hosted retrieval service.
+
+| Field | Status | What it establishes |
+|---|---|---|
+| `gen_ai.operation.name = "retrieval"` | OpenTelemetry development convention | Identifies the operation type. |
+| `gen_ai.data_source.id` | OpenTelemetry development convention | Identifies the GenAI data source when applicable. |
+| `gen_ai.retrieval.top_k` | OpenTelemetry development convention | Records the maximum results requested, not the number returned. |
+| `gen_ai.retrieval.documents` | OpenTelemetry opt-in content | Carries retrieved document identifiers and scores; apply content and cardinality controls. |
+| `gen_ai.retrieval.query.text` | OpenTelemetry opt-in content | Carries the query and can contain sensitive user information. |
+| `app.retrieval.result_count` | Project attribute | Records how many results the retriever returned. |
+| `app.retrieval.empty` | Project attribute | Distinguishes an empty successful result from a retrieval failure. |
+| `app.retrieval.index.version` | Project attribute | Attributes regressions to an index or corpus release. |
+| `app.retrieval.reranker.version` | Project attribute | Attributes ranking changes to a reranker release. |
+
+Record retrieval duration on the span and, when needed, an aggregate histogram with bounded dimensions such as data-source class, strategy, and index version. Keep raw document IDs and queries off metrics.
+
+A similarity score is not a relevance probability. Its scale depends on the embedding model, distance function, index configuration, and reranker. Compare score distributions only within the same documented configuration. To claim that retrieval quality improved, use labeled relevance judgments and report metrics such as recall at *k*, precision at *k*, mean reciprocal rank, or normalized discounted cumulative gain with the dataset and evaluator version attached.
+
+## Workflow and agent signals
+
+The workflow span explains which deployable behavior ran. Child spans explain the path taken.
+
+```txt
+gen_ai.operation.name = "invoke_workflow"
+gen_ai.workflow.name = "support-resolution"
+app.workflow.version = "2026-06-21.3"
+app.task.type = "order_status"
+app.task.outcome = "resolved"
+app.workflow.termination_reason = "completed"
+app.workflow.iteration_count = 2
+```
+
+`gen_ai.workflow.name` is a development convention and must remain low cardinality. The remaining fields are project conventions in this example. Define their allowed values before emitting metrics from them.
+
+For hosted agents, the current convention includes `gen_ai.agent.id`, `gen_ai.agent.name`, and `gen_ai.agent.version`. `gen_ai.agent.id` refers to a stable hosted-agent resource identifier, not an in-memory object ID created for one execution. For local orchestration code, prefer a low-cardinality workflow or component name and a release version.
+
+Record a span for each operation whose duration and outcome matter: model call, retrieval, tool execution, subagent invocation, policy decision, human approval wait, checkpoint, or queue processing. Record bounded branch and termination outcomes on the relevant workflow span. An event is appropriate for an instantaneous transition such as `checkpoint.saved`; a span is appropriate when the transition includes work or waiting time.
+
+Do not use private chain-of-thought as a planning signal. Observable plan artifacts, selected actions, branch outcomes, state transitions, tool calls, and policy decisions provide operational evidence without requiring hidden reasoning content.
+
+## Derive trace-level signals after completion
+
+Trace-level measurements summarize one task execution. Compute them only after the spans required by the definition have arrived.
+
+| Derived signal | Definition |
+|---|---|
+| End-to-end duration | End timestamp minus start timestamp of the task's root operation. |
+| Critical-path duration | Duration of the longest causally dependent path through the trace, excluding overlap from parallel branches. |
+| Model-call count | Count of logical model operation spans selected by the adopted schema. |
+| Tool-call count | Count of logical `execute_tool` spans, excluding HTTP or database child spans. |
+| Retry count | Sum of additional attempts beyond the first attempt for each logical operation. |
+| Iteration count | Number of workflow loop iterations according to the workflow's documented loop boundary. |
+| Total input/output tokens | Sum provider-reported usage across logical model spans. |
+| Estimated cost | Token and request usage multiplied by the versioned price catalog effective for the operation. |
+| Task outcome | Terminal domain outcome from the project's controlled catalog. |
+
+Parallel child durations can sum to more than end-to-end duration. Use critical-path duration to explain latency and summed durations or token counts to explain resource consumption.
+
+Double instrumentation can also double every derived value. If an OpenAI SDK integration and a framework integration both create spans for the same logical call, choose one span as authoritative before counting tokens or operations.
+
+## Define conversation-level signals from terminal state
+
+Conversation signals aggregate multiple turns that share a real `gen_ai.conversation.id`. Finalize them when the application records a terminal conversation outcome or when a documented inactivity window closes the conversation.
+
+| Signal | Definition |
+|---|---|
+| Turns to resolution | Distribution of user turns for conversations ending in the `resolved` outcome. Exclude unresolved conversations rather than treating them as zero. |
+| Resolution rate | Resolved conversations divided by eligible terminal conversations in the same cohort. |
+| Cost per resolved conversation | Total attributed cost divided by resolved conversations. Report unresolved cost separately. |
+| Human takeover rate | Conversations transferred to a human divided by eligible conversations. Segment by documented takeover reason. |
+| Reformulation rate | Conversations where a versioned intent classifier detects repeated intent after an answer, divided by conversations evaluated by that classifier. |
+| Conversation evaluation | Evaluation result produced from the full conversation using one rubric and evaluator version. |
+
+More turns do not automatically mean engagement or failure. A two-turn password reset and a ten-turn investigation have different task expectations. Compare conversation measures within task type, workflow version, and a defined time window.
+
+## Build fleet signals from explicit formulas
+
+Fleet metrics aggregate tasks and operations over time. Dimensions must have bounded catalogs: environment, task type, workflow version, provider, model, region, policy version, and approved tenant tier are typical examples. Raw user, tenant, conversation, response, task, and document IDs do not belong on fleet metrics.
+
+| Production signal | Formula or source | First investigation |
+|---|---|---|
+| Accepted outcome rate | Accepted terminal tasks / eligible terminal tasks. | Compare task type, workflow version, and termination reason. |
+| End-to-end latency | Histogram of terminal task duration; report agreed percentiles by task type. | Open slow traces and inspect their critical paths. |
+| Cost per accepted outcome | Total attributed cost / accepted terminal tasks. | Compare model routing, token growth, retry count, and cache usage. |
+| Dependency error ratio | Failed dependency operations / completed operations for that dependency class. | Group by provider, tool, operation, and project error category. |
+| Limit-stop rate | Tasks stopped by iteration or budget limit / eligible terminal tasks. | Inspect loops, repeated tool calls, and budget configuration. |
+| Evaluation pass rate | Passing results / scored results for one evaluator, rubric version, and cohort. | Open failed evaluation records and source traces. |
+| Guardrail decisions | Counts and rates by policy version, decision, and bounded reason. | Investigate unexpected changes; a higher block rate is not inherently better. |
+| Telemetry delivery health | SDK and Collector queue utilization, dropped telemetry, export failures, and backend acceptance. | Inspect the telemetry pipeline before trusting missing application signals. |
+
+An alert threshold belongs to the service objective and traffic profile, not to this generic catalog. Chapter 11 defines SLOs; Chapter 19 turns them into dashboards and alerts.
+
+## Keep standard errors and project categories separate
+
+`error.type` describes the error observed by an operation according to the applicable semantic convention. Depending on the boundary, it can be a provider error code, protocol status, or exception type. Keep it low cardinality and never place a full error message in it.
+
+A project can add a more stable cross-provider category for alerting:
+
+```txt
+error.type = "RateLimitError"
+app.error.category = "rate_limit"
+```
+
+Use a documented mapping rather than overwriting `error.type`:
+
+| Project category | Typical sources | Primary response |
+|---|---|---|
+| `timeout` | Client deadline, tool deadline, queue visibility timeout. | Identify the operation that exhausted its budget. |
+| `rate_limit` | Provider or dependency throttling. | Inspect retry policy, concurrency, and quota. |
+| `authentication` | Invalid or expired service credential. | Inspect credential distribution and rotation. |
+| `authorization` | Caller or service lacks permission. | Inspect policy decision and identity context. |
+| `validation` | Invalid structured output, tool arguments, or request schema. | Inspect schema version and producing component. |
+| `dependency_unavailable` | Provider, search service, database, or tool unavailable. | Inspect dependency health and fallback behavior. |
+| `content_policy` | Provider or project policy stopped content processing. | Inspect policy version and bounded decision reason. |
+| `budget_exhausted` | Token, iteration, time, or monetary budget reached. | Inspect loops, context growth, and configured budget. |
+| `cancelled` | User, deadline, deploy, or orchestrator cancellation. | Separate expected cancellation from infrastructure loss. |
+| `unknown` | No mapping matched. | Treat growth in this bucket as taxonomy debt. |
+
+Store the sanitized original exception in a correlated log when investigators need more detail. Provider messages can change and may contain request content, so they require redaction and must not become metric dimensions.
+
+## A minimum production contract
+
+The first production version does not need every signal in this chapter. It should be able to answer four questions without capturing raw content:
+
+1. Did the task reach a terminal outcome, and which outcome was it?
+2. Where did the execution spend time or fail?
+3. How many provider-billed tokens and how much estimated cost did it consume?
+4. Which workflow, model, tool, policy, and evaluation versions produced the result?
+
+Implement that contract with operation spans, bounded fleet metrics, trace-level task outcome, telemetry delivery health, and a documented error mapping. Add conversation and semantic-quality signals only after their populations, evaluators, and owners are defined.
+
+## References
+
+- [OpenTelemetry GenAI semantic conventions repository](https://github.com/open-telemetry/semantic-conventions-genai)
+- [OpenTelemetry GenAI metrics](https://github.com/open-telemetry/semantic-conventions-genai/blob/main/docs/gen-ai/gen-ai-metrics.md)
+- [OpenTelemetry GenAI spans](https://github.com/open-telemetry/semantic-conventions-genai/blob/main/docs/gen-ai/gen-ai-spans.md)
+- [OpenTelemetry GenAI agent spans](https://github.com/open-telemetry/semantic-conventions-genai/blob/main/docs/gen-ai/gen-ai-agent-spans.md)
+- [Google SRE: Service Level Objectives](https://sre.google/sre-book/service-level-objectives/)
+
+---
+
+**Next up**: [Ch 6 - Sampling, Cardinality, and Telemetry Cost](/observability-ai-agents/ch-06-sampling-cardinality-telemetry-cost/) controls observability volume without destroying the evidence needed for incidents.
