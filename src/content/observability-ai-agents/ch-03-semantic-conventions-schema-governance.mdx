@@ -1,0 +1,187 @@
+---
+title: "Semantic Conventions and Schema Governance"
+description: "How to adopt evolving OpenTelemetry GenAI conventions, name custom attributes, and migrate telemetry schemas safely."
+module: 0
+order: 3
+---
+
+OpenTelemetry defines the data model for signals such as traces, metrics, and logs, but that model alone does not prescribe how every operation should be represented. Without an additional contract, three instrumentations could describe the same model request using `model`, `llm.model_name`, or `gen_ai.request.model`. All three attributes would be valid OpenTelemetry data, but a shared dashboard could not query them consistently.
+
+Semantic conventions are that shared contract. They define standard names, meanings, value types, span names and kinds, metric names and units, event structures, and requirement levels for known operations. They allow independently developed instrumentation and observability backends to interpret the same telemetry without agreeing on a private schema first.
+
+This chapter explains how that contract applies to GenAI operations, how requirement levels differ from stability levels, when custom attributes are necessary, and how to migrate dashboards and instrumentation when a convention changes. This matters because the OpenTelemetry GenAI conventions are still under development: using them safely requires versioning and schema governance, not copying the latest attribute list into application code.
+
+## What the GenAI conventions standardize
+
+OpenTelemetry conventions define names, types, requirement levels, span kinds, and naming rules for common operations. The GenAI specification covers model inference, embeddings, retrieval, tool execution, agent invocation, workflows, metrics, and provider-specific extensions.
+
+For example, an OpenAI inference span follows this shape:
+
+```txt
+span.name = "chat gpt-5.4-mini"
+span.kind = CLIENT
+gen_ai.operation.name = "chat"
+gen_ai.provider.name = "openai"
+gen_ai.request.model = "gpt-5.4-mini"
+gen_ai.response.model = "gpt-5.4-mini-2026-03-17"
+gen_ai.usage.input_tokens = 842
+gen_ai.usage.output_tokens = 126
+```
+
+The exact response model value is provider output. Do not infer a snapshot from the requested alias.
+
+## How to read a semantic convention entry
+
+Each operation and attribute in the specification carries two independent classifications: a **requirement level** and a **stability level**. The requirement level tells an instrumentation author when to emit a field. The stability level tells producers and consumers how much change to expect from that field's definition.
+
+Requirement levels describe implementation obligations:
+
+| Requirement level | Meaning |
+|---|---|
+| Required | Emit the field when implementing the convention. |
+| Conditionally required | Emit it when the condition documented by the convention is true. |
+| Recommended | Emit it unless there is a justified reason not to. |
+| Opt-in | Keep it disabled unless the operator explicitly enables collection. |
+
+Stability levels describe schema maturity. A stable field has compatibility guarantees defined by OpenTelemetry. A development or experimental field can still change its name, type, meaning, or requirement level. This is why a field can be both **required** and **development**: it is required in the current version of the convention, but a future convention version may revise it.
+
+The classifications lead to different implementation decisions:
+
+| Attribute | Requirement | Stability | Practical consequence |
+|---|---|---|---|
+| `gen_ai.operation.name` | Required | Development | Emit it on conforming GenAI spans, pin the convention version, and test upgrades for schema changes. |
+| `gen_ai.conversation.id` | Conditionally required | Development | Emit it when the application has a real conversation identifier; do not fabricate one merely to populate the field. |
+| `gen_ai.input.messages` | Opt-in | Development | Leave content capture disabled until privacy, access, and retention controls explicitly allow it. |
+| `error.type` | Conditionally required | Stable | Emit it when the operation fails, using the error classification rules defined by the convention. |
+
+These classifications connect directly to the controls in the rest of the series. Stability determines whether schema pinning and migration are necessary. Requirement level influences instrumentation tests. Opt-in content fields require the capture policy and privacy controls introduced later. None of these labels grants permission to collect sensitive data.
+
+## Pin the schema version
+
+Record the semantic-convention version alongside instrumentation dependencies. A practical manifest can live with deployment configuration:
+
+```yaml
+telemetry_schema:
+  opentelemetry_semconv: "1.42.0"
+  semconv_schema_url: "https://opentelemetry.io/schemas/1.42.0"
+  custom_schema: "support-agent/3"
+```
+
+This manifest is an example project control. It is not an OpenTelemetry configuration format.
+
+Pin SDK and instrumentation packages as well. If one service emits an older name while another emits the latest experimental convention, dashboards can split one signal into two series without obvious errors.
+
+## Treat semantic convention version changes as schema migrations
+
+Updating the semantic convention version can change attribute names, types, requirement levels, span names, and metric definitions. Treat the update as a telemetry schema migration because producers and consumers must change together.
+
+A safe upgrade has four stages:
+
+1. Inventory producers, collector transformations, backend mappings, queries, alerts, and tests.
+2. Emit the new schema in a test environment and compare it with the previous schema.
+3. Update consumers before removing compatibility mappings.
+4. Record the cutover date and schema version in release metadata.
+
+During a transition, the Collector can rename or duplicate attributes, but dual emission should be time-limited. Permanent aliases increase storage and leave teams unsure which field is authoritative.
+
+```yaml
+processors:
+  transform/genai_migration:
+    trace_statements:
+      - context: span
+        statements:
+          - set(attributes["gen_ai.provider.name"], attributes["gen_ai.system"])
+            where attributes["gen_ai.provider.name"] == nil and attributes["gen_ai.system"] != nil
+```
+
+Validate the processor syntax against the deployed Collector version. Collector configuration is versioned software, not static documentation.
+
+## Use a namespace for custom attributes
+
+Standard conventions will not cover every application concept. Custom attributes should have a documented namespace and bounded values:
+
+```txt
+app.agent.workflow.name = "order-support"
+app.agent.workflow.version = "12"
+app.task.type = "order-status"
+app.task.outcome = "resolved"
+app.tool.side_effect = "read"
+app.policy.version = "support-eu-14"
+```
+
+Avoid placing experimental proposals under `gen_ai.*`. That namespace belongs to the specification. A proposal in a GitHub issue is not a released convention.
+
+## Keep provider fields at the boundary
+
+Provider-specific fields are appropriate when they describe behavior that cannot be represented by a common attribute. Keep them on the provider span, not on every application span.
+
+```txt
+gen_ai.provider.name = "openai"
+openai.response.id = "resp_..."
+```
+
+Custom provider fields should follow the current provider-specific convention when one exists. Do not attach request or response bodies merely because the provider SDK exposes them.
+
+## Control attribute types and cardinality
+
+Changing an attribute from integer to string can break queries as effectively as renaming it. Define a local schema registry:
+
+| Attribute | Type | Allowed values | Signal | Owner |
+|---|---|---|---|---|
+| `app.task.type` | string | Controlled catalog | Span, metric | Agent platform |
+| `app.task.outcome` | string | `resolved`, `escalated`, `abandoned`, `failed` | Span, metric | Product team |
+| `app.tool.side_effect` | string | `none`, `read`, `write`, `external_message` | Span | Security |
+| `app.policy.version` | string | Release identifier | Span | Policy team |
+
+Free-form values belong in logs or evaluation records, not metric dimensions.
+
+## Turn the schema registry into contract tests
+
+The local schema registry describes what the application intends to emit. A contract test verifies what the instrumentation actually emits at runtime. This catches changes introduced by SDK upgrades, automatic instrumentation, or refactoring before they silently break Collector transformations, dashboards, and alerts.
+
+Run an instrumented operation with a deterministic fake model client and export its spans to an in-memory exporter. Then inspect the model span before any Collector or backend transformation. The test should verify four parts of the contract:
+
+1. **Identity:** span name, kind, and operation name follow the adopted convention.
+2. **Structure:** the model call has the expected parent or span link.
+3. **Attribute schema:** required attributes exist and their runtime types match the registry.
+4. **Capture policy:** sensitive or deprecated attributes are absent.
+
+```python
+from opentelemetry.trace import SpanKind
+
+
+def test_inference_span_uses_supported_schema(exported_spans, agent_span_id):
+    inference_span = next(
+        span
+        for span in exported_spans
+        if span.attributes.get("gen_ai.operation.name") == "chat"
+    )
+
+    assert inference_span.name == "chat gpt-5.4-mini"
+    assert inference_span.kind == SpanKind.CLIENT
+    assert inference_span.parent.span_id == agent_span_id
+
+    attributes = inference_span.attributes
+    assert attributes["gen_ai.provider.name"] == "openai"
+    assert attributes["gen_ai.request.model"] == "gpt-5.4-mini"
+    assert isinstance(attributes["gen_ai.usage.input_tokens"], int)
+
+    assert "gen_ai.input.messages" not in attributes
+    assert "gen_ai.output.messages" not in attributes
+    assert "gen_ai.system" not in attributes
+```
+
+The last assertion prevents a deprecated attribute from returning during a migration. The content assertions enforce the metadata-only policy even if an instrumentation library enables message capture in a future release.
+
+Snapshot tests can cover the complete attribute set, but first remove trace IDs, span IDs, timestamps, durations, and provider-generated response IDs. Those values change on every execution and would hide meaningful schema changes in snapshot noise. A changed attribute name, type, or presence should require the same review as a database schema change.
+
+## References
+
+- [OpenTelemetry GenAI semantic conventions repository](https://github.com/open-telemetry/semantic-conventions-genai)
+- [OpenTelemetry GenAI schema registry](https://github.com/open-telemetry/semantic-conventions-genai/tree/main/model)
+- [OpenTelemetry attribute requirement levels](https://opentelemetry.io/docs/specs/semconv/general/attribute-requirement-level/)
+- [OpenTelemetry semantic convention version selection](https://opentelemetry.io/docs/specs/semconv/configuration/version-selection/)
+
+---
+
+**Next up**: [Ch 4 - Context Propagation Across Agent Workflows](/observability-ai-agents/ch-04-context-propagation-agent-workflows/) covers threads, async tasks, queues, durable execution, and multi-agent boundaries.
