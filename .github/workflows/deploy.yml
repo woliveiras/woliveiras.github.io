@@ -20,7 +20,7 @@ jobs:
       image: mcr.microsoft.com/playwright:v1.60.0-noble
     steps:
       - name: Checkout your repository using git
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
