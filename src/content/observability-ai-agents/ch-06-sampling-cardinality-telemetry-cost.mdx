@@ -1,0 +1,402 @@
+---
+title: "Sampling, Cardinality, and Telemetry Cost"
+description: "Control trace volume, metric cardinality, and storage cost without discarding the evidence needed for incidents."
+module: 1
+order: 6
+---
+
+## Sampling, cardinality, and telemetry cost
+
+After defining which signals matter, the next production problem is deciding how much telemetry the system can afford to produce, export, store, and query.
+
+This chapter is about preserving investigative value under production constraints. Agent systems produce dense telemetry: one user task can contain model calls, tool executions, retrieval spans, retries, evaluations, queue hops, and workflow transitions. Keeping all of it can cost more than the agent workload. Dropping it blindly creates the opposite failure: the dashboard reports a regression, but no retained trace explains it.
+
+The target state is explicit:
+
+- complete metrics for rates, latency objectives, token usage, and cost;
+- representative traces for normal behavior;
+- higher-retention traces for failures, slow paths, budget stops, and new releases;
+- dedicated audit or security records for events that must never depend on probability;
+- bounded metric attributes that do not create unplanned time-series growth.
+
+This chapter separates three controls that are often treated as one:
+
+- **Trace sampling** decides which traces are recorded or exported.
+- **Metric aggregation and attribute filtering** decide how measurements become time series.
+- **Log filtering, rate limiting, and retention** control diagnostic records.
+
+These controls have different failure modes. A 10% trace sample does not reduce metric cardinality, and removing a metric label does not reduce the number of spans in a trace.
+
+By the end of the chapter, the telemetry design should have five decisions documented:
+
+1. Which rates come from complete metrics and which investigations use sampled traces.
+2. Which trace cohorts are retained at high, low, or temporary rates.
+3. Which metric attributes are allowed, forbidden, or release-controlled.
+4. What cardinality and ingest budgets each metric, trace, exporter, Collector, and backend must stay within.
+5. Where dropped, refused, truncated, overflowed, delayed, and retried telemetry becomes visible.
+
+## Define the evidence that must survive
+
+Start with the investigations from Chapter 5. For each one, decide whether it needs complete measurements, representative traces, or rare-event retention.
+
+| Operational need | Signal to retain | Appropriate control |
+|---|---|---|
+| Calculate task error and latency rates | Metrics from all eligible operations or terminal tasks. | Aggregate all measurements over bounded attributes. |
+| Explain a typical successful task | A representative set of successful traces. | Consistent probabilistic trace sampling. |
+| Investigate failures and budget stops | Traces containing the terminal condition. | Tail policy, or explicit event export when losing one is unacceptable. |
+| Compare a new workflow release | Traces and metrics identified by a bounded release version. | Temporarily increase trace retention for that cohort. |
+| Audit security decisions | Dedicated audit records with defined delivery and retention guarantees. | Do not rely on ordinary probabilistic trace sampling. |
+
+Sampling is not a privacy control. A retained trace can still contain sensitive data, and a dropped span can still pass through application memory, a local exporter, or a Collector before the decision. Apply the capture policy from Chapter 7 before telemetry crosses a trust boundary.
+
+## Understand the three SDK sampling decisions
+
+An OpenTelemetry sampler can return one of three decisions for a span:
+
+| Decision | Span recorded locally? | Span exported? | Sampled flag set? |
+|---|---:|---:|---:|
+| `DROP` | No | No | No |
+| `RECORD_ONLY` | Yes | No | No |
+| `RECORD_AND_SAMPLE` | Yes | Yes | Yes |
+
+In normal SDK pipelines, only `RECORD_AND_SAMPLE` spans reach an exporter. The sampled flag is propagated in trace context so parent-based samplers can make consistent decisions across services. Chapter 4 explains that propagation behavior.
+
+This distinction matters for tail sampling: a Collector can evaluate only the spans it receives. It cannot recover spans assigned `DROP` or `RECORD_ONLY` by an upstream SDK.
+
+## Head sampling decides before the outcome exists
+
+Head sampling runs when a span starts. A parent-based, trace-ID-ratio sampler is a common default for distributed services:
+
+```python
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.sampling import ParentBased, TraceIdRatioBased
+
+provider = TracerProvider(
+    sampler=ParentBased(root=TraceIdRatioBased(0.10)),
+)
+```
+
+For root spans, this configuration makes a deterministic decision from the trace ID and a 10% target probability. Child spans inherit the parent decision. The result is approximately 10% of traces, not exactly 10% of every tenant, workflow, minute, or error category.
+
+Head sampling has low state and makes the decision before most span work occurs. It is appropriate when a representative baseline is enough and the telemetry pipeline cannot ingest every trace.
+
+Its limitation is structural. At trace start, the sampler does not know whether the agent will fail, loop, exceed its latency objective, exhaust its token budget, or receive negative feedback. A policy that drops 90% at the SDK cannot later guarantee retention of every error in a Collector.
+
+## Tail sampling decides from accumulated spans
+
+Tail sampling buffers spans by trace ID and evaluates the accumulated trace after a decision window or another configured trigger. It can retain a trace because any observed span has an error, because end-to-end latency crosses a threshold, or because a bounded attribute identifies a high-risk workflow.
+
+```yaml
+processors:
+  tail_sampling:
+    decision_wait: 30s
+    num_traces: 50000
+    policies:
+      - name: errors
+        type: status_code
+        status_code:
+          status_codes: [ERROR]
+      - name: slow-agent-tasks
+        type: latency
+        latency:
+          threshold_ms: 15000
+      - name: baseline
+        type: probabilistic
+        probabilistic:
+          sampling_percentage: 10
+```
+
+This example retains an observed trace when at least one configured policy selects it. The exact policy behavior and configuration fields depend on the Collector component version, so pin the Collector release and test the resulting decisions before deployment.
+
+### Route one trace to one decision point
+
+A stateful tail sampler needs all relevant spans for a trace. If a load balancer sends spans from the same trace to independent Collector instances, each instance sees an incomplete trace and can make a different decision.
+
+Use trace-ID-aware routing before the tail-sampling tier. Scaling that tier requires both consistent routing and a plan for instance replacement, because the in-flight trace state is local unless a supported storage configuration says otherwise.
+
+### Size the decision window for agent duration
+
+`decision_wait` is not a generic timeout. It defines how long the sampler waits for evidence before deciding. A 30-second window is insufficient for a workflow that pauses for approval or runs a background tool for two minutes.
+
+Estimate the minimum number of in-flight traces:
+
+```txt
+active trace state
+≈ peak incoming traces per second × decision window in seconds
+```
+
+Then measure the actual bytes retained per trace. Span count, attributes, events, links, and payload size all affect memory. `num_traces` must cover the expected concurrent trace population with headroom; it is not a daily retention setting.
+
+Long-lived workflows may need the segmented-trace model from Chapter 4 instead of one tail-sampling window spanning the entire business task.
+
+### Account for late and missing spans
+
+A span arriving after the decision may not influence that decision. Depending on decision-cache configuration and eviction, late spans can inherit an earlier decision or be evaluated as a new fragment. Monitor the tail sampler's late-span and dropped-trace telemetry rather than assuming the trace is complete.
+
+Also distinguish a late span from a span that never arrived. SDK drops, exporter queue overflow, Collector refusal, network loss, and process termination all create incomplete traces before the sampler evaluates them.
+
+## Combine head and tail sampling deliberately
+
+There are two valid architectures with different guarantees:
+
+```txt
+complete input to tail sampler
+
+SDK records and exports all traces
+    -> Collector tail policies
+    -> backend
+```
+
+This architecture lets tail policies inspect all traces that reach the Collector. It costs more network, Collector CPU, and buffer memory, but it can retain observed errors and slow traces based on their final data.
+
+```txt
+head reduction before tail sampler
+
+SDK keeps a probabilistic subset
+    -> Collector tail policies over that subset
+    -> backend
+```
+
+This architecture protects the pipeline earlier. It also means the tail sampler never sees most traces, including failures that occurred in the dropped population. Use it only when that loss is accepted and rates still come from unsampled metrics or another complete signal.
+
+A practical retention policy for the traces that reach the tail sampler is:
+
+| Trace cohort | Retention posture |
+|---|---|
+| Errors, policy blocks, and budget stops | Retain at a high rate, subject to content controls. |
+| New workflow, prompt, model, or policy versions | Temporarily elevate retention. |
+| High-risk task types | Use an explicit risk-based rate. |
+| Routine successful traffic | Keep a consistent probabilistic baseline. |
+
+Do not use ordinary trace sampling as the sole record for rare security or compliance events. Emit a dedicated, governed audit signal when every event must be accounted for.
+
+## Sampling changes what can be inferred
+
+A retained trace population is not automatically representative of production traffic. Tail policies intentionally over-represent errors and slow requests. A global head-sampling probability can leave a low-volume workflow with no traces during a reporting window.
+
+Keep two questions separate:
+
+```txt
+How often does the failure occur?
+    -> calculate from complete metric measurements
+
+What does the failure look like?
+    -> inspect retained traces selected for diagnosis
+```
+
+Do not calculate fleet error rate by dividing failed retained traces by all retained traces when failures have a higher retention probability. The result describes the sampling policy, not the service.
+
+Statistical analysis over sampled traces requires the inclusion probability for each observation. If one cohort is retained at 100% and another at 10%, unweighted counts cannot estimate their production proportions. Record the sampling policy version and probability where the analysis pipeline can use them. Outcome-based tail policies can require more than simple inverse-probability weighting because selection depends on the observed result.
+
+## Metric cardinality is the number of attribute sets
+
+For one metric stream, cardinality is the number of distinct attribute combinations collected during an interval. Each combination can become a separate time series in the backend.
+
+Suppose a duration histogram uses these attributes:
+
+```txt
+10 workflow names
+× 8 model names
+× 20 tool names
+× 4 environments
+× 5 outcome values
+= 32,000 possible attribute sets
+```
+
+This is an upper bound, not a guarantee that every combination occurs. Resource attributes, instrumentation scope, metric name, and backend-specific labels can create additional series separation. Histograms also store multiple bucket counts per attribute set, so one series identity can consume more than one stored value per collection interval.
+
+### Classify dimensions before using them
+
+Treat every metric attribute as a schema decision, not as a convenient place to copy span metadata. The attribute must help answer an aggregate question and must have a bounded value set over the metric retention window.
+
+Earlier chapters introduced these fields in different contexts. Chapter 2 separates traces, spans, conversations, tasks, and metrics. Chapter 3 defines schema ownership and cardinality rules. Chapter 5 chooses the representation for each operational signal. Chapters 7 and 8 handle content, tenant, and privacy boundaries. Here those ideas collapse into one metric-specific rule: only bounded, decision-useful dimensions belong on metrics.
+
+This table is the review we apply before allowing a field on a metric:
+
+| Dimension class | Examples | Metric decision |
+|---|---|---|
+| Fixed catalog | Environment, operation name, token type. | Usually safe. |
+| Release-controlled catalog | Workflow version, model deployment, policy version. | Use with lifecycle and retention controls. |
+| Customer-dependent catalog | Tenant, account, workspace. | Exclude by default; use a bounded tier or separate analysis store. |
+| Execution identifier | Trace, span, request, response, conversation, task, tool-call ID. | Never use as a metric attribute. |
+| Free-form or model-generated value | Prompt, URL parameters, exception message, tool arguments, generated category. | Never use as a metric attribute. Normalize to a bounded catalog first. |
+
+Model names deserve review rather than automatic approval. A fixed deployment catalog is bounded. A provider-returned model snapshot, fine-tune identifier, or user-selected model string can grow without an operational owner noticing.
+
+### Enforce the metric schema
+
+OpenTelemetry SDKs can use Views to retain only approved attributes and choose aggregation behavior. Enforce the same contract in the Collector or backend when telemetry arrives from SDKs outside the team's control.
+
+The Metrics SDK specification defines a configurable cardinality limit and an overflow attribute set identified by `otel.metric.overflow=true`. A limit protects memory; it does not repair a poor schema. When overflow appears, distinct cohorts have already been merged and per-dimension analysis has been lost.
+
+For each production metric, document:
+
+```yaml
+metric: gen_ai.client.operation.duration
+unit: s
+allowed_attributes:
+  - gen_ai.operation.name
+  - gen_ai.provider.name
+  - gen_ai.request.model
+  - error.type
+maximum_expected_cardinality: 120
+owner: agent-platform
+overflow_response: inspect newly observed attribute values and schema changes
+```
+
+Treat a sustained increase in active series or `otel.metric.overflow` as a telemetry incident.
+
+## Choose histogram boundaries from decisions
+
+Latency, token usage, and cost are distributions. Averages hide a small population of very expensive or slow agent runs. Histograms preserve a usable distribution for percentiles and service objectives.
+
+Choose explicit histogram boundaries around operational decisions. A boundary is useful when crossing it changes how the team interprets the system or responds to it.
+
+For a workflow with a 15-second latency objective, useful boundaries might be:
+
+```txt
+workflow duration buckets, seconds
+[0.5, 1, 2, 5, 10, 15, 30, 60, 120]
+```
+
+These buckets separate fast cache-like executions, normal multi-step runs, executions close to the objective, failures of the objective, and severe overruns. A task that takes 18 seconds is not just "slow"; it crossed the stated objective. A task that takes 90 seconds belongs in a different investigation path, usually loops, blocked tools, retries, or stalled workers.
+
+Do not copy those boundaries to time-to-first-token or time-to-first-chunk metrics. Their useful scale is different:
+
+```txt
+time to first chunk buckets, seconds
+[0.1, 0.25, 0.5, 1, 2, 5, 10]
+```
+
+A 2-second time to first chunk can already feel slow in an interactive UI, while a 2-second end-to-end workflow may be excellent. The same number means different things at different measurement boundaries.
+
+Token usage needs another shape. A chat model call might use these buckets:
+
+```txt
+token usage buckets, tokens
+[128, 256, 512, 1000, 2000, 4000, 8000, 16000, 32000]
+```
+
+Those boundaries help distinguish ordinary short interactions from context-heavy calls, near-window pressure, and runaway prompt construction. If the application uses models with very different context windows, use model-family or deployment-specific analysis rather than one set of buckets that hides the smaller model's risk.
+
+Cost per task also needs boundaries tied to decisions:
+
+```txt
+task cost buckets, USD
+[0.001, 0.005, 0.01, 0.05, 0.10, 0.25, 0.50, 1.00, 5.00]
+```
+
+The exact numbers depend on the product and price catalog. The useful part is not the sample values; it is the shape. There should be buckets around the expected cost, the alert threshold, the per-task budget, and the range where an execution becomes economically unacceptable.
+
+Use one canonical unit from the semantic convention, such as seconds for GenAI duration metrics. Mixing milliseconds and seconds under similar names produces plausible but incorrect dashboards.
+
+Explicit bucket histograms require compatible boundaries when streams are aggregated across instances. If one service instance exports workflow duration with `[1, 5, 10, 15, 30]` and another exports the same metric with `[0.5, 2, 8, 20, 60]`, the backend cannot safely merge them as one coherent distribution. Keep the bucket configuration part of the metric schema.
+
+Exponential histograms can cover a wide value range with controlled relative error. They are useful when the measurement naturally spans several orders of magnitude, such as task cost or retrieval result count. Backend and exporter support still need to be verified before relying on them for SLOs or alerts.
+
+Record any change to aggregation, bucket boundaries, or temporality as a metric-schema change. A dashboard comparing P95 before and after a bucket change may be comparing two different measurements.
+
+## Exemplars connect an aggregate to one execution
+
+An exemplar attaches a representative measurement to trace context without adding a trace ID as a metric attribute. An operator can move from a high-latency histogram bucket to a trace that contributed to it.
+
+The default trace-based exemplar filter makes measurements eligible when they are recorded in the context of a sampled span. This creates two consequences:
+
+1. Head sampling affects which measurements can carry exemplars.
+2. A downstream tail sampler can drop the referenced trace after the SDK records the exemplar.
+
+Verify exemplar export, backend ingestion, retention, and trace links end to end. An exemplar pointing to an unavailable trace is not an investigation path.
+
+## Build a telemetry cost model
+
+Backend invoices are only one part of telemetry cost. Include application overhead, network transfer, Collector capacity, storage, indexing, query cost, and engineering time spent operating the pipeline.
+
+Start with measurable volume equations:
+
+```txt
+trace ingest bytes per day
+≈ traces per day
+× retained fraction before the backend
+× average spans per retained trace
+× average serialized bytes per span
+
+metric points per day
+≈ active attribute sets
+× points exported per interval
+× collection intervals per day
+
+log ingest bytes per day
+≈ accepted log records per day
+× average serialized bytes per record
+```
+
+Compression and backend encoding change stored bytes, so measure payloads at the SDK, Collector receiver, Collector exporter, and backend rather than trusting one estimate.
+
+Agent-specific cost drivers include repeated model-call events, tool arguments and results, retrieved documents, streaming-chunk events, large exception messages, and duplicated spans from overlapping instrumentations. Content controls belong in Chapter 7, but their byte cost belongs in this budget.
+
+## Set budgets at each layer
+
+A useful budget has a limit, measurement point, owner, and response:
+
+| Layer | Budget examples | Response when exceeded |
+|---|---|---|
+| Span | Attribute count and value length; event and link count. | Drop or truncate according to a documented priority and record the loss. |
+| Trace | Spans, events, and serialized bytes per trace. | Inspect loops, duplicate instrumentation, and payload capture. |
+| SDK exporter | Queue utilization, dropped telemetry, export latency. | Reduce generation or increase local capacity. |
+| Collector | Receiver refusal, memory use, tail-sampler state, processor drops. | Scale, shed lower-value data, or revise policies. |
+| Backend | Ingest bytes, active series, indexed fields, retention days. | Change schema, aggregation, sampling, or retention. |
+
+Truncation must be observable. A trace with silently discarded tool results or events looks complete even when evidence is missing. Use SDK and Collector self-telemetry plus a bounded project indicator when application instrumentation intentionally truncates data.
+
+## Protect the Collector without hiding loss
+
+Processor order changes both resource use and semantics. A common traces pipeline places the memory limiter early, performs normalization and filtering before stateful sampling where possible, tail-samples before batching, and batches near the exporter:
+
+```yaml
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors:
+        - memory_limiter
+        - resource
+        - filter
+        - tail_sampling
+        - batch
+      exporters: [otlp]
+```
+
+This is a topology, not a copy-paste production configuration. Filters before tail sampling remove data that policies might need. Stateful processors increase memory pressure. Batch placement affects the units queued by exporters. Validate the exact component versions and configuration used by the deployed Collector distribution.
+
+Exporter sending queues and retries absorb short backend outages. Persistent queue storage can survive a Collector restart, but it still has finite capacity and retention. Monitor queue size, capacity, failed sends, retries, refused data, processor drops, and persistent-storage errors. “The backend was unavailable” is not enough to explain which telemetry was lost.
+
+## A production review checklist
+
+Before enabling a sampling or cardinality policy, answer these questions:
+
+1. Which rates come from complete metrics, and which analyses use sampled traces?
+2. Can any SDK drop a span before the tail sampler sees it?
+3. Are all spans for one trace routed to the same stateful decision point?
+4. Does the decision window cover the measured trace-duration distribution?
+5. What happens to late spans and in-flight state during a Collector restart?
+6. What is the maximum expected cardinality of every metric?
+7. Which Views or processors enforce the allowed attribute set?
+8. Can an exemplar open a retained trace in the backend?
+9. Where are dropped, refused, truncated, overflowed, and retried telemetry reported?
+10. Which owner responds when the telemetry budget is exceeded?
+
+Chapter 18 tests these properties under malformed telemetry, sustained load, late spans, and backend outages. Chapter 19 turns the pipeline's self-telemetry into operational dashboards and alerts.
+
+## References
+
+- [OpenTelemetry sampling](https://opentelemetry.io/docs/concepts/sampling/)
+- [OpenTelemetry trace SDK sampling decisions](https://opentelemetry.io/docs/specs/otel/trace/sdk/#sampling)
+- [OpenTelemetry Metrics SDK cardinality limits and exemplars](https://opentelemetry.io/docs/specs/otel/metrics/sdk/)
+- [OpenTelemetry Collector processors](https://opentelemetry.io/docs/collector/components/processor/)
+- [OpenTelemetry Collector tail sampling processor](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/processor/tailsamplingprocessor)
+- [OpenTelemetry Collector resiliency](https://opentelemetry.io/docs/collector/resiliency/)
+- [Langfuse sampling](https://langfuse.com/docs/observability/features/sampling)
+
+---
+
+**Next up**: [Ch 7 - Content Capture as a Data-Governance Decision](/observability-ai-agents/ch-07-content-capture-data-governance/) defines when prompts, outputs, tool payloads, and retrieved content may enter telemetry.
