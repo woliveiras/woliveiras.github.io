@@ -5,7 +5,7 @@ module: 0
 order: 4
 ---
 
-## Context propagation across agent workflows
+# Context Propagation Across Agent Workflows
 
 An agent trace becomes fragmented when execution crosses a boundary without carrying its trace context. The model call still appears in the backend, as do the tool call and background worker, but they look like unrelated operations. Latency moves to disconnected root spans, errors lose the request that caused them, and a trace no longer explains the execution.
 

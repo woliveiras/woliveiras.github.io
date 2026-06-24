@@ -5,7 +5,7 @@ module: 0
 order: 3
 ---
 
-## Semantic Conventions and Schema Governance
+# Semantic Conventions and Schema Governance
 
 OpenTelemetry defines the data model for signals such as traces, metrics, and logs, but that model alone does not prescribe how every operation should be represented. Without an additional contract, three instrumentations could describe the same model request using `model`, `llm.model_name`, or `gen_ai.request.model`. All three attributes would be valid OpenTelemetry data, but a shared dashboard could not query them consistently.
 
