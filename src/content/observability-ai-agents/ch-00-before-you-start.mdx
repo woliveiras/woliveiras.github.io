@@ -36,6 +36,8 @@ OpenTelemetry terminology is introduced as it is used. Prior experience with an 
 
 OpenAI is the provider used by the runnable example, not a requirement of the observability model. Provider-specific fields stay at the integration boundary. Application spans and custom attributes remain provider-neutral where a stable convention exists.
 
+The local Langfuse and Docker Compose setup exists so the examples can be run without creating an external account or paying for an observability backend. Treat it as a learning environment. Running an observability backend in production is a separate platform decision that needs availability, backup, upgrade, security, retention, and access-control planning.
+
 ## Required tools
 
 Confirm the local toolchain before the implementation module:
