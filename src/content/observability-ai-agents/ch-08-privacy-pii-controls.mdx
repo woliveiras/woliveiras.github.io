@@ -1,0 +1,293 @@
+---
+title: "Privacy and PII Controls"
+description: "Threat-model personal data in agent telemetry and implement layered collection, redaction, access, and retention controls."
+module: 1
+order: 8
+---
+
+# Privacy and PII Controls on Agentic Systems
+
+Privacy controls for agent telemetry fail when they are treated as one regex before export. Agent traces combine user text, retrieved documents, tool payloads, model output, memory, identifiers, exception messages, and evaluation data. The same personal data can appear in several of those places during one task.
+
+This chapter turns the governance rules from Chapter 7 into enforceable privacy controls. The goal is not to prove legal compliance in a blog post. The goal is to give engineers a concrete design: where sensitive data can enter telemetry, which fields are allowed, where detection runs, how values are transformed, who can read the result, how long copies live, and how the pipeline proves that controls still work.
+
+The default posture is simple: prevent sensitive data from entering telemetry when the operational question can be answered with metadata, bounded categories, or secure references. Redaction is a fallback control, not permission to capture everything first.
+
+## Map data flows to enforcement points
+
+The map exists to place controls before data crosses a boundary. If a customer email leaves the application process inside a span attribute, a later Collector redaction rule may reduce backend exposure, but it did not prevent the data from entering the telemetry pipeline.
+
+For each source, identify five things:
+
+1. Which sensitive data can appear.
+2. Which instrumentation path can capture it.
+3. Which signal receives it: span, log, metric, event, evaluation record, dataset, or backend attachment.
+4. Which boundary it crosses first: process, network, tenant, region, vendor, or human access boundary.
+5. Which control runs before that boundary.
+
+| Source | Sensitive data that can appear | Common leak | Earliest useful control |
+|---|---|---|---|
+| User input | Names, contact details, account data, health or financial information. | Prompt or root-span input captured automatically. | Do not emit input content; capture length, channel, language, and approved categories. |
+| Model output | Repeated input data, inferred data, hallucinated personal data, generated summaries. | Completion stored for debugging or evaluation. | Disable output capture by default; store only evaluation labels or restricted references. |
+| Tool arguments | Email, order number, address, authorization token, account ID. | Decorator records function parameters. | Project allowlisted fields before span creation. |
+| Tool results | Customer records, tickets, internal notes, access decisions. | Return value attached to the tool span. | Emit result count, status, payload size, and bounded domain outcome. |
+| Retrieval | Query text, document text, private knowledge, source permissions. | Retrieved chunks exported to traces or logs. | Emit opaque document IDs, score buckets, index version, and authorization result. |
+| Memory | Long-term preferences, previous conversations, profile facts. | Memory reads treated as harmless context. | Record memory operation type, item count, and policy decision, not the value. |
+| Errors | URLs, headers, payload fragments, file paths, SQL parameters, provider responses. | Exception message recorded without sanitization. | Replace raw messages with `error.type`, sanitized code, and dependency name. |
+| Metadata | IP address, tenant, user ID, filename, document ID, conversation ID. | Added to every span, log, or metric label. | Classify identifiers; never use personal or high-cardinality identifiers as metric dimensions. |
+| Evaluation | Judge input, reference answer, reviewer note, failed production example. | Trace copied into a dataset with weaker access rules. | Carry lineage, purpose, dataset version, and restricted content references. |
+
+The output is a control table, not a diagram for its own sake:
+
+| Data path | Before boundary | Control |
+|---|---|---|
+| Tool wrapper -> span attributes -> OTLP exporter | Application process. | Allowlist projection and schema validation. |
+| Exception -> application log -> log collector | Logger call. | Sanitizing exception formatter. |
+| Retrieval result -> debug log -> backend search index | Retrieval instrumentation. | Disable chunk logging; emit document references only. |
+| Production trace -> evaluation dataset | Dataset export job. | Purpose check, restricted destination, lineage, retention rule. |
+
+If the first enforceable control is after the first unauthorized boundary, the design is wrong for that data class.
+
+## Layer 1: collect from an allowlist
+
+Collection control is stronger than cleanup. Start from no exported content, then add fields that have a purpose, classification, destination, retention rule, and owner.
+
+For tool spans, avoid generic decorators that capture every argument and return value. Wrap the tool with a projection step:
+
+```python
+SAFE_TOOL_ATTRIBUTES = {
+    "tool_name",
+    "schema_version",
+    "validation_result",
+    "result_count",
+    "error_category",
+}
+
+def safe_tool_attributes(values: dict[str, object]) -> dict[str, object]:
+    return {key: values[key] for key in SAFE_TOOL_ATTRIBUTES if key in values}
+```
+
+The projection should happen before span attributes are set. A later Collector rule cannot undo exposure to SDK processors, exporter queues, sidecars, local debug exporters, or crash dumps.
+
+Treat allowlist changes as data-governance changes. A new field such as `customer_segment` may look harmless until it allows a dashboard user to isolate one high-value account. A new field such as `document_id` may be safe in one index and sensitive in another if the identifier encodes customer or file information.
+
+## Layer 2: detect secrets and personal data as a backstop
+
+Detection catches mistakes. It should not be the primary permission model.
+
+Run detection on every content-bearing path that remains after collection control:
+
+- span attributes and span events;
+- correlated logs;
+- tool arguments and results that pass through approved redaction;
+- retrieval query text when capture is explicitly allowed;
+- model input and output in approved debug modes;
+- evaluation exports and dataset creation jobs;
+- exception formatting and HTTP client logs.
+
+Different detectors catch different classes of failure:
+
+| Detector | Good at | Weak at | Production use |
+|---|---|---|---|
+| Exact secret patterns | API keys, tokens, private keys, known credential formats. | Unknown provider formats and transformed secrets. | Block or replace immediately. |
+| Regular expressions | Emails, phone numbers, postal codes, structured IDs. | Locale variation, false positives, domain-specific identifiers. | Use with tests and reviewed patterns. |
+| Checksum or validator rules | Credit cards, national IDs with known validation rules. | Values without validation structure. | Block restricted values before export. |
+| Named-entity recognition | Names, locations, organizations in free text. | Latency, false positives, domain gaps, multilingual drift. | Use for approved free-text paths, not as sole defense. |
+| Domain dictionaries | Product IDs, internal account formats, sensitive project names. | Maintenance and stale patterns. | Own with the domain team. |
+| Canary values | Known fake secrets or fake people placed in test traffic. | Only detects configured canaries. | Use for verification and storage scans. |
+
+Record detector metadata, not the detected value:
+
+```txt
+app.telemetry.privacy.detector.version = "pii-policy-2026-06-25"
+app.telemetry.privacy.detected_types = ["email", "order_id"]
+app.telemetry.privacy.action = "redacted"
+```
+
+Keep `detected_types` bounded. Do not emit the matched string, free-form detector explanation, confidence trace, or surrounding text.
+
+## Layer 3: transform values according to the investigation need
+
+Transformation should preserve only the evidence needed for the operational question. Choose the weakest useful form.
+
+| Need | Transformation | Example |
+|---|---|---|
+| The value is not needed. | Delete it. | Drop `customer_email` from tool arguments. |
+| The shape matters, not the value. | Replace with a marker. | `Contact [EMAIL] about order [ORDER_ID]`. |
+| A category is enough. | Generalize. | Exact age to `age_band=30-39`; exact cost to `cost_bucket=0.10-0.25`. |
+| Debugging needs a stable reference. | Store an opaque reference. | `content_ref=cr_7f3...` resolved only by an authorized service. |
+| Correlation is approved without re-identification. | Use a keyed pseudonym. | `user_pseudonym=hmac_sha256(k, user_id)`. |
+| Re-identification is approved for a narrow workflow. | Tokenize through a controlled vault. | Support case can resolve token under logged approval. |
+
+Plain unsalted hashes are rarely sufficient for personal identifiers. Emails, phone numbers, order numbers, and short account IDs are guessable. Stable hashes also link the same person across traces, datasets, and exports. Keyed pseudonyms reduce guessing risk, but they are still linkable data and require key custody, rotation, deletion behavior, and access control.
+
+Redaction must be structurally safe. Cutting a JSON string at an arbitrary character limit can create invalid or misleading payloads. Redact parsed objects when possible, then validate the transformed output before export.
+
+```python
+def redact_order_tool_args(args: dict[str, object]) -> dict[str, object]:
+    return {
+        "schema_version": args.get("schema_version"),
+        "has_order_reference": "order_reference" in args,
+        "has_email": "email" in args,
+        "field_count": len(args),
+    }
+```
+
+The replacement says enough for debugging schema and routing behavior without copying the identifiers.
+
+## Layer 4: isolate tenants, environments, and access paths
+
+Privacy controls fail if metadata-only users can query content-bearing traces or if development users can search production telemetry.
+
+Use separate access boundaries for:
+
+- production and non-production environments;
+- metadata-only traces and content-bearing traces;
+- tenant-scoped support access and fleet-wide operations access;
+- human UI reads and service-account API reads;
+- trace inspection and dataset creation;
+- ordinary debugging and elevated incident access;
+- backend operators and product engineers.
+
+Tenant isolation needs enforcement in the backend and in the query path. A UI filter is not a security boundary if the API key can query all tenants. Dataset exports need the same tenant checks as trace reads because a dataset can become a second copy of production content.
+
+Audit these actions:
+
+- content read;
+- bulk export;
+- secure-reference resolution;
+- dataset creation;
+- score or annotation creation;
+- policy change;
+- access-role change;
+- deletion or retention override.
+
+Access logs must not copy the protected content themselves. Store who acted, on which object or reference, for which purpose, from which role, and with which policy version.
+
+## Layer 5: set retention by class and copy
+
+Retention starts when the first copy is created, not when a trace appears in the UI. SDK queues, Collector queues, retry buffers, backend indexes, object storage, datasets, exports, screenshots, and incident attachments can all become copies.
+
+Use retention classes instead of one project-wide number:
+
+| Class | Example | Policy shape |
+|---|---|---|
+| Aggregate metrics | Error rate, latency histogram, token usage histogram. | Retain for trend and SLO windows when dimensions are safe. |
+| Metadata-only traces | Task outcome, model name, tool names, bounded error category. | Retain for the incident investigation window. |
+| Redacted content | Redacted prompt shape, field-presence bitmap, sanitized exception. | Short, purpose-bound retention with restricted access. |
+| Secure references | Opaque pointer to content in a restricted store. | Expire reference and referenced object according to the approved purpose. |
+| Raw authorized content | Time-limited debug capture under approval. | Exceptional retention with owner, expiry, access log, and deletion verification. |
+| Evaluation dataset | Versioned examples derived from traces. | Retain according to dataset purpose and lineage to source consent or policy. |
+| Incident evidence | Case material under security or legal process. | Case-specific hold and release process. |
+
+“Short” is not a policy. State the duration, start timestamp, deletion mechanism, backup behavior, owner, and verification method.
+
+For example:
+
+```yaml
+class: raw_authorized_debug_content
+purpose: diagnose schema validation failures in order-status workflow
+retention: 7 days
+starts_at: content_capture_time
+destinations:
+  - restricted-debug-store
+  - access-log
+delete:
+  primary_store: automatic expiry job
+  backups: expire according to backup lifecycle
+owner: support-agent-platform
+verification: daily deletion report plus monthly restore-path check
+```
+
+If the data is copied into an evaluation dataset, the dataset needs its own retention rule and lineage back to the source decision.
+
+## Layer 6: verify controls continuously
+
+Privacy controls are code and configuration. They need tests.
+
+Use verification at several levels:
+
+| Test level | What it proves |
+|---|---|
+| Unit test | Projection functions do not emit forbidden fields. |
+| Instrumentation test | Spans, logs, and metrics exported by one operation match the approved schema. |
+| Collector test | Processors reject, transform, or route content according to policy. |
+| Storage scan | Forbidden patterns and canary values are absent from backend storage. |
+| Access test | A role can read only the allowed tenant, environment, and content class. |
+| Deletion drill | Expired content disappears from primary storage and downstream copies as designed. |
+| Incident exercise | The team can investigate telemetry exposure without spreading the data further. |
+
+Canaries should be fictional and clearly synthetic:
+
+```txt
+person: Test Persona 742
+email: privacy-canary-742@example.invalid
+token: sk_test_privacy_canary_do_not_use_742
+order: ORDER-CANARY-742
+```
+
+Do not use real employee, customer, or production-like credentials as canaries. Synthetic values should be impossible to confuse with real people and safe to publish in test code.
+
+Storage scans should include traces, logs, metrics labels, backend search indexes, object storage, datasets, exports, and screenshots used in incident records. A clean trace store does not prove that logs or datasets are clean.
+
+## Pseudonymization is not anonymization
+
+Pseudonymous data can still be personal data when it can be linked back to an individual. Stable user hashes, conversation identifiers, device IDs, and document identifiers allow correlation across time even when the original value is hidden.
+
+True anonymization is a much higher bar. It depends on the complete dataset, external data that could be joined to it, the rarity of combinations, and the risk of re-identification. Replacing `user_id` with `hash(user_id)` does not anonymize telemetry.
+
+Use these terms precisely:
+
+| Term | Meaning in telemetry | Practical consequence |
+|---|---|---|
+| Redaction | Removes or masks part of a value. | Useful for display and export, but errors can leave fragments. |
+| Tokenization | Replaces a value with a token resolved by a controlled service. | Allows authorized re-identification; requires vault governance. |
+| Pseudonymization | Replaces direct identifiers while preserving linkage. | Still needs privacy controls because linkage remains. |
+| Aggregation | Combines many records into a summary. | Safer when groups are large enough and dimensions are bounded. |
+| Anonymization | Removes reasonable re-identification paths. | Hard to claim for rich agent telemetry. |
+
+## Record control outcomes on the trace
+
+Operators need to know which privacy controls ran. They do not need the removed values.
+
+Record bounded control attributes:
+
+```txt
+app.telemetry.content_mode = "redacted"
+app.telemetry.policy.version = "privacy-policy-2026-06-25"
+app.telemetry.privacy.action = "redacted"
+app.telemetry.privacy.detected_types = ["email", "order_id"]
+app.telemetry.privacy.detector.version = "pii-detectors-14"
+app.telemetry.privacy.enforcement_point = "tool_wrapper"
+```
+
+Do not record free-form detector explanations, raw matches, approval comments, or user-provided text in these attributes. If a field can become a metric dimension, its value set must be bounded as described in Chapter 6.
+
+## A production privacy checklist
+
+Before enabling content-bearing telemetry in production, answer these questions:
+
+1. Which data sources can carry personal, confidential, regulated, or secret data?
+2. Where is the first trust boundary for each source?
+3. Which fields are collected by allowlist before that boundary?
+4. Which detectors run on the remaining content-bearing paths?
+5. What transformation is used for each approved purpose?
+6. Which roles can read metadata, redacted content, raw content, secure references, datasets, and exports?
+7. How are tenant, region, and environment boundaries enforced in the backend and API?
+8. How long does each copy live, including queues, indexes, object storage, datasets, exports, and backups?
+9. Which tests prove that forbidden values do not reach spans, logs, metrics, or datasets?
+10. Who owns policy changes, detector updates, deletion failures, and privacy incidents?
+
+If one answer is missing, keep telemetry metadata-only for that data class. Missing content can make an investigation slower. Uncontrolled content capture creates a second data system that the team cannot safely operate.
+
+## References
+
+- [OpenTelemetry handling sensitive data](https://opentelemetry.io/docs/security/handling-sensitive-data/)
+- [OWASP Logging Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html)
+- [NIST Privacy Framework](https://www.nist.gov/privacy-framework)
+- [Microsoft Presidio](https://microsoft.github.io/presidio/)
+- [Langfuse data masking](https://langfuse.com/self-hosting/security/data-masking)
+
+---
+
+**Next up**: [Ch 9 - Evaluation as an Observability Signal](/observability-ai-agents/ch-09-evaluation-observability-signal/) connects online monitoring, offline experiments, human review, and release gates.
