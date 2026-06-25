@@ -322,7 +322,7 @@ For production, replace local `.env` with the platform secret store, use TLS, re
 | Trace appears without resource fields | SDK provider was not configured before span creation. | Ensure `configure_tracing()` runs at process startup. |
 | Trace contains raw content | Instrumentation captured too much. | Keep `CAPTURE_CONTENT=false` and inspect span attributes. |
 
-## What should exist before Chapter 14
+## What should exist before we go to Chapter 14
 
 Before adding model-call instrumentation, the project should have:
 
