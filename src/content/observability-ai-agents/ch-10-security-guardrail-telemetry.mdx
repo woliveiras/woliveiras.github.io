@@ -1,0 +1,439 @@
+---
+title: "Security and Guardrail Telemetry"
+description: "Observe prompt injection defenses, tool authorization, approvals, data-flow controls, policy decisions, and agent-specific threats."
+module: 2
+order: 10
+---
+
+# Security and Guardrail Telemetry
+
+Security telemetry for agent systems must answer four questions: what capability was requested, which policy was evaluated, what decision was enforced, and what happened after enforcement. If a trace only says “guardrail passed,” it is not enough for incident response, release review, or audit.
+
+This chapter focuses on telemetry for security controls around agent behavior: prompt injection defenses, tool authorization, human approval, data-flow checks, output validation, excessive agency, resource limits, and audit evidence. The goal is not to log every suspicious string. The goal is to make policy decisions and side effects observable without copying sensitive payloads into the observability backend.
+
+## Start with capabilities and trust boundaries
+
+An agent's risk is determined by the capabilities it can exercise. A chatbot that answers from public docs has a different risk profile from an agent that reads customer records, sends emails, updates tickets, creates refunds, runs code, or delegates work to another agent.
+
+Inventory capabilities before writing guardrail telemetry:
+
+| Capability | Security question | Required telemetry |
+|---|---|---|
+| Retrieval | Can untrusted or unauthorized documents influence the answer or action? | Source trust class, index version, access decision, retrieval policy version. |
+| Read tool | Can the tool cross tenant, user, region, or data-class boundaries? | Subject, tenant, resource class, authorization decision, policy version. |
+| Write tool | Can it change durable state or trigger external effects? | Proposed action class, approval state, idempotency key, execution outcome, rollback reference. |
+| Messaging tool | Can it send data outside the system? | Destination trust class, recipient class, data classification, approval, delivery outcome. |
+| Payment or financial tool | Can it move money or affect billing? | Amount bucket, account class, approval, fraud policy decision, execution result. |
+| Code, shell, or browser tool | Can it execute untrusted instructions or access the network? | Sandbox policy, command category, filesystem/network scope, resource limits. |
+| Memory write | Can it persist facts that affect future behavior? | Memory type, source, write policy, retention class, deletion path. |
+| Subagent delegation | Can capabilities be amplified downstream? | Target agent, delegated scope, inherited policy, returned result class. |
+
+Do not rely on the model to enforce authorization. The model can propose an action; the application, tool gateway, or downstream service must authorize the action against the authenticated subject and current policy.
+
+The capability inventory should produce a control table:
+
+| Capability | First enforcement point | Fail-closed behavior |
+|---|---|---|
+| Send external email | Before message leaves the application boundary. | Require approval or block. |
+| Read customer record | Before database or API call. | Deny when subject, tenant, or purpose is missing. |
+| Write ticket note | Before durable write. | Block if approval digest does not match canonical request. |
+| Retrieve private document | Before retrieved text enters model context. | Exclude unauthorized document and record retrieval denial. |
+| Delegate to billing agent | Before task handoff. | Reduce delegated scope or block delegation. |
+
+If the first guardrail runs after the tool has already executed, the guardrail is only detection.
+
+## Record guardrail decisions as structured events
+
+A guardrail decision should be a structured operation with bounded fields. It should not be a debug log that says “blocked for safety.”
+
+Use a consistent project schema:
+
+```txt
+app.guardrail.name = "tool_authorization"
+app.guardrail.version = "authz-policy-2026-06-25"
+app.guardrail.stage = "before_tool_execution"
+app.guardrail.decision = "block"
+app.guardrail.action = "require_human_approval"
+app.guardrail.reason = "write_outside_scope"
+app.guardrail.enforced = true
+```
+
+Useful fields:
+
+| Field | Purpose | Cardinality rule |
+|---|---|---|
+| `app.guardrail.name` | Identifies the control. | Bounded catalog. |
+| `app.guardrail.version` | Connects decision to policy code or configuration. | Release-controlled catalog. |
+| `app.guardrail.stage` | Shows where the decision ran. | Bounded catalog such as `input`, `before_tool`, `after_tool`, `output`. |
+| `app.guardrail.decision` | Records allow, block, require approval, redact, isolate, or abstain. | Bounded catalog. |
+| `app.guardrail.action` | Records the enforced workflow action. | Bounded catalog. |
+| `app.guardrail.reason` | Groups why the decision happened. | Bounded taxonomy, not raw detector output. |
+| `app.guardrail.enforced` | Distinguishes detection from enforcement. | Boolean. |
+
+Raw prompts, retrieved text, tool payloads, detector explanations, and matched strings follow the content and privacy policies from Chapters 7 and 8. A security trace should explain the policy branch without turning the telemetry backend into the evidence store for sensitive content.
+
+## Separate proposed action, policy decision, and side effect
+
+Security incidents become hard to investigate when traces only record the final tool result. Record the lifecycle.
+
+```txt
+proposed action -> policy decision -> approval if required -> execution -> side effect -> audit record
+```
+
+For a write tool:
+
+```txt
+app.tool.name = "create_refund"
+app.tool.side_effect = "financial_write"
+app.tool.permission_scope = "refund:create"
+app.tool.proposed = true
+app.tool.authorization.decision = "allow_after_approval"
+app.tool.approval.required = true
+app.tool.execution.status = "success"
+app.tool.side_effect.committed = true
+```
+
+This separation matters. A denied attempt can be a healthy security outcome. An allowed proposal with no execution can be harmless. An executed write after a denial is a control failure.
+
+Use this model for every high-risk capability:
+
+| Stage | Question |
+|---|---|
+| Proposal | What did the model or workflow attempt to do? |
+| Authorization | Was the subject allowed to do it in this context? |
+| Approval | Did a human or policy approve the exact action? |
+| Execution | Did the tool run? |
+| Side effect | Did durable state, money, messages, files, or external systems change? |
+| Reconciliation | Does the downstream system confirm the same outcome? |
+
+## Prompt injection telemetry
+
+Prompt injection is an input-control and data-flow problem. It can arrive directly from a user or indirectly through retrieved documents, web pages, tool results, emails, tickets, PDFs, browser content, or another agent.
+
+Track the source and the boundary:
+
+| Source | Trust question | Telemetry |
+|---|---|---|
+| User message | Is the user authenticated, authorized, and in scope for the requested task? | Input channel, subject class, task type, detector decision. |
+| Retrieved document | Is the document trusted instruction material or untrusted content? | Source trust class, document class, retrieval policy, injection detector decision. |
+| Tool result | Can the downstream system return attacker-controlled text? | Tool name, result class, sanitization decision. |
+| Web or browser content | Can remote content instruct the agent to act? | Domain trust class, browsing policy, isolation mode. |
+| Peer agent message | Does the sender have authority to delegate this task? | Sender agent, delegated scope, policy inheritance. |
+
+Detection is only one layer. Record what the system did with the untrusted content:
+
+```txt
+app.injection.source = "retrieved_document"
+app.injection.detector.version = "prompt-injection-detector-7"
+app.injection.decision = "suspected"
+app.injection.confidence_band = "medium"
+app.injection.policy_action = "isolate_context"
+app.injection.allowed_to_select_tools = false
+```
+
+Do not alert on every detector hit. Alert when a hit combines with a risky condition:
+
+- untrusted content influenced tool selection;
+- a write or external-message tool was proposed after the hit;
+- the detector failed open;
+- the same source causes repeated hits;
+- a previously trusted source starts triggering;
+- review confirms a false negative.
+
+Prompt injection telemetry should help answer whether the system contained the content, not whether a string looked scary.
+
+## Tool authorization must live next to the tool
+
+Tool authorization belongs at the execution boundary. Prompt instructions can ask the model to behave, but the tool wrapper or downstream service must enforce.
+
+For each tool call, record:
+
+```txt
+app.tool.name = "read_customer_record"
+app.tool.category = "customer_data_read"
+app.tool.side_effect = "read"
+app.auth.subject.type = "user"
+app.auth.resource.class = "customer_record"
+app.auth.policy.version = "customer-access-18"
+app.auth.decision = "deny"
+app.auth.reason = "tenant_mismatch"
+```
+
+Avoid raw subject IDs, tenant IDs, account IDs, or resource IDs in metric labels. Keep approved identifiers on restricted traces or audit records when needed for investigation.
+
+Authorization telemetry should distinguish:
+
+| Decision | Meaning | Next step |
+|---|---|---|
+| `allow` | Policy allows the call in this context. | Execute and record outcome. |
+| `deny` | Policy rejects the call. | Do not execute. |
+| `require_approval` | Policy requires human or secondary approval. | Pause before execution. |
+| `abstain` | Policy cannot decide because context is missing or ambiguous. | Fail closed or route to review. |
+| `error` | Policy evaluation failed. | Fail closed unless policy explicitly defines degraded behavior. |
+
+A policy engine outage should not silently convert to allow. Record degraded behavior explicitly.
+
+## Human approval is a security control
+
+Human approval is not a comment box. It is a binding decision over a specific proposed action.
+
+Approval telemetry needs:
+
+- requesting agent and workflow version;
+- authenticated subject and tenant context;
+- proposed action class;
+- safe summary of the action;
+- canonical request digest;
+- approver role or pseudonymous approver identifier;
+- decision, timestamp, and policy version;
+- expiry;
+- whether arguments changed after approval;
+- execution result and idempotency key.
+
+Example:
+
+```txt
+app.approval.required = true
+app.approval.decision = "approved"
+app.approval.policy.version = "approval-policy-5"
+app.approval.request_digest = "sha256:9f2..."
+app.approval.expires_at = "2026-06-25T12:30:00Z"
+app.tool.idempotency_key = "refund-req-1842"
+```
+
+Approval of one payload must not authorize a materially different payload. Bind the approval to a canonical request digest after removing fields that are expected to vary, such as timestamps or client-generated request IDs. If the tool arguments change, require a new approval or record a denial.
+
+## Validate model output before downstream use
+
+Improper output handling is a security risk because model output can become input to another system. A model-generated URL, SQL clause, shell argument, HTML fragment, JSON object, or tool argument should be treated as untrusted until validated.
+
+Record output validation separately from model success:
+
+```txt
+app.output_validation.name = "tool_argument_schema"
+app.output_validation.version = "order-tool-schema-12"
+app.output_validation.decision = "reject"
+app.output_validation.reason = "unexpected_field"
+```
+
+Examples:
+
+| Output destination | Validation to observe |
+|---|---|
+| Tool arguments | JSON schema, allowed fields, type checks, domain constraints. |
+| HTML or Markdown rendering | Sanitization policy, blocked element category, link policy. |
+| SQL or search query | Parameterization, query template, allowed filters. |
+| Shell or code execution | Command allowlist, sandbox policy, network and filesystem scope. |
+| External message | Recipient class, data classification, approval state. |
+
+A model span can be successful while output validation fails. That is normal. Record both.
+
+## Monitor data exfiltration and cross-tenant movement
+
+Exfiltration is a data-flow event, not only a keyword event. Monitor movement from sensitive sources to less trusted destinations.
+
+Use bounded classifications:
+
+```txt
+app.data_flow.source_class = "confidential_customer_data"
+app.data_flow.destination_class = "external_email"
+app.data_flow.tenant_boundary = "same_tenant"
+app.data_flow.region_boundary = "same_region"
+app.data_flow.policy.decision = "block"
+app.data_flow.size_bucket = "1kb_10kb"
+```
+
+Track:
+
+- source sensitivity class;
+- destination trust class;
+- tenant boundary;
+- region boundary;
+- tool or channel;
+- policy decision;
+- size or record-count bucket;
+- approval state;
+- final delivery or write outcome.
+
+Do not place raw tenant IDs, email addresses, URLs, document titles, or destination names in metric labels. Preserve them only in approved restricted traces or audit records.
+
+## Observe retrieval and vector-store security
+
+Retrieval can import untrusted instructions and unauthorized content into model context. Security telemetry should cover both.
+
+Record:
+
+| Concern | Telemetry |
+|---|---|
+| Unauthorized document returned | Query subject, document access decision, source class, denial count. |
+| Untrusted instruction in content | Source trust class, injection detector decision, isolation action. |
+| Poisoned or unexpected source | Index version, ingestion pipeline version, source allowlist decision. |
+| Cross-tenant retrieval | Tenant boundary decision, resource class, policy version. |
+| Over-broad retrieval | Result count bucket, score distribution, filter set version. |
+
+Document text and query text follow the content policy. Most security dashboards need source class, policy decision, and counts rather than the raw chunks.
+
+## Excessive agency means too much capability, permission, or autonomy
+
+OWASP frames excessive agency around three failure modes: excessive functionality, excessive permissions, and excessive autonomy. Telemetry should make all three visible.
+
+| Agency dimension | Example risk | Telemetry |
+|---|---|---|
+| Functionality | Agent can send email when it only needs draft creation. | Tool category, enabled capability set, workflow version. |
+| Permission | Agent can read all customer records instead of current user's records. | Permission scope, subject class, resource class, authorization decision. |
+| Autonomy | Agent can execute a refund without approval. | Approval requirement, approval decision, side effect committed. |
+
+Record the configured capability set at workflow start:
+
+```txt
+app.agent.capability_profile = "support_readonly_v3"
+app.agent.autonomy_level = "approval_required_for_writes"
+app.agent.tool_count = 7
+```
+
+Also record runtime attempts that exceed the expected profile:
+
+```txt
+app.tool.name = "send_email"
+app.tool.expected_in_profile = false
+app.guardrail.decision = "block"
+app.guardrail.reason = "capability_not_in_profile"
+```
+
+An attempted privileged action is not automatically an incident. It becomes concerning when it is allowed, repeated, connected to untrusted input, or followed by a side effect.
+
+## Loops and unbounded consumption are security signals
+
+Iteration limits, token budgets, tool-rate limits, queue limits, and wall-clock deadlines are both reliability and security controls. Attackers can use agent loops to exhaust budget, overwhelm tools, or keep sensitive workflows running.
+
+Record approach and enforcement:
+
+```txt
+app.budget.type = "tool_calls"
+app.budget.limit = 12
+app.budget.observed = 12
+app.budget.remaining = 0
+app.budget.action = "terminate"
+app.budget.reason = "limit_reached"
+```
+
+Segment by task type, workflow version, source trust class, detector evidence, and tool category before classifying a limit hit as malicious. Some legitimate tasks are expensive. The security signal is the pattern: sudden spikes, repeated denials, loops after untrusted content, or high-risk tools near limits.
+
+## System prompt and policy leakage
+
+System prompt leakage is not only an embarrassment issue. Prompts can reveal tool names, internal policy structure, routing rules, hidden data sources, safety thresholds, or social-engineering hints.
+
+Record leakage controls without storing the leaked text:
+
+```txt
+app.output_validation.name = "prompt_leakage"
+app.output_validation.decision = "redact"
+app.output_validation.reason = "system_instruction_fragment"
+app.output_validation.enforced = true
+```
+
+Use a bounded taxonomy:
+
+| Leakage category | Example response |
+|---|---|
+| `system_instruction_fragment` | Redact and continue or regenerate. |
+| `tool_schema_disclosure` | Redact and review tool-description exposure. |
+| `policy_threshold_disclosure` | Redact and review policy prompt design. |
+| `secret_or_token` | Block output and trigger security incident workflow. |
+
+Do not put prompt fragments in logs to prove they leaked. Store restricted evidence only when a reviewed incident process requires it.
+
+## Audit trail integrity for high-risk actions
+
+Ordinary traces are designed for debugging and operations. High-risk actions may need stronger audit properties.
+
+Use dedicated audit records when every event must be accountable:
+
+- financial transactions;
+- external messages;
+- cross-tenant access attempts;
+- privileged data reads;
+- policy changes;
+- approval decisions;
+- deletion or retention overrides;
+- secure-reference resolutions.
+
+Audit records should include:
+
+| Field | Purpose |
+|---|---|
+| Stable action ID | Connect proposal, approval, execution, and downstream confirmation. |
+| Authenticated subject | Identifies who or what requested the action. |
+| Policy version | Explains the decision that was active. |
+| Canonical request digest | Proves approval matched execution without storing full payload. |
+| Decision and enforcement | Shows allow, deny, approval, or block. |
+| Downstream result | Confirms whether the side effect happened. |
+| Clock and source | Supports ordering and investigation. |
+
+Where required, use append-only or tamper-evident storage with separate access controls and retention. An observability trace can support investigation, but it does not automatically satisfy regulatory audit requirements.
+
+## Alert on control failures and harmful outcomes
+
+Security alerts should point to action. Detector hits without context belong in review queues or trend dashboards.
+
+Alert on:
+
+- write executes after authorization denial;
+- approval-required action executes without approval;
+- approval digest differs from executed request digest;
+- cross-tenant access succeeds or is repeatedly attempted;
+- sensitive data is sent to an untrusted destination;
+- guardrail telemetry stops for a high-risk workflow;
+- policy engine fails open;
+- tool-call volume or denied actions spike for a high-risk capability;
+- prompt-injection hit is followed by a write, external message, or privileged read attempt;
+- secure-reference resolution happens outside allowed purpose, tenant, or expiry.
+
+Every alert should include the investigation pivot:
+
+```txt
+trace_id
+task_type
+workflow_version
+guardrail_name
+guardrail_version
+policy_decision
+tool_name
+capability_profile
+first_untrusted_source
+side_effect_status
+```
+
+Avoid alert payloads that include prompts, raw tool arguments, retrieved text, or user content.
+
+## A production security checklist
+
+Before deploying a high-risk agent workflow, answer:
+
+1. Which capabilities can read, write, communicate, execute code, persist memory, or delegate?
+2. Where is each capability enforced: prompt, application, tool wrapper, gateway, or downstream service?
+3. Which actions require approval, and how is approval bound to the exact request?
+4. What happens when the policy engine, detector, or approval system is unavailable?
+5. Which telemetry proves that a denied action did not execute?
+6. Which telemetry proves that an approved action executed exactly once?
+7. Which data-flow controls prevent sensitive data from reaching untrusted destinations?
+8. Which retrieval sources are trusted instruction sources, and which are untrusted content?
+9. Which budget limits terminate loops and unbounded consumption?
+10. Which high-risk actions use dedicated audit records rather than ordinary traces?
+11. Which alerts indicate control failure instead of ordinary detector noise?
+12. Who owns false positives, false negatives, policy updates, and incident response?
+
+If the workflow can perform durable or external side effects, missing telemetry is itself a security risk. Do not wait for a bad action to discover that the trace cannot answer who authorized it.
+
+## References
+
+- [OWASP Top 10 for LLM Applications](https://genai.owasp.org/llm-top-10/)
+- [OWASP LLM01: Prompt Injection](https://genai.owasp.org/llmrisk/llm01-prompt-injection/)
+- [OWASP LLM06: Excessive Agency](https://genai.owasp.org/llmrisk/llm06-sensitive-information-disclosure/)
+- [OpenAI guardrails and human review](https://developers.openai.com/api/docs/guides/agents/guardrails-approvals)
+- [OpenAI Agents SDK guardrails](https://openai.github.io/openai-agents-python/guardrails/)
+- [NIST AI Risk Management Framework](https://www.nist.gov/itl/ai-risk-management-framework)
+
+---
+
+**Next up**: [Ch 11 - Cost, Performance, and SLOs](/observability-ai-agents/ch-11-cost-performance-slos/) converts usage and outcomes into budgets and reliability objectives.
