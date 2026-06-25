@@ -1,0 +1,346 @@
+---
+title: "Evaluation as an Observability Signal"
+description: "Connect deterministic checks, human review, LLM judges, production traces, datasets, experiments, and release gates."
+module: 1
+order: 9
+---
+
+# Evaluation as an Observability Signal
+
+Operational telemetry says what the agent did. Evaluation says whether that behavior met an explicit criterion.
+
+Both are required. A task can return HTTP 200, finish quickly, stay within token budget, and still answer the wrong question. Another task can reach the correct answer only after unsafe tool use, excessive retries, or a cost spike. Traces explain the execution path. Metrics show fleet behavior. Evaluation records judge the behavior against a standard.
+
+Treat evaluation as another observability signal, not as a dashboard decoration. A usable evaluation has a unit, population, criterion, evidence, label set, evaluator version, sampling policy, and owner. Without those fields, a “quality score” is usually just a number that different teams interpret differently.
+
+## Start with the decision the evaluation will support
+
+Do not begin with “we need an LLM judge.” Begin with the decision.
+
+| Decision | Evaluation question | Useful signal |
+|---|---|---|
+| Block a release | Did the candidate regress on required task outcomes or safety cases? | Offline dataset run with deterministic checks and calibrated semantic criteria. |
+| Investigate production quality | Which task types, model versions, or workflow versions produce bad outcomes? | Online scores linked to production traces and sampled deliberately. |
+| Improve retrieval | Did the answer use the right evidence and cite allowed sources? | Retrieval and answer-grounding criteria with document IDs and citation checks. |
+| Route human review | Which executions need manual inspection? | Low-confidence, abstained, or high-risk evaluation results. |
+| Update a dataset | Which production failures should become regression cases? | Failed traces with lineage, approval, and expected outcome. |
+| Operate an SLO | Is user-visible task success above the agreed threshold? | Aggregated pass rate over a defined population and window. |
+
+The same evaluator can be useless or useful depending on this framing. A correctness judge run over a hand-picked set of failed support conversations is good for finding failure modes. It is not a fleet correctness rate unless the sampling policy supports that inference.
+
+## Define the evaluated unit
+
+Evaluation must attach to the thing being judged. Agent systems have several units, and mixing them hides failure.
+
+| Unit | What it judges | Example criterion | Where the result attaches |
+|---|---|---|---|
+| Model call | One provider operation. | Output follows the requested JSON schema. | Model span or observation. |
+| Tool call | One tool execution or proposed execution. | Arguments satisfy policy and domain constraints. | Tool span or observation. |
+| Retrieval step | One retrieval or reranking operation. | Returned documents are relevant and authorized. | Retrieval span or observation. |
+| Trace | One complete task execution or task segment. | The final outcome is correct and within budget. | Trace. |
+| Conversation | A multi-turn interaction. | The user issue was resolved without unnecessary repetition. | Session, conversation, or application object. |
+| Dataset item | One versioned test scenario. | Candidate output matches expected behavior for that case. | Dataset item run. |
+| Dataset run | A release candidate across a scenario set. | Regression thresholds are met. | Dataset run or experiment. |
+
+A trace-level pass does not prove that every tool call was appropriate. A tool-level pass does not prove that the final user outcome was correct. Store the evaluation where it can be queried with the evidence it judged.
+
+## Specify the criterion before choosing the evaluator
+
+“Quality” is too broad to operate. A criterion needs an observable boundary.
+
+Use a small spec for every production criterion:
+
+```yaml
+criterion: resolution_correctness
+unit: trace
+population: authenticated order-status tasks with an existing order
+labels: [pass, fail, not_applicable]
+positive_definition: final answer matches the current order state or escalates correctly
+negative_definition: final answer gives wrong state, invents shipment data, or misses required escalation
+evidence:
+  - final_answer_reference
+  - order_status_tool_result_reference
+  - policy_document_ids
+failure_categories:
+  - wrong_order_state
+  - unsupported_claim
+  - missing_escalation
+  - irrelevant_answer
+owner: support-agent-team
+```
+
+This is a measurement contract, not a vendor format. The point is that two engineers should be able to read the spec and understand what counts as pass, fail, and not applicable.
+
+Add negative definitions. They prevent evaluators from accepting outputs that are fluent but wrong. For agent systems, negative definitions are often more useful than a generic positive statement:
+
+| Weak criterion | Operable criterion |
+|---|---|
+| The answer is helpful. | The answer resolves the user's stated task using only authorized evidence and does not require another user turn. |
+| The retrieval is good. | At least one retrieved document contains the required policy, and no cited document is outside the user's access scope. |
+| The tool call is safe. | The proposed tool, arguments, tenant, subject, and approval state satisfy the policy version active at execution time. |
+| The conversation is efficient. | The conversation reaches a terminal accepted outcome within the task-specific turn and cost budget. |
+
+## Use deterministic evaluators first
+
+Deterministic checks are cheaper, faster, easier to debug, and easier to trust in CI.
+
+Start here:
+
+- JSON schema validation.
+- Required field presence.
+- State transition validation.
+- Database or system-of-record comparison.
+- Tool permission and approval checks.
+- Citation presence and source allowlist.
+- Exact match or normalized match for known facts.
+- Numeric tolerance against an expected result.
+- Budget, latency, iteration, and retry limits.
+- Forbidden action, forbidden source, and forbidden content checks.
+
+Use an LLM judge only when the criterion requires semantic interpretation that deterministic code cannot reasonably express, such as completeness against a rubric, groundedness across several passages, or whether a final answer actually resolves the user's task.
+
+Even then, keep deterministic checks around the judge. A judge should not be responsible for noticing that a JSON object is invalid, a tool call skipped authorization, or a cited document was outside the user's access scope.
+
+## Design LLM judges as measured components
+
+An LLM judge is another probabilistic component in the system. It needs calibration, monitoring, versioning, and a failure mode.
+
+Before using one as a production signal:
+
+1. Create a labeled calibration set reviewed by domain experts.
+2. Include clear passes, clear failures, borderline cases, and adversarial cases.
+3. Write a rubric with observable criteria and allowed labels.
+4. Require the judge to return a structured label, failure category, and concise rationale.
+5. Compare judge output with human labels.
+6. Measure false positives and false negatives by task type, language, and failure category.
+7. Add an abstain path for insufficient evidence or ambiguous cases.
+8. Version the judge model, prompt, rubric, preprocessing, and label schema.
+9. Recalibrate after model, prompt, workflow, retrieval, or policy changes.
+
+Agreement with humans is not enough when human labels are inconsistent. Measure reviewer agreement and adjudicate disputed cases before treating the labels as ground truth.
+
+A judge output should look like an evaluation result, not like a paragraph of free text:
+
+```json
+{
+  "criterion": "resolution_correctness",
+  "label": "fail",
+  "failure_category": "missing_escalation",
+  "confidence": "medium",
+  "rationale": "The order status tool returned delayed_delivery, but the final answer promised delivery today without escalation.",
+  "evidence_refs": [
+    "trace:4bf92f3577b34da6a3ce929d0e0e4736",
+    "observation:order_status_tool"
+  ]
+}
+```
+
+Do not request or store hidden reasoning. Ask for criterion-based rationale grounded in observable evidence.
+
+## Prefer labels that operators can act on
+
+Binary and categorical labels work well when the criterion has a decision boundary. Numeric scores are useful only when the scale has anchors.
+
+Bad:
+
+```txt
+helpfulness = 3.7
+```
+
+Better:
+
+```txt
+criterion = "resolution_correctness"
+label = "fail"
+failure_category = "unsupported_claim"
+severity = "high"
+```
+
+If a numeric score is required, define the anchors:
+
+| Score | Meaning |
+|---:|---|
+| 0 | Fails the task or violates a hard policy. |
+| 1 | Partially addresses the task but misses required evidence or action. |
+| 2 | Resolves the task with minor omissions that do not change the outcome. |
+| 3 | Resolves the task completely using allowed evidence. |
+
+Do not average unrelated criteria into one “quality” number. Correctness, safety, latency, cost, grounding, and user satisfaction have different owners and responses. A cheap unsafe answer is not “medium quality.”
+
+## Online evaluation measures production behavior
+
+Online evaluation runs against production traces or production samples. It is useful for trend detection, failure discovery, human-review routing, and dataset creation.
+
+Define the population and sampling policy before interpreting the result:
+
+| Sample | Good for | Not good for |
+|---|---|---|
+| Random baseline traffic | Estimating prevalence and monitoring drift. | Finding rare high-risk failures quickly. |
+| All high-risk task types | Safety and policy monitoring. | Estimating fleet-wide rate without weighting. |
+| New model, prompt, tool, or workflow version | Release monitoring. | Long-term baseline comparison without version context. |
+| Negative feedback or escalation traces | Discovering failure modes. | Estimating user-visible correctness rate. |
+| Slow, expensive, or looped traces | Diagnosing pathological executions. | Measuring normal behavior. |
+| Rare workflow paths | Regression discovery. | Fleet-level proportion estimates. |
+
+Record the sampling policy with the evaluation result. A stream dominated by negative-feedback traces cannot estimate overall failure rate without correction. Chapter 6 covers the same issue for traces: selection changes what can be inferred.
+
+Online evaluation also needs a content policy. If the evaluator reads prompts, outputs, retrieved text, or tool payloads, it is a content processor. Apply Chapters 7 and 8 before sending evaluation input to another model, queue, dataset, or vendor.
+
+## Offline evaluation protects releases
+
+Offline evaluation compares a candidate against versioned scenarios before release. It should catch known regressions, policy failures, and high-risk cases before production traffic sees them.
+
+A useful dataset contains:
+
+- representative production scenarios;
+- known failures converted into regression cases;
+- edge cases for tool permissions, missing data, and stale data;
+- multi-turn and resume scenarios;
+- retrieval and citation cases;
+- adversarial safety cases;
+- expected outcomes and relevant intermediate constraints;
+- metadata for task type, language, policy version, and risk class.
+
+Separate three dataset roles:
+
+| Dataset role | Purpose | Rule |
+|---|---|---|
+| Development set | Prompt, workflow, and judge iteration. | Can be inspected often; do not use as the final release gate. |
+| Calibration set | Judge calibration and threshold selection. | Keep labels reviewed and versioned. |
+| Held-out release set | Candidate acceptance. | Limit exposure to avoid overfitting. |
+
+Production traces can become dataset items only under the content and privacy policies from Chapters 7 and 8. Store lineage: source trace, source policy, redaction mode, dataset version, expected outcome owner, and deletion behavior.
+
+## Connect evaluation records to traces and datasets
+
+An evaluation result should be queryable from both sides:
+
+- from the trace, to understand why one execution failed;
+- from the dataset or release gate, to compare versions and aggregate results.
+
+Current evaluation backends such as Langfuse model this with score objects that can attach to traces, observations, sessions, or dataset runs. The general shape is portable:
+
+```json
+{
+  "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736",
+  "observation_id": "order_status_tool",
+  "dataset_name": "support-order-status",
+  "dataset_version": "2026-06-25",
+  "dataset_item_id": "case-1842",
+  "criterion": "resolution_correctness",
+  "value": "fail",
+  "failure_category": "missing_escalation",
+  "severity": "high",
+  "evaluator_name": "support-resolution-judge",
+  "evaluator_version": "judge-9",
+  "rubric_version": "resolution-rubric-4",
+  "sampling_policy": "all_new_release_failures",
+  "created_at": "2026-06-25T10:15:00Z"
+}
+```
+
+Store the full evaluation object in the evaluation backend. Export bounded metric projections for operations:
+
+```txt
+resolution_correctness_pass_rate{
+  task_type="order_status",
+  workflow_version="2026.06.25",
+  evaluator_version="judge-9"
+}
+```
+
+Do not put trace IDs, conversation IDs, dataset item IDs, prompts, rationales, or free-form failure text on metric dimensions.
+
+## Turn feedback into evidence, not ground truth
+
+User feedback is valuable and biased.
+
+Thumbs down, abandonment, reformulation, repeated question, support escalation, and manual override can indicate a bad outcome. They can also reflect latency, UI confusion, user expectations, missing permissions, or a task the agent should never have accepted.
+
+Use feedback for:
+
+- selecting traces for review;
+- discovering new failure categories;
+- prioritizing dataset additions;
+- monitoring sudden shifts after a release;
+- routing high-risk cases to human review.
+
+Do not treat feedback as a correctness label without review. A thumbs up does not prove factual correctness. A thumbs down does not prove model failure.
+
+## Build release gates from explicit thresholds
+
+A release gate compares a candidate with the current baseline over named datasets and production monitors.
+
+Example:
+
+```yaml
+gate: support-agent-release
+candidate: workflow-2026.06.25
+baseline: workflow-2026.06.10
+required:
+  deterministic_checks: 100% pass
+  high_risk_safety_cases: no regression
+  resolution_correctness:
+    population: held_out_order_status_dataset
+    minimum_pass_rate: 0.94
+    uncertainty: lower_confidence_bound
+  groundedness:
+    minimum_pass_rate: 0.97
+  cost:
+    p95_max_usd: 0.25
+  latency:
+    p95_max_seconds: 15
+  critical_failure_categories:
+    allowed_new: []
+owner: support-agent-team
+rollback: freeze rollout and restore previous workflow version
+```
+
+Thresholds are product and risk decisions. Define the dataset, sample size, uncertainty treatment, owner, and rollback action. Do not use one global gate for every task type. A refund workflow, a compliance assistant, and a documentation Q&A bot do not carry the same risk.
+
+## Monitor evaluator drift
+
+An evaluator can change the dashboard while the agent behavior stays the same.
+
+Monitor the evaluator as a dependency:
+
+- agreement with fresh human review;
+- label distribution by evaluator version;
+- pass rate on stable canary cases;
+- abstention rate;
+- parse-failure rate;
+- rationale policy violations;
+- cost and latency;
+- sensitivity to irrelevant formatting;
+- performance by language, task type, and failure category.
+
+Keep a small stable judge-regression set. Run it whenever the judge model, prompt, rubric, preprocessing, or structured-output schema changes.
+
+## A production evaluation checklist
+
+Before treating an evaluation as an observability signal, answer:
+
+1. Which decision does this evaluation support?
+2. What is the evaluated unit?
+3. What is the population?
+4. What are the allowed labels and failure categories?
+5. Which evidence is required, and where is it stored?
+6. Which evaluator produced the result: code, human, LLM judge, or a combination?
+7. How is the evaluator versioned and calibrated?
+8. What sampling policy selected the evaluated traces?
+9. Which metric projection is safe and bounded?
+10. Who owns false positives, false negatives, drift, and release decisions?
+
+If those answers are missing, the evaluation may still be useful for exploration. It is not ready to drive dashboards, alerts, or release gates.
+
+## References
+
+- [Langfuse evaluation overview](https://langfuse.com/docs/evaluation/overview)
+- [Langfuse scores data model](https://langfuse.com/docs/evaluation/scores/data-model)
+- [Langfuse datasets](https://langfuse.com/docs/evaluation/experiments/datasets)
+- [OpenAI evaluation best practices](https://developers.openai.com/api/docs/guides/evaluation-best-practices)
+- [Who Validates the Validators?](https://arxiv.org/abs/2404.12272)
+
+---
+
+**Next up**: [Ch 10 - Security and Guardrail Telemetry](/observability-ai-agents/ch-10-security-guardrail-telemetry/) turns policy enforcement, tool authorization, and agent-specific threats into observable controls.
