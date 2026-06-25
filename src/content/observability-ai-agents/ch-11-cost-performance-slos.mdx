@@ -1,0 +1,393 @@
+---
+title: "Cost, Performance, and SLOs"
+description: "Attribute provider usage, measure critical-path latency, define task budgets, and build outcome-aware SLOs."
+module: 2
+order: 11
+---
+
+# Cost, Performance, and SLOs
+
+Cost and latency belong to the complete task, not to one model call. An agent can call several models, retrieve context, run tools in parallel, retry dependencies, compact conversation state, invoke evaluators, pause for approval, and resume later. A dashboard that shows only average model latency and total token count misses the economics of the workflow.
+
+This chapter defines the measurements needed to answer four production questions:
+
+1. What did this task cost, and which operations contributed to it?
+2. Where did user-visible time go?
+3. Which runtime budgets prevented unbounded work?
+4. Are user outcomes meeting reliability, correctness, latency, and cost objectives?
+
+The important separation is this:
+
+```txt
+operation telemetry -> task cost and latency -> outcome-aware SLOs
+```
+
+Do not skip the middle layer. Aggregating model tokens directly into a product SLO usually produces a number that is easy to chart and hard to act on.
+
+## Record usage at the operation boundary
+
+Cost attribution starts with provider-reported usage on each billable operation. For model calls, preserve the usage categories returned by the provider before normalizing them into a common cost model.
+
+```txt
+gen_ai.usage.input_tokens = 1840
+gen_ai.usage.output_tokens = 212
+gen_ai.usage.cache_read.input_tokens = 1024
+```
+
+Provider usage categories and billing rules differ. One provider may separate cached input, reasoning tokens, audio tokens, hosted tool usage, batch mode, priority processing, or regional processing. Another provider may expose fewer categories. Store what the provider actually reports and record which parser interpreted it.
+
+Example operation record:
+
+```txt
+gen_ai.provider.name = "openai"
+gen_ai.request.model = "gpt-5.4-mini"
+gen_ai.response.model = "gpt-5.4-mini-2026-06-01"
+gen_ai.operation.name = "chat"
+gen_ai.usage.input_tokens = 1840
+gen_ai.usage.output_tokens = 212
+gen_ai.usage.cache_read.input_tokens = 1024
+app.usage.parser.version = "openai-responses-usage-3"
+```
+
+Prefer provider-reported usage over local token estimates for billing. Local estimates are still useful for pre-flight budget checks, but they should be named as estimates:
+
+```txt
+app.cost.estimated_input_tokens = 2200
+app.cost.estimate.source = "local_tokenizer"
+```
+
+Do not mix estimated and billed usage in the same metric without a dimension that makes the source explicit.
+
+## Version the price catalog
+
+Prices change independently of code. A cost calculation needs a price catalog with an effective date, source, currency, model or deployment, usage category, and any relevant tier or region.
+
+The catalog should be data, not constants scattered across dashboards:
+
+```json
+{
+  "catalog_version": "openai-2026-06-25",
+  "provider": "openai",
+  "model": "gpt-5.4-mini",
+  "currency": "USD",
+  "effective_from": "2026-06-25",
+  "unit": "1M_tokens",
+  "prices": {
+    "input": 0.375,
+    "cached_input": 0.0375,
+    "output": 2.25
+  },
+  "source": "provider_pricing_page"
+}
+```
+
+The numbers above are illustrative. Fetch current prices from the provider, store the catalog version used for each calculation, and keep historical catalogs. Recomputing last month's costs with today's price table creates false regressions.
+
+Attach the calculated result to a derived record or span attribute when useful:
+
+```txt
+app.cost.amount = 0.00194
+app.cost.currency = "USD"
+app.cost.catalog_version = "openai-2026-06-25"
+app.cost.calculation.version = "agent-cost-v4"
+```
+
+These are project-specific attributes. Keep them off metric dimensions unless the value set is bounded, such as currency or catalog version.
+
+## Calculate operation cost before task cost
+
+Calculate cost in two steps. First, price each billable operation. Then aggregate the operations into task, conversation, release, and fleet views.
+
+Example for one model call:
+
+```txt
+input_cost
+= billable_input_tokens / 1_000_000
+× price.input_per_1m_tokens
+
+cached_input_cost
+= cached_input_tokens / 1_000_000
+× price.cached_input_per_1m_tokens
+
+output_cost
+= output_tokens / 1_000_000
+× price.output_per_1m_tokens
+
+operation_cost
+= input_cost + cached_input_cost + output_cost
+```
+
+Task cost is the sum of billable operations inside the task boundary:
+
+```txt
+task_cost
+= model_operation_costs
++ hosted_tool_costs
++ retrieval_costs
++ external_api_costs
++ evaluator_costs
++ workflow_runtime_costs when measured
+```
+
+Conversation cost is the sum of task costs, not task costs plus the same child operations again. Release cost is the sum of tasks attributed to a release, workflow version, or experiment cohort.
+
+Double-counting usually happens when dashboards add both a task-level aggregate and child operation metrics. Decide which layer is authoritative for each query:
+
+| Query | Use |
+|---|---|
+| Which operation caused this one trace to be expensive? | Operation spans and derived operation costs. |
+| What is cost per resolved support task? | Task-level derived records. |
+| Did release `2026.06.25` increase cost? | Task cost grouped by workflow version and task type. |
+| How much did evaluation cost last week? | Evaluator operation costs grouped by evaluator version and dataset run. |
+
+The model bill is not the total cost to serve the feature. Retrieval, hosted tools, external APIs, evaluator calls, compute, queue retries, and telemetry ingestion can matter at scale.
+
+## Attribute cost to outcome
+
+Cost without outcome rewards cheap failures. A broken agent that gives up immediately can look efficient.
+
+Prefer outcome-aware measures:
+
+```txt
+cost_per_resolved_task = total_cost / resolved_tasks
+cost_per_accepted_outcome = total_cost / accepted_outcomes
+wasted_cost = cost of failed, abandoned, blocked, or invalid tasks
+```
+
+Use a bounded outcome taxonomy from the signal catalog:
+
+```txt
+app.task.outcome = "resolved"
+app.task.outcome = "correctly_escalated"
+app.task.outcome = "failed"
+app.task.outcome = "abandoned"
+app.task.outcome = "policy_blocked"
+```
+
+Useful views:
+
+| View | Why it matters |
+|---|---|
+| P50/P95/P99 cost per task type | Finds long-tail runaway tasks hidden by averages. |
+| Cost per accepted outcome | Connects spend to useful work. |
+| Retry cost fraction | Shows dependency or validation instability. |
+| Evaluation cost per release | Prevents the evaluation system from becoming invisible spend. |
+| Wasted cost by failure category | Prioritizes fixes by economic impact. |
+| Cost by workflow, model, tool, and policy version | Finds regressions caused by changes. |
+
+Do not use raw conversation ID, task ID, trace ID, or user ID as metric dimensions. Use bounded dimensions such as task type, workflow version, model deployment, outcome, environment, and release cohort.
+
+## Measure latency along the critical path
+
+Summing span durations exaggerates end-to-end latency when operations overlap. A workflow can run retrieval and a policy check in parallel; adding both durations does not represent what the user waited for.
+
+Use separate latency measures:
+
+| Measure | Meaning | Typical use |
+|---|---|---|
+| End-to-end task duration | Elapsed time from task start to terminal outcome. | User-visible SLO and task budget. |
+| Segment duration | Elapsed time for one durable segment or resumed execution. | Long-running workflows and queues. |
+| Critical-path duration | Longest causal path through the execution. | Where user-visible time was spent. |
+| Span duration | Time spent in one operation. | Dependency and operation debugging. |
+| Queue delay | Time from enqueue to start of processing. | Capacity and worker health. |
+| Time to first useful output | Time until the user sees useful streaming output. | Interactive experience. |
+| Time to final outcome | Time until durable completion, including approvals or background work. | Business process reliability. |
+
+For streaming tasks, distinguish first token, first chunk, first useful output, and final answer. A model can stream quickly while the first useful answer is delayed by retrieval, tool calls, or preamble text.
+
+For durable workflows, one business task may span several traces or segments. Use the task identifier and workflow checkpoints described in Chapter 4 to derive task-level latency. Do not force one trace to remain open for hours only to measure elapsed business time.
+
+## Find the critical path
+
+Critical path analysis asks which causal chain determined the end-to-end time.
+
+Example:
+
+```txt
+task root: 0s -> 12s
+├── retrieval: 1s -> 4s
+├── policy check: 1s -> 2s
+├── model call: 4s -> 9s
+└── tool call: 9s -> 12s
+```
+
+The sum of child spans is 3 + 1 + 5 + 3 = 12 seconds. In this simple sequential section, it matches end-to-end time. If retrieval and policy check run in parallel, adding spans would overstate user-visible latency.
+
+Useful latency breakdowns:
+
+| Symptom | First places to inspect |
+|---|---|
+| Slow first output | Queue delay, retrieval, model time to first chunk, pre-stream validation. |
+| Slow final outcome | Tool duration, retries, approvals, model loops, background workers. |
+| High P99 only | Long-tail dependency, queue saturation, large context, rare workflow branch. |
+| Latency changed after release | Workflow version, model deployment, prompt size, retrieval filters, tool timeout policy. |
+| User abandons before completion | Time to first useful output, UI feedback, task acceptance behavior. |
+
+Chapter 6 covers histogram boundaries for latency distributions. Use buckets around the decisions that matter: interactive response thresholds, task SLO boundary, timeout boundary, and severe overrun boundary.
+
+## Define budgets at enforcement points
+
+Dashboards report overruns after they happen. Runtime budgets prevent unbounded work.
+
+Budgets should be enforced before the next expensive, irreversible, or externally visible operation:
+
+| Budget | Enforce before | Example fallback |
+|---|---|---|
+| Model calls per task | Starting another model call. | Summarize current state or escalate. |
+| Input tokens | Sending request to provider. | Compact context or ask for narrower input. |
+| Output tokens | Requesting generation. | Lower max output or use structured response. |
+| Estimated cost | Calling model, hosted tool, or evaluator. | Use cheaper route, ask for approval, or stop. |
+| Tool calls | Executing another tool. | Return partial answer or escalate. |
+| Write actions | Durable mutation or external message. | Require approval or block. |
+| Wall-clock time | Starting another step. | Timeout with recoverable state. |
+| Retries | Retrying dependency. | Circuit break or degraded response. |
+
+Record limit, observed value, remaining value, decision, and fallback:
+
+```txt
+app.budget.type = "estimated_task_cost_usd"
+app.budget.limit = 0.25
+app.budget.observed = 0.22
+app.budget.remaining = 0.03
+app.budget.decision = "block_next_model_call"
+app.budget.fallback = "correctly_escalated"
+```
+
+A budget stop is not automatically a failure. For some workflows, “correctly escalated before spending more money” is an accepted outcome.
+
+## Make cost optimizations observable
+
+Cost optimization should show up in telemetry, or the team cannot tell whether it helped.
+
+Common optimizations need specific measurements:
+
+| Optimization | What to measure |
+|---|---|
+| Prompt caching | Cache-read input tokens, uncached input tokens, latency before first chunk, model deployment. |
+| Context compaction | Tokens before and after compaction, compaction cost, quality impact. |
+| Model routing | Intended model, returned model, routing reason, fallback reason, outcome. |
+| Retrieval filtering | Result count, index version, reranker use, answer grounding result. |
+| Tool-call reduction | Tool-call count, avoided calls, task outcome, latency impact. |
+| Batch or background processing | Queue delay, batch mode, completion time, user-visible impact. |
+| Evaluation sampling | Evaluated fraction, sampling policy, evaluator cost, detection yield. |
+
+Do not optimize only for lower token count. A shorter prompt that causes more retries, lower correctness, or higher escalation rate is not cheaper at the task level.
+
+## Build SLOs from user outcomes
+
+An SLI is the measured behavior. An SLO is the target over a window. Agent systems need ordinary service SLIs plus task-specific objectives.
+
+Define one SLO record per task type or risk class:
+
+```yaml
+name: resolved-order-status
+population: authenticated order-status tasks with an existing order
+window: 28 days
+unit: terminal task
+indicators:
+  availability:
+    definition: task reaches a terminal user-visible outcome
+  correctness:
+    definition: deterministic order state matches system of record
+    source: task evaluation result
+  latency:
+    definition: time to first useful response below task target
+  finalization:
+    definition: task reaches final outcome within durable workflow target
+  cost:
+    definition: estimated task cost below task budget
+  safety:
+    definition: no critical policy violation or unapproved side effect
+owner: support-agent-team
+```
+
+Targets are intentionally absent from the example. Set targets from user needs, baseline data, risk, support obligations, and business constraints. A refund workflow and a FAQ workflow should not inherit the same correctness, latency, cost, or safety target.
+
+Keep denominators explicit:
+
+| Indicator | Denominator |
+|---|---|
+| Availability | Eligible tasks that reached an accepted start condition. |
+| Correctness | Evaluated terminal tasks in the defined population. |
+| Latency | Tasks with a user-visible response path. |
+| Cost | Billable or estimated tasks in the population. |
+| Safety | Tasks that exercised or attempted high-risk capabilities. |
+
+If correctness is evaluated on a sample, show sample size, sampling policy, and uncertainty. Do not present sampled semantic correctness as if every task was evaluated.
+
+## Keep objectives separate
+
+Do not combine availability, correctness, safety, latency, and cost into one opaque “agent health score.” Separate objectives preserve the response.
+
+| Breach | Likely response |
+|---|---|
+| Availability breach | Investigate runtime, dependencies, queues, and failures. |
+| Correctness breach | Compare traces, retrieval, prompts, tools, and evaluation labels. |
+| Safety breach | Freeze risky capability, inspect policy decisions, review audit records. |
+| Latency breach | Inspect critical path, queues, model timings, tool slowness. |
+| Cost breach | Inspect routing, retries, context growth, evaluator usage, loops. |
+
+A single green score can hide a severe safety regression behind good latency and low cost.
+
+## Alert on burn, shifts, and missing cost evidence
+
+Alert on sustained material change or fast burn, not on one expensive trace unless it crosses a hard financial or security limit.
+
+Useful alerts:
+
+- fast and slow SLO burn for task availability;
+- correctness pass-rate regression with sufficient evaluated sample size;
+- P95 or P99 task cost shift for one workflow release;
+- retry cost fraction above baseline;
+- budget enforcement rate above baseline;
+- evaluation cost spike after a release or dataset run;
+- prompt cache hit rate drops for a high-volume task;
+- time to first useful output regresses for interactive workflows;
+- telemetry missing for billable model calls;
+- cost catalog version missing or stale;
+- provider usage parser starts emitting unknown categories.
+
+Every alert should include a pivot:
+
+```txt
+task_type
+workflow_version
+model_deployment
+prompt_version
+policy_version
+cost_catalog_version
+outcome
+failure_category
+trace_link_or_exemplar
+```
+
+Avoid alert payloads that include prompts, tool arguments, retrieved text, user identifiers, or raw exception messages.
+
+## A production review checklist
+
+Before relying on cost, performance, or SLO dashboards, answer:
+
+1. Which provider usage fields are recorded on each billable operation?
+2. Which price catalog version calculated each cost?
+3. Which layer owns operation cost, task cost, conversation cost, and release cost?
+4. How does the system prevent double-counting?
+5. Which dimensions are allowed on cost and latency metrics?
+6. Which budgets run before expensive or irreversible operations?
+7. How are budget stops represented in task outcome?
+8. Which latency measure represents user experience for each task type?
+9. Which SLOs use complete measurements, and which use sampled evaluations?
+10. Which alerts indicate action rather than curiosity?
+
+If task outcome is missing, cost and latency dashboards are incomplete. The system may be cheap and fast because it is failing early.
+
+## References
+
+- [Google SRE: Service Level Objectives](https://sre.google/sre-book/service-level-objectives/)
+- [OpenTelemetry GenAI metrics](https://github.com/open-telemetry/semantic-conventions-genai/blob/main/docs/gen-ai/gen-ai-metrics.md)
+- [OpenAI pricing](https://developers.openai.com/api/docs/pricing)
+- [OpenAI prompt caching](https://developers.openai.com/api/docs/guides/prompt-caching)
+- [OpenAI cost optimization](https://developers.openai.com/api/docs/guides/cost-optimization)
+
+---
+
+**Next up**: [Ch 12 - Reference Architecture and Local Setup](/observability-ai-agents/ch-12-reference-architecture-openai-langgraph/) starts the runnable OpenAI, LangGraph, OpenTelemetry, Collector, and Langfuse implementation.
