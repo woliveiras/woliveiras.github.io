@@ -34,13 +34,25 @@ const modules = [
 		number: 3,
 		title: "Hands-on Implementation",
 		description:
-			"LangGraph, OpenTelemetry, Langfuse, LLM spans, tool spans, retrieval spans, and production hardening.",
+			"LangGraph, OpenTelemetry, Langfuse, LLM spans, tool spans, retrieval spans, and runtime hardening.",
 	},
 	{
 		number: 4,
+		title: "Langfuse Workflow",
+		description:
+			"Sessions, users, prompt management, Playground, scores, evaluators, annotation, datasets, and experiments.",
+	},
+	{
+		number: 5,
 		title: "Operations",
 		description:
-			"Dashboards, alerts, and runbooks for operating AI agents day to day.",
+			"Telemetry tests, pipeline resilience, dashboards, alerts, release gates, and runbooks for operating AI agents day to day.",
+	},
+	{
+		number: 6,
+		title: "Advanced Workflows",
+		description:
+			"Subgraphs, subagents, handoff traces, streaming graph updates, and production-safe live workflow visibility.",
 	},
 ];
 ---
@@ -71,7 +83,8 @@ const modules = [
 				It starts with traces, spans, sessions, cost, safety, and metadata-first
 				telemetry. Then it applies those ideas in a LangGraph + OpenTelemetry +
 				Langfuse stack that shows what the agent did, why it did it, how much it
-				cost, and where it needs attention.
+				cost, which prompt and dataset versions were involved, and where it needs
+				attention.
 			</p>
 
 			<h3>What the series covers</h3>
@@ -93,7 +106,9 @@ const modules = [
 					conventions, and Langfuse.
 				</li>
 				<li>
-					Dashboard, alert, and runbook patterns for operating agents day to day.
+					Langfuse sessions, users, prompt management, scores, evaluators,
+					annotation queues, datasets, experiments, dashboards, alerts, and
+					runbook patterns for operating agents day to day.
 				</li>
 			</ul>
 
