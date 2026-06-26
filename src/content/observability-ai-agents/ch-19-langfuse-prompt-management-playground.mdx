@@ -1,0 +1,554 @@
+---
+title: "Langfuse Prompt Management and Playground"
+description: "Version prompts in Langfuse, deploy them with labels, test them in Playground, and correlate prompt versions with traces, cost, and scores."
+module: 4
+order: 19
+---
+
+# Langfuse Prompt Management and Playground
+
+Instrumentation tells us what happened. Prompt management tells us which instruction set caused it. If prompts live only as strings in application code, every prompt experiment becomes a code deploy, and every quality regression requires archaeology through commits.
+
+Langfuse Prompt Management gives prompts their own lifecycle: create, version, label, fetch at runtime, test in Playground, and compare metrics by prompt version.
+
+## Treat prompts as deployable artifacts
+
+A production prompt needs the same operational metadata as code:
+
+| Field | Why it matters |
+|---|---|
+| Prompt name | Stable lookup key used by application code. |
+| Version | Immutable history of prompt changes. |
+| Label | Deploy pointer such as `production`, `staging`, `prod-a`, or `prod-b`. |
+| Variables | Contract between application data and prompt template. |
+| Config | Model, temperature, response format, tool schema, or other runtime defaults. |
+| Owner | Person or team responsible for changes and review. |
+
+Use labels in runtime code. Use versions for audits and reproducibility.
+
+We need to be able to answer: "Did quality drop after prompt version 14 reached production?" without digging through code history. And also, we need to be able to rollback to the last good prompt version without a code deploy. Labels and versions make that possible.
+
+## Create the prompt in Langfuse
+
+This prompt is not created in the Python project. Create it in the Langfuse UI, in the same project that receives the traces from the Collector.
+
+Open `http://localhost:3000`, select the project used by the demo, and go to **Prompt Management** -> **Prompts**. Click **New prompt** and use these values:
+
+| Field | Value |
+|---|---|
+| Type | Chat prompt |
+| Name | `order-status-answer` |
+| Label | `production` |
+| System message | The system message below |
+| User message | The user message below |
+
+Use this system message:
+
+```txt
+You are a support assistant. Answer using only authorized order and policy context.
+If the order state is missing or policy evidence is insufficient, escalate.
+```
+
+Use this user message:
+
+```txt
+Question: {{query}}
+Region: {{region}}
+Order state: {{order_state}}
+Policy document IDs: {{policy_document_ids}}
+Memory categories: {{memory_record_types}}
+```
+
+Save the prompt. If Langfuse creates version `1`, assign the `production` label to that version. The runtime code in the next section will fetch `order-status-answer` by name and label, so the name and label must match exactly.
+
+Keep raw retrieved chunks out of the default template unless Chapter 7's content-capture policy explicitly allows them. The template can receive document IDs and state categories without becoming a content sink.
+
+## Install the Langfuse SDK
+
+Chapter 13 configured the Collector to export OpenTelemetry spans to Langfuse. Prompt management is different: the Python process now needs to call the Langfuse API directly to fetch a managed prompt. That requires the Langfuse Python SDK in our project.
+
+Update `requirements.txt` in the demo project and add `langfuse` near the other runtime dependencies:
+
+```txt
+langgraph>=1.0,<2
+langfuse>=4,<5
+openai>=2,<3
+opentelemetry-api>=1.39,<2
+opentelemetry-sdk>=1.39,<2
+opentelemetry-exporter-otlp-proto-http>=1.39,<2
+pydantic>=2.10,<3
+pydantic-settings>=2.7,<3
+pytest>=8,<9
+```
+
+Then install and refresh the lock file from the demo project root:
+
+```sh
+python -m pip install -r requirements.txt
+python -m pip freeze > requirements.lock.txt
+```
+
+The demo loads `.env` through `src/agent_observability/config.py`, not by exporting every variable into the shell. Add the Langfuse fields to `Settings` if they are not already there:
+
+```python
+langfuse_secret_key: str
+langfuse_public_key: str
+langfuse_base_url: str = "http://localhost:3000"
+langfuse_collector_base_url: str = "http://host.docker.internal:3000"
+```
+
+## Fetch the production prompt at runtime
+
+Create `src/agent_observability/prompts.py`:
+
+```python
+from typing import Any
+
+from langfuse import Langfuse
+
+from .config import settings
+
+
+langfuse = Langfuse(
+    public_key=settings.langfuse_public_key,
+    secret_key=settings.langfuse_secret_key,
+    base_url=settings.langfuse_base_url,
+    tracing_enabled=False,
+)
+
+
+def prompt_label_for_user(pseudonymous_user_id: str) -> str:
+    bucket = int(pseudonymous_user_id[-2:], 16) % 2
+    return "prod-a" if bucket == 0 else "prod-b"
+
+
+def get_order_status_prompt(
+    context: dict[str, Any],
+    *,
+    label: str = "production",
+) -> tuple[list[dict[str, str]], dict[str, Any]]:
+    prompt = langfuse.get_prompt(
+        "order-status-answer",
+        label=label,
+        type="chat",
+    )
+    messages = prompt.compile(**context)
+    prompt_version = getattr(prompt, "version", None)
+    if prompt_version is None:
+        raise RuntimeError("Langfuse prompt version is missing")
+
+    metadata = {
+        "prompt_name": "order-status-answer",
+        "prompt_version": int(prompt_version),
+        "prompt_label": label,
+    }
+    return messages, metadata
+```
+
+The `tracing_enabled=False` line is intentional. In this demo, the Langfuse SDK is only used to fetch the managed prompt. Trace export still goes through our OpenTelemetry SDK, the local Collector, and Langfuse's OTLP endpoint. If the Langfuse SDK also configures tracing, the Python process can print `Overriding of current TracerProvider is not allowed` because two libraries tried to install the global OpenTelemetry provider.
+
+Then update `src/agent_observability/graph.py`.
+
+Add the `get_order_status_prompt` import near the other local imports at the top of the file:
+
+```python
+from .prompts import get_order_status_prompt
+```
+
+Then replace the existing `compose_answer_node` function with this complete version. This is a replacement, not an additional node. It keeps the budget check, fetches the managed prompt, records prompt identity, and keeps the capture-policy metadata from Chapter 17:
+
+```python
+@traced_node("compose_answer")
+def compose_answer_node(state: AgentState) -> dict[str, Any]:
+    budget = state.get("budget")
+    if budget is not None:
+        budget.before_model_call()
+
+    prompt_label = state.get("prompt_label", "production")
+    input_items, prompt_metadata = get_order_status_prompt(
+        {
+            "query": state["query"],
+            "region": state["region"],
+            "order_state": state.get("order_state", "unknown"),
+            "policy_document_ids": state.get("policy_document_ids", []),
+            "memory_record_types": state.get("memory_record_types", []),
+        },
+        label=prompt_label,
+    )
+
+    answer = generate_answer(
+        instructions="Follow the managed prompt contract.",
+        input_items=input_items,
+        prompt_metadata=prompt_metadata,
+    )
+
+    capture = project_content_for_telemetry(
+        value=answer,
+        policy=CapturePolicy(
+            mode="metadata_only",
+            policy_version="capture-policy-1",
+        ),
+    )
+
+    return {
+        "answer": answer,
+        "capture_mode": capture["capture_mode"],
+        "capture_policy_version": capture["capture_policy_version"],
+        "prompt_name": prompt_metadata["prompt_name"],
+        "prompt_version": prompt_metadata["prompt_version"],
+        "prompt_label": prompt_metadata["prompt_label"],
+    }
+```
+
+The exact prompt object shape depends on whether you use a text or chat prompt. Keep the wrapper small so SDK changes are isolated in one file.
+
+## Record prompt identity on model spans
+
+Update `src/agent_observability/inference.py` next. The change is inside the existing `generate_answer` function, created in Chapter 14 and extended in Chapter 17.
+
+Do not create a second model wrapper, and do not remove `_set_response_metadata`, the timeout, or the error handling already present in the file. Replace only the current `generate_answer` function with this version:
+
+```python
+def generate_answer(
+    instructions: str,
+    input_items: list[dict[str, Any]],
+    *,
+    model: str | None = None,
+    prompt_metadata: dict[str, Any] | None = None,
+) -> str:
+    requested_model = model or settings.openai_model
+
+    with tracer.start_as_current_span(
+        "openai.responses.create",
+        kind=SpanKind.CLIENT,
+        attributes={
+            "gen_ai.operation.name": "chat",
+            "gen_ai.provider.name": "openai",
+            "gen_ai.request.model": requested_model,
+            "gen_ai.request.stream": False,
+            "server.address": "api.openai.com",
+            "app.openai.store": False,
+        },
+    ) as span:
+        if prompt_metadata is not None:
+            span.set_attribute("langfuse.observation.type", "generation")
+            span.set_attribute(
+                "langfuse.observation.prompt.name",
+                prompt_metadata["prompt_name"],
+            )
+            span.set_attribute(
+                "langfuse.observation.prompt.version",
+                prompt_metadata["prompt_version"],
+            )
+            span.set_attribute(
+                "langfuse.observation.metadata.prompt_label",
+                prompt_metadata["prompt_label"],
+            )
+
+        try:
+            response = client.responses.create(
+                model=requested_model,
+                instructions=instructions,
+                input=input_items,
+                store=False,
+            )
+        except Exception as exc:
+            span.record_exception(exc)
+            span.set_status(Status(StatusCode.ERROR, str(exc)))
+            span.set_attribute("error.type", exc.__class__.__name__)
+            raise
+
+        _set_response_metadata(span, response)
+        return response.output_text
+```
+
+The important detail is the attribute namespace. `app.prompt.*` would only be custom metadata in our app. `langfuse.observation.prompt.name` and `langfuse.observation.prompt.version` are the Langfuse OTLP attributes for linking a generation to a managed prompt. Keep `prompt_version` as an integer. Use `langfuse.observation.metadata.prompt_label` for the label because labels are deployment pointers, not immutable prompt identity.
+
+That is enough to answer: "Did quality drop after prompt version 14 reached production?"
+
+## Run the runtime check
+
+Now validate the whole path: Python fetches the `production` prompt from Langfuse, LangGraph runs the order-status workflow, the OpenAI span receives the prompt identity attributes, and the Collector exports the trace back to Langfuse.
+
+Use the manual scenario runner we already have in the demo project. First make sure these pieces are in place:
+
+| Requirement | Why |
+|---|---|
+| Langfuse is running at `http://localhost:3000` | The SDK fetches the managed prompt from the Langfuse API. |
+| The `order-status-answer` prompt exists with the `production` label | `get_order_status_prompt()` fetches exactly that name and label. |
+| `.env` has `OPENAI_API_KEY`, `LANGFUSE_PUBLIC_KEY`, and `LANGFUSE_SECRET_KEY` | OpenAI handles the generation, and the Collector authenticates with Langfuse. |
+| The local Collector is running | The Python process exports OTLP spans to `http://localhost:4318/v1/traces`. |
+
+Add this code to the end of `src/agent_observability/manual_scenarios.py`:
+
+```python
+
+def run_prompt_management() -> None:
+    conversation_id = f"conv_{uuid4().hex}"
+    with langfuse_trace_context(
+        session_id=conversation_id,
+        user_id="usr_pseudo_prompt_demo",
+        trace_name="manual-prompt-management",
+        version=settings.agent_version,
+        tags=("order-status", "prompt-management", "manual-scenario"),
+        metadata={
+            "environment": settings.deployment_environment,
+            "workflow": "order-status",
+            "region": "eu",
+        },
+    ):
+        result = run_agent(
+            {
+                "query": "Where is my order?",
+                "conversation_id": conversation_id,
+                "order_reference": "ORDER-924",
+                "region": "eu",
+            },
+        )
+
+    print(result["outcome"])
+```
+
+And update the scenarios dictionary to include the new scenario:
+
+```python
+SCENARIOS: dict[str, Callable[[], None]] = {
+    "success": run_success,
+    "stream": run_stream,
+    "retry": run_retry,
+    "fallback": run_fallback,
+    "retry-classification": run_retry_classification,
+    "feedback": run_feedback,
+    "negative-signal": run_negative_signal,
+    "prompt-management": run_prompt_management,
+}
+```
+
+Then run only the prompt-management scenario:
+
+```sh
+python -m agent_observability.manual_scenarios prompt-management
+```
+
+Use this scenario instead of `all` for the first validation. It sends one graph execution and makes the Langfuse result easier to inspect.
+
+The terminal should print the graph outcome, usually:
+
+```txt
+answer
+```
+
+Then open Langfuse and go to **Tracing**. Look for a trace named `manual-prompt-management`. Open it and check these parts:
+
+| Where to look | What should be present |
+|---|---|
+| Trace metadata | `environment = development`, `workflow = order-status`, `region = eu` |
+| Trace tags | `order-status`, `prompt-management`, `manual-scenario` |
+| Session/User views | Session ID starting with `conv_`, user `usr_pseudo_prompt_demo` |
+| `openai.responses.create` observation | `langfuse.observation.prompt.name = order-status-answer` |
+| Same observation | `langfuse.observation.prompt.version = 1` or the version currently labeled `production` |
+| Same observation metadata | `prompt_label = production` |
+
+If the terminal succeeds but the trace is not visible immediately, wait a few seconds and refresh Langfuse. The Collector batches spans before export.
+
+## Use Playground as a review step
+
+The Playground is useful before a label moves to `production`:
+
+1. Load the candidate prompt version.
+2. Fill variables with sanitized examples from the dataset or a synthetic case.
+3. Test model parameters and tool schema.
+4. Save the working variant as a new prompt version.
+5. Move a non-production label first, for example `staging`.
+6. Run the dataset experiment from Chapter 22 before moving `production`.
+
+Do not use Playground history as the source of truth for production approval. The source of truth is the prompt version, label movement, experiment result, and release record. Playground is a tool for testing and review, not a source of truth.
+
+## A/B test with labels
+
+We can perform controlled experiments by splitting traffic between two prompt labels. For example, use labels such as `prod-a` and `prod-b` when you intentionally split traffic:
+
+```python
+def prompt_label_for_user(pseudonymous_user_id: str) -> str:
+    bucket = int(pseudonymous_user_id[-2:], 16) % 2
+    return "prod-a" if bucket == 0 else "prod-b"
+```
+
+In the demo, the graph reads `prompt_label` from state. If no label is provided, it keeps using `production`. That keeps the normal runtime path stable and lets the manual scenario choose labels only for this experiment.
+
+Create the labels in Langfuse before running the scenario:
+
+1. Open `http://localhost:3000`.
+2. Go to **Prompt Management** -> **Prompts**.
+3. Open `order-status-answer`.
+4. Assign `prod-a` to the current known-good version.
+5. Create a second version with a small, reviewable change, for example a slightly different escalation instruction.
+6. Assign `prod-b` to that second version.
+
+Keep `production` unchanged for this demo. The A/B labels are only experiment pointers.
+
+Then run the A/B manual scenario from the demo project root:
+
+```sh
+python -m agent_observability.manual_scenarios prompt-ab-test
+```
+
+The terminal should print one line per label:
+
+```txt
+prod-a: answer
+prod-b: answer
+```
+
+Then open **Tracing** in Langfuse and search for `manual-prompt-ab-test`. You should see two traces:
+
+| Trace | Expected label |
+|---|---|
+| `manual-prompt-ab-test-prod-a` | `prompt_label = prod-a` |
+| `manual-prompt-ab-test-prod-b` | `prompt_label = prod-b` |
+
+Open each trace and inspect the `openai.responses.create` observation. The `langfuse.observation.prompt.name` value should be `order-status-answer`, while `langfuse.observation.prompt.version` should point to the version behind that label. The observation metadata should contain the label used by the scenario.
+
+After that, use the trace list filters or table columns to compare latency, cost, feedback, and evaluation scores by prompt label. Avoid changing model, retriever, and prompt at the same time unless the experiment is designed for that.
+
+## Runtime fallback
+
+Prompt fetching is now on the critical path. The agent should not silently switch to `latest`, and it should not hide the fact that the managed prompt could not be fetched. Use a bounded fallback path that is visible in the trace.
+
+| Failure | Recommended behavior |
+|---|---|
+| Prompt fetch timeout | Use cached prompt for a bounded time and record fallback. |
+| Missing `production` label | Fail closed in production; do not silently use `latest`. |
+| Variable mismatch | Fail before model call and record validation error. |
+| Prompt changed without review | Protect production labels and require approval. |
+
+For the demo, add a small in-memory cache in `src/agent_observability/prompts.py`. This is enough for the local exercise. In production, use a cache with TTL, size limits, startup warmup, and a deployment rollback plan.
+
+```python
+from opentelemetry import trace
+
+
+PromptResult = tuple[list[dict[str, str]], dict[str, Any]]
+CachedPrompt = tuple[Any, dict[str, Any]]
+_prompt_cache: dict[str, CachedPrompt] = {}
+```
+
+Then update `get_order_status_prompt` so a successful fetch updates the cache and a failed fetch uses the cached prompt only if one exists. Cache the prompt template object, not the compiled messages, otherwise the fallback can accidentally reuse variables from an older request.
+
+```python
+def get_order_status_prompt(
+    context: dict[str, Any],
+    *,
+    label: str = "production",
+) -> PromptResult:
+    span = trace.get_current_span()
+    try:
+        prompt = langfuse.get_prompt(
+            "order-status-answer",
+            label=label,
+            type="chat",
+        )
+        messages = prompt.compile(**context)
+        prompt_version = getattr(prompt, "version", None)
+        if prompt_version is None:
+            raise RuntimeError("Langfuse prompt version is missing")
+
+        metadata = {
+            "prompt_name": "order-status-answer",
+            "prompt_version": int(prompt_version),
+            "prompt_label": label,
+            "prompt_source": "langfuse",
+        }
+        _prompt_cache[label] = (prompt, metadata)
+        span.set_attribute("app.prompt.fetch.source", "langfuse")
+        return messages, metadata
+    except Exception as exc:
+        cached = _prompt_cache.get(label)
+        if cached is None:
+            span.set_attribute("app.prompt.fetch.source", "unavailable")
+            span.set_attribute("app.prompt.fetch.error_type", exc.__class__.__name__)
+            raise
+
+        span.set_attribute("app.prompt.fetch.source", "cache")
+        span.set_attribute("app.prompt.fetch.error_type", exc.__class__.__name__)
+        span.add_event(
+            "prompt.cache_fallback",
+            {
+                "app.prompt.label": label,
+                "error.type": exc.__class__.__name__,
+            },
+        )
+        prompt, metadata = cached
+        messages = prompt.compile(**context)
+        return messages, {**metadata, "prompt_source": "cache"}
+```
+
+Also add the prompt fields to `AgentState` in `src/agent_observability/graph.py`. LangGraph only keeps fields that belong to the state schema:
+
+```python
+class AgentState(TypedDict, total=False):
+    # ...existing fields...
+    capture_mode: str
+    capture_policy_version: str
+    prompt_name: str
+    prompt_version: int
+    prompt_label: str
+    prompt_source: str
+```
+
+Then return `prompt_source` from `compose_answer_node` so the node result tells us whether the prompt came from Langfuse or cache:
+
+```python
+return {
+    "answer": answer,
+    "capture_mode": capture["capture_mode"],
+    "capture_policy_version": capture["capture_policy_version"],
+    "prompt_name": prompt_metadata["prompt_name"],
+    "prompt_version": prompt_metadata["prompt_version"],
+    "prompt_label": prompt_metadata["prompt_label"],
+    "prompt_source": prompt_metadata["prompt_source"],
+}
+```
+
+The manual scenario runner has a `prompt-cache-fallback` scenario that warms the cache once, simulates a Langfuse prompt fetch timeout, and runs the graph again:
+
+```sh
+python -m agent_observability.manual_scenarios prompt-cache-fallback
+```
+
+The terminal should show the first run using Langfuse and the second run using cache:
+
+```txt
+warmup: langfuse answer
+fallback: cache answer
+```
+
+In Langfuse, open **Tracing** and search for `manual-prompt-cache`. The warmup trace should have `app.prompt.fetch.source = langfuse` on the `workflow.node compose_answer` span. The fallback trace should have `app.prompt.fetch.source = cache`, `app.prompt.fetch.error_type = TimeoutError`, and a `prompt.cache_fallback` event on the same span.
+
+The prompt management system is operational infrastructure. Treat it like one or you will be surprised when a prompt fetch fails in production.
+
+## What should exist before we go to Chapter 20
+
+At this point the demo should have:
+
+- a managed `order-status-answer` prompt in Langfuse;
+- runtime prompt fetching by `production` label;
+- prompt name, version, and label recorded on model spans;
+- a defined fallback policy for prompt-fetch failures;
+- a Playground review step before production label movement;
+- optional `prod-a` and `prod-b` labels for controlled prompt experiments.
+- optional `prompt_source` field to distinguish between Langfuse and cache.
+
+Chapter 20 turns user feedback, deterministic checks, and review results into Langfuse scores.
+
+## References
+
+- [Langfuse Prompt Management overview](https://langfuse.com/docs/prompt-management/overview)
+- [Langfuse Prompt Management get started](https://langfuse.com/docs/prompt-management/get-started)
+- [Langfuse prompt version control](https://langfuse.com/docs/prompt-management/features/prompt-version-control)
+- [Langfuse prompt A/B testing](https://langfuse.com/docs/prompt-management/features/a-b-testing)
+- [Langfuse Prompt Management for OpenAI functions](https://langfuse.com/guides/cookbook/prompt_management_openai_functions)
+
+---
+
+**Next up**: [Ch 20 - Scores, Feedback, and Quality Signals in Langfuse](/observability-ai-agents/ch-20-langfuse-scores-feedback-quality-signals/) stores quality signals where traces, sessions, prompts, and experiments can use them.
