@@ -21,14 +21,14 @@ The runtime path is the agent execution:
 
 ```mermaid
 flowchart TD
-  CLI[CLI request]
+  Runner[Local runner]
   Graph[LangGraph workflow]
   Retrieval[Local policy retriever]
   Tool[Order service tool]
   OpenAI[OpenAI Responses API]
   Outcome[Answer or escalation]
 
-  CLI --> Graph
+  Runner --> Graph
   Graph --> Retrieval
   Graph --> Tool
   Graph --> OpenAI
