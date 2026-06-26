@@ -1,0 +1,294 @@
+---
+title: "Dashboards, Alerts, Release Gates, and Runbooks"
+description: "Operate the order-status agent with Langfuse views, score analytics, dataset gates, operational alerts, and incident runbooks tied to the demo built in the series."
+module: 5
+order: 24
+---
+
+# Dashboards, Alerts, Release Gates, and Runbooks
+
+We have now in our demo case enough telemetry to make operational decisions. It has traces, sessions, users, prompt versions, feedback scores, evaluator scores, datasets, experiments, and tests that protect the telemetry contract.
+
+This chapter does not add more runtime code. The practical work happens in Langfuse and in your operating notes: create saved views, decide which signals page a human, define release gates, and write runbooks that point back to traces, scores, and dataset runs.
+
+## Start from fresh demo data
+
+Run a small set of scenarios so the Langfuse UI has something to inspect:
+
+```sh
+PYTHONPATH=src python -m agent_observability.manual_scenarios prompt-management
+PYTHONPATH=src python -m agent_observability.manual_scenarios prompt-ab-test
+PYTHONPATH=src python -m agent_observability.manual_scenarios prompt-cache-fallback
+PYTHONPATH=src python -m agent_observability.dataset_scenarios run
+```
+
+Then choose one recent trace ID from **Tracing** and one recent session ID from **Sessions**. Use them to attach a few manual scores:
+
+```sh
+PYTHONPATH=src python -m agent_observability.score_scenarios feedback --trace-id <trace-id>
+PYTHONPATH=src python -m agent_observability.score_scenarios correctness --trace-id <trace-id> --correct
+PYTHONPATH=src python -m agent_observability.score_scenarios policy --trace-id <trace-id>
+PYTHONPATH=src python -m agent_observability.score_scenarios session --session-id <session-id> --outcome resolved
+```
+
+This gives you the same signal families the previous chapters built: traces, sessions, users, prompt labels, scores, and dataset runs. And we can now use them to make operational decisions.
+
+## Build views around decisions
+
+We can use saved views and dashboard slices to answer questions about the application directly from Langfuse. The goal is to have a small number of views that answer the questions you actually need to make decisions about the agent's behavior.
+
+Start with one dashboard for the order-status demo:
+
+1. Open **Dashboards** in Langfuse.
+2. Click **New Dashboard**.
+3. Set **Dashboard Name** to `Order-status operations`.
+4. Set **Description** to `Operational view for the local order-status agent demo.`
+5. Click **Create**.
+
+After the dashboard opens, add a first widget:
+
+1. Click **Add Widget**.
+2. Click **Create New Widget**.
+3. In **View**, select `Traces`.
+4. In **Metric**, select `Count`.
+5. Under **Filters**, add `Environment` -> `any of` -> `development`.
+6. Set **Breakdown Dimension** to `Trace Name`.
+7. Set **Name** to `Trace volume by workflow`.
+8. Set **Description** to `Count of development traces grouped by trace name.`
+9. Set **Chart Type** to `Line Chart` or `Vertical Bar Chart`.
+10. Set **Date Range** to `Past 7 days`.
+11. Click **Save Widget**.
+
+This widget answers a simple operating question: "Are we still producing traces for the workflows we expect?" In the demo, you should see names such as `manual-prompt-management`, `manual-prompt-ab-test-prod-a`, `manual-prompt-ab-test-prod-b`, and `invoke_agent order-status`.
+
+Create a second widget for prompt rollout comparison:
+
+| Field | Value |
+|---|---|
+| View | `Traces` |
+| Metric | `Count` |
+| Filters | `Environment = development`, `Tags` contains `prompt-ab-test` |
+| Breakdown Dimension | `Tags` or `Trace Name` |
+| Name | `Prompt A/B trace volume` |
+| Chart Type | `Vertical Bar Chart` |
+| Date Range | `Past 7 days` |
+
+Create a third widget for quality signals if your Langfuse dashboard view exposes `Scores` as a selectable view. If not, use **Evaluation** -> **Scores** -> **Analytics** for this part and keep the dashboard focused on trace volume, latency, and cost.
+
+| Field | Value |
+|---|---|
+| View | `Scores` |
+| Metric | `Average` or `Count`, depending on the score |
+| Filters | `Environment = development`, score name in `answer_correctness`, `policy_compliance`, `user_feedback` |
+| Breakdown Dimension | `Name` |
+| Name | `Quality signals by score` |
+| Chart Type | `Line Chart` |
+| Date Range | `Past 7 days` |
+
+Create saved dashboard slices for decisions you actually need to make. For example, you might want to answer:
+
+| View | Where to build it | Filters | Decision |
+|---|---|---|---|
+| Current order-status traces | **Tracing** | `Environment = development`, trace name contains `manual-prompt` or `invoke_agent order-status` | Is the current demo path producing complete traces? |
+| User and session behavior | **Sessions** and **Users** | User ID starts with `usr_`, session ID starts with `conv_` | Can we follow one user across multiple traces? |
+| Prompt rollout comparison | **Tracing** or **Scores Analytics** | Tags include `prompt-ab-test`, prompt label is `prod-a` or `prod-b` | Did the candidate prompt change outcomes, cost, or latency? |
+| Quality scores | **Scores** | Names `user_feedback`, `answer_correctness`, `policy_compliance`, `session_resolution` | Is quality moving in the wrong direction? |
+| Regression dataset runs | **Datasets** -> `order-status-regression` -> **Runs** | Run name and timestamp | Can the candidate pass the regression set? |
+
+Keep the filters visible in screenshots and incident notes. If you need to change the filters, record the old and new values. The goal is to have a small number of saved views that answer the questions you actually need to make decisions about the agent's behavior.
+
+## Use the dataset run as the release gate
+
+In the chapter 22 we created `order-status-regression` and a baseline experiment run. Now we'll use that as the release gate for prompt, model, retrieval, and workflow changes: the candidate must pass the same regression cases before you let it reach traffic.
+
+Think of it as a checklist you run every time you are about to promote a change:
+
+| Thing | Meaning in this demo |
+|---|---|
+| Baseline | The current accepted behavior, such as the `order-status-production-baseline` dataset run. |
+| Candidate | The prompt, model, retrieval setup, or workflow version you want to release. |
+| Gate | The rule that decides whether the candidate can move forward. |
+| Evidence | The Langfuse dataset run URL, scores, cost, latency, and notes you record with the release. |
+
+Before rollout:
+
+1. Make the candidate change locally. For example, change the prompt label, model alias, retrieval configuration, or workflow code.
+2. Run the regression dataset:
+
+   ```sh
+   PYTHONPATH=src python -m agent_observability.dataset_scenarios run
+   ```
+
+3. Open the printed dataset run URL, or go to **Evaluation** -> **Datasets** -> `order-status-regression` -> **Runs**.
+4. Compare the candidate run with the previous baseline run.
+5. Confirm that the required scores passed:
+
+   | Score | Pass condition in this local demo | What it protects |
+   |---|---|---|
+   | `expected_outcome` | `1.00` | The agent took the expected route, such as returning an answer instead of failing or escalating unexpectedly. |
+   | `required_terms_present` | `1.00` | The answer still includes required content from the regression case. |
+   | `forbidden_terms_absent` | `1.00` | The answer did not introduce text that the case explicitly forbids. |
+
+6. Compare cost and latency with the previous baseline run. Chapter 22 used `total_cost_per_case <= baseline * 1.10` as an example threshold.
+7. Record the dataset run URL in the release note or pull request.
+
+For example, if a prompt change makes the delayed-order case stop mentioning `order`, the `required_terms_present` score should fail. That is a blocked release until you fix the candidate or explicitly record why you are accepting the regression.
+
+During rollout:
+
+1. Tag traces with release, prompt label, and environment, such as `release=2026-06-26`, `prompt_label=prod-b`, and `environment=production`.
+2. Start with a bounded cohort, such as internal users, one tenant, one region, or a small traffic percentage.
+3. Temporarily increase trace and score review sampling for that cohort.
+4. Compare candidate traces with the concurrent baseline where possible.
+5. Roll back on the thresholds defined in Chapter 22.
+
+Do not relax a release gate after seeing a bad candidate result unless you record who made the decision and why. The threshold is part of the control, not a decoration around the result.
+
+## Runbook: quality regression
+
+Use this when `answer_correctness`, evaluator scores, human annotation, or dataset runs show a quality drop.
+
+Start by proving whether this is a real behavior change or an evaluation/configuration mismatch:
+
+| Step | What to do | Evidence to keep |
+|---|---|---|
+| 1 | Open the failed trace, score, or dataset item in Langfuse. | Trace URL, score name, score value, dataset run URL. |
+| 2 | Check whether evaluator version, prompt label, model, workflow version, or dataset version changed. | The old and new versions side by side. |
+| 3 | Segment failures by task type, region, prompt label, model, and failure category. | A screenshot or note with the exact filters. |
+| 4 | Compare candidate and baseline traces for the same dataset case or cohort. | Candidate trace URL and baseline trace URL. |
+| 5 | Inspect retrieval document IDs, memory record types, tool result attributes, prompt version, and model alias. | The input/evidence difference that explains the output difference. |
+| 6 | Freeze rollout or roll back if the release criterion from Chapter 22 is breached. | The decision, owner, and timestamp. |
+| 7 | Add confirmed failures to `order-status-regression` after minimizing sensitive data. | New dataset item ID and review note. |
+
+A practical failure note can be something like this:
+
+```txt
+incident_type: quality_regression
+score: required_terms_present = 0.00
+candidate_run: <Langfuse dataset run URL>
+baseline_run: <previous dataset run URL>
+suspected_change: prompt_label=prod-b
+decision: blocked rollout, add minimized case to order-status-regression
+```
+
+The trap here is arguing with the model output first. Start with versions, inputs, retrieved evidence, and tool state.
+
+## Runbook: cost spike
+
+Use this when the cost badge, provider usage, or Langfuse cost analytics show a jump.
+
+Do not start by blaming traffic. First of all, separate volume from per-task cost:
+
+| Question | Where to look | If yes |
+|---|---|---|
+| Did request volume increase? | Langfuse trace count, application counters, provider usage totals. | Treat it as capacity or product demand before changing the agent. |
+| Did cost per task increase? | Cost by trace, model call, prompt label, and workflow version. | Investigate prompt/context/model changes. |
+| Did retries or fallbacks increase? | Trace spans for repeated model calls, tool retries, timeout paths, fallback tags. | Check stopping conditions and error handling. |
+| Did context get larger? | Prompt version, retrieved document count, memory records, message history length. | Reduce irrelevant context before changing thresholds. |
+
+Then take a containment action:
+
+1. Preserve representative high-cost traces and one normal baseline trace.
+2. Apply or lower the runtime budget if exposure is active.
+3. Pause the candidate rollout if the spike started with a prompt, model, retrieval, or workflow change.
+4. Fix the cause before relaxing any temporary budget control.
+
+Cost incidents are often quality incidents in disguise: the agent loops, retries, or sends too much context because the workflow lost a clear stopping condition.
+
+## Runbook: sensitive data in telemetry
+
+Use this when raw user content, credentials, order identifiers, memory values, or retrieved document text appear where the capture policy says they should not.
+
+The first job is containment without copying the sensitive value into more places:
+
+1. Stop or narrow the emitting path. Disable the feature, reduce capture mode to metadata-only, or block the specific exporter route.
+2. Restrict access to affected projects, traces, exports, and datasets.
+3. Identify the affected data classes, tenants, environments, time range, and downstream copies.
+4. Preserve evidence by recording trace IDs, span names, field names, policy versions, and screenshots that do not expose the raw value.
+5. Delete or quarantine data according to retention and incident policy.
+6. Rotate exposed secrets or credentials if any secret-like value reached telemetry.
+7. Add synthetic canary coverage for the failed path.
+8. Rerun the privacy tests from Chapter 23:
+
+   ```sh
+   PYTHONPATH=src pytest -q
+   ```
+
+Use a note like this instead of pasting the sensitive payload:
+
+```txt
+incident_type: sensitive_data_in_telemetry
+field: gen_ai.tool.call.arguments
+detected_type: order_id
+raw_value_copied: no
+affected_window: <start> to <end>
+containment: capture mode returned to metadata-only
+verification: privacy tests passed, storage scan completed
+```
+
+Privacy, security, and legal teams own notification and evidence obligations. The runbook here is about containment, evidence, and prevention.
+
+## Runbook: telemetry gap
+
+Use this when provider usage, application counters, or business events do not match Langfuse traces.
+
+Work from the application outward:
+
+| Layer | Check | Common finding |
+|---|---|---|
+| Application | Provider-call counters vs observed model-call spans. | The code made calls that were never wrapped in spans. |
+| Process shutdown | `force_flush()` and batch processor timing. | The script exited before spans were exported. |
+| SDK/exporter | Queue saturation, exporter errors, endpoint configuration. | Spans were created but not delivered. |
+| Collector | Receiver refusal, memory limiter, sampling, exporter queues. | The Collector dropped or delayed spans. |
+| Langfuse context | Trace ID, session ID, user ID, tags, and credentials. | Spans arrived but cannot be found in the expected view. |
+
+After the missing segment is identified:
+
+1. Decide whether the gap affects debug telemetry, release gates, billing, or required audit evidence.
+2. Preserve control totals and representative trace IDs.
+3. Fail closed only for paths where policy requires a complete audit record.
+4. Add or update a test if the gap came from instrumentation drift.
+
+Do not blame Langfuse before checking whether the process exited before the batch processor flushed.
+
+## Incident review template
+
+For every significant agent incident, capture:
+
+| Field | What to write |
+|---|---|
+| Impact | Affected users, tenants, regions, workflows, and business effect. |
+| Timeline | Detection time, containment time, rollback time, and resolution time. |
+| Execution path | Workflow, tools, retrieval, memory, model calls, and external side effects. |
+| Versions | Model, prompt, workflow, tool, retrieval, memory, evaluator, dataset, and policy versions. |
+| Evidence | Session ID, user ID, trace IDs, score names, dashboard filters, and dataset run URLs. |
+| Controls | Which budgets, gates, guardrails, tests, alerts, or reviews limited the impact. |
+| Gaps | Which expected signals were missing, sampled out, delayed, or too sensitive to inspect. |
+| Follow-up | Changes to code, prompts, policies, datasets, evaluators, alerts, dashboards, and runbooks. |
+
+Avoid assigning intent to the model. Describe observable inputs, outputs, actions, and control failures.
+
+## What should exist before we go to Chapter 25
+
+At this point you should have:
+
+- at least one saved trace view for the order-status workflow;
+- a way to inspect sessions and users for the demo IDs;
+- score views for `user_feedback`, `answer_correctness`, `policy_compliance`, and `session_resolution`;
+- the latest `order-status-regression` dataset run URL recorded as release evidence;
+- written runbooks for quality regression, cost spike, sensitive data in telemetry, and telemetry gaps;
+- a clear rule for which issues page a human and which go to review queues.
+
+Chapter 25 adds advanced execution boundaries: subgraphs, subagents, and handoff traces.
+
+## References
+
+- [Google SRE: Monitoring Distributed Systems](https://sre.google/sre-book/monitoring-distributed-systems/)
+- [Google SRE: Service Level Objectives](https://sre.google/sre-book/service-level-objectives/)
+- [NIST AI RMF Core](https://airc.nist.gov/airmf-resources/airmf/5-sec-core/)
+- [Langfuse evaluation overview](https://langfuse.com/docs/evaluation/overview)
+- [OpenTelemetry Collector internal telemetry](https://opentelemetry.io/docs/collector/internal-telemetry/)
+
+---
+
+**Next up**: [Ch 25 - Subgraphs, Subagents, and Handoff Traces](/observability-ai-agents/ch-25-subgraphs-subagents-handoff-traces/) adds advanced graph boundaries, delegated work, and trace links.
