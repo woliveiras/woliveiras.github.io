@@ -1,0 +1,317 @@
+---
+title: "Langfuse Sessions, Users, and Trace Context"
+description: "Use Langfuse sessions, users, metadata, tags, and versions to turn individual traces into conversation and product views."
+module: 4
+order: 18
+---
+
+# Langfuse Sessions, Users, and Trace Context
+
+The trace from Chapter 17 explains one hardened execution. Product work needs a larger view: one conversation, one user, one release, one environment, or one tenant cohort. Without that context, Langfuse is only a trace viewer.
+
+Our demo exports OpenTelemetry spans through the Collector. That means we should not switch this chapter to the Langfuse Python SDK just to set sessions and users. Instead, we will use the OpenTelemetry attribute mapping that Langfuse supports for OTLP ingestion.
+
+The practical change in this chapter is:
+
+- create one small context helper for Langfuse trace attributes;
+- copy those attributes from OpenTelemetry baggage to every span;
+- wrap `run_agent` in that context from `main.py`;
+- run the demo more than once and confirm that Langfuse groups the traces by Session and User.
+
+## Map the Langfuse data model
+
+Langfuse stores OpenTelemetry spans as observations. A trace groups observations from one request or task. A session groups related traces, such as the turns in one conversation.
+
+| Application concept | Langfuse field | Use |
+|---|---|---|
+| One agent turn | Trace | Debug one request, tool chain, model call, and outcome. |
+| One span inside the turn | Observation | Inspect model, retrieval, tool, memory, or workflow-node work. |
+| One conversation | Session | Review a multi-turn interaction across traces. |
+| One stable actor | User | Analyze usage, cost, quality, and repeated failures by user. |
+| One deployed app build | Version | Compare behavior across releases. |
+| One runtime context | Metadata and tags | Filter traces by bounded operational dimensions. |
+
+One common mistake is using the trace ID as the session ID. That creates one session per trace and hides the conversation view. For the demo, keep the session stable across repeated local runs:
+
+```txt
+session_id = "conv_82d9535867844b4c8cdff"
+user_id = "usr_pseudo_7f31c2"
+trace_name = "order-status-turn"
+version = "local"
+tags = ["order-status", "langgraph"]
+metadata.environment = "development"
+metadata.workflow = "order-status"
+metadata.region = "eu"
+```
+
+Do not use email addresses, raw account IDs, access tokens, order references, or free-form user text as propagated attributes. If support needs to map a pseudonymous ID back to a real user, keep that mapping in the application database with access control.
+
+## Create the trace context helper
+
+The context helper belongs outside `graph.py`. The graph should receive business state and run the agent. Session, user, version, tags, and filterable metadata are execution context, so put them in their own file.
+
+Create `src/agent_observability/langfuse_context.py`:
+
+```python
+from collections.abc import Iterator, Mapping, Sequence
+from contextlib import contextmanager
+
+from opentelemetry import baggage
+from opentelemetry import context as otel_context
+
+
+LANGFUSE_BAGGAGE_KEYS = {
+    "langfuse.session.id",
+    "langfuse.user.id",
+    "langfuse.trace.name",
+    "langfuse.version",
+    "langfuse.trace.metadata.environment",
+    "langfuse.trace.metadata.workflow",
+    "langfuse.trace.metadata.region",
+}
+LANGFUSE_TAGS_BAGGAGE_KEY = "app.langfuse.trace.tags"
+
+
+@contextmanager
+def langfuse_trace_context(
+    *,
+    session_id: str,
+    user_id: str,
+    trace_name: str,
+    version: str,
+    tags: Sequence[str],
+    metadata: Mapping[str, str],
+) -> Iterator[None]:
+    context = otel_context.get_current()
+    entries = {
+        "langfuse.session.id": session_id,
+        "langfuse.user.id": user_id,
+        "langfuse.trace.name": trace_name,
+        "langfuse.version": version,
+        "langfuse.trace.metadata.environment": metadata["environment"],
+        "langfuse.trace.metadata.workflow": metadata["workflow"],
+        "langfuse.trace.metadata.region": metadata["region"],
+        LANGFUSE_TAGS_BAGGAGE_KEY: ",".join(tags),
+    }
+
+    for key, value in entries.items():
+        context = baggage.set_baggage(key, value, context=context)
+
+    token = otel_context.attach(context)
+    try:
+        yield
+    finally:
+        otel_context.detach(token)
+```
+
+The helper uses OpenTelemetry baggage only inside the local process. It is not enabling HTTP header propagation. If you later propagate baggage across services, treat these values as non-sensitive because baggage can travel on outbound requests.
+
+## Copy context to spans
+
+Langfuse can map OTLP attributes such as `langfuse.session.id`, `langfuse.user.id`, `langfuse.trace.name`, `langfuse.trace.tags`, and `langfuse.trace.metadata.*`. The catch is that attributes need to be present on spans early enough for Langfuse to use them consistently.
+
+Update `src/agent_observability/telemetry.py`.
+
+First, extend the imports at the top of the file:
+
+```python
+from opentelemetry import baggage, trace
+from opentelemetry import context as otel_context
+from opentelemetry.sdk.trace import SpanProcessor, TracerProvider
+
+from .langfuse_context import LANGFUSE_BAGGAGE_KEYS, LANGFUSE_TAGS_BAGGAGE_KEY
+```
+
+If those imports already exist, merge them. Do not keep duplicate `from opentelemetry import trace` or duplicate `TracerProvider` imports.
+
+Then add this span processor above `configure_tracing()`:
+
+```python
+class LangfuseBaggageSpanProcessor(SpanProcessor):
+    def on_start(
+        self,
+        span: Span,
+        parent_context: otel_context.Context | None = None,
+    ) -> None:
+        context = parent_context or otel_context.get_current()
+        baggage_entries = baggage.get_all(context)
+
+        for key in LANGFUSE_BAGGAGE_KEYS:
+            value = baggage_entries.get(key)
+            if value is not None:
+                span.set_attribute(key, value)
+
+        tag_value = baggage_entries.get(LANGFUSE_TAGS_BAGGAGE_KEY)
+        if tag_value:
+            span.set_attribute(
+                "langfuse.trace.tags",
+                [tag for tag in tag_value.split(",") if tag],
+            )
+```
+
+Finally, register it in `configure_tracing()` before the `BatchSpanProcessor`:
+
+```python
+provider = TracerProvider(resource=resource)
+provider.add_span_processor(LangfuseBaggageSpanProcessor())
+exporter = OTLPSpanExporter(
+    endpoint=settings.otel_exporter_otlp_traces_endpoint,
+    timeout=settings.otel_exporter_otlp_timeout_seconds,
+)
+provider.add_span_processor(
+    BatchSpanProcessor(
+        exporter,
+        max_queue_size=settings.otel_bsp_max_queue_size,
+        schedule_delay_millis=settings.otel_bsp_schedule_delay_millis,
+        max_export_batch_size=settings.otel_bsp_max_export_batch_size,
+        export_timeout_millis=settings.otel_bsp_export_timeout_millis,
+    )
+)
+```
+
+The custom processor does not export anything by itself. It enriches spans before the existing OTLP exporter sends them through the Collector.
+
+## Wrap the local agent run
+
+The context must wrap `run_agent`, not the individual graph nodes. The root span and every child span need to start while the context is active.
+
+Replace `src/agent_observability/main.py` with this version:
+
+```python
+from .config import settings
+from .graph import run_agent
+from .langfuse_context import langfuse_trace_context
+from .telemetry import configure_tracing
+
+
+def main() -> None:
+    provider = configure_tracing()
+    try:
+        conversation_id = "conv_82d9535867844b4c8cdff"
+        with langfuse_trace_context(
+            session_id=conversation_id,
+            user_id="usr_pseudo_7f31c2",
+            trace_name="order-status-turn",
+            version=settings.agent_version,
+            tags=("order-status", "langgraph"),
+            metadata={
+                "environment": settings.deployment_environment,
+                "workflow": "order-status",
+                "region": "eu",
+            },
+        ):
+            result = run_agent(
+                {
+                    "query": "Where is my order?",
+                    "conversation_id": conversation_id,
+                    "order_reference": "ORDER-924",
+                    "region": "eu",
+                },
+            )
+        print(result["outcome"])
+    finally:
+        provider.force_flush(timeout_millis=5000)
+        provider.shutdown()
+
+
+if __name__ == "__main__":
+    main()
+```
+
+The same `conversation_id` is used both as graph state and Langfuse session ID. In this demo that is fine because the value is synthetic and bounded. In a real app, use the product conversation ID only after checking that it is safe to expose as telemetry.
+
+## Run two turns for the same session
+
+Run the module twice from the demo project:
+
+```sh
+python -m agent_observability.main
+python -m agent_observability.main
+```
+
+Each run creates a separate trace. Because both runs use the same `langfuse.session.id`, Langfuse should group them into one session.
+
+In the trace detail, check the root span or any child span and look for:
+
+```txt
+langfuse.session.id = "conv_82d9535867844b4c8cdff"
+langfuse.user.id = "usr_pseudo_7f31c2"
+langfuse.trace.name = "order-status-turn"
+langfuse.trace.tags = ["order-status", "langgraph"]
+langfuse.trace.metadata.environment = "development"
+langfuse.trace.metadata.workflow = "order-status"
+langfuse.trace.metadata.region = "eu"
+```
+
+Then open the Langfuse Sessions page. The session ID should list both traces. Open the Users page and check that `usr_pseudo_7f31c2` appears after ingestion finishes.
+
+## Keep metadata bounded
+
+Good metadata has a small, owned value set:
+
+```txt
+environment = "development" | "staging" | "production"
+workflow = "order-status" | "refund" | "handoff"
+region = "eu" | "us" | "global"
+tenant_tier = "free" | "team" | "enterprise"
+```
+
+Bad metadata grows forever:
+
+```txt
+query = "Where is order ORDER-924..."
+document_id = "policy-eu-refunds-2026-06-25-..."
+exception_message = "customer@example.invalid failed..."
+```
+
+For OTLP ingestion, use the `langfuse.trace.metadata.*` prefix when the value should become top-level, filterable Langfuse metadata. Unprefixed OpenTelemetry attributes still arrive, but they are nested under generic metadata and are less useful for filtering.
+
+## Use Sessions for conversation review
+
+A support conversation can produce several traces:
+
+```txt
+session conv_82d9535867844b4c8cdff
+  trace order-status-turn  user asks for delivery status
+  trace order-status-turn  user asks why it is delayed
+  trace order-status-turn  agent escalates to a human
+```
+
+The session view is where a reviewer can inspect whether the agent solved the user problem, repeated itself, escalated too late, or lost state between turns. That is different from a trace-level question such as "which tool call failed?"
+
+## Use Users for longitudinal behavior
+
+The Users view helps answer questions like:
+
+- Which users or cohorts produce the highest cost?
+- Are some users repeatedly hitting authorization denials?
+- Do negative feedback scores cluster around a subset of users?
+- Are long sessions caused by unclear answers, missing data, or product workflow friction?
+
+Keep this analysis governed. A stable user ID is sensitive even when it is pseudonymous because it links behavior over time.
+
+## What should exist before we go to Chapter 19
+
+At this point the demo should have:
+
+- one stable `langfuse.session.id` per conversation;
+- one pseudonymous `langfuse.user.id` per approved actor;
+- `langfuse.trace.name`, `langfuse.version`, `langfuse.trace.tags`, and bounded `langfuse.trace.metadata.*`;
+- those attributes copied onto spans created inside the execution context;
+- no raw user identifiers, order references, prompts, or document content in propagated context;
+- a visible Sessions page that groups repeated local runs for the same conversation;
+- a visible Users page that can correlate cost, quality, and feedback by approved user ID.
+
+Chapter 19 moves from runtime context to prompt lifecycle: creating prompts in Langfuse, deploying them with labels, and linking prompt versions back to traces and scores.
+
+## References
+
+- [Langfuse OpenTelemetry integration](https://langfuse.com/integrations/native/opentelemetry)
+- [Langfuse data model](https://langfuse.com/docs/observability/data-model)
+- [Langfuse sessions](https://langfuse.com/docs/observability/features/sessions)
+- [Langfuse user tracking](https://langfuse.com/docs/observability/features/users)
+- [Langfuse metadata](https://langfuse.com/docs/observability/features/metadata)
+
+---
+
+**Next up**: [Ch 19 - Langfuse Prompt Management and Playground](/observability-ai-agents/ch-19-langfuse-prompt-management-playground/) moves prompts out of code-only deploys and into versioned, trace-linked operations.
