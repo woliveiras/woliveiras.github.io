@@ -1,0 +1,173 @@
+---
+title: "Glossary and References"
+description: "Definitions, standards, official documentation, and research for the Observability for AI Agents series."
+module: 99
+order: 99
+---
+
+This appendix separates terms used by OpenTelemetry, application architecture, evaluation systems, and observability backends. Similar words do not always represent the same data model.
+
+## Glossary
+
+| Term | Meaning in this series |
+|---|---|
+| Agent | Software that uses a model to select or sequence actions toward a task. |
+| Attribute | Typed key-value metadata attached to a span, resource, log, or metric point. |
+| Baggage | Application key-value context propagated across boundaries; not a telemetry record. |
+| Conversation | A set of related user and agent interactions, usually correlated by `gen_ai.conversation.id`. |
+| Evaluation | A versioned judgment against an explicit criterion, produced by code, a human, or a model. |
+| Event | A timestamped occurrence; in tracing, a span event belongs to one span. |
+| Exemplar | A link from an aggregated metric observation to a representative trace. |
+| Guardrail | A control that detects, transforms, blocks, or escalates an input, output, or action. |
+| Instrumentation scope | Identity and version of the component that emitted telemetry. |
+| Link | A causal or correlational relationship between a span and another span context that is not its parent. |
+| Log | A timestamped record that can carry severity, body, attributes, trace ID, and span ID. |
+| Metric | An aggregated measurement over time and a bounded set of dimensions. |
+| Observation | Langfuse object for an operation inside a trace; it can represent several observation types. |
+| OTLP | OpenTelemetry Protocol for exporting traces, metrics, and logs. |
+| Resource | Attributes describing the entity that produced telemetry, such as a service. |
+| Root span | A span without a parent in its trace. |
+| Sampling | Selection of telemetry for recording or export; not a privacy mechanism. |
+| Session | Backend or application grouping for related interactions. It is not an OpenTelemetry parent of a trace. |
+| Span | A timed operation with context, attributes, events, links, status, and parent relationship. |
+| SLI | A quantitative indicator of service behavior. |
+| SLO | A target for an SLI over a defined population and time window. |
+| Task | A business unit of work that can span requests, traces, workers, or conversation turns. |
+| Trace | A graph of causally related spans that share a trace ID. |
+| Trace context | Identifiers and flags propagated so spans can join a trace. |
+
+## OpenTelemetry
+
+- [OpenTelemetry documentation](https://opentelemetry.io/docs/)
+- [OpenTelemetry specification](https://opentelemetry.io/docs/specs/otel/)
+- [OpenTelemetry specification overview](https://opentelemetry.io/docs/reference/specification/overview/)
+- [OpenTelemetry signals](https://opentelemetry.io/docs/concepts/signals/)
+- [OpenTelemetry traces](https://opentelemetry.io/docs/concepts/signals/traces/)
+- [OpenTelemetry baggage](https://opentelemetry.io/docs/concepts/signals/baggage/)
+- [OpenTelemetry context propagation](https://opentelemetry.io/docs/concepts/context-propagation/)
+- [OpenTelemetry sampling](https://opentelemetry.io/docs/concepts/sampling/)
+- [OpenTelemetry span links](https://opentelemetry.io/docs/concepts/signals/traces/#span-links)
+- [OpenTelemetry semantic conventions](https://opentelemetry.io/docs/specs/semconv/)
+- [OpenTelemetry GenAI semantic conventions](https://opentelemetry.io/docs/specs/semconv/gen-ai/)
+- [OpenTelemetry GenAI semantic conventions repository](https://github.com/open-telemetry/semantic-conventions-genai)
+- [OpenTelemetry GenAI schema registry](https://github.com/open-telemetry/semantic-conventions-genai/tree/main/model)
+- [GenAI spans](https://github.com/open-telemetry/semantic-conventions-genai/blob/main/docs/gen-ai/gen-ai-spans.md)
+- [GenAI agent spans](https://github.com/open-telemetry/semantic-conventions-genai/blob/main/docs/gen-ai/gen-ai-agent-spans.md)
+- [GenAI metrics](https://github.com/open-telemetry/semantic-conventions-genai/blob/main/docs/gen-ai/gen-ai-metrics.md)
+- [GenAI OpenAI conventions](https://github.com/open-telemetry/semantic-conventions-genai/blob/main/docs/gen-ai/openai.md)
+- [OpenTelemetry GenAI content capture](https://opentelemetry.io/docs/specs/semconv/gen-ai/gen-ai-spans/#capturing-instructions-inputs-and-outputs)
+- [OpenTelemetry attribute requirement levels](https://opentelemetry.io/docs/specs/semconv/general/attribute-requirement-level/)
+- [OpenTelemetry semantic convention version selection](https://opentelemetry.io/docs/specs/semconv/configuration/version-selection/)
+- [OpenTelemetry database semantic conventions](https://opentelemetry.io/docs/specs/semconv/database/)
+- [OpenTelemetry messaging span conventions](https://opentelemetry.io/docs/specs/semconv/messaging/messaging-spans/)
+- [OpenTelemetry session semantic conventions](https://opentelemetry.io/docs/specs/semconv/general/session/)
+- [OpenTelemetry Python](https://opentelemetry.io/docs/languages/python/)
+- [OpenTelemetry Python propagation](https://opentelemetry.io/docs/languages/python/propagation/)
+- [OpenTelemetry Python exporters](https://opentelemetry.io/docs/languages/python/exporters/)
+- [OpenTelemetry SDK configuration](https://opentelemetry.io/docs/languages/sdk-configuration/)
+- [OpenTelemetry Python testing utilities](https://opentelemetry-python.readthedocs.io/en/latest/sdk/trace.export.html)
+- [OpenTelemetry Collector](https://opentelemetry.io/docs/collector/)
+- [OpenTelemetry Collector configuration](https://opentelemetry.io/docs/collector/configuration/)
+- [OpenTelemetry Collector processors](https://opentelemetry.io/docs/collector/components/processor/)
+- [OpenTelemetry Collector tail sampling processor](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/processor/tailsamplingprocessor)
+- [OpenTelemetry Collector resiliency](https://opentelemetry.io/docs/collector/resiliency/)
+- [OpenTelemetry Collector internal telemetry](https://opentelemetry.io/docs/collector/internal-telemetry/)
+- [OpenTelemetry Metrics SDK cardinality limits and exemplars](https://opentelemetry.io/docs/specs/otel/metrics/sdk/)
+- [OpenTelemetry Trace SDK sampling decisions](https://opentelemetry.io/docs/specs/otel/trace/sdk/#sampling)
+- [OpenTelemetry handling sensitive data](https://opentelemetry.io/docs/security/handling-sensitive-data/)
+- [Open proposal for GenAI task conventions](https://github.com/open-telemetry/semantic-conventions/issues/2665)
+- [W3C Trace Context](https://www.w3.org/TR/trace-context/)
+
+The GenAI conventions are under active development. Check the linked repository and schema version before implementing or upgrading attributes.
+
+## OpenAI
+
+- [OpenAI API documentation](https://developers.openai.com/api/docs)
+- [Responses API migration guide](https://developers.openai.com/api/docs/guides/migrate-to-responses)
+- [OpenAI Responses API reference](https://developers.openai.com/api/reference/resources/responses/methods/create/)
+- [Function calling](https://developers.openai.com/api/docs/guides/function-calling)
+- [Streaming responses](https://developers.openai.com/api/docs/guides/streaming-responses)
+- [Conversation state](https://developers.openai.com/api/docs/guides/conversation-state)
+- [Safety best practices](https://developers.openai.com/api/docs/guides/safety-best-practices)
+- [Production best practices](https://developers.openai.com/api/docs/guides/production-best-practices)
+- [OpenAI data controls](https://developers.openai.com/api/docs/guides/your-data)
+- [OpenAI evaluation best practices](https://developers.openai.com/api/docs/guides/evaluation-best-practices)
+- [OpenAI guardrails and human review](https://developers.openai.com/api/docs/guides/agents/guardrails-approvals)
+- [OpenAI prompt caching](https://developers.openai.com/api/docs/guides/prompt-caching)
+- [OpenAI cost optimization](https://developers.openai.com/api/docs/guides/cost-optimization)
+- [Pricing](https://developers.openai.com/api/docs/pricing)
+- [OpenAI Python SDK](https://github.com/openai/openai-python)
+- [OpenAI Python SDK retries and timeouts](https://github.com/openai/openai-python#retries)
+- [OpenAI Agents SDK guardrails](https://openai.github.io/openai-agents-python/guardrails/)
+
+## LangGraph and Langfuse
+
+- [LangGraph documentation](https://docs.langchain.com/oss/python/langgraph)
+- [LangGraph graph API](https://docs.langchain.com/oss/python/langgraph/graph-api)
+- [LangGraph subgraphs](https://docs.langchain.com/oss/python/langgraph/use-subgraphs)
+- [LangGraph durable execution](https://docs.langchain.com/oss/python/langgraph/durable-execution)
+- [LangGraph streaming](https://docs.langchain.com/oss/python/langgraph/streaming)
+- [LangGraph event streaming](https://docs.langchain.com/oss/python/langgraph/event-streaming)
+- [LangChain multi-agent patterns](https://docs.langchain.com/oss/python/langchain/multi-agent)
+- [LangGraph personal assistant with subagents](https://docs.langchain.com/oss/python/langchain/multi-agent/subagents-personal-assistant)
+- [Langfuse documentation](https://langfuse.com/docs)
+- [Langfuse OpenTelemetry endpoint](https://langfuse.com/docs/opentelemetry/get-started)
+- [Langfuse native OpenTelemetry integration](https://langfuse.com/integrations/native/opentelemetry)
+- [Langfuse self-hosting](https://langfuse.com/self-hosting)
+- [Langfuse Docker Compose deployment](https://langfuse.com/self-hosting/deployment/docker-compose)
+- [Langfuse data model](https://langfuse.com/docs/observability/data-model)
+- [Langfuse data masking](https://langfuse.com/self-hosting/security/data-masking)
+- [Langfuse masking](https://langfuse.com/docs/observability/features/masking)
+- [Langfuse data retention](https://langfuse.com/docs/data-retention)
+- [Langfuse sampling](https://langfuse.com/docs/observability/features/sampling)
+- [Langfuse sessions](https://langfuse.com/docs/observability/features/sessions)
+- [Langfuse users](https://langfuse.com/docs/observability/features/users)
+- [Langfuse metadata](https://langfuse.com/docs/observability/features/metadata)
+- [Langfuse Prompt Management](https://langfuse.com/docs/prompt-management/overview)
+- [Langfuse Prompt Management get started](https://langfuse.com/docs/prompt-management/get-started)
+- [Langfuse prompt version control](https://langfuse.com/docs/prompt-management/features/prompt-version-control)
+- [Langfuse prompt A/B testing](https://langfuse.com/docs/prompt-management/features/a-b-testing)
+- [Langfuse link prompts to traces](https://langfuse.com/docs/prompt-management/features/link-to-traces)
+- [Langfuse Prompt Management for OpenAI functions](https://langfuse.com/guides/cookbook/prompt_management_openai_functions)
+- [Langfuse scores](https://langfuse.com/docs/evaluation/scores/overview)
+- [Langfuse scores data model](https://langfuse.com/docs/evaluation/scores/data-model)
+- [Langfuse scores via SDK](https://langfuse.com/docs/evaluation/evaluation-methods/scores-via-sdk)
+- [Langfuse user feedback](https://langfuse.com/docs/observability/features/user-feedback)
+- [Langfuse Score Analytics](https://langfuse.com/docs/evaluation/scores/score-analytics)
+- [Langfuse Score Configs](https://langfuse.com/faq/all/manage-score-configs)
+
+## Security, privacy, and risk
+
+- [OWASP Top 10 for LLM Applications](https://genai.owasp.org/llm-top-10/)
+- [OWASP LLM01: Prompt Injection](https://genai.owasp.org/llmrisk/llm01-prompt-injection/)
+- [OWASP LLM06: Excessive Agency](https://genai.owasp.org/llmrisk/llm06-sensitive-information-disclosure/)
+- [OWASP Logging Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html)
+- [OWASP Logging Cheat Sheet verification](https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html#verification)
+- [NIST AI Risk Management Framework](https://www.nist.gov/itl/ai-risk-management-framework)
+- [NIST AI RMF Core](https://airc.nist.gov/airmf-resources/airmf/5-sec-core/)
+- [NIST Generative AI Profile](https://doi.org/10.6028/NIST.AI.600-1)
+- [NIST Privacy Framework](https://www.nist.gov/privacy-framework)
+- [Microsoft Presidio](https://microsoft.github.io/presidio/)
+
+## Evaluation and operations
+
+- [Langfuse evaluation overview](https://langfuse.com/docs/evaluation/overview)
+- [Langfuse evaluation core concepts](https://langfuse.com/docs/evaluation/core-concepts)
+- [Langfuse LLM-as-a-Judge](https://langfuse.com/docs/evaluation/evaluation-methods/llm-as-a-judge)
+- [Langfuse code evaluators](https://langfuse.com/docs/evaluation/evaluation-methods/code-evaluators)
+- [Langfuse annotation queues](https://langfuse.com/docs/evaluation/evaluation-methods/annotation-queues)
+- [Langfuse datasets and experiments](https://langfuse.com/docs/evaluation/experiments/overview)
+- [Langfuse datasets](https://langfuse.com/docs/evaluation/experiments/datasets)
+- [Langfuse experiments via SDK](https://langfuse.com/docs/evaluation/experiments/experiments-via-sdk)
+- [Langfuse experiments data model](https://langfuse.com/docs/evaluation/experiments/data-model)
+- [Langfuse experiments in CI/CD](https://langfuse.com/docs/evaluation/experiments/experiments-ci-cd)
+- [Langfuse versioned dataset experiments](https://langfuse.com/changelog/2026-02-11-versioned-dataset-experiments)
+- [Who Validates the Validators?](https://arxiv.org/abs/2404.12272)
+- [Google SRE: Monitoring Distributed Systems](https://sre.google/sre-book/monitoring-distributed-systems/)
+- [Google SRE: Service Level Objectives](https://sre.google/sre-book/service-level-objectives/)
+
+## Related articles
+
+- [LangChain vs LangGraph: From Simple Chains to Complex AI Agents](/posts/langchain-vs-langgraph-from-simple-chains-to-complex-ai-agents/)
+- [Building Multi-Agent Systems: Architectures, Coordination Protocols, and Orchestration](/posts/building-multi-agent-systems-architectures-coordination-protocols-orchestration/)
+- [The StateAct Pattern for Robust and Long-Running Agents](/posts/the-stateact-pattern-for-robust-and-long-running-agents/)
