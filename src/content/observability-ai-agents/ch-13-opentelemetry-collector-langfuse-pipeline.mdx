@@ -34,10 +34,11 @@ Add the Langfuse project keys shown by the Langfuse UI to the same local `.env` 
 ```sh
 LANGFUSE_SECRET_KEY="replace-with-langfuse-secret-key"
 LANGFUSE_PUBLIC_KEY="replace-with-langfuse-public-key"
-LANGFUSE_BASE_URL="http://host.docker.internal:3000"
+LANGFUSE_BASE_URL="http://localhost:3000"
+LANGFUSE_COLLECTOR_BASE_URL="http://host.docker.internal:3000"
 ```
 
-The Langfuse UI usually shows `LANGFUSE_BASE_URL="http://localhost:3000"` for local SDKs running directly on the host. The Collector runs inside Docker, so `localhost` would point to the Collector container itself. `host.docker.internal` points from the Collector container back to Langfuse exposed on the host.
+`LANGFUSE_BASE_URL` is for Python code running on the host, which needs `localhost`. `LANGFUSE_COLLECTOR_BASE_URL` is for the Collector running inside Docker, where `localhost` would point to the Collector container itself. `host.docker.internal` points from the Collector container back to Langfuse exposed on the host.
 
 The Collector derives the OTLP endpoint and Basic auth from these variables. We do not need a separate base64-encoded `LANGFUSE_AUTH` variable.
 
@@ -125,7 +126,7 @@ exporters:
   debug:
     verbosity: basic
   otlp_http/langfuse:
-    endpoint: ${env:LANGFUSE_BASE_URL}/api/public/otel
+    endpoint: ${env:LANGFUSE_COLLECTOR_BASE_URL}/api/public/otel
     auth:
       authenticator: basicauth/langfuse
     sending_queue:
@@ -193,7 +194,7 @@ docker compose up -d
 docker compose logs -f otel-collector
 ```
 
-The logs should show the Collector starting without exporter configuration errors. If `LANGFUSE_SECRET_KEY`, `LANGFUSE_PUBLIC_KEY`, or `LANGFUSE_BASE_URL` is missing, fix `.env` before running the smoke test.
+The logs should show the Collector starting without exporter configuration errors. If `LANGFUSE_SECRET_KEY`, `LANGFUSE_PUBLIC_KEY`, or `LANGFUSE_COLLECTOR_BASE_URL` is missing, fix `.env` before running the smoke test.
 
 ## Export a smoke-test trace
 
@@ -329,7 +330,7 @@ Before adding model-call instrumentation, the project should have:
 1. `telemetry.py` configuring the OpenTelemetry SDK.
 2. `collector-config.yaml` receiving OTLP and exporting to Langfuse.
 3. `compose.yaml` running the Collector locally.
-4. `.env` containing `LANGFUSE_SECRET_KEY`, `LANGFUSE_PUBLIC_KEY`, and `LANGFUSE_BASE_URL`.
+4. `.env` containing `LANGFUSE_SECRET_KEY`, `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_BASE_URL`, and `LANGFUSE_COLLECTOR_BASE_URL`.
 5. A smoke-test trace visible in Langfuse.
 6. A verified failure path for bad backend credentials.
 7. No raw content in the smoke-test trace.
