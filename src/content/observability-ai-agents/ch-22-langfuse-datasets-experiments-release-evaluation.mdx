@@ -1,0 +1,468 @@
+---
+title: "Datasets, Experiments, and Release Evaluation"
+description: "Create Langfuse datasets from approved cases, run experiments across prompt and model versions, and use scores as release evidence."
+module: 4
+order: 22
+---
+
+# Datasets, Experiments, and Release Evaluation
+
+Datasets are where reviewed failures stop being anecdotes. In Chapters 20 and 21, we created scores, human annotations, and an evaluator. This chapter turns one approved order-status case into a repeatable **regression test**.
+
+The practical workflow is a local runner:
+
+1. create a Langfuse dataset;
+2. add one curated dataset item;
+3. run the order-status agent against that item;
+4. score the result;
+5. inspect the experiment run in Langfuse.
+
+Let's get started.
+
+## Separate trace samples from datasets
+
+A trace is evidence from a real execution. A dataset item is a curated test case with an owner, purpose, expected output, and review history.
+
+A dataset item should be a **minimal reproduction** of a failure or regression case. It should not contain full production content.
+
+Do not bulk-copy traces into datasets. Select cases deliberately, because each dataset item is a long-term artifact that will be used for regression testing and release evaluation.
+
+Example of common dataset use cases:
+
+| Source | Dataset use |
+|---|---|
+| Negative feedback | Regression case for answer quality. |
+| Escalated session | Conversation-resolution case. |
+| Prompt-injection attempt | Safety case. |
+| Retrieval miss | Grounding or recall case. |
+| Tool authorization denial | Policy boundary case. |
+
+Every copied case needs the lineage and content approval from Chapters 7 and 8. In this demo, the dataset item is synthetic and metadata-only so we can focus on the experiment workflow without copying raw production content. We'll create a dataset item with a minimal input and expected output, and then run the agent against it.
+
+## Create the dataset runner
+
+Create `src/agent_observability/dataset_scenarios.py` in the demo project.
+
+This file has two commands:
+
+| Command | What it does |
+|---|---|
+| `seed` | Creates the `order-status-regression` dataset and one dataset item. |
+| `run` | Runs a Langfuse experiment against that dataset item. |
+
+Use this complete file:
+
+```python
+import argparse
+from typing import Any
+from uuid import uuid4
+
+from langfuse import Evaluation, Langfuse
+
+from .config import settings
+from .graph import run_agent
+
+
+DATASET_NAME = "order-status-regression"
+DATASET_ITEM_ID = "order-status-delayed-eu-v1"
+
+langfuse = Langfuse(
+    public_key=settings.langfuse_public_key,
+    secret_key=settings.langfuse_secret_key,
+    base_url=settings.langfuse_base_url,
+    environment=settings.deployment_environment,
+)
+
+
+def ensure_dataset() -> None:
+    datasets = langfuse.api.datasets.list(limit=100).data
+    if not any(dataset.name == DATASET_NAME for dataset in datasets):
+        langfuse.create_dataset(
+            name=DATASET_NAME,
+            description="Regression cases for the order-status support agent.",
+            metadata={
+                "workflow": "order-status",
+                "rubric": "order-status-regression-v1",
+                "environment": settings.deployment_environment,
+            },
+        )
+
+
+def ensure_dataset_item() -> None:
+    items = langfuse.api.dataset_items.list(
+        dataset_name=DATASET_NAME,
+        limit=100,
+    ).data
+    if any(item.id == DATASET_ITEM_ID for item in items):
+        return
+
+    langfuse.create_dataset_item(
+        dataset_name=DATASET_NAME,
+        id=DATASET_ITEM_ID,
+        input={
+            "query": "Where is my delayed EU order?",
+            "region": "eu",
+            "order_reference": "ORDER-924",
+            "prompt_label": "production",
+        },
+        expected_output={
+            "outcome": "answer",
+            "must_mention": ["order"],
+            "must_not_mention": ["refund issued"],
+        },
+        metadata={
+            "source": "chapter-22-demo",
+            "source_trace_policy": "metadata-only",
+            "rubric": "order-status-regression-v1",
+            "risk": "medium",
+        },
+    )
+
+
+def seed_dataset() -> None:
+    ensure_dataset()
+    ensure_dataset_item()
+    print(f"dataset ready: {DATASET_NAME}")
+    print(f"dataset item ready: {DATASET_ITEM_ID}")
+
+
+def run_order_status_case(*, item: Any, **kwargs: Any) -> dict[str, str]:
+    input_data = item.input
+    conversation_id = f"eval_{uuid4().hex}"
+
+    result = run_agent(
+        {
+            "query": input_data["query"],
+            "conversation_id": conversation_id,
+            "order_reference": input_data["order_reference"],
+            "region": input_data["region"],
+            "prompt_label": input_data.get("prompt_label", "production"),
+        },
+    )
+
+    return {
+        "answer": result.get("answer", ""),
+        "outcome": result.get("outcome", "unknown"),
+        "prompt_label": result.get("prompt_label", "unknown"),
+    }
+
+
+def expected_outcome(
+    *,
+    output: dict[str, str],
+    expected_output: dict[str, Any],
+    **kwargs: Any,
+) -> Evaluation:
+    passed = output["outcome"] == expected_output["outcome"]
+    return Evaluation(
+        name="expected_outcome",
+        value=1.0 if passed else 0.0,
+        data_type="NUMERIC",
+        comment="rubric=order-status-regression-v1",
+    )
+
+
+def required_terms_present(
+    *,
+    output: dict[str, str],
+    expected_output: dict[str, Any],
+    **kwargs: Any,
+) -> Evaluation:
+    answer = output["answer"].lower()
+    missing_terms = [
+        term
+        for term in expected_output.get("must_mention", [])
+        if term.lower() not in answer
+    ]
+    return Evaluation(
+        name="required_terms_present",
+        value=1.0 if not missing_terms else 0.0,
+        data_type="NUMERIC",
+        comment=(
+            "rubric=order-status-regression-v1"
+            if not missing_terms
+            else f"missing_terms={','.join(missing_terms)}"
+        ),
+    )
+
+
+def forbidden_terms_absent(
+    *,
+    output: dict[str, str],
+    expected_output: dict[str, Any],
+    **kwargs: Any,
+) -> Evaluation:
+    answer = output["answer"].lower()
+    forbidden_terms = [
+        term
+        for term in expected_output.get("must_not_mention", [])
+        if term.lower() in answer
+    ]
+    return Evaluation(
+        name="forbidden_terms_absent",
+        value=1.0 if not forbidden_terms else 0.0,
+        data_type="NUMERIC",
+        comment=(
+            "rubric=order-status-regression-v1"
+            if not forbidden_terms
+            else f"forbidden_terms={','.join(forbidden_terms)}"
+        ),
+    )
+
+
+def run_experiment() -> None:
+    seed_dataset()
+    dataset = langfuse.get_dataset(DATASET_NAME)
+    result = dataset.run_experiment(
+        name="order-status-production-baseline",
+        description="Local chapter 22 regression run for the order-status agent.",
+        task=run_order_status_case,
+        evaluators=[
+            expected_outcome,
+            required_terms_present,
+            forbidden_terms_absent,
+        ],
+        max_concurrency=1,
+        metadata={
+            "prompt_label": "production",
+            "workflow": "order-status",
+            "environment": settings.deployment_environment,
+            "agent_version": settings.agent_version,
+        },
+    )
+    print(result.format())
+    print(f"dataset run url: {result.dataset_run_url}")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    subparsers = parser.add_subparsers(dest="command", required=True)
+    subparsers.add_parser("seed")
+    subparsers.add_parser("run")
+
+    args = parser.parse_args()
+    if args.command == "seed":
+        seed_dataset()
+    elif args.command == "run":
+        run_experiment()
+
+
+if __name__ == "__main__":
+    main()
+```
+
+The `seed` command is idempotent. Re-running it should not create duplicate items because the item ID is stable.
+
+## Seed the dataset
+
+Run this from the demo project root:
+
+```sh
+PYTHONPATH=src python -m agent_observability.dataset_scenarios seed
+```
+
+Expected output:
+
+```text
+dataset ready: order-status-regression
+dataset item ready: order-status-delayed-eu-v1
+```
+
+Then open Langfuse and go to **Evaluation** -> **Datasets**. You should see:
+
+| Field | Value |
+|---|---|
+| Dataset | `order-status-regression` |
+| Item ID | `order-status-delayed-eu-v1` |
+| Input query | `Where is my delayed EU order?` |
+| Expected outcome | `answer` |
+
+## Run an experiment against the agent
+
+Now run the experiment:
+
+```sh
+PYTHONPATH=src python -m agent_observability.dataset_scenarios run
+```
+
+The command does three things:
+
+1. loads the `order-status-regression` dataset;
+2. calls `run_agent()` once per dataset item;
+3. records evaluator scores for the experiment run.
+
+Expected terminal output includes a summary from Langfuse and a dataset run URL:
+
+```text
+dataset ready: order-status-regression
+dataset item ready: order-status-delayed-eu-v1
+...
+dataset run url: http://localhost:3000/project/...
+```
+
+Go to **Evaluation** -> **Datasets** -> `order-status-regression` -> **Runs**. Inspect the run named `order-status-production-baseline`.
+
+The experiment runner records the output and scores so a failed case can be inspected, not just counted.
+
+## Understand the evaluators
+
+The first run uses three deterministic evaluators:
+
+| Evaluator | What it checks |
+|---|---|
+| `expected_outcome` | The agent returned the expected route, such as `answer`. |
+| `required_terms_present` | The answer includes simple required terms. |
+| `forbidden_terms_absent` | The answer avoids terms that should not appear. |
+
+These are intentionally simple. They are not a replacement for human annotation or LLM-as-a-Judge. They are a release guardrail that catches obvious regressions before traffic sees a candidate prompt or workflow.
+
+Use deterministic checks for exact requirements. Use human annotation and calibrated judges for nuanced quality.
+
+## Compare prompt, model, and workflow changes
+
+We have some baseline scores for the production prompt label. Now we can run a second experiment with a candidate prompt label, model, or workflow code.
+
+Change one major variable per experiment when possible:
+
+| Candidate | Keep stable |
+|---|---|
+| Prompt label | Model, retrieval data, workflow code, evaluator version. |
+| Model alias | Prompt label, retrieval data, workflow code, evaluator version. |
+| Retrieval data | Prompt label, model, workflow code, evaluator version. |
+| Workflow code | Prompt label, model, retrieval data, evaluator version. |
+
+If several variables change together, the experiment can still protect the release, but it cannot explain which change caused a regression.
+
+In this demo, the easiest comparison is prompt label. Add a second dataset run later with metadata like:
+
+```python
+metadata={
+    "prompt_label": "staging",
+    "workflow": "order-status",
+    "environment": settings.deployment_environment,
+    "agent_version": settings.agent_version,
+}
+```
+
+Do not call it a prompt experiment unless only the prompt label changed.
+
+## Use versioned datasets for reproducibility
+
+Datasets change as the product changes. New failures become regression cases, weak expectations get corrected, and old cases sometimes stop representing the behavior you care about. That is fine, but it means an experiment result only makes sense together with the dataset state used to produce it.
+
+For a release decision, record the exact dataset run URL or dataset version next to the candidate you evaluated. Otherwise, you can accidentally compare a staging prompt from today against a production baseline that was scored before five new failure cases were added.
+
+In the local demo, keep the URL printed by `dataset_scenarios run` and the timestamp shown in Langfuse. In production, store that run URL or dataset version in the release ticket, pull request, or deployment record.
+
+## Gate releases with explicit thresholds
+
+The dataset run is useful only if it changes a release decision. After the candidate run finishes, compare it with the production baseline and write down the exact rule you are applying. In the local demo this is still a manual check. In a production workflow, the same rule can live in CI, a deployment checklist, or a release ticket.
+
+A practical gate for the experiment from this chapter could look like this:
+
+```txt
+release_gate = "order-status-regression-v1"
+dataset = "order-status-regression"
+baseline_run = "order-status-production-baseline"
+candidate_run = "order-status-staging-candidate"
+dataset_run_url = "<paste the Langfuse dataset run URL here>"
+
+pass_if:
+  expected_outcome == 1.00
+  required_terms_present == 1.00
+  forbidden_terms_absent == 1.00
+  total_cost_per_case <= baseline * 1.10
+
+fail_if:
+  any required evaluator is missing
+  any safety or policy score is below threshold
+  candidate run used a different dataset version than baseline
+```
+
+Use the **Dataset Run** page in Langfuse as the source for the average evaluator scores. Use the run metadata and cost columns to confirm that the baseline and candidate were executed against the same dataset and comparable model configuration.
+
+| Result | Release decision |
+|---|---|
+| All required scores pass | Promote the candidate |
+| `expected_outcome` fails | Block the release |
+| `required_terms_present` drops | Inspect item-level outputs before deciding |
+| `forbidden_terms_absent` fails | Block the release and add the reviewed failure as a regression case |
+| Cost rises above the threshold | Require an explicit product or engineering approval |
+
+The threshold is a product and risk decision. I would keep the local demo strict because the dataset has only one item. With a larger dataset, use thresholds that match the user impact of the workflow. A documentation assistant and a refund workflow should not share the same gate.
+
+## Feed reviewed failures back into datasets
+
+Reviewed failures should become dataset items. Otherwise the same bug can be fixed once, forgotten, and reintroduced by the next prompt, model, retrieval, or workflow change.
+
+In Langfuse, start from the failed trace or session. Confirm the failure with a human annotation, a trusted evaluator score, or both. Then add it to `order-status-regression` from the trace view, or create the dataset item manually in **Evaluation** -> **Datasets** -> `order-status-regression`.
+
+For this demo, do not store the raw trace as the dataset input unless it already matches the shape used by `src/agent_observability/dataset_scenarios.py`. The experiment runner reads these fields directly:
+
+```json title="Dataset item input"
+{
+  "query": "Where is my delayed EU order?",
+  "region": "eu",
+  "order_reference": "ORDER-924",
+  "prompt_label": "production"
+}
+```
+
+The expected output should describe the behavior you want to protect, not the exact sentence the model happened to produce:
+
+```json title="Dataset item expected output"
+{
+  "outcome": "answer",
+  "must_mention": ["order"],
+  "must_not_mention": ["refund issued"]
+}
+```
+
+Add lineage metadata so the future reader knows why the case exists:
+
+```json title="Dataset item metadata"
+{
+  "source": "reviewed-failure",
+  "source_trace_id": "<trace id>",
+  "source_session_id": "<session id>",
+  "failure_type": "missing_order_status_context",
+  "rubric": "order-status-regression-v1"
+}
+```
+
+After adding the item, run the experiment again:
+
+```sh
+PYTHONPATH=src python -m agent_observability.dataset_scenarios run
+```
+
+If the current production version passes the new case, the item is probably too weak or the failure was not reproduced. If production fails and the candidate passes, the dataset is doing its job.
+
+This loop keeps the dataset tied to real failures instead of synthetic examples that slowly drift away from production.
+
+For this chapter, one synthetic dataset item is enough. The important move is that the demo now has a repeatable path from "reviewed behavior" to "release check", and a clear format for turning future reviewed failures into regression cases.
+
+## What should exist before we go to Chapter 23
+
+At this point the demo should have:
+
+- `src/agent_observability/dataset_scenarios.py`;
+- one `order-status-regression` dataset in Langfuse;
+- one dataset item named `order-status-delayed-eu-v1`;
+- one experiment run named `order-status-production-baseline`;
+- item-level evaluator scores attached to the experiment run;
+- a rule for promoting reviewed failures into regression cases.
+
+Chapter 23 tests the telemetry, Langfuse attributes, scores, prompt versions, and dataset workflows so the operating loop does not break during refactors.
+
+## References
+
+- [Langfuse datasets](https://langfuse.com/docs/evaluation/experiments/datasets)
+- [Langfuse experiments via SDK](https://langfuse.com/docs/evaluation/experiments/experiments-via-sdk)
+- [Langfuse experiments data model](https://langfuse.com/docs/evaluation/experiments/data-model)
+- [Langfuse experiments in CI/CD](https://langfuse.com/docs/evaluation/experiments/experiments-ci-cd)
+- [Langfuse versioned dataset experiments](https://langfuse.com/changelog/2026-02-11-versioned-dataset-experiments)
+
+---
+
+**Next up**: [Ch 23 - Testing and Operating the Telemetry Pipeline](/observability-ai-agents/ch-23-testing-telemetry-pipeline/) verifies span structure, privacy invariants, Langfuse attributes, prompt versions, scores, and experiments.
