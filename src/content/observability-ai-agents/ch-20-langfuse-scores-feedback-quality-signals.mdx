@@ -1,0 +1,374 @@
+---
+title: "Scores, Feedback, and Quality Signals in Langfuse"
+description: "Create trace, observation, and session scores in Langfuse from user feedback, deterministic checks, and bounded quality signals."
+module: 4
+order: 20
+---
+
+# Scores, Feedback, and Quality Signals in Langfuse
+
+Scores are the bridge between traces and decisions. A trace shows what happened; a score says how that execution performed against one criterion.
+
+Do not create one generic `quality` score. Correctness, groundedness, helpfulness, safety, latency, and cost are different signals with different owners.
+
+In this chapter we will add a small scoring layer to the demo project. The demo has no UI and no HTTP API, so the practical path is a local runner: copy a trace ID or session ID from Langfuse, run a command, and confirm that the score appears in the Langfuse UI.
+
+## Choose the parent object
+
+Attach the score to the thing being judged. This choice matters because Langfuse can attach scores to traces, observations, sessions, or dataset runs, and each level answers a different question.
+
+| Judgment | Parent |
+|---|---|
+| Was this model output grounded? | Observation for the generation. |
+| Did the tool call satisfy authorization policy? | Observation for the tool span. |
+| Did this turn answer the user? | Trace. |
+| Did the whole conversation resolve the issue? | Session. |
+| Did the candidate release pass this case? | Dataset run item or experiment run. |
+
+A session-level score is not a substitute for trace-level debugging. It answers a different question.
+
+## Define score contracts
+
+Use a small catalog before writing code. This keeps the score names stable enough for Score Analytics, dashboards, evaluators, and release checks.
+
+| Score name | Type | Values |
+|---|---|---|
+| `user_feedback` | Categorical | `positive`, `negative` |
+| `answer_correctness` | Boolean | `1` for correct, `0` for incorrect |
+| `groundedness` | Numeric | `0.0` to `1.0` |
+| `policy_compliance` | Categorical | `pass`, `fail`, `not_applicable` |
+| `session_resolution` | Categorical | `resolved`, `escalated`, `abandoned`, `unknown` |
+
+Langfuse supports numeric, categorical, boolean, and text scores. Boolean scores are sent as `1` or `0` through the SDK. Text scores exist, but do not use them as the default for product feedback. They are harder to aggregate and usually need the content policy from Chapters 7 and 8.
+
+In this chapter, the catalog is an application contract enforced by code: bounded values, stable names, `data_type`, `score_id`, and rubric comments. The first time the demo writes `user_feedback`, `policy_compliance`, `answer_correctness`, or `session_resolution`, those scores become visible in Langfuse.
+
+The **Evaluators** section in Langfuse is separate from this local score runner. That is where Langfuse-hosted evaluators and evaluator templates live. We use it in Chapter 21 for LLM-as-a-judge and review workflows. For this chapter, keep the contract in code: write scores through the SDK, then inspect them in **Scores**.
+
+## Store user feedback as a score
+
+The demo still has no user interface or HTTP API. In Chapter 17, feedback was represented as a bounded `FeedbackEvent` and validated through `manual_scenarios.py`. This chapter adds the Langfuse write that turns that event into a trace-level score.
+
+Create `src/agent_observability/scores.py`:
+
+```python
+from langfuse import Langfuse
+
+from .config import settings
+from .feedback import FeedbackEvent
+
+
+langfuse = Langfuse(
+    public_key=settings.langfuse_public_key,
+    secret_key=settings.langfuse_secret_key,
+    base_url=settings.langfuse_base_url,
+    environment=settings.deployment_environment,
+)
+
+SESSION_RESOLUTION_VALUES = {"resolved", "escalated", "abandoned", "unknown"}
+
+
+def record_user_feedback_score(
+    *,
+    trace_id: str,
+    event: FeedbackEvent,
+) -> None:
+    langfuse.create_score(
+        name="user_feedback",
+        value=event.bounded_value,
+        trace_id=trace_id,
+        score_id=f"{trace_id}:user_feedback:{event.interaction_id}",
+        data_type="CATEGORICAL",
+        comment="rubric=user-feedback-v1",
+        environment=settings.deployment_environment,
+        metadata={
+            "interaction_id": event.interaction_id,
+            "feedback_type": event.feedback_type,
+            "agent_version": event.agent_version,
+        },
+    )
+```
+
+Do not copy the `tracing_enabled=False` setting from the prompt-management client in Chapter 19. In the SDK used here, `create_score()` returns without sending anything when tracing is disabled. That is useful for a prompt-fetching helper that must not fight our OpenTelemetry setup, but it breaks in this score writer.
+
+The `environment=settings.deployment_environment` line is also intentional. The trace you score is in `development` in the local demo. If the score is written to a different environment, you can have a valid trace ID and still see an empty **Scores** tab in the Langfuse UI.
+
+The `score_id` is also intentional. By default, Langfuse can store multiple scores with the same name on the same trace. For a demo feedback button, re-running the same command should update the same logical score instead of creating a pile of duplicates.
+
+Do not call this from `run_agent`. Feedback happens after the agent response has been returned and associated with an `interaction_id`.
+
+Add session-level and deterministic scores next, then run the demo with our local score runner.
+
+## Add session and deterministic scores
+
+Add these helpers to the same `src/agent_observability/scores.py` file:
+
+```python
+def record_session_resolution_score(
+    *,
+    session_id: str,
+    outcome: str,
+) -> None:
+    if outcome not in SESSION_RESOLUTION_VALUES:
+        raise ValueError("invalid session outcome")
+
+    langfuse.create_score(
+        name="session_resolution",
+        value=outcome,
+        session_id=session_id,
+        score_id=f"{session_id}:session_resolution",
+        data_type="CATEGORICAL",
+        comment="rubric=session-resolution-v1",
+        environment=settings.deployment_environment,
+    )
+
+
+def record_policy_compliance_score(
+    *,
+    trace_id: str,
+    used_unauthorized_document: bool,
+) -> None:
+    langfuse.create_score(
+        name="policy_compliance",
+        value="fail" if used_unauthorized_document else "pass",
+        trace_id=trace_id,
+        score_id=f"{trace_id}:policy_compliance",
+        data_type="CATEGORICAL",
+        comment="rubric=policy-compliance-v1",
+        environment=settings.deployment_environment,
+    )
+
+
+def record_answer_correctness_score(
+    *,
+    trace_id: str,
+    is_correct: bool,
+) -> None:
+    langfuse.create_score(
+        name="answer_correctness",
+        value=1 if is_correct else 0,
+        trace_id=trace_id,
+        score_id=f"{trace_id}:answer_correctness",
+        data_type="BOOLEAN",
+        comment="rubric=answer-correctness-v1",
+        environment=settings.deployment_environment,
+    )
+
+
+def flush_scores() -> None:
+    flush = getattr(langfuse, "flush", None)
+    if callable(flush):
+        flush()
+```
+
+Use deterministic checks before LLM judges. JSON validity, schema adherence, authorization, allowed document use, expected tool calls, and budget outcomes are better expressed as code than as another model call.
+
+## Run score scenarios
+
+The demo has no web form, mobile app, or CLI for end users. For this chapter, we'll use a local runner that simulates the boundary where feedback or review would arrive after an agent response. Create `src/agent_observability/score_scenarios.py`:
+
+```python
+import argparse
+
+from .config import settings
+from .feedback import build_user_feedback_event
+from .scores import (
+    flush_scores,
+    record_answer_correctness_score,
+    record_policy_compliance_score,
+    record_session_resolution_score,
+    record_user_feedback_score,
+)
+
+
+def run_feedback_score(trace_id: str) -> None:
+    event = build_user_feedback_event(
+        interaction_id="interaction_demo_001",
+        value="negative",
+        agent_version=settings.agent_version,
+    )
+    record_user_feedback_score(trace_id=trace_id, event=event)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    feedback = subparsers.add_parser("feedback")
+    feedback.add_argument(
+        "--trace-id",
+        required=True,
+        help="Trace ID copied from Langfuse.",
+    )
+
+    session = subparsers.add_parser("session")
+    session.add_argument(
+        "--session-id",
+        required=True,
+        help="Session ID shown in Langfuse.",
+    )
+    session.add_argument(
+        "--outcome",
+        required=True,
+        choices=["resolved", "escalated", "abandoned", "unknown"],
+    )
+
+    policy = subparsers.add_parser("policy")
+    policy.add_argument(
+        "--trace-id",
+        required=True,
+        help="Trace ID copied from Langfuse.",
+    )
+    policy.add_argument("--used-unauthorized-document", action="store_true")
+
+    correctness = subparsers.add_parser("correctness")
+    correctness.add_argument(
+        "--trace-id",
+        required=True,
+        help="Trace ID copied from Langfuse.",
+    )
+    correctness.add_argument("--correct", action="store_true")
+
+    args = parser.parse_args()
+
+    if args.command == "feedback":
+        run_feedback_score(args.trace_id)
+        print(
+            f"score queued: user_feedback trace_id={args.trace_id} "
+            f"environment={settings.deployment_environment}"
+        )
+    elif args.command == "session":
+        record_session_resolution_score(
+            session_id=args.session_id,
+            outcome=args.outcome,
+        )
+        print(
+            f"score queued: session_resolution session_id={args.session_id} "
+            f"environment={settings.deployment_environment}"
+        )
+    elif args.command == "policy":
+        record_policy_compliance_score(
+            trace_id=args.trace_id,
+            used_unauthorized_document=args.used_unauthorized_document,
+        )
+        print(
+            f"score queued: policy_compliance trace_id={args.trace_id} "
+            f"environment={settings.deployment_environment}"
+        )
+    elif args.command == "correctness":
+        record_answer_correctness_score(
+            trace_id=args.trace_id,
+            is_correct=args.correct,
+        )
+        print(
+            f"score queued: answer_correctness trace_id={args.trace_id} "
+            f"environment={settings.deployment_environment}"
+        )
+
+    flush_scores()
+
+
+if __name__ == "__main__":
+    main()
+```
+
+Run one traced agent execution first if you need a fresh trace:
+
+```sh
+python -m agent_observability.manual_scenarios prompt-management
+```
+
+Open Langfuse, go to **Tracing**, open the trace named `manual-prompt-management`, and copy the trace ID from the trace details. Then write a feedback score:
+
+```sh
+python -m agent_observability.score_scenarios feedback --trace-id <langfuse-trace-id>
+```
+
+Expected output:
+
+```text
+score queued: user_feedback trace_id=<langfuse-trace-id> environment=development
+```
+
+To write a deterministic policy score for the same trace:
+
+```sh
+python -m agent_observability.score_scenarios policy --trace-id <langfuse-trace-id>
+```
+
+Expected output:
+
+```text
+score queued: policy_compliance trace_id=<langfuse-trace-id> environment=development
+```
+
+To write a boolean correctness score, use `--correct` for a pass and omit it for a fail:
+
+```sh
+python -m agent_observability.score_scenarios correctness --trace-id <langfuse-trace-id> --correct
+```
+
+Expected output:
+
+```text
+score queued: answer_correctness trace_id=<langfuse-trace-id> environment=development
+```
+
+To score the whole session, copy the session ID from the trace details or the **Sessions** page:
+
+```sh
+python -m agent_observability.score_scenarios session \
+  --session-id <langfuse-session-id> \
+  --outcome escalated
+```
+
+Expected output:
+
+```text
+score queued: session_resolution session_id=<langfuse-session-id> environment=development
+```
+
+After each command, refresh the trace or session in Langfuse and open the **Scores** tab. The score should also appear in **Evaluation** -> **Scores**.
+
+If the command prints `environment=development` but Langfuse still shows an empty score list, check two things before changing code. First, confirm that you copied the trace ID from the trace details, not the session ID. Second, confirm that you are looking at the same Langfuse project and environment where `manual_scenarios.py` wrote the trace.
+
+The important boundary is still the same: score writes are outside `run_agent` when they represent post-response feedback or review. In a product, this code belongs in the feedback submission boundary after tenant ownership has been validated.
+
+Free-text comments need the content policy from Chapters 7 and 8. Store them only after there is a real product surface, retention policy, and reviewer access model for that data.
+
+## Read Score Analytics carefully
+
+Open **Evaluation** -> **Scores** -> **Analytics** after writing a few scores. Use it for:
+
+- distribution by score name;
+- score coverage across traces, sessions, or observations;
+- drift by prompt version, model, workflow, or environment;
+- disagreement between human review and automated evaluators.
+
+A score stream dominated by negative-feedback traces tells you where to look, not how often the whole product fails. If you only score traces that somebody complained about, the denominator is "complaints we inspected", not "all production traffic".
+
+## What should exist before we go to Chapter 21
+
+At this point the demo should have:
+
+- a score catalog with names, types, allowed values, owners, and rubric versions;
+- a `FeedbackEvent` to Langfuse score mapping in `src/agent_observability/scores.py`;
+- a manual path that can write `user_feedback` as a bounded trace-level score for a known trace ID;
+- session resolution stored as a session-level score;
+- deterministic policy compliance and answer correctness stored as scores;
+- no free-form user feedback stored without content-policy approval;
+- Score Analytics views filtered by environment, prompt label, model, and workflow version.
+
+Chapter 21 adds human annotation queues and LLM-as-a-judge evaluators on top of these score contracts.
+
+## References
+
+- [Langfuse scores overview](https://langfuse.com/docs/evaluation/scores/overview)
+- [Langfuse scores data model](https://langfuse.com/docs/evaluation/scores/data-model)
+- [Langfuse scores via SDK](https://langfuse.com/docs/evaluation/evaluation-methods/scores-via-sdk)
+- [Langfuse user feedback](https://langfuse.com/docs/observability/features/user-feedback)
+- [Langfuse Score Analytics](https://langfuse.com/docs/evaluation/scores/score-analytics)
+
+---
+
+**Next up**: [Ch 21 - Evaluators and Human Annotation Workflows](/observability-ai-agents/ch-21-langfuse-evaluators-human-annotation/) turns the score catalog into repeatable review and evaluation workflows.
