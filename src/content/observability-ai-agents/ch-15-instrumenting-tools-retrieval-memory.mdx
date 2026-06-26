@@ -224,6 +224,18 @@ app.tool.compensation_available = true
 
 Record the state transition returned by the system of record. A model saying “the refund was issued” is not evidence that the write succeeded.
 
+## What should exist before we go to Chapter 16
+
+At this point the demo should have:
+
+- a tool wrapper that records tool name, side-effect class, authorization, execution outcome, and `gen_ai.tool.call.id` when the model provided one;
+- a retrieval wrapper that records data source, retrieval strategy, requested result count, returned result count, index version, document IDs, and scores without exporting retrieved text by default;
+- a memory wrapper that records store, operation, purpose, policy decision, record count, and memory categories without exporting memory values;
+- a clear split between application spans and downstream HTTP, database, or messaging spans;
+- no tool arguments, retrieval queries, retrieved chunks, subject identifiers, or memory values in telemetry by default.
+
+Chapter 16 wires these operations into LangGraph nodes. `retrieve_policy`, `fetch_order_status`, and memory reads become child operations inside workflow-node spans, and the graph state carries only the fields needed to route the task.
+
 ## References
 
 - [OpenAI function calling](https://developers.openai.com/api/docs/guides/function-calling)
