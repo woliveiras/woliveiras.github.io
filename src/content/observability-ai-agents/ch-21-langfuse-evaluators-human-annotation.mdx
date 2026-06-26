@@ -1,0 +1,338 @@
+---
+title: "Evaluators and Human Annotation Workflows"
+description: "Use Langfuse evaluators, LLM-as-a-judge, and annotation queues to review traces and turn human judgment into calibrated scores."
+module: 4
+order: 21
+---
+
+# Evaluators and Human Annotation Workflows
+
+Scores are only useful when the process that creates them is trustworthy. In Chapter 20, the demo wrote scores through the SDK: user feedback, policy compliance, answer correctness, and session resolution. That proves the data path works, but it does not prove that the rubric is good.
+
+This chapter moves the review workflow into Langfuse. There are no required Python file changes in the demo for the first pass. The work happens in the Langfuse UI: create Score Configs, create an Annotation Queue, add one trace or session to that queue, and process it as a reviewer.
+
+My default order is simple: deterministic checks first, human review for calibration and ambiguous cases, LLM judges only after the rubric has examples and known failure modes. A judge prompt without human-reviewed examples is just another unreviewed model in the system.
+
+Before starting, run the Chapter 20 scenario once so Langfuse has a trace with API scores:
+
+```sh
+python -m agent_observability.manual_scenarios prompt-management
+python -m agent_observability.score_scenarios feedback --trace-id <langfuse-trace-id>
+python -m agent_observability.score_scenarios policy --trace-id <langfuse-trace-id>
+python -m agent_observability.score_scenarios correctness --trace-id <langfuse-trace-id> --correct
+python -m agent_observability.score_scenarios session \
+  --session-id <langfuse-session-id> \
+  --outcome escalated
+```
+
+Use the trace named `manual-prompt-management` while reading this chapter. It already has enough context for the first review queue.
+
+## Pick the evaluator type by failure mode
+
+Do not start by creating an LLM judge. Pick the evaluation method from the failure mode you want to catch.
+
+We can categorize evaluation needs like this:
+
+| Need | Evaluation method |
+|---|---|
+| Validate schema, exact fields, forbidden actions | Deterministic check or code evaluator |
+| Review nuanced correctness or support quality | Human annotation |
+| Scale a calibrated semantic rubric | LLM-as-a-judge |
+| Collect product feedback | User feedback score |
+| Compare releases before deploy | Dataset experiment evaluator |
+
+An LLM judge should not be responsible for detecting that a JSON object is invalid or that a tool skipped authorization. Those are code checks. In the local demo, we already keep those deterministic signals in `src/agent_observability/scores.py` and `src/agent_observability/score_scenarios.py`.
+
+Langfuse evaluators are useful when you want Langfuse itself to run deterministic checks on observations or experiments. For this chapter, keep the local deterministic checks as they are. Human annotation gives us a reviewed baseline before automating more of the loop.
+
+## Create Score Configs first
+
+Annotation Queues require Score Configs. A Score Config defines the name, data type, and allowed values reviewers can submit. Without this step, reviewers end up inventing labels in comments, and those labels cannot be compared later.
+
+Open Langfuse and create these configs:
+
+1. Go to **Project Settings**.
+2. Open **Scores Configs**.
+3. Click **Add new score config**.
+4. Create the configs below.
+
+| Score Config | Data Type | Values |
+|---|---|---|
+| `review_answer_correctness` | Categorical | `correct`, `partially_correct`, `incorrect`, `not_enough_information` |
+| `review_policy_compliance` | Categorical | `pass`, `fail`, `not_applicable` |
+| `review_session_resolution` | Categorical | `resolved`, `escalated`, `abandoned`, `unknown` |
+
+I keep the `review_` prefix on purpose. Chapter 20 created application scores such as `answer_correctness` and `policy_compliance` through code. Human review scores should start separate so we can compare human judgment against automated or application-generated scores without mixing their sources.
+
+Use the description field to write the rubric version, for example:
+
+```text
+Rubric: order-status-review-v1.
+Use "not_enough_information" when the trace does not include enough context to judge the answer.
+```
+
+## Create annotation queues for human review
+
+Annotation Queues give domain experts a worklist of traces, observations, or sessions. In our demo, use them for the traces and sessions that already received feedback or deterministic scores in Chapter 20.
+
+Create the first queue:
+
+1. Go to **Evaluation** -> **Human Annotation**.
+2. Click **New queue**.
+3. Name it `review-order-status-failures`.
+4. Add this description:
+
+```text
+Review order-status traces with negative feedback, escalated sessions, or policy/correctness concerns.
+Rubric: order-status-review-v1.
+```
+
+5. Select these Score Configs:
+   - `review_answer_correctness`
+   - `review_policy_compliance`
+   - `review_session_resolution`
+6. Assign users only if your local Langfuse instance has more than one reviewer.
+
+In a real project, this queue would receive items from sampling rules, product feedback, support escalations, or a custom script. For the demo, add one item manually so the reader can validate the workflow end to end.
+
+Use one of these paths:
+
+| Item to review | Where to add it from |
+|---|---|
+| Single trace | Open the trace detail page, click on the dropdown button close to the **Annotate**, and add it to `review-order-status-failures` queue. |
+| Whole session | Open **Sessions**, select the session, click on the dropdown button close to the **Annotate**, and add it to the queue. |
+| Multiple traces | Open **Tracing**, select rows with checkboxes, open the dropdown button close to the **Actions**, and add them to the queue. |
+
+All these data will be available to reviewers in the queue. The reviewer does not need to know how the trace was created, only that it is a candidate for review. And it can be done by going to **Evaluation** -> **Human Annotation** -> `review-order-status-failures` and clicking **Process queue**.
+
+Use queues for:
+
+- negative feedback;
+- escalated conversations;
+- high-cost traces;
+- low-confidence judge results;
+- new prompt versions during rollout;
+- safety-sensitive tool actions.
+
+Define the queue contract before inviting reviewers:
+
+| Queue field | Example |
+|---|---|
+| Name | `review-order-status-failures` |
+| Parent | Trace or session |
+| Sample rule | `user_feedback = negative` and `workflow = order-status` |
+| Scores to collect | `review_answer_correctness`, `review_session_resolution`, `review_policy_compliance` |
+| Reviewer role | Support lead or domain expert |
+| Rubric version | `order-status-review-v1` |
+
+Do not ask reviewers for open-ended opinions first. Ask for bounded scores and add comments only when the score needs explanation.
+
+## Process one item in the queue
+
+Now validate the practical path.
+
+1. Go to **Evaluation** -> **Human Annotation**.
+2. Open `review-order-status-failures`.
+3. Click **Process queue**.
+4. Read the trace or session context.
+5. Fill the configured scores.
+6. Add a short comment only if the score needs evidence.
+7. Click **Mark Completed**.
+
+After completing the item, reopen the trace and check the **Scores** tab. You should see both sources:
+
+| Source | Meaning |
+|---|---|
+| `API` | Scores written by `score_scenarios.py` in Chapter 20. |
+| `ANNOTATION` | Scores added by the reviewer through the queue. |
+
+That distinction matters. A product signal and a reviewer judgment can disagree. The disagreement is the reason to review, not something to hide.
+
+## Align humans and automated judges
+
+Before creating an LLM-as-a-Judge evaluator for order-status correctness, you need a small set of reviewed traces. The first reviewed trace is the seed for a calibration set.
+
+A calibration set is a small group of reviewed traces used to check whether an automated judge agrees with human reviewers. With only one reviewed trace, you cannot measure agreement yet. You are only creating the habit and the place where reviewed examples will accumulate. We'll use the data you just annotated in `review-order-status-failures` before creating the judge.
+
+As you review more traces, use this process:
+
+1. Select traces across pass, fail, and ambiguous cases.
+2. Have humans score them using the rubric.
+3. Run the judge on the same cases.
+4. Compare disagreement by score name and failure type.
+5. Update the rubric or judge prompt.
+6. Keep the calibration set stable for judge-regression tests.
+
+For this chapter, stop after one completed annotation if you are following the demo step by step. The rest of this section explains why we do that before creating an LLM-as-a-Judge evaluator.
+
+If a judge later disagrees with humans on a safety or correctness criterion, treat the judge as untrusted until the disagreement is understood.
+
+## Configure LLM-as-a-judge around one criterion
+
+A judge should emit one score contract at a time. Do not ask one evaluator to score correctness, safety, tone, helpfulness, and policy compliance in the same prompt because the failures become hard to interpret, and the score distribution hides which dimension moved.
+
+Create the evaluator from **Evaluation** -> **Evaluators** -> **Create Evaluator**. Click on **LLM-as-a-Judge**. Langfuse will first ask for an LLM connection. The OpenAI key in the demo `.env` is for the demo application; Langfuse needs its own model connection for hosted evaluators. For a practicing application, using the same API key is acceptable. In a real project, Langfuse should have its own key with its own access rules.
+
+After the connection step, fill the evaluator form like this:
+
+| Field | Value |
+|---|---|
+| Name | `judge_answer_relevance_order_status_v1` |
+| Model | Use the default evaluation model configured in Langfuse. |
+| Evaluation prompt | Use the prompt below. |
+| Score type | `Categorical` |
+| Categories | `relevant`, `partially_relevant`, `irrelevant` |
+| Allow multiple matches | Off |
+| Score reasoning prompt | `Explain why the selected category is the best match.` |
+| Category selection prompt | `Choose exactly one category from the provided list.` |
+
+Use this evaluation prompt:
+
+```text
+You are reviewing one answer from an order-status support agent.
+
+Judge only whether the answer is relevant to the user's question.
+
+Rubric: answer-relevance-v1
+
+Return "relevant" when the answer directly addresses the user's order-status question.
+Return "partially_relevant" when the answer addresses the topic but misses important information.
+Return "irrelevant" when the answer does not address the user's question.
+
+Question: {{question}}
+Answer: {{answer}}
+```
+
+The form should show `question` and `answer` as available variables. That is why this first evaluator checks answer relevance instead of groundedness. It can judge the final question-answer pair without needing retrieval context from sibling spans.
+
+Before saving, check the **Variable mapping** preview:
+
+| Variable | Object Field | JsonPath |
+|---|---|---|
+| `{{question}}` | `Input` | Leave empty for the first run. |
+| `{{answer}}` | `Output` | Leave empty for the first run. |
+
+Do not map both variables to `Input`. If the preview shows an empty `Question:` or `Answer:`, the evaluator will run without useful context. Fix the mapping before executing it.
+
+To run the evaluator once against the sampled observations shown in the setup screen, click **Execute**. This is a manual run over existing observations that match the filter.
+
+To make the evaluator run on new demo traces:
+
+1. Open the running evaluator.
+2. Turn on **Edit Mode**.
+3. Enable **Run on live incoming observations**.
+4. Keep the filter at `Type = GENERATION`.
+5. Make sure the environment filter includes `development`.
+6. Keep sampling at `100%` for the local demo.
+7. Save the evaluator.
+
+Then generate a new trace from the demo:
+
+```sh
+python -m agent_observability.manual_scenarios prompt-management
+```
+
+Wait a few seconds, then check **Evaluation** -> **Evaluators** -> Click on the **Logs / View** button. You can also open the new trace, click the `openai.responses.create` generation observation, and check its **Scores** tab for `judge_answer_relevance_order_status_v1`.
+
+Target observations when the evaluator only needs the input and output of one operation, such as the final model generation. Langfuse's observation-level evaluators do not automatically load sibling or child observations from the same trace. If your judge needs retrieved policy documents, citations, or authorization results, write those fields onto the target observation first.
+
+Use the LLM judge only after you have at least a small human-reviewed set. In this chapter, creating the evaluator as a draft or testing it against a few reviewed examples is enough.
+
+## Keep judge input governed
+
+LLM-as-a-judge often requires content: question, answer, retrieved passages, or reviewer notes, because the judge needs to see the context to make a judgment. That content can be sensitive. It may contain raw identifiers, secrets, or personally identifiable information. The evaluator should not receive that content unless it is redacted and controlled.
+
+Apply the same controls:
+
+- redaction before judge input;
+- allowed fields only;
+- evaluator model and prompt version recorded;
+- no raw secrets or identifiers;
+- retention and access rules for judge input and explanations;
+- sampling policy attached to the resulting score.
+
+If the judge only needs document IDs and citations, do not send full chunks.
+
+We can use the following table to decide whether to send content to the evaluator:
+
+| Evaluator question | Send now? | Why |
+|---|---|---|
+| "Is the answer relevant to the user's question?" | Yes | It only needs the generation input and output. |
+| "Was the cited policy document authorized?" | Not yet | The judge needs authorization and retrieval fields from sibling spans. |
+| "Is the answer grounded in the retrieved policy text?" | Not yet | The target generation observation does not include retrieved chunks. |
+| "Did the tool call follow tenant access rules?" | No, use deterministic checks | This is better handled by code and span attributes. |
+
+For the evaluator we created above, this is acceptable judge input:
+
+```text
+Question: Where is my order ORD-123?
+Answer: Your order is currently in transit and is expected to arrive tomorrow.
+```
+
+This is not enough for a groundedness judge:
+
+```text
+Question: Where is my order ORD-123?
+Answer: Your order is currently in transit and is expected to arrive tomorrow.
+Retrieved policy text: [not available on this observation]
+Authorized policy document IDs: [not available on this observation]
+```
+
+When we add groundedness later, the target observation should include a compact evaluation payload, not raw traces pasted into the prompt:
+
+```json
+{
+  "question": "Where is my order ORD-123?",
+  "answer": "Your order is currently in transit and is expected to arrive tomorrow.",
+  "authorized_policy_document_ids": ["support-policy"],
+  "cited_policy_document_ids": ["support-policy"],
+  "retrieval_summary": "Delivery ETA may be shared when the caller is authorized for the order."
+}
+```
+
+That payload is small enough to review and avoids sending full retrieved chunks when IDs and a short summary are enough.
+
+## Use evaluator results operationally
+
+Evaluator output should feed actions:
+
+| Result | Action |
+|---|---|
+| Low groundedness on new prompt label | Hold or roll back the prompt label. |
+| Human and judge disagreement increases | Recalibrate judge before using its trend. |
+| Annotation queue backlog grows | Reduce sample rate or add reviewer capacity. |
+| Safety score fails on high-risk tool path | Block release and inspect traces. |
+| Repeated failure pattern appears | Add cases to a regression dataset. |
+
+Evaluation without an action path becomes dashboard noise.
+
+## What should exist before we go to Chapter 22
+
+At this point the demo should have:
+
+- Score Configs for `review_answer_correctness`, `review_policy_compliance`, and `review_session_resolution`;
+- an annotation queue named `review-order-status-failures`;
+- at least one trace or session from Chapter 20 added to that queue;
+- one completed human annotation;
+- API scores and annotation scores visible on the reviewed trace or session;
+- a human rubric for order-status review;
+- a draft or tested LLM-as-a-Judge criterion, not a generic quality judge;
+- evaluator or rubric versions recorded in score descriptions, comments, or evaluator names;
+- a rule for promoting reviewed failures into a dataset.
+
+Chapter 22 turns those reviewed cases into datasets and experiments that protect releases.
+
+## References
+
+- [Langfuse evaluation overview](https://langfuse.com/docs/evaluation/overview)
+- [Langfuse evaluation core concepts](https://langfuse.com/docs/evaluation/core-concepts)
+- [Langfuse scores data model](https://langfuse.com/docs/evaluation/scores/data-model)
+- [Langfuse score configs FAQ](https://langfuse.com/faq/all/manage-score-configs)
+- [Langfuse LLM-as-a-Judge](https://langfuse.com/docs/evaluation/evaluation-methods/llm-as-a-judge)
+- [Langfuse code evaluators](https://langfuse.com/docs/evaluation/evaluation-methods/code-evaluators)
+- [Langfuse annotation queues](https://langfuse.com/docs/evaluation/evaluation-methods/annotation-queues)
+- [Langfuse manual scores via UI](https://langfuse.com/docs/evaluation/evaluation-methods/scores-via-ui)
+
+---
+
+**Next up**: [Ch 22 - Datasets, Experiments, and Release Evaluation](/observability-ai-agents/ch-22-langfuse-datasets-experiments-release-evaluation/) turns production findings into repeatable release checks.
