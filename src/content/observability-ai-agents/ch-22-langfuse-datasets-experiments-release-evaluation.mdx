@@ -285,6 +285,8 @@ Now run the experiment:
 PYTHONPATH=src python -m agent_observability.dataset_scenarios run
 ```
 
+This calls the configured model through `run_agent()`, so exact wording, latency, usage, and provider metadata can vary between runs. Treat the deterministic evaluator scores and dataset run record as the verification target, not a byte-for-byte answer.
+
 The command does three things:
 
 1. loads the `order-status-regression` dataset;

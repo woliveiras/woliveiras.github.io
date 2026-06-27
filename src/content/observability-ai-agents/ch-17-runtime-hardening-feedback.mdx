@@ -592,8 +592,8 @@ try:
 except ModelUnavailable:
     record_fallback(
         FallbackDecision(
-            source="gpt-4.1",
-            target="gpt-4.1-mini",
+            source="primary-model-name",
+            target="fallback-model-name",
             reason="primary_model_unavailable",
             preserves_safety_posture=True,
         ),

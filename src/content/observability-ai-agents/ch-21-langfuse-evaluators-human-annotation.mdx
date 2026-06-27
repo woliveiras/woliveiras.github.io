@@ -265,14 +265,14 @@ We can use the following table to decide whether to send content to the evaluato
 For the evaluator we created above, this is acceptable judge input:
 
 ```text
-Question: Where is my order ORD-123?
+Question: Where is my order ORDER-123?
 Answer: Your order is currently in transit and is expected to arrive tomorrow.
 ```
 
 This is not enough for a groundedness judge:
 
 ```text
-Question: Where is my order ORD-123?
+Question: Where is my order ORDER-123?
 Answer: Your order is currently in transit and is expected to arrive tomorrow.
 Retrieved policy text: [not available on this observation]
 Authorized policy document IDs: [not available on this observation]
@@ -282,7 +282,7 @@ When we add groundedness later, the target observation should include a compact 
 
 ```json
 {
-  "question": "Where is my order ORD-123?",
+  "question": "Where is my order ORDER-123?",
   "answer": "Your order is currently in transit and is expected to arrive tomorrow.",
   "authorized_policy_document_ids": ["support-policy"],
   "cited_policy_document_ids": ["support-policy"],

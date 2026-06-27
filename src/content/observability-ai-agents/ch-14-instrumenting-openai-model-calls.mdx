@@ -262,8 +262,6 @@ Keep retry orchestration separate from the model attempt span. The parent span s
 Add the following code to `src/agent_observability/inference.py`:
 
 ```python
-import time
-
 from openai import APIConnectionError, APIStatusError, APITimeoutError, RateLimitError
 
 
