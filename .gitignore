@@ -29,3 +29,6 @@ public/pagefind/
 # Agents
 SPEC.md
 PLAN.md
+
+# pnpm build cache
+.pnpm-store/
