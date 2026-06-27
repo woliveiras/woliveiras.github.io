@@ -16,11 +16,11 @@ My default order is simple: deterministic checks first, human review for calibra
 Before starting, run the Chapter 20 scenario once so Langfuse has a trace with API scores:
 
 ```sh
-python -m agent_observability.manual_scenarios prompt-management
-python -m agent_observability.score_scenarios feedback --trace-id <langfuse-trace-id>
-python -m agent_observability.score_scenarios policy --trace-id <langfuse-trace-id>
-python -m agent_observability.score_scenarios correctness --trace-id <langfuse-trace-id> --correct
-python -m agent_observability.score_scenarios session \
+PYTHONPATH=src python -m agent_observability.manual_scenarios prompt-management
+PYTHONPATH=src python -m agent_observability.score_scenarios feedback --trace-id <langfuse-trace-id>
+PYTHONPATH=src python -m agent_observability.score_scenarios policy --trace-id <langfuse-trace-id>
+PYTHONPATH=src python -m agent_observability.score_scenarios correctness --trace-id <langfuse-trace-id> --correct
+PYTHONPATH=src python -m agent_observability.score_scenarios session \
   --session-id <langfuse-session-id> \
   --outcome escalated
 ```
@@ -229,7 +229,7 @@ To make the evaluator run on new demo traces:
 Then generate a new trace from the demo:
 
 ```sh
-python -m agent_observability.manual_scenarios prompt-management
+PYTHONPATH=src python -m agent_observability.manual_scenarios prompt-management
 ```
 
 Wait a few seconds, then check **Evaluation** -> **Evaluators** -> Click on the **Logs / View** button. You can also open the new trace, click the `openai.responses.create` generation observation, and check its **Scores** tab for `judge_answer_relevance_order_status_v1`.
@@ -262,17 +262,17 @@ We can use the following table to decide whether to send content to the evaluato
 | "Is the answer grounded in the retrieved policy text?" | Not yet | The target generation observation does not include retrieved chunks. |
 | "Did the tool call follow tenant access rules?" | No, use deterministic checks | This is better handled by code and span attributes. |
 
-For the evaluator we created above, this is acceptable judge input:
+For the evaluator we created above, this is acceptable judge input for the local demo because the order identifier has already been redacted before it reaches the evaluator:
 
 ```text
-Question: Where is my order ORDER-123?
+Question: Where is my order [ORDER_ID]?
 Answer: Your order is currently in transit and is expected to arrive tomorrow.
 ```
 
 This is not enough for a groundedness judge:
 
 ```text
-Question: Where is my order ORDER-123?
+Question: Where is my order [ORDER_ID]?
 Answer: Your order is currently in transit and is expected to arrive tomorrow.
 Retrieved policy text: [not available on this observation]
 Authorized policy document IDs: [not available on this observation]
@@ -282,7 +282,7 @@ When we add groundedness later, the target observation should include a compact 
 
 ```json
 {
-  "question": "Where is my order ORDER-123?",
+  "question": "Where is my order [ORDER_ID]?",
   "answer": "Your order is currently in transit and is expected to arrive tomorrow.",
   "authorized_policy_document_ids": ["support-policy"],
   "cited_policy_document_ids": ["support-policy"],
