@@ -114,35 +114,9 @@ def fetch_order_status(
 
 The model proposes tool arguments; application code validates and authorizes them. Put validation before the real tool action in `src/agent_observability/tools.py`, inside the specific tool wrapper or in a helper that the wrapper calls.
 
-If you copied the complete `fetch_order_status` wrapper from the previous section, this validation code is already included. Use this section to understand and verify the specific changes that make validation observable.
+If you copied the complete `fetch_order_status` wrapper from the previous section, this validation code is already included. Use this section to understand and verify the specific controls that make validation observable instead of adding the helper a second time.
 
-In this exercise, update `fetch_order_status` so it records four controls separately: argument validation, authorization, approval requirement, and execution outcome. This makes incidents easier to classify: invalid arguments, authorization denial, missing approval, and execution failure are different problems.
-
-Add this helper to `src/agent_observability/tools.py`, above `fetch_order_status`:
-
-```python
-def validate_order_reference(order_reference: str) -> bool:
-    return order_reference.startswith("ORDER-") and len(order_reference) >= 8
-```
-
-Then update the beginning of `fetch_order_status`, inside the span and before `authorize_order_read`:
-
-```python
-        arguments_valid = validate_order_reference(order_reference)
-        span.set_attribute("app.tool.arguments.valid", arguments_valid)
-        span.set_attribute("app.tool.approval", "not_required")
-        if not arguments_valid:
-            span.set_attribute("error.type", "validation")
-            span.set_status(Status(StatusCode.ERROR, "validation"))
-            raise ValueError("invalid order reference")
-```
-
-Finally, set the execution result after the service call succeeds:
-
-```python
-        result = call_order_service(order_reference)
-        span.set_attribute("app.tool.execution", "success")
-```
+The wrapper records four controls separately: argument validation, authorization, approval requirement, and execution outcome. This makes incidents easier to classify: invalid arguments, authorization denial, missing approval, and execution failure are different problems.
 
 After this change, the successful path should record:
 
