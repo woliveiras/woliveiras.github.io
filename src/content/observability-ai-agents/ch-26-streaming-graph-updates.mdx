@@ -15,8 +15,6 @@ This chapter adds a streaming entrypoint to the demo and a manual scenario that 
 
 ## What we will change
 
-> Note: This chapter extends the demo beyond the currently published `agent-observability-demo` repository. If your checkout does not contain the Module 6 files yet, apply the changes below from the demo project root instead of expecting them to already exist.
-
 Work in the demo project:
 
 ```sh
@@ -110,6 +108,33 @@ def stream_agent_updates(initial_state: AgentState) -> Iterator[dict[str, Any]]:
 
 Keep this near the graph boundary. Do not sprinkle streaming logic inside every node. The sanitizer is the boundary between internal graph state and anything that can reach a browser, log, or telemetry backend.
 
+Add a regression test for that boundary in `tests/test_streaming.py`:
+
+```python title="tests/test_streaming.py"
+from agent_observability.graph import sanitize_graph_update
+
+
+def test_stream_update_sanitizer_drops_sensitive_state() -> None:
+    sanitized = sanitize_graph_update(
+        {
+            "compose_answer": {
+                "answer": "Raw answer text",
+                "query": "Where is ORDER-CANARY-0001?",
+                "order_state": "missing",
+                "outcome": "escalated",
+            }
+        }
+    )
+
+    assert sanitized == {
+        "compose_answer": {
+            "order_state": "missing",
+            "outcome": "escalated",
+        }
+    }
+    assert "ORDER-CANARY-0001" not in repr(sanitized)
+```
+
 ## Create the observed streaming wrapper
 
 Create `src/agent_observability/streaming.py`:
@@ -145,7 +170,7 @@ def observed_stream_agent_updates(
         except Exception as exc:
             span.record_exception(exc)
             span.set_attribute("error.type", exc.__class__.__name__)
-            span.set_status(Status(StatusCode.ERROR, str(exc)))
+            span.set_status(Status(StatusCode.ERROR, "stream_error"))
             raise
         finally:
             span.set_attribute("app.workflow.stream.event_count", event_count)
@@ -262,19 +287,20 @@ Expect a trace shaped like:
 ```txt
 invoke_agent order-status-stream
   workflow.stream updates
-  workflow.node retrieve_policy
-  workflow.node read_memory
-  workflow.node fetch_order
-  workflow.node classify_outcome
-  workflow.node escalate
+    workflow.node retrieve_policy
+    workflow.node read_memory
+    workflow.node fetch_order
+    workflow.node classify_outcome
+    workflow.node escalate
 ```
 
 If Chapter 25 has been applied, the escalation subgraph nodes also appear under the escalation path:
 
 ```txt
-workflow.node escalate
-  workflow.node classify_escalation_reason
-  workflow.node select_escalation_channel
+workflow.stream updates
+  workflow.node escalate
+    workflow.node classify_escalation_reason
+    workflow.node select_escalation_channel
 ```
 
 Inspect `workflow.stream updates`. It should contain:
@@ -328,6 +354,7 @@ At this point the demo should have:
 - `src/agent_observability/streaming.py` with `observed_stream_agent_updates()`;
 - a `graph-updates-stream` manual scenario;
 - a `workflow.stream updates` span with bounded lifecycle metadata;
+- a streaming sanitizer regression test in `tests/test_streaming.py`;
 - no full graph state exported to telemetry;
 - separate handling for model token streaming and graph progress streaming;
 - a Langfuse trace named `manual-graph-updates-stream` that remains readable.
