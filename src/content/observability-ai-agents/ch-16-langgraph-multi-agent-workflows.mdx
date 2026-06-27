@@ -252,17 +252,22 @@ From the demo project root, run:
 ```sh
 PYTHONPATH=src python - <<'PY'
 from agent_observability.graph import run_agent
+from agent_observability.telemetry import configure_tracing
 
-result = run_agent(
-    {
-        "query": "Where is my order?",
-        "conversation_id": "conv_ch16_demo",
-        "order_reference": "ORDER-924",
-        "region": "eu",
-    }
-)
-
-print(result["outcome"])
+provider = configure_tracing()
+try:
+    result = run_agent(
+        {
+            "query": "Where is my order?",
+            "conversation_id": "conv_ch16_demo",
+            "order_reference": "ORDER-924",
+            "region": "eu",
+        }
+    )
+    print(result["outcome"])
+finally:
+    provider.force_flush(timeout_millis=5000)
+    provider.shutdown()
 PY
 ```
 
