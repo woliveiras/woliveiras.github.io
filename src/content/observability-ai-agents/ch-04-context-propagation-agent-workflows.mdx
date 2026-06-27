@@ -389,7 +389,7 @@ The workflow used by the test should match the boundary being verified:
 
 Add negative cases as well. Malformed inbound headers must not crash request handling, unapproved baggage must not cross the trust boundary, and an unsampled parent must produce the behavior configured by the parent-based sampler. Correlated logs created inside each operation should contain that operation's local trace and span IDs.
 
-Unit tests can call producer and consumer handlers in one process while still exercising real `inject` and `extract` operations. Collector integration tests are a separate layer: they verify that serialization, processors, sampling, and backend export preserve the relationships already validated in memory. Chapter 18 builds both test layers.
+Unit tests can call producer and consumer handlers in one process while still exercising real `inject` and `extract` operations. Collector integration tests are a separate layer: they verify that serialization, processors, sampling, and backend export preserve the relationships already validated in memory. Chapter 23 builds both test layers.
 
 ## References
 

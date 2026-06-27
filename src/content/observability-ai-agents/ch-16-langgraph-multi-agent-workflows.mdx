@@ -243,6 +243,35 @@ def run_agent(initial_state: AgentState) -> AgentState:
 
 The root span describes the task segment. Child spans describe graph nodes and the model, retrieval, and tool operations inside them.
 
+## Run the graph
+
+Run one local graph execution before moving on. This validates that the compiled graph, root task span, route span, and operation spans are connected.
+
+From the demo project root, run:
+
+```sh
+PYTHONPATH=src python - <<'PY'
+from agent_observability.graph import run_agent
+
+result = run_agent(
+    {
+        "query": "Where is my order?",
+        "conversation_id": "conv_ch16_demo",
+        "order_reference": "ORDER-924",
+        "region": "eu",
+    }
+)
+
+print(result["outcome"])
+PY
+```
+
+The terminal should print:
+
+```txt
+answer
+```
+
 A healthy sequential trace now has this shape:
 
 ```txt
@@ -255,7 +284,7 @@ invoke_agent order-status
     execute_tool fetch_order_status
       HTTP GET order service
   workflow.node classify_outcome
-    workflow.route outcome
+  workflow.route outcome
   workflow.node compose_answer
     openai.responses.create
 ```

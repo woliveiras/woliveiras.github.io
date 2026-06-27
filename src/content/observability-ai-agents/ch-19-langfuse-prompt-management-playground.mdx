@@ -387,6 +387,65 @@ Create the labels in Langfuse before running the scenario:
 
 Keep `production` unchanged for this demo. The A/B labels are only experiment pointers.
 
+Add this import to `src/agent_observability/manual_scenarios.py`:
+
+```python
+from .prompts import prompt_label_for_user
+```
+
+Add this scenario to `src/agent_observability/manual_scenarios.py`:
+
+```python
+def run_prompt_ab_test() -> None:
+    for user_id in ("usr_prompt_ab_00", "usr_prompt_ab_01"):
+        prompt_label = prompt_label_for_user(user_id)
+        conversation_id = f"conv_{uuid4().hex}"
+        with langfuse_trace_context(
+            session_id=conversation_id,
+            user_id=user_id,
+            trace_name=f"manual-prompt-ab-test-{prompt_label}",
+            version=settings.agent_version,
+            tags=(
+                "order-status",
+                "prompt-management",
+                "prompt-ab-test",
+                prompt_label,
+            ),
+            metadata={
+                "environment": settings.deployment_environment,
+                "workflow": "order-status",
+                "region": "eu",
+            },
+        ):
+            result = run_agent(
+                {
+                    "query": "Where is my order?",
+                    "conversation_id": conversation_id,
+                    "order_reference": "ORDER-924",
+                    "region": "eu",
+                    "prompt_label": prompt_label,
+                },
+            )
+
+        print(f"{prompt_label}: {result['outcome']}")
+```
+
+Register it in the existing scenarios dictionary:
+
+```python
+SCENARIOS: dict[str, Callable[[], None]] = {
+    "success": run_success,
+    "stream": run_stream,
+    "retry": run_retry,
+    "fallback": run_fallback,
+    "retry-classification": run_retry_classification,
+    "feedback": run_feedback,
+    "negative-signal": run_negative_signal,
+    "prompt-management": run_prompt_management,
+    "prompt-ab-test": run_prompt_ab_test,
+}
+```
+
 Then run the A/B manual scenario from the demo project root:
 
 ```sh
@@ -510,7 +569,94 @@ return {
 }
 ```
 
-The manual scenario runner has a `prompt-cache-fallback` scenario that warms the cache once, simulates a Langfuse prompt fetch timeout, and runs the graph again:
+Add this import to `src/agent_observability/manual_scenarios.py` so the scenario can temporarily replace the Langfuse prompt client:
+
+```python
+from . import prompts
+```
+
+Then add the fallback scenario. It warms the cache once, simulates a Langfuse prompt fetch timeout, restores the original SDK method, and runs the graph again:
+
+```python
+def run_prompt_cache_fallback() -> None:
+    label = "production"
+    original_get_prompt = prompts.langfuse.get_prompt
+
+    warmup_conversation_id = f"conv_{uuid4().hex}"
+    with langfuse_trace_context(
+        session_id=warmup_conversation_id,
+        user_id="usr_pseudo_prompt_cache",
+        trace_name="manual-prompt-cache-warmup",
+        version=settings.agent_version,
+        tags=("order-status", "prompt-management", "prompt-cache-warmup"),
+        metadata={
+            "environment": settings.deployment_environment,
+            "workflow": "order-status",
+            "region": "eu",
+        },
+    ):
+        warmup_result = run_agent(
+            {
+                "query": "Where is my order?",
+                "conversation_id": warmup_conversation_id,
+                "order_reference": "ORDER-924",
+                "region": "eu",
+                "prompt_label": label,
+            },
+        )
+
+    def unavailable_get_prompt(*args: Any, **kwargs: Any) -> Any:
+        raise TimeoutError("simulated Langfuse prompt fetch timeout")
+
+    prompts.langfuse.get_prompt = unavailable_get_prompt
+    try:
+        fallback_conversation_id = f"conv_{uuid4().hex}"
+        with langfuse_trace_context(
+            session_id=fallback_conversation_id,
+            user_id="usr_pseudo_prompt_cache",
+            trace_name="manual-prompt-cache-fallback",
+            version=settings.agent_version,
+            tags=("order-status", "prompt-management", "prompt-cache-fallback"),
+            metadata={
+                "environment": settings.deployment_environment,
+                "workflow": "order-status",
+                "region": "eu",
+            },
+        ):
+            fallback_result = run_agent(
+                {
+                    "query": "Where is my order?",
+                    "conversation_id": fallback_conversation_id,
+                    "order_reference": "ORDER-924",
+                    "region": "eu",
+                    "prompt_label": label,
+                },
+            )
+    finally:
+        prompts.langfuse.get_prompt = original_get_prompt
+
+    print(f"warmup: {warmup_result['prompt_source']} {warmup_result['outcome']}")
+    print(f"fallback: {fallback_result['prompt_source']} {fallback_result['outcome']}")
+```
+
+Register it in the existing scenarios dictionary:
+
+```python
+SCENARIOS: dict[str, Callable[[], None]] = {
+    "success": run_success,
+    "stream": run_stream,
+    "retry": run_retry,
+    "fallback": run_fallback,
+    "retry-classification": run_retry_classification,
+    "feedback": run_feedback,
+    "negative-signal": run_negative_signal,
+    "prompt-management": run_prompt_management,
+    "prompt-ab-test": run_prompt_ab_test,
+    "prompt-cache-fallback": run_prompt_cache_fallback,
+}
+```
+
+Run the scenario:
 
 ```sh
 python -m agent_observability.manual_scenarios prompt-cache-fallback

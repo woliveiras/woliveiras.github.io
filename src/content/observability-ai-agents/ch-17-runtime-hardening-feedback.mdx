@@ -175,7 +175,7 @@ In Langfuse, a budget stop should appear as a completed trace with a bounded ter
 ```txt
 app.task.outcome = "budget_stopped"
 app.budget.type = "model_calls"
-app.budget.limit = 4
+app.budget.limit = 2
 app.budget.action = "stop"
 ```
 
@@ -767,7 +767,7 @@ The public `interaction_id` should map to the internal trace ID in an applicatio
 
 Negative behavior is useful for triage, but it is not automatic ground truth. Add these signals as selectors for review and evaluation queues, not as direct correctness labels.
 
-Open or create (if you created it before on chapter 12 or 16) `src/agent_observability/signals.py`. The file defines a bounded negative signal event and a helper to record it in telemetry:
+Open or create `src/agent_observability/signals.py`. The file defines a bounded negative signal event and a helper to record it in telemetry:
 
 ```python
 from dataclasses import dataclass
@@ -997,7 +997,7 @@ For the normal path, expect `answer` or `escalated`, depending on the order fixt
 Open the trace created by the manual run and check the root span first. It should show the final task outcome and bounded runtime-control attributes. Then inspect child spans:
 
 ```txt
-agent.order-status
+invoke_agent order-status
   workflow.node retrieve_policy
   workflow.node read_memory
   workflow.node fetch_order
@@ -1009,7 +1009,7 @@ agent.order-status
 For a budget stop, the trace should still be readable:
 
 ```txt
-agent.order-status
+invoke_agent order-status
   app.task.outcome = "budget_stopped"
   app.budget.type = "iterations"
   app.budget.limit = 1
@@ -1042,7 +1042,7 @@ Chapter 18 turns those expectations into Langfuse product views: sessions, users
 
 - [OpenAI production best practices](https://developers.openai.com/api/docs/guides/production-best-practices)
 - [Langfuse scores via SDK](https://langfuse.com/docs/evaluation/evaluation-methods/scores-via-sdk)
-- [OWASP LLM06: Excessive Agency](https://genai.owasp.org/llm-top-10/)
+- [OWASP LLM06: Excessive Agency](https://genai.owasp.org/llmrisk/llm062025-excessive-agency/)
 - [OpenTelemetry SDK configuration](https://opentelemetry.io/docs/languages/sdk-configuration/)
 
 ---
