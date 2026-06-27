@@ -131,7 +131,7 @@ The model call and prompt fetch are stubbed because this test is about trace sha
 
 ## Create the privacy invariant test
 
-Open `tests/test_privacy.py` and add this test:
+Open `tests/test_privacy.py` and add these tests:
 
 ```python title="tests/test_privacy.py"
 from agent_observability.capture import CapturePolicy, project_content_for_telemetry
@@ -160,9 +160,28 @@ def test_metadata_only_capture_does_not_export_content() -> None:
     }
     for value in FORBIDDEN:
         assert value not in serialized
+
+
+def test_redacted_capture_removes_forbidden_patterns() -> None:
+    projected = project_content_for_telemetry(
+        value="Email person@example.invalid about ORDER-CANARY-0001",
+        policy=CapturePolicy(
+            mode="redacted",
+            policy_version="capture-policy-1",
+        ),
+    )
+
+    serialized = repr(projected)
+
+    assert projected["capture_mode"] == "redacted"
+    assert "redacted_preview" in projected
+    for value in FORBIDDEN:
+        assert value not in serialized
+    assert "ORDER-" not in serialized
+
 ```
 
-This is a small test, but it protects an important rule from Chapters 8, 14, 15, 17, and 26: content is not exported by default. It also keeps the test independent of Langfuse and the Collector.
+These are small tests, but they protect important rules from Chapters 8, 14, 15, and 17: content is not exported by default, and redacted mode removes forbidden patterns. They also keep the test independent of Langfuse and the Collector.
 
 ## Create the telemetry test
 
@@ -226,7 +245,7 @@ class FakeLangfuse:
 
 def test_user_feedback_score_is_bounded(monkeypatch) -> None:
     fake = FakeLangfuse()
-    monkeypatch.setattr(scores, "langfuse", fake)
+    monkeypatch.setattr(scores, "get_langfuse", lambda: fake)
     event = build_user_feedback_event(
         interaction_id="interaction_demo_001",
         value="negative",
@@ -255,7 +274,7 @@ def test_user_feedback_score_is_bounded(monkeypatch) -> None:
 
 def test_boolean_score_uses_numeric_value(monkeypatch) -> None:
     fake = FakeLangfuse()
-    monkeypatch.setattr(scores, "langfuse", fake)
+    monkeypatch.setattr(scores, "get_langfuse", lambda: fake)
 
     scores.record_answer_correctness_score(trace_id="trace_123", is_correct=False)
 
@@ -290,11 +309,11 @@ PYTHONPATH=src pytest -q
 Expected result:
 
 ```txt
-......                                                                                 [100%]
-6 passed in 0.61s
+.......                                                                                [100%]
+7 passed in 0.61s
 ```
 
-Now the test suite fails when telemetry parentage, privacy defaults, Langfuse context, or score contracts drift. This kind of regression test is the only way to protect the telemetry pipeline from accidental breakage.
+The seven tests come from one graph structure test, two privacy tests, one Langfuse context test, and three score contract tests. Now the test suite fails when telemetry parentage, privacy defaults, Langfuse context, or score contracts drift. This kind of regression test is the only way to protect the telemetry pipeline from accidental breakage.
 
 ## Validating the Collector configuration and end-to-end path
 
