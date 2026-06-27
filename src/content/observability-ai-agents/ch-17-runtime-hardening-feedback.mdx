@@ -345,7 +345,7 @@ class ContentCaptureBlocked(RuntimeError):
 def redact_text(value: str) -> str:
     redacted = value.replace("@", "[at]")
     if "ORDER-" in redacted:
-        redacted = redacted.replace("ORDER-", "ORDER-[redacted]-")
+        redacted = redacted.replace("ORDER-", "[ORDER_ID]")
     return redacted
 
 
@@ -427,6 +427,14 @@ Approvals belong to write actions. The current demo reads order status, but Chap
 
 Create a new file named `src/agent_observability/approvals.py`:
 
+First add one setting to `src/agent_observability/config.py` so the digest key is not hardcoded in the approval module:
+
+```python
+approval_digest_key: str = "demo-only-replace-with-secret-key"
+```
+
+Keep the demo value only in local development. Production deployments should provide this value from a secret store and rotate it with the same care as other signing keys.
+
 ```python
 import hmac
 import json
@@ -434,10 +442,20 @@ from dataclasses import dataclass
 from hashlib import sha256
 from time import monotonic
 
+from .config import settings
 from .telemetry import tracer
 
 
-APPROVAL_DIGEST_KEY = b"demo-only-replace-with-secret-key"
+DEMO_APPROVAL_DIGEST_KEY = "demo-only-replace-with-secret-key"
+
+
+def _approval_digest_key() -> bytes:
+    if (
+        settings.deployment_environment != "development"
+        and settings.approval_digest_key == DEMO_APPROVAL_DIGEST_KEY
+    ):
+        raise RuntimeError("approval digest key must come from a secret store")
+    return settings.approval_digest_key.encode("utf-8")
 
 
 @dataclass(frozen=True)
@@ -465,7 +483,7 @@ class CanonicalAction:
 
 def approval_digest(action: CanonicalAction) -> str:
     return hmac.new(
-        APPROVAL_DIGEST_KEY,
+        _approval_digest_key(),
         action.to_bytes(),
         sha256,
     ).hexdigest()
@@ -714,7 +732,7 @@ SCENARIOS: dict[str, Callable[[], None]] = {
 Run it from the demo project:
 
 ```sh
-python -m agent_observability.manual_scenarios feedback
+PYTHONPATH=src python -m agent_observability.manual_scenarios feedback
 ```
 
 This does not model a real product feedback button. It only validates that feedback is bounded, traceable, and ready to be turned into a Langfuse score in Chapter 20.
@@ -862,7 +880,7 @@ SCENARIOS: dict[str, Callable[[], None]] = {
 Run it from the demo project:
 
 ```sh
-python -m agent_observability.manual_scenarios negative-signal
+PYTHONPATH=src python -m agent_observability.manual_scenarios negative-signal
 ```
 
 In Langfuse, the trace should contain a child span named `signal.record repeated_question` with bounded attributes:
@@ -985,7 +1003,7 @@ if __name__ == "__main__":
 Then run the module from the demo repository:
 
 ```sh
-python -m agent_observability.main
+PYTHONPATH=src python -m agent_observability.main
 ```
 
 The `configure_tracing()` call is what installs the OpenTelemetry provider and OTLP exporter. The `force_flush()` call is what gives the `BatchSpanProcessor` a chance to send spans before the local process exits. If either one is missing, the terminal can still print `answer`, but Langfuse may receive no new trace.
