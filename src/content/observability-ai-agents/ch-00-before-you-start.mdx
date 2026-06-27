@@ -34,6 +34,10 @@ OpenTelemetry terminology is introduced as it is used. Prior experience with an 
 | Backend | Langfuse | Trace inspection and evaluation features for LLM applications. |
 | Local services | Docker Compose | Reproducible development environment. |
 
+OpenTelemetry is the instrumentation contract in this series. The application emits spans, attributes, events, context, and OTLP data through OpenTelemetry APIs and semantic conventions. Langfuse is the backend we use to inspect that evidence, connect it to prompts and evaluations, and operate the agent locally.
+
+This separation is intentional. If application code writes only to one observability product, the telemetry model usually becomes a product integration. By using OpenTelemetry first, the core evidence stays portable: workflow spans, model calls, tool execution, retrieval, guardrails, costs, and outcomes remain understandable even if the backend changes or another backend is added later. In short: OpenTelemetry defines how the agent describes what happened; Langfuse helps us investigate and operate what happened.
+
 OpenAI is the provider used by the runnable example, not a requirement of the observability model. Provider-specific fields stay at the integration boundary. Application spans and custom attributes remain provider-neutral where a stable convention exists.
 
 The local Langfuse and Docker Compose setup exists so the examples can be run without creating an external account or paying for an observability backend. Treat it as a learning environment. Running an observability backend in production is a separate platform decision that needs availability, backup, upgrade, security, retention, and access-control planning.
