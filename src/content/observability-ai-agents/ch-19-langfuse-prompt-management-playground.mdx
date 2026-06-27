@@ -109,12 +109,19 @@ from langfuse import Langfuse
 from .config import settings
 
 
-langfuse = Langfuse(
-    public_key=settings.langfuse_public_key,
-    secret_key=settings.langfuse_secret_key,
-    base_url=settings.langfuse_base_url,
-    tracing_enabled=False,
-)
+_langfuse: Langfuse | None = None
+
+
+def get_langfuse() -> Langfuse:
+    global _langfuse
+    if _langfuse is None:
+        _langfuse = Langfuse(
+            public_key=settings.langfuse_public_key,
+            secret_key=settings.langfuse_secret_key,
+            base_url=settings.langfuse_base_url,
+            tracing_enabled=False,
+        )
+    return _langfuse
 
 
 def prompt_label_for_user(pseudonymous_user_id: str) -> str:
@@ -127,7 +134,7 @@ def get_order_status_prompt(
     *,
     label: str = "production",
 ) -> tuple[list[dict[str, str]], dict[str, Any]]:
-    prompt = langfuse.get_prompt(
+    prompt = get_langfuse().get_prompt(
         "order-status-answer",
         label=label,
         type="chat",
@@ -146,6 +153,8 @@ def get_order_status_prompt(
 ```
 
 The `tracing_enabled=False` line is intentional. In this demo, the Langfuse SDK is only used to fetch the managed prompt. Trace export still goes through our OpenTelemetry SDK, the local Collector, and Langfuse's OTLP endpoint. If the Langfuse SDK also configures tracing, the Python process can print `Overriding of current TracerProvider is not allowed` because two libraries tried to install the global OpenTelemetry provider.
+
+The client is created lazily through `get_langfuse()` so unit tests can import modules without requiring Langfuse credentials immediately. Tests can monkeypatch `get_langfuse()` before any network client is constructed.
 
 Then update `src/agent_observability/graph.py`.
 
@@ -214,6 +223,7 @@ def generate_answer(
     input_items: list[dict[str, Any]],
     *,
     model: str | None = None,
+    text_format: dict[str, Any] | None = None,
     prompt_metadata: dict[str, Any] | None = None,
 ) -> str:
     requested_model = model or settings.openai_model
@@ -246,15 +256,19 @@ def generate_answer(
             )
 
         try:
-            response = client.responses.create(
-                model=requested_model,
-                instructions=instructions,
-                input=input_items,
-                store=False,
-            )
+            request: dict[str, Any] = {
+                "model": requested_model,
+                "instructions": instructions,
+                "input": input_items,
+                "store": False,
+            }
+            if text_format is not None:
+                request["text"] = {"format": text_format}
+
+            response = client.responses.create(**request)
         except Exception as exc:
             span.record_exception(exc)
-            span.set_status(Status(StatusCode.ERROR, str(exc)))
+            span.set_status(Status(StatusCode.ERROR, "provider_error"))
             span.set_attribute("error.type", exc.__class__.__name__)
             raise
 
@@ -327,7 +341,7 @@ SCENARIOS: dict[str, Callable[[], None]] = {
 Then run only the prompt-management scenario:
 
 ```sh
-python -m agent_observability.manual_scenarios prompt-management
+PYTHONPATH=src python -m agent_observability.manual_scenarios prompt-management
 ```
 
 Use this scenario instead of `all` for the first validation. It sends one graph execution and makes the Langfuse result easier to inspect.
@@ -449,7 +463,7 @@ SCENARIOS: dict[str, Callable[[], None]] = {
 Then run the A/B manual scenario from the demo project root:
 
 ```sh
-python -m agent_observability.manual_scenarios prompt-ab-test
+PYTHONPATH=src python -m agent_observability.manual_scenarios prompt-ab-test
 ```
 
 The terminal should print one line per label:
@@ -502,7 +516,7 @@ def get_order_status_prompt(
 ) -> PromptResult:
     span = trace.get_current_span()
     try:
-        prompt = langfuse.get_prompt(
+        prompt = get_langfuse().get_prompt(
             "order-status-answer",
             label=label,
             type="chat",
@@ -575,12 +589,12 @@ Add this import to `src/agent_observability/manual_scenarios.py` so the scenario
 from . import prompts
 ```
 
-Then add the fallback scenario. It warms the cache once, simulates a Langfuse prompt fetch timeout, restores the original SDK method, and runs the graph again:
+Then add the fallback scenario. It warms the cache once, simulates a Langfuse prompt fetch timeout by temporarily replacing the prompt client factory, restores it, and runs the graph again:
 
 ```python
 def run_prompt_cache_fallback() -> None:
     label = "production"
-    original_get_prompt = prompts.langfuse.get_prompt
+    original_get_langfuse = prompts.get_langfuse
 
     warmup_conversation_id = f"conv_{uuid4().hex}"
     with langfuse_trace_context(
@@ -605,10 +619,11 @@ def run_prompt_cache_fallback() -> None:
             },
         )
 
-    def unavailable_get_prompt(*args: Any, **kwargs: Any) -> Any:
-        raise TimeoutError("simulated Langfuse prompt fetch timeout")
+    class UnavailablePromptClient:
+        def get_prompt(self, *args: Any, **kwargs: Any) -> Any:
+            raise TimeoutError("simulated Langfuse prompt fetch timeout")
 
-    prompts.langfuse.get_prompt = unavailable_get_prompt
+    prompts.get_langfuse = lambda: UnavailablePromptClient()
     try:
         fallback_conversation_id = f"conv_{uuid4().hex}"
         with langfuse_trace_context(
@@ -633,7 +648,7 @@ def run_prompt_cache_fallback() -> None:
                 },
             )
     finally:
-        prompts.langfuse.get_prompt = original_get_prompt
+        prompts.get_langfuse = original_get_langfuse
 
     print(f"warmup: {warmup_result['prompt_source']} {warmup_result['outcome']}")
     print(f"fallback: {fallback_result['prompt_source']} {fallback_result['outcome']}")
@@ -659,7 +674,7 @@ SCENARIOS: dict[str, Callable[[], None]] = {
 Run the scenario:
 
 ```sh
-python -m agent_observability.manual_scenarios prompt-cache-fallback
+PYTHONPATH=src python -m agent_observability.manual_scenarios prompt-cache-fallback
 ```
 
 The terminal should show the first run using Langfuse and the second run using cache:
