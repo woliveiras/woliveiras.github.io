@@ -54,6 +54,8 @@ Use this complete file:
 
 ```python
 import argparse
+import json
+from types import SimpleNamespace
 from typing import Any
 from uuid import uuid4
 
@@ -61,20 +63,45 @@ from langfuse import Evaluation, Langfuse
 
 from .config import settings
 from .graph import run_agent
+from .telemetry import configure_tracing
 
 
 DATASET_NAME = "order-status-regression"
 DATASET_ITEM_ID = "order-status-delayed-eu-v1"
-
-langfuse = Langfuse(
-    public_key=settings.langfuse_public_key,
-    secret_key=settings.langfuse_secret_key,
-    base_url=settings.langfuse_base_url,
-    environment=settings.deployment_environment,
+GATE_REQUIRED_SCORES = (
+    "expected_outcome",
+    "required_terms_present",
+    "forbidden_terms_absent",
 )
+GATE_INPUT = {
+    "query": "Where is my delayed EU order?",
+    "region": "eu",
+    "order_reference": "ORDER-924",
+    "prompt_label": "production",
+}
+GATE_EXPECTED_OUTPUT = {
+    "outcome": "answer",
+    "must_mention": ["order"],
+    "must_not_mention": ["refund issued"],
+}
+
+_langfuse: Langfuse | None = None
+
+
+def get_langfuse() -> Langfuse:
+    global _langfuse
+    if _langfuse is None:
+        _langfuse = Langfuse(
+            public_key=settings.langfuse_public_key,
+            secret_key=settings.langfuse_secret_key,
+            base_url=settings.langfuse_base_url,
+            environment=settings.deployment_environment,
+        )
+    return _langfuse
 
 
 def ensure_dataset() -> None:
+    langfuse = get_langfuse()
     datasets = langfuse.api.datasets.list(limit=100).data
     if not any(dataset.name == DATASET_NAME for dataset in datasets):
         langfuse.create_dataset(
@@ -89,6 +116,7 @@ def ensure_dataset() -> None:
 
 
 def ensure_dataset_item() -> None:
+    langfuse = get_langfuse()
     items = langfuse.api.dataset_items.list(
         dataset_name=DATASET_NAME,
         limit=100,
@@ -99,17 +127,8 @@ def ensure_dataset_item() -> None:
     langfuse.create_dataset_item(
         dataset_name=DATASET_NAME,
         id=DATASET_ITEM_ID,
-        input={
-            "query": "Where is my delayed EU order?",
-            "region": "eu",
-            "order_reference": "ORDER-924",
-            "prompt_label": "production",
-        },
-        expected_output={
-            "outcome": "answer",
-            "must_mention": ["order"],
-            "must_not_mention": ["refund issued"],
-        },
+        input=GATE_INPUT,
+        expected_output=GATE_EXPECTED_OUTPUT,
         metadata={
             "source": "chapter-22-demo",
             "source_trace_policy": "metadata-only",
@@ -211,27 +230,77 @@ def forbidden_terms_absent(
 
 
 def run_experiment() -> None:
-    seed_dataset()
-    dataset = langfuse.get_dataset(DATASET_NAME)
-    result = dataset.run_experiment(
-        name="order-status-production-baseline",
-        description="Local chapter 22 regression run for the order-status agent.",
-        task=run_order_status_case,
-        evaluators=[
-            expected_outcome,
-            required_terms_present,
-            forbidden_terms_absent,
-        ],
-        max_concurrency=1,
-        metadata={
-            "prompt_label": "production",
-            "workflow": "order-status",
-            "environment": settings.deployment_environment,
-            "agent_version": settings.agent_version,
-        },
-    )
-    print(result.format())
-    print(f"dataset run url: {result.dataset_run_url}")
+    provider = configure_tracing()
+    try:
+        seed_dataset()
+        dataset = get_langfuse().get_dataset(DATASET_NAME)
+        result = dataset.run_experiment(
+            name="order-status-production-baseline",
+            description="Local chapter 22 regression run for the order-status agent.",
+            task=run_order_status_case,
+            evaluators=[
+                expected_outcome,
+                required_terms_present,
+                forbidden_terms_absent,
+            ],
+            max_concurrency=1,
+            metadata={
+                "prompt_label": "production",
+                "workflow": "order-status",
+                "environment": settings.deployment_environment,
+                "agent_version": settings.agent_version,
+            },
+        )
+        print(result.format())
+        print(f"dataset run url: {result.dataset_run_url}")
+    finally:
+        provider.force_flush(timeout_millis=5000)
+        provider.shutdown()
+
+
+def evaluate_release_gate() -> None:
+    provider = configure_tracing()
+    try:
+        output = run_order_status_case(item=SimpleNamespace(input=GATE_INPUT))
+        evaluations = [
+            expected_outcome(
+                output=output,
+                expected_output=GATE_EXPECTED_OUTPUT,
+            ),
+            required_terms_present(
+                output=output,
+                expected_output=GATE_EXPECTED_OUTPUT,
+            ),
+            forbidden_terms_absent(
+                output=output,
+                expected_output=GATE_EXPECTED_OUTPUT,
+            ),
+        ]
+        scores = {evaluation.name: float(evaluation.value) for evaluation in evaluations}
+        passed = all(scores.get(name) == 1.0 for name in GATE_REQUIRED_SCORES)
+        print(
+            json.dumps(
+                {
+                    "release_gate": "order-status-regression-v1",
+                    "dataset": DATASET_NAME,
+                    "dataset_item_id": DATASET_ITEM_ID,
+                    "passed": passed,
+                    "required_scores": list(GATE_REQUIRED_SCORES),
+                    "scores": scores,
+                    "output": {
+                        "outcome": output["outcome"],
+                        "prompt_label": output["prompt_label"],
+                    },
+                },
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        if not passed:
+            raise SystemExit(1)
+    finally:
+        provider.force_flush(timeout_millis=5000)
+        provider.shutdown()
 
 
 def main() -> None:
@@ -239,12 +308,15 @@ def main() -> None:
     subparsers = parser.add_subparsers(dest="command", required=True)
     subparsers.add_parser("seed")
     subparsers.add_parser("run")
+    subparsers.add_parser("gate")
 
     args = parser.parse_args()
     if args.command == "seed":
         seed_dataset()
     elif args.command == "run":
         run_experiment()
+    elif args.command == "gate":
+        evaluate_release_gate()
 
 
 if __name__ == "__main__":
