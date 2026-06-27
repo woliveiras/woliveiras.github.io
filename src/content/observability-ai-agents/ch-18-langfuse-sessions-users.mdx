@@ -225,8 +225,8 @@ The same `conversation_id` is used both as graph state and Langfuse session ID. 
 Run the module twice from the demo project:
 
 ```sh
-python -m agent_observability.main
-python -m agent_observability.main
+PYTHONPATH=src python -m agent_observability.main
+PYTHONPATH=src python -m agent_observability.main
 ```
 
 Each run creates a separate trace. Because both runs use the same `langfuse.session.id`, Langfuse should group them into one session.
