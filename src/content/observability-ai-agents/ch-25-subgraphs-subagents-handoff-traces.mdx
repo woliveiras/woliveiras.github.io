@@ -15,8 +15,6 @@ This chapter makes one runnable change to the demo: replace the simple `escalate
 
 ## What we will change
 
-> Note: This chapter extends the demo beyond the currently published `agent-observability-demo` repository. If your checkout does not contain the Module 6 files yet, apply the changes below from the demo project root instead of expecting them to already exist.
-
 Work in the demo project:
 
 ```sh
@@ -238,7 +236,7 @@ def enqueue_handoff(task: dict[str, str]) -> None:
         queue.send({"headers": carrier, "body": task})
 ```
 
-Consumer side:
+Consumer side when the worker processes the message as part of the same active execution and parentage is still accurate:
 
 ```python
 from opentelemetry import context
@@ -258,6 +256,34 @@ def handle_handoff(message: dict[str, object]) -> None:
 ```
 
 When parentage would be misleading because the consumer runs later, use a span link and `app.handoff.task_id`. The invariant is simple: during an incident, the producer and consumer work must be findable from the same handoff ID.
+
+For a delayed independent worker, keep the producer context as a link instead of making it the parent:
+
+```python
+from opentelemetry.context import Context
+from opentelemetry.propagate import extract
+from opentelemetry.trace import Link, SpanKind, get_current_span
+
+
+def handle_delayed_handoff(message: dict[str, object]) -> None:
+    linked_context = extract(message["headers"])
+    linked_span_context = get_current_span(linked_context).get_span_context()
+    links = [Link(linked_span_context)] if linked_span_context.is_valid else []
+
+    with tracer.start_as_current_span(
+        "handoff.consume refund-specialist",
+        context=Context(),
+        kind=SpanKind.CONSUMER,
+        links=links,
+    ) as span:
+        body = message["body"]
+        span.set_attribute("app.handoff.type", "delegate")
+        span.set_attribute("app.handoff.target", "refund-specialist")
+        span.set_attribute("app.handoff.task_id", body["task_id"])
+        process_refund_specialist_task(body)
+```
+
+Use the parent-child consumer shape only when the consumer really continues the same execution. Use the linked shape when the worker owns a new execution segment, runs later, or may be sampled and retained independently.
 
 ## Run the subgraph path
 
