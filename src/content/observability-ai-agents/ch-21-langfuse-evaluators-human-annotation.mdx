@@ -45,6 +45,8 @@ An LLM judge should not be responsible for detecting that a JSON object is inval
 
 Langfuse evaluators are useful when you want Langfuse itself to run deterministic checks on observations or experiments. For this chapter, keep the local deterministic checks as they are. Human annotation gives us a reviewed baseline before automating more of the loop.
 
+Langfuse UI labels move over time. If your instance uses slightly different wording, follow the operating goal in each step: create bounded score configs, create an annotation queue, add reviewed traces or sessions to that queue, and process them with the agreed rubric.
+
 ## Create Score Configs first
 
 Annotation Queues require Score Configs. A Score Config defines the name, data type, and allowed values reviewers can submit. Without this step, reviewers end up inventing labels in comments, and those labels cannot be compared later.

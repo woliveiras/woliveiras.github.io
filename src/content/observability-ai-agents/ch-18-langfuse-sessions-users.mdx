@@ -11,6 +11,8 @@ The trace from Chapter 17 explains one hardened execution. Product work needs a 
 
 Our demo exports OpenTelemetry spans through the Collector. That means we should not switch this chapter to the Langfuse Python SDK just to set sessions and users. Instead, we will use the OpenTelemetry attribute mapping that Langfuse supports for OTLP ingestion.
 
+Langfuse SDK APIs, UI labels, and OTLP attribute mappings can change between versions. Treat the attribute names in this chapter as the contract to verify against your installed Langfuse version, and check the Langfuse OTLP mapping docs if a session, user, prompt, or score does not appear where expected.
+
 The practical change in this chapter is:
 
 - create one small context helper for Langfuse trace attributes;

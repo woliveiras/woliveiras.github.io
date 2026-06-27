@@ -43,12 +43,13 @@ Every copied case needs the lineage and content approval from Chapters 7 and 8. 
 
 Create `src/agent_observability/dataset_scenarios.py` in the demo project.
 
-This file has two commands:
+This file has three commands:
 
 | Command | What it does |
 |---|---|
 | `seed` | Creates the `order-status-regression` dataset and one dataset item. |
 | `run` | Runs a Langfuse experiment against that dataset item. |
+| `gate` | Runs the same local case, prints a JSON gate summary, and exits non-zero on failure. |
 
 Use this complete file:
 
@@ -430,7 +431,7 @@ In the local demo, keep the URL printed by `dataset_scenarios run` and the times
 
 ## Gate releases with explicit thresholds
 
-The dataset run is useful only if it changes a release decision. After the candidate run finishes, compare it with the production baseline and write down the exact rule you are applying. In the local demo this is still a manual check. In a production workflow, the same rule can live in CI, a deployment checklist, or a release ticket.
+The dataset run is useful only if it changes a release decision. After the candidate run finishes, compare it with the production baseline and write down the exact rule you are applying. The local demo includes a small executable gate for the current case; in production, the same rule should run against the full candidate dataset in CI, a deployment checklist, or a release ticket.
 
 A practical gate for the experiment from this chapter could look like this:
 
@@ -454,6 +455,39 @@ fail_if:
 ```
 
 Use the **Dataset Run** page in Langfuse as the source for the average evaluator scores. Use the run metadata and cost columns to confirm that the baseline and candidate were executed against the same dataset and comparable model configuration.
+
+For a CI-compatible local check, run:
+
+```sh
+PYTHONPATH=src python -m agent_observability.dataset_scenarios gate
+```
+
+Expected output is JSON that can be archived by CI or pasted into a release note:
+
+```json
+{
+  "dataset": "order-status-regression",
+  "dataset_item_id": "order-status-delayed-eu-v1",
+  "output": {
+    "outcome": "answer",
+    "prompt_label": "production"
+  },
+  "passed": true,
+  "release_gate": "order-status-regression-v1",
+  "required_scores": [
+    "expected_outcome",
+    "required_terms_present",
+    "forbidden_terms_absent"
+  ],
+  "scores": {
+    "expected_outcome": 1.0,
+    "forbidden_terms_absent": 1.0,
+    "required_terms_present": 1.0
+  }
+}
+```
+
+If any required score is below `1.0`, the command exits with status `1`. Keep the Langfuse experiment run as richer release evidence; use the `gate` command when you need an automated pass/fail signal.
 
 | Result | Release decision |
 |---|---|
@@ -525,6 +559,7 @@ At this point the demo should have:
 - one dataset item named `order-status-delayed-eu-v1`;
 - one experiment run named `order-status-production-baseline`;
 - item-level evaluator scores attached to the experiment run;
+- a `gate` command that emits JSON and fails closed on required-score regressions;
 - a rule for promoting reviewed failures into regression cases.
 
 Chapter 23 tests the telemetry, Langfuse attributes, scores, prompt versions, and dataset workflows so the operating loop does not break during refactors.
