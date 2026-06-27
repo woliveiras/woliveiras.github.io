@@ -7,7 +7,7 @@ order: 24
 
 # Dashboards, Alerts, Release Gates, and Runbooks
 
-We have now in our demo case enough telemetry to make operational decisions. It has traces, sessions, users, prompt versions, feedback scores, evaluator scores, datasets, experiments, and tests that protect the telemetry contract.
+The demo now has enough telemetry to support operational decisions: traces, sessions, users, prompt versions, feedback scores, evaluator scores, datasets, experiments, and tests that protect the telemetry contract.
 
 This chapter does not add more runtime code. The practical work happens in Langfuse and in your operating notes: create saved views, decide which signals page a human, define release gates, and write runbooks that point back to traces, scores, and dataset runs.
 
@@ -31,11 +31,11 @@ PYTHONPATH=src python -m agent_observability.score_scenarios policy --trace-id <
 PYTHONPATH=src python -m agent_observability.score_scenarios session --session-id <session-id> --outcome resolved
 ```
 
-This gives you the same signal families the previous chapters built: traces, sessions, users, prompt labels, scores, and dataset runs. And we can now use them to make operational decisions.
+This gives you the same signal families the previous chapters built: traces, sessions, users, prompt labels, scores, and dataset runs. We can now use them to make operational decisions.
 
 ## Build views around decisions
 
-We can use saved views and dashboard slices to answer questions about the application directly from Langfuse. The goal is to have a small number of views that answer the questions you actually need to make decisions about the agent's behavior.
+Use saved views and dashboard slices to answer questions about the application directly from Langfuse. The goal is to keep a small number of views that map to real decisions about the agent's behavior.
 
 Start with one dashboard for the order-status demo:
 
@@ -45,7 +45,7 @@ Start with one dashboard for the order-status demo:
 4. Set **Description** to `Operational view for the local order-status agent demo.`
 5. Click **Create**.
 
-After the dashboard opens, add a first widget:
+After the dashboard opens, add a first widget. Langfuse UI labels can change, so treat the exact field names below as a guide: the important part is the view, metric, filters, breakdown, and time range.
 
 1. Click **Add Widget**.
 2. Click **Create New Widget**.
@@ -99,7 +99,7 @@ Keep the filters visible in screenshots and incident notes. If you need to chang
 
 ## Use the dataset run as the release gate
 
-In the chapter 22 we created `order-status-regression` and a baseline experiment run. Now we'll use that as the release gate for prompt, model, retrieval, and workflow changes: the candidate must pass the same regression cases before you let it reach traffic.
+In Chapter 22, we created `order-status-regression` and a baseline experiment run. Now we'll use that as the release gate for prompt, model, retrieval, and workflow changes: the candidate must pass the same regression cases before you let it reach traffic.
 
 Think of it as a checklist you run every time you are about to promote a change:
 
@@ -177,7 +177,7 @@ The trap here is arguing with the model output first. Start with versions, input
 
 Use this when the cost badge, provider usage, or Langfuse cost analytics show a jump.
 
-Do not start by blaming traffic. First of all, separate volume from per-task cost:
+Do not start by blaming traffic. First, separate volume from per-task cost:
 
 | Question | Where to look | If yes |
 |---|---|---|
