@@ -128,6 +128,7 @@ def generate_answer(
     input_items: list[dict[str, Any]],
     *,
     model: str | None = None,
+    text_format: dict[str, Any] | None = None,
 ) -> str:
     requested_model = model or settings.openai_model
 
@@ -144,15 +145,19 @@ def generate_answer(
         },
     ) as span:
         try:
-            response = client.responses.create(
-                model=requested_model,
-                instructions=instructions,
-                input=input_items,
-                store=False,
-            )
+            request: dict[str, Any] = {
+                "model": requested_model,
+                "instructions": instructions,
+                "input": input_items,
+                "store": False,
+            }
+            if text_format is not None:
+                request["text"] = {"format": text_format}
+
+            response = client.responses.create(**request)
         except Exception as exc:
             span.record_exception(exc)
-            span.set_status(Status(StatusCode.ERROR, str(exc)))
+            span.set_status(Status(StatusCode.ERROR, "provider_error"))
             span.set_attribute("error.type", exc.__class__.__name__)
             raise
 
@@ -240,7 +245,7 @@ def stream_answer(
             raise
         except Exception as exc:
             span.record_exception(exc)
-            span.set_status(Status(StatusCode.ERROR, str(exc)))
+            span.set_status(Status(StatusCode.ERROR, "stream_error"))
             span.set_attribute("error.type", exc.__class__.__name__)
             raise
         finally:
@@ -325,7 +330,7 @@ def generate_with_retry(
                 )
 
                 if not retryable or attempt == max_attempts:
-                    span.set_status(Status(StatusCode.ERROR, str(exc)))
+                    span.set_status(Status(StatusCode.ERROR, "retry_exhausted"))
                     raise
 
                 time.sleep(min(2.0, 0.25 * (2 ** (attempt - 1))))
@@ -351,6 +356,7 @@ def generate_answer(
     input_items: list[dict[str, Any]],
     *,
     model: str | None = None,
+    text_format: dict[str, Any] | None = None,
 ) -> str:
     requested_model = model or settings.openai_model
     ...
@@ -451,13 +457,36 @@ from .telemetry import tracer
 
 REQUIRED_ORDER_FIELDS = {"answer", "confidence", "next_action"}
 
+ORDER_SUPPORT_TEXT_FORMAT = {
+    "type": "json_schema",
+    "name": "order_support_response",
+    "strict": True,
+    "schema": {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "answer": {"type": "string"},
+            "confidence": {"type": "string"},
+            "next_action": {
+                "type": "string",
+                "enum": ["answer", "escalate", "ask_clarifying_question"],
+            },
+        },
+        "required": ["answer", "confidence", "next_action"],
+    },
+}
+
 
 def generate_order_support_response(
     instructions: str,
     input_items: list[dict[str, Any]],
 ) -> dict[str, Any]:
     with tracer.start_as_current_span("validate model output") as span:
-        output_text = generate_answer(instructions, input_items)
+        output_text = generate_answer(
+            instructions,
+            input_items,
+            text_format=ORDER_SUPPORT_TEXT_FORMAT,
+        )
 
         try:
             payload = json.loads(output_text)
@@ -576,13 +605,160 @@ The normal `main.py` path validates the non-streaming success path. Retry, fallb
 
 Add a local verification harness at `src/agent_observability/manual_scenarios.py` in the demo project. This is not production code. It is a manual runner that imports the functions created in this chapter and exposes one scenario per behavior:
 
-```txt
-success
-stream
-retry
-fallback
-retry-classification
-all
+```python title="src/agent_observability/manual_scenarios.py"
+import argparse
+from collections.abc import Callable
+from uuid import uuid4
+
+from opentelemetry.trace import SpanKind, Status, StatusCode
+
+from .config import settings
+from .inference import generate_answer, stream_answer
+from .response_validation import generate_order_support_response
+from .telemetry import agent_task_span, configure_tracing, tracer
+
+
+def _input_items(question: str = "Where is my order?") -> list[dict[str, str]]:
+    return [{"role": "user", "content": question}]
+
+
+def run_success() -> None:
+    with agent_task_span("manual-success", f"conv_{uuid4().hex}") as span:
+        result = generate_order_support_response(
+            instructions=(
+                "Return only valid JSON with these fields: "
+                "answer, confidence, next_action."
+            ),
+            input_items=_input_items(),
+        )
+        span.set_attribute("app.manual_scenario", "success")
+        span.set_attribute("app.task.outcome", "success")
+        span.set_attribute("app.output.next_action", result["next_action"])
+
+
+def run_stream() -> None:
+    with agent_task_span("manual-stream", f"conv_{uuid4().hex}") as span:
+        chunks = list(
+            stream_answer(
+                instructions="Answer in one short sentence.",
+                input_items=_input_items(),
+            )
+        )
+        span.set_attribute("app.manual_scenario", "stream")
+        span.set_attribute("app.task.outcome", "success")
+        span.set_attribute("app.openai.stream.chunk_count", len(chunks))
+
+
+def _simulated_failed_model_span(error_type: str) -> None:
+    with tracer.start_as_current_span(
+        "openai.responses.create",
+        kind=SpanKind.CLIENT,
+        attributes={
+            "gen_ai.operation.name": "chat",
+            "gen_ai.provider.name": "openai",
+            "gen_ai.request.model": settings.openai_model,
+            "gen_ai.request.stream": False,
+            "server.address": "api.openai.com",
+            "app.openai.simulated_failure": True,
+            "error.type": error_type,
+        },
+    ) as span:
+        span.set_status(Status(StatusCode.ERROR, "simulated_provider_error"))
+
+
+def run_retry() -> None:
+    with agent_task_span("manual-retry", f"conv_{uuid4().hex}"):
+        with tracer.start_as_current_span(
+            "model call with retry",
+            attributes={"app.retry.max_attempts": 2},
+        ) as span:
+            _simulated_failed_model_span("APITimeoutError")
+            span.add_event(
+                "model.retry",
+                {
+                    "app.retry.attempt": 1,
+                    "app.retry.retryable": True,
+                    "error.type": "APITimeoutError",
+                },
+            )
+            result = generate_answer(
+                instructions="Answer in one short sentence.",
+                input_items=_input_items(),
+            )
+            span.set_attribute("app.retry.final_attempt", 2)
+            span.set_attribute("app.task.outcome", "success")
+            span.set_attribute("app.output.length", len(result))
+
+
+def run_fallback() -> None:
+    fallback_model = settings.openai_model
+    with agent_task_span("manual-fallback", f"conv_{uuid4().hex}"):
+        with tracer.start_as_current_span(
+            "model call with fallback",
+            attributes={
+                "app.model.primary": "simulated-primary-model",
+                "app.model.fallback": fallback_model,
+                "app.model.fallback.used": False,
+            },
+        ) as span:
+            _simulated_failed_model_span("RateLimitError")
+            span.add_event(
+                "model.fallback",
+                {
+                    "app.model.fallback.reason": "rate_limit",
+                    "error.type": "RateLimitError",
+                },
+            )
+            span.set_attribute("app.model.fallback.used", True)
+            span.set_attribute("app.model.fallback.reason", "rate_limit")
+            result = generate_answer(
+                instructions="Answer in one short sentence.",
+                input_items=_input_items(),
+                model=fallback_model,
+            )
+            span.set_attribute("app.task.outcome", "success")
+            span.set_attribute("app.output.length", len(result))
+
+
+def run_retry_classification() -> None:
+    with agent_task_span("manual-retry-classification", f"conv_{uuid4().hex}") as span:
+        span.set_attribute("app.manual_scenario", "retry-classification")
+        # This scenario documents the expected local policy decisions without
+        # constructing SDK-specific exception objects.
+        span.set_attribute("app.retryable.timeout", True)
+        span.set_attribute("app.retryable.rate_limit", True)
+        span.set_attribute("app.retryable.insufficient_quota", False)
+        span.set_attribute("app.task.outcome", "success")
+
+
+SCENARIOS: dict[str, Callable[[], None]] = {
+    "success": run_success,
+    "stream": run_stream,
+    "retry": run_retry,
+    "fallback": run_fallback,
+    "retry-classification": run_retry_classification,
+}
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("scenario", choices=[*SCENARIOS.keys(), "all"])
+    args = parser.parse_args()
+
+    provider = configure_tracing()
+    try:
+        if args.scenario == "all":
+            for run in SCENARIOS.values():
+                run()
+        else:
+            SCENARIOS[args.scenario]()
+    finally:
+        provider.force_flush(timeout_millis=5000)
+        provider.shutdown()
+
+
+if __name__ == "__main__":
+    main()
 ```
 
 The retry and fallback scenarios should simulate the first provider failure locally and then call the real configured OpenAI model for the successful attempt. That makes the validation deterministic:
