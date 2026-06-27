@@ -11,6 +11,20 @@ Chapter 15 created spans for model-adjacent operations: tools, retrieval, and me
 
 Framework instrumentation can expose graph activity, but the application still owns business semantics. A node named `call_model` does not explain whether it routed a request, verified an outcome, or prepared a write action. Add spans at boundaries that matter during an incident.
 
+## What we will change
+
+Work in the demo project:
+
+```sh
+cd agent-observability-demo
+```
+
+This chapter touches one file:
+
+| File | What to do |
+|---|---|
+| `src/agent_observability/graph.py` | Create graph state, traced nodes, routing, the graph builder, and `run_agent()`. |
+
 ## Define observable state without exporting it
 
 The first step is to define the graph state contract. LangGraph state is the object that moves from node to node, so it will contain user input, conversation identifiers, retrieved evidence references, tool results, model output, and routing decisions.

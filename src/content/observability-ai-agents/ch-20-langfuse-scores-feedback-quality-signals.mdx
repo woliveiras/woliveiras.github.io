@@ -13,6 +13,21 @@ Do not create one generic `quality` score. Correctness, groundedness, helpfulnes
 
 In this chapter we will add a small scoring layer to the demo project. The demo has no UI and no HTTP API, so the practical path is a local runner: copy a trace ID or session ID from Langfuse, run a command, and confirm that the score appears in the Langfuse UI.
 
+## What we will change
+
+Work in the demo project:
+
+```sh
+cd agent-observability-demo
+```
+
+This chapter touches two files:
+
+| File | What to do |
+|---|---|
+| `src/agent_observability/scores.py` | Create Langfuse score writer helpers. |
+| `src/agent_observability/score_scenarios.py` | Create the local score CLI runner. |
+
 ## Choose the parent object
 
 Attach the score to the thing being judged. This choice matters because Langfuse can attach scores to traces, observations, sessions, or dataset runs, and each level answers a different question.

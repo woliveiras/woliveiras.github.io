@@ -21,6 +21,30 @@ The practical goal is to give the demo the same boundaries a production agent ne
 - approval binding for write actions;
 - feedback that can be connected to traces without exposing backend IDs.
 
+## What we will change
+
+Work in the demo project:
+
+```sh
+cd agent-observability-demo
+```
+
+This chapter touches these files:
+
+| File | What to do |
+|---|---|
+| `.env` and `.env.example` | Add bounded exporter and batch processor settings. |
+| `src/agent_observability/config.py` | Add telemetry tuning and approval digest settings. |
+| `src/agent_observability/runtime.py` | Create budgets, progress tracking, and fallback decision types. |
+| `src/agent_observability/capture.py` | Create the content-capture and redaction helper. |
+| `src/agent_observability/approvals.py` | Create the approval digest helper. |
+| `src/agent_observability/feedback.py` | Create bounded feedback event helpers. |
+| `src/agent_observability/signals.py` | Create negative signal helpers. |
+| `src/agent_observability/graph.py` | Update state, budgets, progress handling, and fallback recording. |
+| `src/agent_observability/telemetry.py` | Apply bounded exporter and batch settings. |
+| `src/agent_observability/manual_scenarios.py` | Add feedback and negative-signal scenarios. |
+| `src/agent_observability/main.py` | Update the hardened graph runner. |
+
 ## Centralize execution budgets
 
 Budgets should live close to the workflow, not inside a model wrapper hidden three layers down. The graph knows when an execution starts, when it enters a node, and when it is about to call a model. That is the right place to count iterations and model calls.

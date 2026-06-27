@@ -21,6 +21,23 @@ This chapter instruments OpenAI Responses API calls with explicit spans. The goa
 
 The orchestration span created in previous chapters tells us what the agent was trying to do. The model span tells us what happened at the provider boundary.
 
+## What we will change
+
+Work in the demo project:
+
+```sh
+cd agent-observability-demo
+```
+
+This chapter touches four files:
+
+| File | What to do |
+|---|---|
+| `src/agent_observability/inference.py` | Create the OpenAI wrapper, including streaming, retry, structured output, and fallback helpers. |
+| `src/agent_observability/response_validation.py` | Create the response validation wrapper. |
+| `src/agent_observability/main.py` | Update the demo to call the response-validation path. |
+| `src/agent_observability/manual_scenarios.py` | Create the manual validation scenario runner. |
+
 ## What belongs on the model span
 
 Treat each OpenAI request as one `CLIENT` span. If the application retries the request three times, record three model spans under one parent operation. A retry is a new provider attempt, not an invisible implementation detail.

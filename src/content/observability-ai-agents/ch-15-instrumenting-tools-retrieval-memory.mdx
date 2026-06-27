@@ -13,6 +13,23 @@ This chapter instruments those boundaries without turning traces into a copy of 
 
 For the practical work, copy each file as it appears and focus on understanding what each span records. The wrappers are easier to validate together than one by one, so the end of the chapter runs all three operations and shows what to inspect in Langfuse before moving to the LangGraph workflow.
 
+## What we will change
+
+Work in the demo project:
+
+```sh
+cd agent-observability-demo
+```
+
+This chapter touches four files:
+
+| File | What to do |
+|---|---|
+| `src/agent_observability/tools.py` | Create the instrumented tool wrapper. |
+| `src/agent_observability/retrieval.py` | Create the retrieval wrapper. |
+| `src/agent_observability/memory.py` | Create the memory wrapper. |
+| `src/agent_observability/main.py` | Update the demo to run tool, retrieval, and memory spans together. |
+
 ## Separate tool semantics from downstream calls
 
 A tool span describes the capability the agent invoked. HTTP, database, or messaging instrumentation below it describes how the capability was executed.

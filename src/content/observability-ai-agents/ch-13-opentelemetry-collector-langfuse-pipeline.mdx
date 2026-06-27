@@ -21,6 +21,24 @@ Python app
 
 The application knows only the local Collector endpoint. Langfuse credentials stay in the Collector configuration. That boundary matters later when we add filtering, sampling, content controls, retries, and backend-specific exporters.
 
+## What we will change
+
+Work in the demo project:
+
+```sh
+cd agent-observability-demo
+```
+
+This chapter touches five files:
+
+| File | What to do |
+|---|---|
+| `.env` | Add Langfuse keys and host/container base URLs. |
+| `src/agent_observability/telemetry.py` | Create OpenTelemetry SDK setup and a root task span helper. |
+| `collector-config.yaml` | Create the Collector pipeline that exports to Langfuse. |
+| `compose.yaml` | Add the local OpenTelemetry Collector service. |
+| `src/agent_observability/main.py` | Create a smoke-test trace runner. |
+
 ## Add Collector settings to the local environment
 
 The demo `.env` already contains the OpenTelemetry endpoint used by the Python SDK:

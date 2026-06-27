@@ -11,6 +11,26 @@ Instrumentation tells us what happened. Prompt management tells us which instruc
 
 Langfuse Prompt Management gives prompts their own lifecycle: create, version, label, fetch at runtime, test in Playground, and compare metrics by prompt version.
 
+## What we will change
+
+Work in the demo project:
+
+```sh
+cd agent-observability-demo
+```
+
+This chapter touches one Langfuse prompt and six files:
+
+| File or place | What to do |
+|---|---|
+| Langfuse Prompt Management | Create the `order-status-answer` chat prompt. |
+| `requirements.txt` and `requirements.lock.txt` | Add and lock the `langfuse` SDK. |
+| `src/agent_observability/config.py` | Add Langfuse SDK settings. |
+| `src/agent_observability/prompts.py` | Create prompt fetching, label split, and cache fallback helpers. |
+| `src/agent_observability/graph.py` | Use the managed prompt and add prompt metadata fields. |
+| `src/agent_observability/inference.py` | Record prompt identity on model spans. |
+| `src/agent_observability/manual_scenarios.py` | Add prompt-management, A/B, and cache-fallback scenarios. |
+
 ## Treat prompts as deployable artifacts
 
 A production prompt needs the same operational metadata as code:

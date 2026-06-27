@@ -13,6 +13,26 @@ The implementation module uses a small order-support agent. It retrieves policy 
 
 The domain is intentionally small. The boundaries are not. This setup includes the pieces that make agent observability difficult in production: model calls, retrieval, tools, branching, runtime budgets, content policy, telemetry export, and backend inspection.
 
+## What we will change
+
+Create and work in the demo project:
+
+```sh
+mkdir agent-observability-demo
+cd agent-observability-demo
+```
+
+This chapter touches these files and directories:
+
+| File or directory | What to do |
+|---|---|
+| `requirements.txt` | Create the Python dependency list. |
+| `requirements.lock.txt` | Generate the pinned local dependency lock. |
+| `.env.example` and `.env` | Create the safe configuration template and local copy. |
+| `.gitignore` | Ignore secrets, virtual environments, and cache files. |
+| `src/agent_observability/config.py` | Create the typed settings loader. |
+| `infrastructure/langfuse/` | Clone the official local Langfuse stack. |
+
 ## Architecture
 
 The runtime path and the telemetry path are easier to read separately.

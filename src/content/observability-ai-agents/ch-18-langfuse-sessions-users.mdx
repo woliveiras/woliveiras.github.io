@@ -13,12 +13,21 @@ Our demo exports OpenTelemetry spans through the Collector. That means we should
 
 Langfuse SDK APIs, UI labels, and OTLP attribute mappings can change between versions. Treat the attribute names in this chapter as the contract to verify against your installed Langfuse version, and check the Langfuse OTLP mapping docs if a session, user, prompt, or score does not appear where expected.
 
-The practical change in this chapter is:
+## What we will change
 
-- create one small context helper for Langfuse trace attributes;
-- copy those attributes from OpenTelemetry baggage to every span;
-- wrap `run_agent` in that context from `main.py`;
-- run the demo more than once and confirm that Langfuse groups the traces by Session and User.
+Work in the demo project:
+
+```sh
+cd agent-observability-demo
+```
+
+This chapter touches three files:
+
+| File | What to do |
+|---|---|
+| `src/agent_observability/langfuse_context.py` | Create the Langfuse baggage context helper. |
+| `src/agent_observability/telemetry.py` | Add a span processor that copies context to spans. |
+| `src/agent_observability/main.py` | Wrap `run_agent()` in Langfuse trace context and run repeatable demo traces. |
 
 ## Map the Langfuse data model
 
