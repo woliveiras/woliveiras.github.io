@@ -2,6 +2,17 @@
 
 This repo is an Astro blog. Detailed documentation lives in `docs/`. **Read the relevant doc before working on a topic.**
 
+## Confidence and verification rules
+
+- Do not present uncertain assumptions as facts. Say when something is inferred, unverified, or needs confirmation.
+- Before modifying code, first inspect the relevant files and explain the intended change.
+- Before the first write operation, run one of these verification steps:
+  - use a subagent/reviewer for non-trivial changes, or
+  - perform a deeper self-review that checks assumptions, affected files, tests, and risks.
+- For risky, broad, or ambiguous changes, stop and ask for confirmation before editing.
+- After editing, verify with the smallest relevant test, build, typecheck, lint, or manual inspection.
+- In the final answer, report what was changed, what was verified, and any remaining uncertainty.
+
 ## Documentation Index
 
 | Topic | File |

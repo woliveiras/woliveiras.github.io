@@ -1,0 +1,9 @@
+version: 1
+packs:
+  - astro
+  - blog
+  - core
+  - research
+targets:
+  - copilot
+  - codex
