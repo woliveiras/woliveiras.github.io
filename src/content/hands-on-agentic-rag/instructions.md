@@ -8,6 +8,8 @@ Do not load `brainstorming.md` by default. It is historical source material. Use
 
 Always read `context/README.md` after this file. It explains which context files to load for writing, reviewing, planning implementation, or checking whether an idea fits the series.
 
+When a task needs external documentation details, read `resources/README.md` and then the specific resource file for that technology or topic.
+
 ## Mission
 
 Help create the **Hands-on Agentic RAG** blog series.
@@ -37,3 +39,4 @@ Load only the files needed for the task:
 
 If a task seems to require `brainstorming.md`, first check whether the needed information already exists in `context/`.
 
+If a task needs library/API details, first check whether the needed information already exists in `resources/`.
