@@ -1,0 +1,31 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_DB: vetsupport
+      POSTGRES_USER: vetsupport
+      POSTGRES_PASSWORD: vetsupport
+    ports:
+      - "5432:5432"
+    volumes:
+      - vetsupport-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vetsupport -d vetsupport"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  harness:
+    build: .
+    environment:
+      DATABASE_URL: postgresql+psycopg://vetsupport:vetsupport@postgres:5432/vetsupport
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles:
+      - tools
+
+volumes:
+  vetsupport-postgres:
+

@@ -1,0 +1,39 @@
+[project]
+name = "vetsupport"
+version = "0.1.0"
+description = "Local agent harness for the Hands-on Agentic RAG series."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+	"langgraph>=1.0.4",
+	"openai>=2.11.0",
+	"opentelemetry-api>=1.39.0",
+	"opentelemetry-sdk>=1.39.0",
+	"pgvector>=0.4.2",
+	"psycopg[binary]>=3.3.2",
+	"pydantic>=2.12.5",
+	"pydantic-settings>=2.12.0",
+	"sqlalchemy>=2.0.45",
+	"typer>=0.20.0",
+]
+
+[dependency-groups]
+dev = [
+	"pytest>=9.0.2",
+	"ruff>=0.14.9",
+]
+
+[build-system]
+requires = ["uv_build>=0.9.5,<0.10.0"]
+build-backend = "uv_build"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
