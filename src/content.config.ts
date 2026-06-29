@@ -79,7 +79,7 @@ const observabilitySeries = defineCollection({
 const agenticRagSeries = defineCollection({
 	loader: glob({
 		pattern: "**/[^_]*.{md,mdx}",
-		base: "./src/content/hands-on-agentic-rag/chapters/",
+		base: "./src/content/hands-on-agentic-rag/",
 	}),
 	schema: z.object({
 		title: z.string(),
