@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, text
 from sqlalchemy.orm import Session
 
 from vetsupport.models import Base, Clinic, Document, Pet, Tutor, VetEvent
@@ -30,8 +30,11 @@ IDS = {
 
 
 def seed_basic_clinic(session: Session) -> SeedSummary:
-	Base.metadata.drop_all(session.get_bind())
-	Base.metadata.create_all(session.get_bind())
+	connection = session.connection()
+	if connection.dialect.name == "postgresql":
+		connection.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+	Base.metadata.drop_all(connection)
+	Base.metadata.create_all(connection)
 
 	clinic = Clinic(id=IDS["clinic"], name="North Star Veterinary Clinic")
 	ana = Tutor(

@@ -188,7 +188,74 @@ Chunks: 1
   Vaccination record for Luna. Rabies vaccine administered on 2025-03-15.
 ```
 
-## 9. Show a Pet Timeline
+## 9. Index Chunks for Search
+
+Embed Luna's chunks so they can be searched by similarity. Embeddings are stored
+in PostgreSQL with pgvector.
+
+VetSupport ships two embedding providers:
+
+- `openai` (default): calls the OpenAI embeddings API and needs `OPENAI_API_KEY`.
+- `fake`: a deterministic offline embedder that never calls an external API. It
+  is used by the tests and is handy for validating the flow without a key.
+
+Index with the deterministic embedder (no API key required):
+
+```sh
+uv run python -m vetsupport index --pet-id 30000000-0000-0000-0000-000000000001 --embedder fake
+```
+
+Expected output after chunking Luna's documents:
+
+```text
+Indexed chunks for pet 30000000-0000-0000-0000-000000000001
+Chunks: 4
+Inserted: 4
+Skipped: 0
+```
+
+Re-running the command is safe. Chunks that already have an embedding are skipped:
+
+```text
+Indexed chunks for pet 30000000-0000-0000-0000-000000000001
+Chunks: 4
+Inserted: 0
+Skipped: 4
+```
+
+To use OpenAI instead, set `OPENAI_API_KEY` in `.env` and drop the `--embedder`
+option (or pass `--embedder openai`).
+
+## 10. Search Chunks
+
+Search returns evidence chunks, not clinical answers. Use the same embedder you
+indexed with:
+
+```sh
+uv run python -m vetsupport search --pet-id 30000000-0000-0000-0000-000000000001 --embedder fake "vaccination history"
+```
+
+Expected output:
+
+```text
+Search results for pet 30000000-0000-0000-0000-000000000001
+Query: vaccination history
+
+1. Luna vaccination card
+   Document: 40000000-0000-0000-0000-000000000001
+   Chunk: daf57462-6a8c-5237-8202-f258e8becdd1
+   Date: 2025-03-15
+   Source: clinic_record
+   Score: 0.2132
+   Text: Vaccination record for Luna. Rabies vaccine administered on 2025-03-15.
+```
+
+The results are ranked by cosine similarity. On PostgreSQL the ranking uses the
+pgvector `<=>` operator; the tests use an in-Python fallback on SQLite. Scores
+from the deterministic `fake` embedder are not comparable to OpenAI scores; they
+only need to rank shared-term chunks higher.
+
+## 11. Show a Pet Timeline
 
 ```sh
 uv run python -m vetsupport timeline --pet-id 30000000-0000-0000-0000-000000000001
@@ -218,7 +285,7 @@ Timeline for Luna (30000000-0000-0000-0000-000000000001)
   Ana reported that Luna had a reduced appetite for one evening and returned to normal eating the next morning. No diagnosis is recorded in this note.
 ```
 
-## 10. Run Checks
+## 12. Run Checks
 
 ```sh
 uv run pytest
@@ -228,11 +295,11 @@ uv run ruff check .
 Expected result:
 
 ```text
-8 passed
+13 passed
 All checks passed!
 ```
 
-## 11. Validate the Docker Harness
+## 13. Validate the Docker Harness
 
 Build the harness image after changing Python code:
 
@@ -249,13 +316,15 @@ You can run the same inspection commands through Docker:
 ```sh
 docker compose run --rm harness ingest --pet-id 30000000-0000-0000-0000-000000000001 samples/luna/
 docker compose run --rm harness chunk --pet-id 30000000-0000-0000-0000-000000000001
+docker compose run --rm harness index --pet-id 30000000-0000-0000-0000-000000000001 --embedder fake
+docker compose run --rm harness search --pet-id 30000000-0000-0000-0000-000000000001 --embedder fake "vaccination history"
 docker compose run --rm harness show-document --document-id 40000000-0000-0000-0000-000000000001
 docker compose run --rm harness list-pets
 docker compose run --rm harness show-pet --pet-id 30000000-0000-0000-0000-000000000001
 docker compose run --rm harness timeline --pet-id 30000000-0000-0000-0000-000000000001
 ```
 
-## 12. Stop the Database
+## 14. Stop the Database
 
 ```sh
 docker compose down

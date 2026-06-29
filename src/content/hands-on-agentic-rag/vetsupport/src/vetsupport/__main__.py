@@ -4,9 +4,13 @@ from typing import Annotated
 import typer
 
 from vetsupport.chunking import chunk_pet_documents
+from vetsupport.config import get_settings
 from vetsupport.db import session_scope
+from vetsupport.embeddings import get_embedder
+from vetsupport.indexing import index_pet_chunks
 from vetsupport.ingest import ingest_documents
 from vetsupport.queries import get_document_details, get_pet_details, get_pet_timeline, list_pets
+from vetsupport.retrieval import search_chunks
 from vetsupport.seed import seed_basic_clinic
 
 app = typer.Typer(help="VetSupport local agent harness.")
@@ -70,6 +74,84 @@ def chunk_command(
 	typer.echo(f"Documents: {summary.documents}")
 	typer.echo(f"Inserted: {summary.inserted}")
 	typer.echo(f"Skipped: {summary.skipped}")
+
+
+@app.command("index")
+def index_command(
+	pet_id: Annotated[str, typer.Option(help="Pet ID whose chunks should be indexed.")],
+	embedder: Annotated[
+		str | None,
+		typer.Option(help="Embedding provider override: openai or fake."),
+	] = None,
+) -> None:
+	"""Embed one pet's chunks into pgvector for similarity search."""
+	settings = get_settings()
+	try:
+		embedder_impl = get_embedder(settings, provider=embedder)
+	except ValueError as error:
+		typer.echo(str(error))
+		raise typer.Exit(code=1) from error
+
+	try:
+		with session_scope() as session:
+			summary = index_pet_chunks(session, pet_id=pet_id, embedder=embedder_impl)
+	except ValueError as error:
+		typer.echo(str(error))
+		raise typer.Exit(code=1) from error
+
+	typer.echo(f"Indexed chunks for pet {summary.pet_id}")
+	typer.echo(f"Chunks: {summary.chunks}")
+	typer.echo(f"Inserted: {summary.inserted}")
+	typer.echo(f"Skipped: {summary.skipped}")
+
+
+@app.command("search")
+def search_command(
+	query: Annotated[str, typer.Argument(help="Search query text.")],
+	pet_id: Annotated[str, typer.Option(help="Pet ID whose chunks should be searched.")],
+	limit: Annotated[int, typer.Option(help="Maximum number of results.")] = 5,
+	embedder: Annotated[
+		str | None,
+		typer.Option(help="Embedding provider override: openai or fake."),
+	] = None,
+) -> None:
+	"""Retrieve evidence chunks for a query. This does not produce clinical answers."""
+	settings = get_settings()
+	try:
+		embedder_impl = get_embedder(settings, provider=embedder)
+	except ValueError as error:
+		typer.echo(str(error))
+		raise typer.Exit(code=1) from error
+
+	try:
+		with session_scope() as session:
+			results = search_chunks(
+				session,
+				pet_id=pet_id,
+				query=query,
+				embedder=embedder_impl,
+				limit=limit,
+			)
+	except ValueError as error:
+		typer.echo(str(error))
+		raise typer.Exit(code=1) from error
+
+	typer.echo(f"Search results for pet {pet_id}")
+	typer.echo(f"Query: {query}")
+	if not results:
+		typer.echo("")
+		typer.echo("No matching chunks found. Run the index command first.")
+		return
+
+	for rank, result in enumerate(results, start=1):
+		typer.echo("")
+		typer.echo(f"{rank}. {result.document_title}")
+		typer.echo(f"   Document: {result.document_id}")
+		typer.echo(f"   Chunk: {result.chunk_id}")
+		typer.echo(f"   Date: {result.document_date or 'unknown'}")
+		typer.echo(f"   Source: {result.source}")
+		typer.echo(f"   Score: {result.score:.4f}")
+		typer.echo(f"   Text: {result.text}")
 
 
 @app.command("list-pets")
