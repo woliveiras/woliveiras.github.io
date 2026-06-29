@@ -76,4 +76,23 @@ const observabilitySeries = defineCollection({
 	}),
 });
 
-export const collections = { blog, posts, codingAssistantsSeries, observabilitySeries };
+const agenticRagSeries = defineCollection({
+	loader: glob({
+		pattern: "**/[^_]*.{md,mdx}",
+		base: "./src/content/hands-on-agentic-rag/chapters/",
+	}),
+	schema: z.object({
+		title: z.string(),
+		description: z.string(),
+		module: z.number(),
+		order: z.number(),
+	}),
+});
+
+export const collections = {
+	blog,
+	posts,
+	codingAssistantsSeries,
+	observabilitySeries,
+	agenticRagSeries,
+};

@@ -34,6 +34,10 @@
 		{
 			"name": "Observability for AI Agents",
 			"href": "/observability-ai-agents"
+		},
+		{
+			"name": "Hands-on Agentic RAG",
+			"href": "/hands-on-agentic-rag"
 		}
 	]
 }

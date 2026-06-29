@@ -1,0 +1,198 @@
+---
+import { getCollection } from "astro:content";
+import Footer from "$components/Footer.astro";
+import Header from "$components/Header.astro";
+import BaseLayout from "$layouts/BaseLayout.astro";
+import ProseWrapper from "$layouts/ProseWrapper.astro";
+import { SITE_DESCRIPTION, SITE_TITLE } from "../../config.json";
+
+const chapters = await getCollection("agenticRagSeries");
+const sorted = chapters.sort((a, b) => a.data.order - b.data.order);
+const appendixChapters = sorted.filter((ch) => ch.id.startsWith("ch-99-"));
+const contentChapters = sorted.filter((ch) => !ch.id.startsWith("ch-99-"));
+
+const modules = [
+	{
+		number: 0,
+		title: "Getting Started",
+		description:
+			"What the series builds, who it is for, and the VetSupport local agent harness you will run.",
+	},
+	{
+		number: 1,
+		title: "Foundations of RAG and Agents",
+		description:
+			"Why agents need RAG, the classic pipeline, why RAG is more than a vector database, and the path to Agentic RAG.",
+	},
+	{
+		number: 2,
+		title: "Knowledge Design",
+		description:
+			"Ingesting sensitive documents, domain-oriented chunking, metadata and provenance, and agent memory.",
+	},
+	{
+		number: 3,
+		title: "Advanced Retrieval",
+		description:
+			"Semantic, lexical, and hybrid search, reranking and context building, structured data, graphs, and multimodal sources.",
+	},
+	{
+		number: 4,
+		title: "Agentic RAG Architecture",
+		description:
+			"Agent architectures, routing sources and tools, safety layers, and the veterinary pre-consultation and internal agents.",
+	},
+	{
+		number: 5,
+		title: "Production, Evaluation, and Security",
+		description:
+			"Evaluating RAG, observability and debugging, privacy and governance, prompt injection, cost, and anti-patterns.",
+	},
+	{
+		number: 6,
+		title: "Practical Projects",
+		description:
+			"The veterinary history agent, pre-consultation agent, education agent, and the roadmap to a real product.",
+	},
+];
+---
+
+<BaseLayout
+	title={`Hands-on Agentic RAG - ${SITE_TITLE}`}
+	description={SITE_DESCRIPTION}
+>
+	<Header active="series" />
+
+	<main class="max-w-2xl lg:max-w-3xl mx-auto mt-8 px-4">
+		<ProseWrapper>
+			<h1>Hands-on Agentic RAG</h1>
+			<p class="text-lg text-base-500 dark:text-base-400 italic mt-0!">
+				Designing, building, evaluating, and operating Agentic RAG systems
+			</p>
+
+			<p>
+				Retrieval-Augmented Generation is often reduced to "put your documents in
+				a vector database and search them." That framing breaks down the moment an
+				agent has to decide what to retrieve, where to retrieve it from, whether it
+				is allowed to see it, and how confident it should be in the result. This
+				series treats RAG as an architecture for knowledge access, and Agentic RAG
+				as the discipline of letting an agent make those retrieval decisions
+				reliably.
+			</p>
+
+			<p>
+				We learn by building <strong>VetSupport</strong>, a local agent harness for
+				veterinary clinics. VetSupport organizes exams, vaccines, medications, and
+				clinical events into evidence a veterinary team can use. It never
+				diagnoses, prescribes, or replaces a veterinarian. The goal is to teach
+				reliable AI engineering in a sensitive domain, not to ship a SaaS.
+			</p>
+
+			<h3>What the series covers</h3>
+			<ul>
+				<li>
+					A retrieval architecture that combines vector search, keyword search,
+					SQL, timelines, and curated sources for different needs.
+				</li>
+				<li>
+					Document ingestion, deterministic chunking, embeddings, and pgvector
+					indexing with provenance and dates preserved.
+				</li>
+				<li>
+					A LangGraph agent that classifies intent, routes retrieval, builds
+					cited context, applies a safety layer, and verifies its answer.
+				</li>
+				<li>
+					Evaluation that measures retrieval quality separately from answer
+					quality, plus observability, privacy, and prompt-injection defenses.
+				</li>
+				<li>
+					Practical projects: a history agent, a pre-consultation agent, an
+					education agent, and a roadmap from local prototype to product.
+				</li>
+			</ul>
+
+			<p>
+				The implementation path uses Python, SQLAlchemy, PostgreSQL with pgvector,
+				LangGraph, and OpenAI, all driven through a local harness with reproducible
+				commands. Every chapter ends with something you can run and inspect.
+			</p>
+
+			<hr />
+
+			{
+				modules.map((mod) => {
+					const moduleChapters = contentChapters.filter(
+						(ch) => ch.data.module === mod.number,
+					);
+					return (
+						<section>
+							<h2>
+								Module {String(mod.number).padStart(2, "0")} - {mod.title}
+							</h2>
+							<p>{mod.description}</p>
+							<ul>
+								{moduleChapters.map((ch) => (
+									<li>
+										<a href={`/hands-on-agentic-rag/${ch.id}/`}>
+											Ch {ch.data.order}: {ch.data.title}
+										</a>
+										<br />
+										<span class="text-sm text-base-500">
+											{ch.data.description}
+										</span>
+									</li>
+								))}
+							</ul>
+						</section>
+					);
+				})
+			}
+			{
+				appendixChapters.length > 0 && (
+					<section>
+						<h2>Appendix</h2>
+						<ul>
+							{appendixChapters.map((ch) => (
+								<li>
+									<a href={`/hands-on-agentic-rag/${ch.id}/`}>
+										{ch.data.title}
+									</a>
+									<br />
+									<span class="text-sm text-base-500">
+										{ch.data.description}
+									</span>
+								</li>
+							))}
+						</ul>
+					</section>
+				)
+			}
+			<hr />
+			<section class="text-sm text-base-500 dark:text-base-400">
+				<p>
+					<strong>License & Attribution</strong><br />
+					This series content is licensed under
+					<a
+						href="https://creativecommons.org/licenses/by/4.0/"
+						target="_blank"
+						rel="noopener noreferrer"
+					>
+						Creative Commons Attribution 4.0 International (CC BY 4.0)
+					</a>. You are free to share and adapt this material for any purpose,
+					including commercial use, as long as you give appropriate credit.
+				</p>
+				<p>
+					Please cite as: <em
+						>"Hands-on Agentic RAG" by William Oliveira - <a
+							href="https://woliveiras.com/hands-on-agentic-rag/"
+							>woliveiras.com</a
+						></em
+					>
+				</p>
+			</section>
+		</ProseWrapper>
+	</main>
+
+	<Footer />
+</BaseLayout>

@@ -1,0 +1,82 @@
+---
+title: "Before You Start"
+description: "What the Hands-on Agentic RAG series builds, who it is for, the safety boundary, and the VetSupport local harness you will run."
+module: 0
+order: 0
+---
+
+This series teaches how to design, build, evaluate, and operate Agentic RAG systems. We learn by building **VetSupport**, a local agent harness for veterinary clinics that turns scattered records into cited evidence a veterinary team can use.
+
+Before the first concept, it helps to agree on what we are building, who it is for, and the one rule that shapes every decision in the series.
+
+## Who this is for
+
+This series is for software engineers who want to build retrieval systems that an agent can use reliably. It assumes you can read Python, run commands in a terminal, and reason about databases and HTTP APIs. You do not need prior experience with vector databases, LangGraph, or OpenAI. Each piece is introduced where it is used.
+
+The conceptual chapters apply to most retrieval stacks. The hands-on chapters use one concrete, runnable stack so every command can be followed end to end.
+
+## The domain, and the one rule
+
+VetSupport works with veterinary clinic data: pets, tutors, veterinarians, vaccination records, lab reports, consultation history, medications, weights, and clinical events such as vomiting, pain, or a medication change.
+
+One rule shapes the entire series:
+
+> An agent for a veterinary clinic must not diagnose, prescribe, change medication, or replace veterinarians. It organizes information, retrieves evidence, cites sources, surfaces uncertainty, and supports professional decision-making.
+
+This is not a disclaimer bolted on at the end. It is an architectural constraint. It changes how we retrieve, how we build context, how we generate answers, and how we evaluate the system. We keep the domain on veterinary clinics and do not drift into human healthcare.
+
+## The reference stack
+
+| Layer | Choice in this series | Why it is here |
+|---|---|---|
+| Language | Python 3.12+ | Modern typing and tooling. |
+| Persistence | PostgreSQL with pgvector | Structured facts, documents, chunks, and embeddings in one place. |
+| ORM | SQLAlchemy 2.x | Explicit, typed data access. |
+| Orchestration | LangGraph | Explicit agent nodes, state, and routing. |
+| Model provider | OpenAI | Embeddings and answer generation. |
+| Observability | OpenTelemetry | Vendor-neutral tracing and structured logs. |
+| Environment | uv and Docker | A portable, reproducible setup. |
+
+OpenAI is the provider used by the runnable example, not a requirement of the architecture. Every model call sits behind a small abstraction with a deterministic offline alternative, so the whole harness runs and is tested without an API key.
+
+## What the harness is, and is not
+
+VetSupport is a **local agent harness**, not a web application. There is no FastAPI backend, no React UI, and no SaaS architecture in the main path. You run commands like these and inspect what changed:
+
+```sh
+uv run python -m vetsupport seed --scenario basic-clinic
+uv run python -m vetsupport ingest --pet-id <id> samples/luna/
+uv run python -m vetsupport chunk --pet-id <id>
+uv run python -m vetsupport index --pet-id <id>
+uv run python -m vetsupport search --pet-id <id> "vaccination history"
+uv run python -m vetsupport ask --pet-id <id> "what vaccines has Luna received?"
+```
+
+Keeping the harness local makes the lessons reproducible. You can run a command, look at the database, the index, the trace, or the agent output, and understand exactly what the system did. The last chapters discuss how this prototype could evolve toward a product, but the main path stays a harness on purpose.
+
+## What you will need
+
+For the hands-on chapters you need:
+
+```sh
+python --version   # 3.12 or newer
+uv --version
+docker --version
+```
+
+You also need an OpenAI API key for the chapters that call the real model. Keep it in a local environment file and never commit it. Every command that needs the model also accepts a `--embedder fake` or `--llm fake` flag that runs a deterministic offline version, so you can follow along without a key and without cost.
+
+## What the series produces
+
+By the end, VetSupport can:
+
+- Seed a fictional clinic and ingest local Markdown or text documents with metadata.
+- Chunk documents deterministically and index them with embeddings in pgvector.
+- Retrieve evidence with vector, lexical, and hybrid search.
+- Answer questions through a LangGraph agent that classifies intent, routes retrieval, builds cited context, applies a safety layer, and verifies its answer.
+- Produce a structured pre-consultation briefing for the veterinary team.
+- Evaluate retrieval quality separately from safety, emit traces and structured logs, flag prompt injection in documents, and keep each pet's data isolated.
+
+---
+
+**Next up**: [Ch 1 - Why Agents Need RAG](/hands-on-agentic-rag/ch-01-why-agents-need-rag/) explains why a capable model still needs retrieval to be useful and safe in a veterinary clinic.
