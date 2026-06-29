@@ -1,0 +1,90 @@
+---
+title: "RAG Is Not Just a Vector Database"
+description: "Vector search is one retrieval tool among several. Dates, exact terms, relations, and current state each need a different source. RAG is an architecture for knowledge access."
+module: 1
+order: 3
+---
+
+The most common mistake in RAG systems is to treat every information need as a vector-search problem. Embeddings are excellent at finding passages that are *about* something, and poor at almost everything else. "When was Luna's last rabies vaccine?" is a question about a date, and a date lives in a structured field, not in the fuzzy neighborhood of an embedding.
+
+This chapter reframes RAG as an architecture for knowledge access, where the retrieval source is chosen to fit the question.
+
+## Different questions, different sources
+
+Consider four questions a clinic might ask about a pet:
+
+- "Summarize the notes from the last consultation." (a passage)
+- "When was the last rabies vaccine?" (a date)
+- "Which medications is this pet on?" (a structured list)
+- "Which pets share this tutor?" (a relation)
+
+Forcing all four through vector search gives mediocre answers to all four. Each one has a source that fits it better.
+
+| Need | Best source |
+|---|---|
+| Retrieve passages from documents | Vector search |
+| Retrieve exact terms | Keyword search |
+| Retrieve dates and values | SQL |
+| Retrieve relations | Graph |
+| Retrieve current state | API |
+| Store history | Relational database or event store |
+| Store original files | Object storage |
+
+The recurring message of this series:
+
+> In real systems, RAG is an architecture for knowledge access, not just a vector query.
+
+## Why vector search alone fails
+
+Embeddings encode similarity of meaning. That property is a strength and a weakness.
+
+- **Exact terms blur.** A search for "rabies" might rank a general note about vaccination above the specific rabies record, because both are *about* vaccines.
+- **Dates and numbers do not embed well.** "4.4 kg on 2026-01-10" is a fact best stored and queried as structured data, not approximated by vector distance.
+- **Relations are invisible.** Which tutor owns which pet is an edge in a graph, not a property of any single passage.
+
+A system that only embeds will answer passage questions well and quietly fail the rest, often with a confident tone that hides the failure.
+
+## The VetSupport approach
+
+VetSupport keeps structured facts and unstructured text in the same PostgreSQL database, and uses the right tool for each:
+
+- **Vector search** over document chunks for passage-style questions.
+- **Full-text search** for exact terms like a drug name or "rabies."
+- **SQL** over `documents`, `vet_events`, weights, and dates for structured facts and timelines.
+
+Later chapters add a graph view for relations and curated sources for general education questions. The point is not to use every source on every query. It is to have the right source available and to let the agent choose, which is the subject of the routing chapter in Module 4.
+
+## A concrete contrast
+
+Ask for a passage, and vector or hybrid search is right:
+
+```sh
+uv run python -m vetsupport ask --pet-id <id> "summarize the recent notes"
+```
+
+Ask for a timeline of dated events, and SQL is right. VetSupport already exposes this directly:
+
+```sh
+uv run python -m vetsupport timeline --pet-id <id>
+```
+
+The timeline is built from structured `vet_events` and document dates ordered by date, not from embeddings. It is exact, complete, and cheap, precisely because it does not go through a vector index.
+
+## Provenance is not optional
+
+In a sensitive domain, every retrieved fact must carry where it came from. A passage needs its document and chunk. A date needs the record that asserts it. A relation needs the rows that connect the entities. This metadata is what makes citations possible and what lets the safety and privacy layers decide whether a fact may be used at all. We design for provenance from the first table, not as an afterthought.
+
+## Checklist
+
+- The retrieval source is chosen to fit the question type.
+- Dates, counts, and current state come from structured queries, not embeddings.
+- Exact-term questions use keyword search, not only vectors.
+- Every retrieved fact carries provenance.
+
+## Exercise
+
+Take the three questions you wrote in Chapter 1. For each, label which source from the table above would answer it best, and explain why a pure vector search would underperform on at least one of them. You now have a small routing table, which is the seed of the agent's retriever router.
+
+---
+
+**Next up**: [Ch 4 - From Simple RAG to Agentic RAG](/hands-on-agentic-rag/ch-04-from-simple-rag-to-agentic-rag/) gives the agent the ability to decide when and where to retrieve.
