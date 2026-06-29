@@ -1,0 +1,84 @@
+---
+title: "Domain-Oriented Chunking"
+description: "Chunking decides what a retrievable unit is. Deterministic, idempotent chunking with stable IDs keeps the index reproducible and the system debuggable."
+module: 2
+order: 6
+---
+
+Chunking is the quietest high-impact decision in a RAG system. It rarely gets attention, yet it sets the ceiling on retrieval quality. If a chunk is too large, retrieval returns a haystack and the model has to find the needle. If a chunk is too small, the needle arrives with no context. And if chunking is non-deterministic, the index becomes impossible to reason about.
+
+This chapter treats chunking as a deliberate, domain-aware step.
+
+## A chunk is the unit of retrieval
+
+You do not retrieve documents; you retrieve chunks. So the chunk is the real unit of meaning in the system. A good chunk is large enough to stand on its own and small enough to be specific. For veterinary records, a single paragraph, a vaccination entry, or a lab result block is usually the right granularity.
+
+VetSupport chunks a document's body into passages with a size limit, preferring paragraph boundaries:
+
+```sh
+uv run python -m vetsupport chunk --pet-id <id>
+```
+
+You can inspect the result and see exactly how a document was split:
+
+```sh
+uv run python -m vetsupport show-document --document-id <id>
+```
+
+## Determinism is a feature, not an accident
+
+The same document must always produce the same chunks. VetSupport gives each chunk a stable ID derived from its source document and its index in the document. This determinism buys several things at once:
+
+- **Idempotency.** Re-chunking skips chunks that already exist, so the command is safe to repeat.
+- **Reproducibility.** The index can be rebuilt and will be identical.
+- **Debuggability.** A chunk ID in a trace or a citation points to exactly one passage, forever.
+
+```text
+Documents: 4
+Inserted: 0
+Skipped: 4
+```
+
+A second chunking run inserts nothing. That is the signature of a deterministic, idempotent step, and it is what lets you trust the index.
+
+## The size trade-off
+
+Chunk size is a tuning decision with no universal answer:
+
+| Smaller chunks | Larger chunks |
+|---|---|
+| More precise ranking | More context per hit |
+| More chunks to index | Fewer chunks to index |
+| Risk of losing surrounding context | Risk of diluting the relevant sentence |
+
+VetSupport exposes the limit so you can experiment:
+
+```sh
+uv run python -m vetsupport chunk --pet-id <id> --max-chars 120
+```
+
+Because chunking is deterministic, changing the size and re-chunking on a fresh database gives you a clean comparison. The right size is the one that makes your retrieval evaluation, introduced in Module 5, score best on your real questions.
+
+## Domain awareness
+
+Generic character-count chunking ignores the structure of veterinary records, where a date, a value, and a label often belong together. Splitting "Rabies vaccine administered on 2025-03-15" away from "Vaccination record for Luna" would scatter a single fact across two chunks. VetSupport prefers paragraph boundaries before falling back to a size limit, which keeps related lines together. As your documents grow more structured, chunking can become more domain-aware: split on record boundaries, keep a result with its date, and never separate a value from its unit.
+
+## Chunks carry their provenance
+
+Each chunk inherits the document's source and date and stores a small metadata record describing how it was produced. This is not bookkeeping for its own sake. When a chunk later becomes a citation, that provenance is what lets a veterinarian trace the claim back to a dated, sourced document. A chunk without provenance is an orphan fact, and orphan facts have no place in a clinical record.
+
+## Checklist
+
+- The chunk is treated as the real unit of retrieval.
+- Chunking is deterministic with stable, derived IDs.
+- Re-chunking is idempotent.
+- Chunk size is a tunable decision, evaluated against real questions.
+- Each chunk keeps its source, date, and chunking metadata.
+
+## Exercise
+
+Chunk Luna's documents with the default size, inspect a document's chunks, then reset and re-chunk with a small `--max-chars`. Compare how a single vaccination record is split in each case, and predict which size would rank that record higher for the query "rabies vaccine." You now have an intuition for the chunk-size trade-off that the evaluation chapter makes measurable.
+
+---
+
+**Next up**: [Ch 7 - Metadata, Temporality, and Provenance](/hands-on-agentic-rag/ch-07-metadata-temporality-provenance/) makes dates and sources first-class citizens of retrieval.

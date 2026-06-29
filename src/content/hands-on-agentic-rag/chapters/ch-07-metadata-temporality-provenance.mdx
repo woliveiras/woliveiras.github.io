@@ -1,0 +1,73 @@
+---
+title: "Metadata, Temporality, and Provenance"
+description: "In a sensitive domain, dates, sources, and ownership are not optional fields. They are what make retrieval safe, citable, and time-aware."
+module: 2
+order: 7
+---
+
+A vaccination record without a date is trivia. "Luna received a rabies vaccine" is meaningless to a veterinarian who needs to know whether the booster is due. The date is the fact. The same is true of source and ownership: a claim a clinic recorded carries different weight than a tutor's recollection, and a record belongs to exactly one pet.
+
+This chapter argues that metadata, temporality, and provenance are first-class parts of retrieval, not decoration.
+
+## Temporality: most clinical facts are about time
+
+Veterinary care is a timeline. Vaccines have due dates, weights have trends, medications have start and stop dates, and symptoms have a sequence. A retrieval system that ignores time answers "what" but never "when" or "in what order," and in a clinic the order is often the point.
+
+VetSupport stores an explicit `document_date` for each document and an `event_date` for each clinical event, then builds a timeline by ordering them:
+
+```sh
+uv run python -m vetsupport timeline --pet-id <id>
+```
+
+```text
+- 2025-03-15 [event:vaccination] Vaccination
+- 2026-01-10 [event:weight_record] Weight Record
+- 2026-02-14 [document:consultation_note] Luna Dental Follow-up
+```
+
+This timeline is exact because it comes from structured dates, not from embeddings. Time is a structured fact, and structured facts deserve structured queries.
+
+## Provenance: where every fact came from
+
+Provenance is the chain from an answer back to its origin. In VetSupport, a chunk knows its document, a document knows its source and date, and a citation carries all of it forward:
+
+```text
+[1] Luna vaccination card | 40000000-...-0001 | 2025-03-15 | clinic_record
+```
+
+A veterinarian can follow that line back to the exact record. Provenance is what makes a citation verifiable rather than decorative. An answer that says "Luna is up to date on rabies" without a traceable source is not auditable, and an unauditable claim has no place in a clinical workflow.
+
+## Source drives trust and access
+
+Not all sources are equal. A `clinic_record` is an authoritative entry; an `owner_note` is a tutor's report; a `scanned_pdf` may need interpretation. Carrying the source on every document and chunk lets later layers reason about trust ("this is a tutor's recollection, not a confirmed result") and access ("this role may see clinic records but not raw uploads"). Source is not a label for humans to read; it is an input to the safety and privacy layers.
+
+## Metadata enables filtered retrieval
+
+Good metadata turns a blunt search into a precise one. Because VetSupport stores pet, source, type, and date alongside each chunk, retrieval can filter before it ranks: this pet only, this date range, this document type, this permitted source. Filtering by metadata first and ranking second is the backbone of the hybrid retrieval you will build in Module 3. It is also what keeps retrieval cheap and correct: you never rank a thousand irrelevant chunks when a metadata filter could exclude them outright.
+
+## The cost of missing metadata
+
+Consider what breaks when metadata is absent:
+
+- No date means no timeline and no "is this overdue" reasoning.
+- No source means no trust distinction and no access control.
+- No owner means no privacy isolation between pets.
+- No provenance means no verifiable citations.
+
+Each missing field removes a capability the clinic needs. This is why ingestion rejects documents without the required metadata: the cost of a missing field is paid later, silently, in a wrong or unsafe answer.
+
+## Checklist
+
+- Every document and event carries an explicit date.
+- Timelines come from structured dates, not embeddings.
+- Every chunk and citation carries full provenance.
+- Source is recorded and used for trust and access decisions.
+- Retrieval can filter by metadata before ranking.
+
+## Exercise
+
+Run the timeline command for a pet, then pick one entry and trace it back: which document or event produced it, what is its source, and how would it appear as a citation? Now imagine the date were missing. Describe one clinic question that would become unanswerable, and one that would become subtly wrong.
+
+---
+
+**Next up**: [Ch 8 - Memory in AI Agents](/hands-on-agentic-rag/ch-08-memory-in-ai-agents/) separates short-term run state from durable facts, documents, and external knowledge.
