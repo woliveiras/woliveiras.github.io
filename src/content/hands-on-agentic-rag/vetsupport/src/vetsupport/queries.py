@@ -6,7 +6,7 @@ from datetime import date
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from vetsupport.models import Document, Pet, Tutor, VetEvent
+from vetsupport.models import Document, DocumentChunk, Pet, Tutor, VetEvent
 
 
 @dataclass(frozen=True)
@@ -38,6 +38,29 @@ class TimelineItem:
 	source: str
 	title: str
 	description: str
+
+
+@dataclass(frozen=True)
+class DocumentChunkDetails:
+	id: str
+	chunk_index: int
+	text: str
+	source: str
+	document_date: date | None
+	metadata_json: str
+
+
+@dataclass(frozen=True)
+class DocumentDetails:
+	id: str
+	title: str
+	document_type: str
+	source: str
+	document_date: date | None
+	body: str
+	pet_id: str
+	pet_name: str
+	chunks: list[DocumentChunkDetails]
 
 
 def list_pets(session: Session) -> list[PetSummary]:
@@ -114,4 +137,44 @@ def get_pet_timeline(session: Session, pet_id: str) -> list[TimelineItem]:
 	return sorted(
 		events + documents,
 		key=lambda item: (item.date or date.min, item.kind, item.title),
+	)
+
+
+def get_document_details(session: Session, document_id: str) -> DocumentDetails | None:
+	statement = (
+		select(Document, Pet)
+		.join(Pet, Document.pet_id == Pet.id)
+		.where(Document.id == document_id)
+	)
+	row = session.execute(statement).one_or_none()
+	if row is None:
+		return None
+
+	document, pet = row
+	chunks = [
+		DocumentChunkDetails(
+			id=chunk.id,
+			chunk_index=chunk.chunk_index,
+			text=chunk.text,
+			source=chunk.source,
+			document_date=chunk.document_date,
+			metadata_json=chunk.metadata_json,
+		)
+		for chunk in session.scalars(
+			select(DocumentChunk)
+			.where(DocumentChunk.document_id == document_id)
+			.order_by(DocumentChunk.chunk_index)
+		)
+	]
+
+	return DocumentDetails(
+		id=document.id,
+		title=document.title,
+		document_type=document.document_type,
+		source=document.source,
+		document_date=document.document_date,
+		body=document.body,
+		pet_id=pet.id,
+		pet_name=pet.name,
+		chunks=chunks,
 	)

@@ -3,9 +3,10 @@ from typing import Annotated
 
 import typer
 
+from vetsupport.chunking import chunk_pet_documents
 from vetsupport.db import session_scope
 from vetsupport.ingest import ingest_documents
-from vetsupport.queries import get_pet_details, get_pet_timeline, list_pets
+from vetsupport.queries import get_document_details, get_pet_details, get_pet_timeline, list_pets
 from vetsupport.seed import seed_basic_clinic
 
 app = typer.Typer(help="VetSupport local agent harness.")
@@ -48,6 +49,25 @@ def ingest_command(
 
 	typer.echo(f"Ingested documents for pet {summary.pet_id}")
 	typer.echo(f"Files: {summary.files}")
+	typer.echo(f"Inserted: {summary.inserted}")
+	typer.echo(f"Skipped: {summary.skipped}")
+
+
+@app.command("chunk")
+def chunk_command(
+	pet_id: Annotated[str, typer.Option(help="Pet ID whose documents should be chunked.")],
+	max_chars: Annotated[int, typer.Option(help="Maximum characters per chunk.")] = 800,
+) -> None:
+	"""Create deterministic text chunks for one pet's documents."""
+	try:
+		with session_scope() as session:
+			summary = chunk_pet_documents(session, pet_id=pet_id, max_chars=max_chars)
+	except ValueError as error:
+		typer.echo(str(error))
+		raise typer.Exit(code=1) from error
+
+	typer.echo(f"Chunked documents for pet {summary.pet_id}")
+	typer.echo(f"Documents: {summary.documents}")
 	typer.echo(f"Inserted: {summary.inserted}")
 	typer.echo(f"Skipped: {summary.skipped}")
 
@@ -108,6 +128,36 @@ def timeline_command(pet_id: str = typer.Option(..., help="Pet ID to inspect."))
 		typer.echo(f"- {item_date} [{item.kind}] {item.title}")
 		typer.echo(f"  Source: {item.source}")
 		typer.echo(f"  {item.description}")
+
+
+@app.command("show-document")
+def show_document_command(
+	document_id: str = typer.Option(..., help="Document ID to inspect."),
+) -> None:
+	"""Show one document and its indexed chunks."""
+	with session_scope() as session:
+		document = get_document_details(session, document_id)
+
+	if document is None:
+		typer.echo(f"Document not found: {document_id}")
+		raise typer.Exit(code=1)
+
+	typer.echo(f"Document: {document.title}")
+	typer.echo(f"ID: {document.id}")
+	typer.echo(f"Pet: {document.pet_name} ({document.pet_id})")
+	typer.echo(f"Type: {document.document_type}")
+	typer.echo(f"Source: {document.source}")
+	typer.echo(f"Date: {document.document_date or 'unknown'}")
+	typer.echo(f"Chunks: {len(document.chunks)}")
+	if not document.chunks:
+		typer.echo("No chunks found. Run the chunk command first.")
+		return
+
+	for chunk in document.chunks:
+		typer.echo(f"- Chunk {chunk.chunk_index}: {chunk.id}")
+		typer.echo(f"  Source: {chunk.source}")
+		typer.echo(f"  Date: {chunk.document_date or 'unknown'}")
+		typer.echo(f"  {chunk.text}")
 
 
 if __name__ == "__main__":

@@ -132,7 +132,63 @@ uv run python -m vetsupport ingest --pet-id 30000000-0000-0000-0000-000000000002
 uv run python -m vetsupport ingest --pet-id 30000000-0000-0000-0000-000000000003 samples/kassandra/
 ```
 
-## 7. Show a Pet Timeline
+## 7. Chunk Documents
+
+Create deterministic text chunks for Luna's documents:
+
+```sh
+uv run python -m vetsupport chunk --pet-id 30000000-0000-0000-0000-000000000001
+```
+
+Expected output after seeding and ingesting Luna's sample documents:
+
+```text
+Chunked documents for pet 30000000-0000-0000-0000-000000000001
+Documents: 4
+Inserted: 4
+Skipped: 0
+```
+
+Re-running the command is safe. Existing chunks are skipped because their IDs are deterministic:
+
+```text
+Chunked documents for pet 30000000-0000-0000-0000-000000000001
+Documents: 4
+Inserted: 0
+Skipped: 4
+```
+
+For local experiments, choose a smaller chunk size before the first chunking run, or reset the database and chunk again:
+
+```sh
+uv run python -m vetsupport chunk --pet-id 30000000-0000-0000-0000-000000000001 --max-chars 120
+```
+
+## 8. Show One Document
+
+Inspect a seeded document and its chunks:
+
+```sh
+uv run python -m vetsupport show-document --document-id 40000000-0000-0000-0000-000000000001
+```
+
+Expected output after chunking:
+
+```text
+Document: Luna vaccination card
+ID: 40000000-0000-0000-0000-000000000001
+Pet: Luna (30000000-0000-0000-0000-000000000001)
+Type: vaccination_record
+Source: clinic_record
+Date: 2025-03-15
+Chunks: 1
+- Chunk 0: ...
+  Source: clinic_record
+  Date: 2025-03-15
+  Vaccination record for Luna. Rabies vaccine administered on 2025-03-15.
+```
+
+## 9. Show a Pet Timeline
 
 ```sh
 uv run python -m vetsupport timeline --pet-id 30000000-0000-0000-0000-000000000001
@@ -162,7 +218,7 @@ Timeline for Luna (30000000-0000-0000-0000-000000000001)
   Ana reported that Luna had a reduced appetite for one evening and returned to normal eating the next morning. No diagnosis is recorded in this note.
 ```
 
-## 8. Run Checks
+## 10. Run Checks
 
 ```sh
 uv run pytest
@@ -172,11 +228,11 @@ uv run ruff check .
 Expected result:
 
 ```text
-5 passed
+8 passed
 All checks passed!
 ```
 
-## 9. Validate the Docker Harness
+## 11. Validate the Docker Harness
 
 Build the harness image after changing Python code:
 
@@ -192,12 +248,14 @@ You can run the same inspection commands through Docker:
 
 ```sh
 docker compose run --rm harness ingest --pet-id 30000000-0000-0000-0000-000000000001 samples/luna/
+docker compose run --rm harness chunk --pet-id 30000000-0000-0000-0000-000000000001
+docker compose run --rm harness show-document --document-id 40000000-0000-0000-0000-000000000001
 docker compose run --rm harness list-pets
 docker compose run --rm harness show-pet --pet-id 30000000-0000-0000-0000-000000000001
 docker compose run --rm harness timeline --pet-id 30000000-0000-0000-0000-000000000001
 ```
 
-## 10. Stop the Database
+## 12. Stop the Database
 
 ```sh
 docker compose down

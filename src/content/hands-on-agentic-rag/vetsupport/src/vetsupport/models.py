@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
-from sqlalchemy import Date, DateTime, ForeignKey, String, Text, func
+from sqlalchemy import Date, DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -72,6 +72,25 @@ class Document(Base):
 	body: Mapped[str] = mapped_column(Text, nullable=False)
 
 	pet: Mapped[Pet] = relationship(back_populates="documents")
+	chunks: Mapped[list[DocumentChunk]] = relationship(
+		back_populates="document",
+		cascade="all, delete-orphan",
+	)
+
+
+class DocumentChunk(Base):
+	__tablename__ = "document_chunks"
+
+	id: Mapped[str] = mapped_column(String(36), primary_key=True)
+	document_id: Mapped[str] = mapped_column(ForeignKey("documents.id"), nullable=False)
+	pet_id: Mapped[str] = mapped_column(ForeignKey("pets.id"), nullable=False)
+	chunk_index: Mapped[int] = mapped_column(Integer, nullable=False)
+	text: Mapped[str] = mapped_column(Text, nullable=False)
+	source: Mapped[str] = mapped_column(String(120), nullable=False)
+	document_date: Mapped[date | None] = mapped_column(Date)
+	metadata_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
+
+	document: Mapped[Document] = relationship(back_populates="chunks")
 
 
 class VetEvent(Base):

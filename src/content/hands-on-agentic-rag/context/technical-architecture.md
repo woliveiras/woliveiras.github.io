@@ -44,12 +44,16 @@ VetSupport should include:
 - Seed data for clinics, tutors, pets, documents, and events.
 - Harness commands for reset and seed operations.
 - Harness commands for document ingestion from local `.md` and `.txt` files.
+- Harness commands for deterministic document chunking.
+- Harness commands for inspecting source documents and generated chunks.
 - Harness commands for retrieval.
 - Harness commands for agent execution.
 - Harness commands for evaluation.
 - Markdown or text outputs for consultation briefings.
 
 Document ingestion should use frontmatter metadata for `title`, `document_type`, `source`, and `document_date`. The body after the frontmatter becomes the raw document text stored for later chunking and retrieval.
+
+Document chunking should be deterministic and idempotent. The current local harness stores chunks in `document_chunks` with source metadata and stable IDs derived from the source document and chunk index. Embeddings and pgvector indexing come after this step, so early posts can teach the difference between ingesting raw documents, chunking them, and later indexing them for retrieval.
 
 ## Retrieval Architecture
 
