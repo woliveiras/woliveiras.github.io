@@ -4,6 +4,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small"
 EMBEDDING_DIMENSIONS = 256
+DEFAULT_LLM_MODEL = "gpt-4o-mini"
 
 
 class Settings(BaseSettings):
@@ -11,6 +12,8 @@ class Settings(BaseSettings):
 	openai_api_key: str | None = None
 	embedding_provider: str = "openai"
 	embedding_model: str = DEFAULT_EMBEDDING_MODEL
+	llm_provider: str = "openai"
+	llm_model: str = DEFAULT_LLM_MODEL
 
 	model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 

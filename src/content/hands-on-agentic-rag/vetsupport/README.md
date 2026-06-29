@@ -267,7 +267,68 @@ ranking uses full-text search; the tests use in-Python fallbacks on SQLite.
 Scores from the deterministic `fake` embedder are not comparable to OpenAI
 scores, and scores are only comparable within the same mode.
 
-## 11. Show a Pet Timeline
+## 11. Ask a Question
+
+The `ask` command assesses safety, retrieves evidence, generates a grounded
+answer with citations, and verifies that every citation points to real evidence.
+It returns evidence and questions for the veterinarian. It never diagnoses or
+prescribes.
+
+VetSupport ships two LLM providers, mirroring the embedding providers:
+
+- `openai` (default): calls the OpenAI Responses API and needs `OPENAI_API_KEY`.
+- `fake`: a deterministic offline answerer that restates retrieved evidence with
+  citations. It is used by the tests and for offline runs.
+
+Ask with the deterministic providers (no API key required):
+
+```sh
+uv run python -m vetsupport ask --pet-id 30000000-0000-0000-0000-000000000001 --embedder fake --llm fake "what is Luna's vaccination history?"
+```
+
+Expected output (deterministic offline answer):
+
+```text
+Question: what is Luna's vaccination history?
+Pet: 30000000-0000-0000-0000-000000000001
+Safety: ok (escalate: false)
+
+Summary
+Based on the available documents:
+- [1] Luna vaccination card (2025-03-15): Vaccination record for Luna. Rabies vaccine administered on 2025-03-15.
+...
+
+Questions for the veterinarian
+- Which of these findings should be reviewed during the consultation?
+- Is any information missing from the records above?
+
+Uncertainty
+VetSupport cannot confirm a diagnosis or recommend treatment. A veterinarian should interpret these documents.
+
+Disclaimers
+- VetSupport organizes information and retrieves evidence. It does not diagnose, prescribe, change medication, or replace a veterinarian.
+
+Citations
+[1] Luna vaccination card | 40000000-0000-0000-0000-000000000001 | 2025-03-15 | clinic_record
+...
+```
+
+To use OpenAI, index with OpenAI embeddings first (so the query and chunks use
+the same model), set `OPENAI_API_KEY` in `.env`, and drop the provider overrides:
+
+```sh
+uv run python -m vetsupport index --pet-id 30000000-0000-0000-0000-000000000001 --embedder openai
+uv run python -m vetsupport ask --pet-id 30000000-0000-0000-0000-000000000001 "what is Luna's vaccination history?"
+```
+
+Emergency-like questions add an urgent-care banner and escalate, but the harness
+still never diagnoses:
+
+```sh
+uv run python -m vetsupport ask --pet-id 30000000-0000-0000-0000-000000000001 --embedder fake --llm fake "my cat is not breathing, what should I do?"
+```
+
+## 12. Show a Pet Timeline
 
 ```sh
 uv run python -m vetsupport timeline --pet-id 30000000-0000-0000-0000-000000000001
@@ -297,7 +358,7 @@ Timeline for Luna (30000000-0000-0000-0000-000000000001)
   Ana reported that Luna had a reduced appetite for one evening and returned to normal eating the next morning. No diagnosis is recorded in this note.
 ```
 
-## 12. Run Checks
+## 13. Run Checks
 
 ```sh
 uv run pytest
@@ -307,11 +368,11 @@ uv run ruff check .
 Expected result:
 
 ```text
-16 passed
+25 passed
 All checks passed!
 ```
 
-## 13. Validate the Docker Harness
+## 14. Validate the Docker Harness
 
 Build the harness image after changing Python code:
 
@@ -330,13 +391,14 @@ docker compose run --rm harness ingest --pet-id 30000000-0000-0000-0000-00000000
 docker compose run --rm harness chunk --pet-id 30000000-0000-0000-0000-000000000001
 docker compose run --rm harness index --pet-id 30000000-0000-0000-0000-000000000001 --embedder fake
 docker compose run --rm harness search --pet-id 30000000-0000-0000-0000-000000000001 --embedder fake "vaccination history"
+docker compose run --rm harness ask --pet-id 30000000-0000-0000-0000-000000000001 --embedder fake --llm fake "what is Luna's vaccination history?"
 docker compose run --rm harness show-document --document-id 40000000-0000-0000-0000-000000000001
 docker compose run --rm harness list-pets
 docker compose run --rm harness show-pet --pet-id 30000000-0000-0000-0000-000000000001
 docker compose run --rm harness timeline --pet-id 30000000-0000-0000-0000-000000000001
 ```
 
-## 14. Stop the Database
+## 15. Stop the Database
 
 ```sh
 docker compose down

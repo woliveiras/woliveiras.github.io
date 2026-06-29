@@ -3,12 +3,14 @@ from typing import Annotated
 
 import typer
 
+from vetsupport.answering import answer_question
 from vetsupport.chunking import chunk_pet_documents
 from vetsupport.config import get_settings
 from vetsupport.db import session_scope
 from vetsupport.embeddings import get_embedder
 from vetsupport.indexing import index_pet_chunks
 from vetsupport.ingest import ingest_documents
+from vetsupport.llm import get_llm
 from vetsupport.queries import get_document_details, get_pet_details, get_pet_timeline, list_pets
 from vetsupport.retrieval import search_chunks
 from vetsupport.seed import seed_basic_clinic
@@ -158,6 +160,82 @@ def search_command(
 		typer.echo(f"   Source: {result.source}")
 		typer.echo(f"   Score: {result.score:.4f}")
 		typer.echo(f"   Text: {result.text}")
+
+
+@app.command("ask")
+def ask_command(
+	question: Annotated[str, typer.Argument(help="Question about the pet.")],
+	pet_id: Annotated[str, typer.Option(help="Pet ID the question is about.")],
+	limit: Annotated[int, typer.Option(help="Maximum evidence chunks to use.")] = 5,
+	embedder: Annotated[
+		str | None,
+		typer.Option(help="Embedding provider override: openai or fake."),
+	] = None,
+	llm: Annotated[
+		str | None,
+		typer.Option(help="LLM provider override: openai or fake."),
+	] = None,
+) -> None:
+	"""Answer a question with cited evidence. This never diagnoses or prescribes."""
+	settings = get_settings()
+	try:
+		embedder_impl = get_embedder(settings, provider=embedder)
+		llm_impl = get_llm(settings, provider=llm)
+	except ValueError as error:
+		typer.echo(str(error))
+		raise typer.Exit(code=1) from error
+
+	try:
+		with session_scope() as session:
+			answer = answer_question(
+				session,
+				pet_id=pet_id,
+				query=question,
+				embedder=embedder_impl,
+				llm=llm_impl,
+				limit=limit,
+			)
+	except ValueError as error:
+		typer.echo(str(error))
+		raise typer.Exit(code=1) from error
+
+	if answer.escalate:
+		typer.echo("URGENT: Possible emergency signs. Seek in-person veterinary care now.")
+		typer.echo("")
+
+	typer.echo(f"Question: {answer.query}")
+	typer.echo(f"Pet: {answer.pet_id}")
+	typer.echo(f"Safety: {answer.safety_level} (escalate: {str(answer.escalate).lower()})")
+	typer.echo("")
+	typer.echo("Summary")
+	typer.echo(answer.summary)
+
+	if answer.questions_for_vet:
+		typer.echo("")
+		typer.echo("Questions for the veterinarian")
+		for item in answer.questions_for_vet:
+			typer.echo(f"- {item}")
+
+	if answer.uncertainty:
+		typer.echo("")
+		typer.echo("Uncertainty")
+		typer.echo(answer.uncertainty)
+
+	typer.echo("")
+	typer.echo("Disclaimers")
+	for disclaimer in answer.disclaimers:
+		typer.echo(f"- {disclaimer}")
+
+	typer.echo("")
+	typer.echo("Citations")
+	if not answer.citations:
+		typer.echo("- none")
+	for citation in answer.citations:
+		citation_date = citation.document_date.isoformat() if citation.document_date else "unknown"
+		typer.echo(
+			f"[{citation.marker}] {citation.document_title} | "
+			f"{citation.document_id} | {citation_date} | {citation.source}"
+		)
 
 
 @app.command("list-pets")

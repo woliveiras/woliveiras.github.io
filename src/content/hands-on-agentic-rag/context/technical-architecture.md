@@ -63,6 +63,12 @@ The current local harness also implements embeddings and vector search:
 - The `search` command embeds the query and ranks chunks by relevance. It supports three modes: `vector` (pgvector `<=>` cosine distance), `lexical` (PostgreSQL full-text search), and `hybrid` (Reciprocal Rank Fusion of the vector and lexical rankings, the default). Other backends use in-Python fallbacks so the tests run on SQLite. Search returns evidence (document, chunk, date, source, score, and text), never a clinical answer.
 - The seed command creates the pgvector extension (`CREATE EXTENSION IF NOT EXISTS vector`) before creating tables on PostgreSQL.
 
+The harness also implements a first answer flow behind the `ask` command:
+
+- A deterministic, rule-based safety layer (`safety.py`) classifies each query before any answer is generated. It detects possible emergency signs (escalates to urgent care), diagnosis requests, and medication-change requests, and it attaches the right disclaimers. It never blocks evidence retrieval; it constrains how the answer is framed.
+- An LLM abstraction (`llm.py`) has two providers: an `OpenAILLM` (Responses API) and a deterministic `FakeLLM` that restates retrieved evidence with citations and never calls an external API. The system prompt forbids diagnosis and prescription, treats document text as untrusted content, and requires inline citation markers.
+- The `answer_question` flow (`answering.py`) assesses safety, retrieves evidence with hybrid search, asks the LLM for a grounded draft, then verifies that every citation marker points to real evidence. The result is evidence, questions for the veterinarian, uncertainty, disclaimers, and verified citations, never a clinical answer.
+
 ## Retrieval Architecture
 
 Use different retrieval paths for different needs:
