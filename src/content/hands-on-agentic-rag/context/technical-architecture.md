@@ -60,7 +60,7 @@ The current local harness also implements embeddings and vector search:
 - Embeddings live behind a small `Embedder` abstraction with two providers: an `OpenAIEmbedder` (default, `text-embedding-3-small`, 256 dimensions) and a deterministic `FakeEmbedder` that uses feature hashing and never calls an external API. The fake provider keeps tests and offline documentation runs reproducible.
 - Chunk embeddings are stored in `chunk_embeddings` with the model name, dimension, and the vector itself. The vector column maps to a pgvector `vector(256)` column on PostgreSQL and falls back to portable JSON `Text` on SQLite, so the same models load in the in-memory test databases.
 - The `index` command embeds a pet's chunks that are not indexed yet and is idempotent: re-running it inserts nothing new.
-- The `search` command embeds the query and ranks chunks by cosine similarity. On PostgreSQL it uses the pgvector `<=>` operator; on SQLite it falls back to an in-Python cosine similarity. Search returns evidence (document, chunk, date, source, score, and text), never a clinical answer.
+- The `search` command embeds the query and ranks chunks by relevance. It supports three modes: `vector` (pgvector `<=>` cosine distance), `lexical` (PostgreSQL full-text search), and `hybrid` (Reciprocal Rank Fusion of the vector and lexical rankings, the default). Other backends use in-Python fallbacks so the tests run on SQLite. Search returns evidence (document, chunk, date, source, score, and text), never a clinical answer.
 - The seed command creates the pgvector extension (`CREATE EXTENSION IF NOT EXISTS vector`) before creating tables on PostgreSQL.
 
 ## Retrieval Architecture

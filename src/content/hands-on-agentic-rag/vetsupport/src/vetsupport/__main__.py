@@ -109,6 +109,10 @@ def index_command(
 def search_command(
 	query: Annotated[str, typer.Argument(help="Search query text.")],
 	pet_id: Annotated[str, typer.Option(help="Pet ID whose chunks should be searched.")],
+	mode: Annotated[
+		str,
+		typer.Option(help="Retrieval mode: vector, lexical, or hybrid."),
+	] = "hybrid",
 	limit: Annotated[int, typer.Option(help="Maximum number of results.")] = 5,
 	embedder: Annotated[
 		str | None,
@@ -131,6 +135,7 @@ def search_command(
 				query=query,
 				embedder=embedder_impl,
 				limit=limit,
+				mode=mode,
 			)
 	except ValueError as error:
 		typer.echo(str(error))
@@ -138,6 +143,7 @@ def search_command(
 
 	typer.echo(f"Search results for pet {pet_id}")
 	typer.echo(f"Query: {query}")
+	typer.echo(f"Mode: {mode}")
 	if not results:
 		typer.echo("")
 		typer.echo("No matching chunks found. Run the index command first.")

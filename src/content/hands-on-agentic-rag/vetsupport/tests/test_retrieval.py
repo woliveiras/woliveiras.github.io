@@ -76,6 +76,62 @@ def test_search_returns_relevant_chunk() -> None:
 	assert -1.0 <= top.score <= 1.0
 
 
+def test_lexical_search_matches_keyword() -> None:
+	session = seeded_session()
+	chunk_pet_documents(session, pet_id=LUNA_ID)
+	session.commit()
+	embedder = FakeEmbedder()
+	index_pet_chunks(session, pet_id=LUNA_ID, embedder=embedder)
+	session.commit()
+
+	results = search_chunks(
+		session,
+		pet_id=LUNA_ID,
+		query="rabies",
+		embedder=embedder,
+		mode="lexical",
+		limit=5,
+	)
+
+	assert results
+	assert results[0].document_id == VACCINATION_DOC_ID
+	assert all("rabies" in result.text.lower() for result in results)
+
+
+def test_hybrid_search_ranks_vaccination_first() -> None:
+	session = seeded_session()
+	chunk_pet_documents(session, pet_id=LUNA_ID)
+	session.commit()
+	embedder = FakeEmbedder()
+	index_pet_chunks(session, pet_id=LUNA_ID, embedder=embedder)
+	session.commit()
+
+	results = search_chunks(
+		session,
+		pet_id=LUNA_ID,
+		query="vaccination history",
+		embedder=embedder,
+		mode="hybrid",
+		limit=3,
+	)
+
+	assert results
+	assert results[0].document_id == VACCINATION_DOC_ID
+
+
+def test_search_rejects_unknown_mode() -> None:
+	session = seeded_session()
+
+	with pytest.raises(ValueError, match="Unknown search mode"):
+		search_chunks(
+			session,
+			pet_id=LUNA_ID,
+			query="vaccination",
+			embedder=FakeEmbedder(),
+			mode="graph",
+		)
+
+
 def test_search_rejects_unknown_pet() -> None:
 	session = seeded_session()
 

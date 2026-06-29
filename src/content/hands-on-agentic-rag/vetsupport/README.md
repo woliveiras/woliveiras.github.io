@@ -240,20 +240,32 @@ Expected output:
 ```text
 Search results for pet 30000000-0000-0000-0000-000000000001
 Query: vaccination history
+Mode: hybrid
 
 1. Luna vaccination card
    Document: 40000000-0000-0000-0000-000000000001
    Chunk: daf57462-6a8c-5237-8202-f258e8becdd1
    Date: 2025-03-15
    Source: clinic_record
-   Score: 0.2132
+   Score: 0.0167
    Text: Vaccination record for Luna. Rabies vaccine administered on 2025-03-15.
 ```
 
-The results are ranked by cosine similarity. On PostgreSQL the ranking uses the
-pgvector `<=>` operator; the tests use an in-Python fallback on SQLite. Scores
-from the deterministic `fake` embedder are not comparable to OpenAI scores; they
-only need to rank shared-term chunks higher.
+Search supports three retrieval modes through `--mode`:
+
+- `vector`: semantic similarity over embeddings (pgvector `<=>` on PostgreSQL).
+- `lexical`: keyword search (PostgreSQL full-text search).
+- `hybrid` (default): Reciprocal Rank Fusion of the vector and lexical rankings.
+
+```sh
+uv run python -m vetsupport search --pet-id 30000000-0000-0000-0000-000000000001 --embedder fake --mode lexical "rabies vaccine"
+uv run python -m vetsupport search --pet-id 30000000-0000-0000-0000-000000000001 --embedder fake --mode vector "vaccination history"
+```
+
+On PostgreSQL the vector ranking uses the pgvector `<=>` operator and the lexical
+ranking uses full-text search; the tests use in-Python fallbacks on SQLite.
+Scores from the deterministic `fake` embedder are not comparable to OpenAI
+scores, and scores are only comparable within the same mode.
 
 ## 11. Show a Pet Timeline
 
@@ -295,7 +307,7 @@ uv run ruff check .
 Expected result:
 
 ```text
-13 passed
+16 passed
 All checks passed!
 ```
 
