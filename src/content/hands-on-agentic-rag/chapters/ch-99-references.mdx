@@ -1,0 +1,54 @@
+---
+title: "References"
+description: "Official documentation and security resources the Hands-on Agentic RAG series relies on."
+module: 7
+order: 99
+---
+
+This series builds on official documentation and security guidance. The links below are the primary sources for the tools and practices used in VetSupport. Always check the version-specific pages before relying on API details, because these libraries evolve.
+
+## Retrieval and databases
+
+- [pgvector](https://github.com/pgvector/pgvector)
+- [PostgreSQL full-text search](https://www.postgresql.org/docs/current/textsearch.html)
+- [PostgreSQL indexes](https://www.postgresql.org/docs/current/indexes.html)
+- [SQLAlchemy 2.0](https://docs.sqlalchemy.org/en/20/)
+- [SQLAlchemy ORM](https://docs.sqlalchemy.org/en/20/orm/)
+- [SQLAlchemy session basics](https://docs.sqlalchemy.org/en/20/orm/session_basics.html)
+
+## Models and structured outputs
+
+- [OpenAI API docs](https://developers.openai.com/api/docs)
+- [OpenAI embeddings](https://developers.openai.com/api/docs/guides/embeddings)
+- [OpenAI structured outputs](https://developers.openai.com/api/docs/guides/structured-outputs)
+- [OpenAI function calling](https://developers.openai.com/api/docs/guides/function-calling)
+- [OpenAI evals](https://developers.openai.com/api/docs/guides/evals)
+
+## Validation
+
+- [Pydantic](https://docs.pydantic.dev/latest/)
+- [Pydantic types](https://docs.pydantic.dev/latest/concepts/types/)
+- [Pydantic settings](https://docs.pydantic.dev/latest/concepts/pydantic_settings/)
+
+## Orchestration
+
+- [LangGraph overview](https://docs.langchain.com/oss/python/langgraph/overview)
+- [LangGraph graph API](https://docs.langchain.com/oss/python/langgraph/graph-api)
+- [LangGraph persistence](https://docs.langchain.com/oss/python/langgraph/persistence)
+- [LangGraph agentic RAG tutorial](https://docs.langchain.com/oss/python/langgraph/agentic-rag)
+
+## Observability
+
+- [OpenTelemetry docs](https://opentelemetry.io/docs/)
+- [OpenTelemetry Python](https://opentelemetry.io/docs/languages/python/)
+- [OpenTelemetry Python instrumentation](https://opentelemetry.io/docs/languages/python/instrumentation/)
+
+## Security and prompt injection
+
+- [OWASP LLM Prompt Injection Prevention Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/LLM_Prompt_Injection_Prevention_Cheat_Sheet.html)
+- [OWASP LLM01 Prompt Injection](https://genai.owasp.org/llmrisk/llm01-prompt-injection/)
+- [OWASP GenAI Security Project](https://genai.owasp.org/)
+
+## The harness
+
+The VetSupport harness referenced throughout the series lives alongside the source for these chapters. Its own README is the practical, runnable companion to the concepts here: it documents every command, its expected output, and how to validate the system end to end against a local PostgreSQL database with pgvector.

@@ -1,0 +1,65 @@
+---
+title: "The Veterinary Pre-Consultation Agent"
+description: "The flagship project: a complete, runnable pre-consultation briefing built from the full VetSupport harness, with timeline, cited evidence, and safety carried through."
+module: 6
+order: 26
+---
+
+This is the project the whole series points at. The pre-consultation agent takes a consultation reason and a pet, and produces a structured briefing the veterinary team reads before the visit. Chapter 17 introduced it; here we build it end to end and connect it back to every capability that makes it trustworthy.
+
+## The full pipeline, one project
+
+A briefing is the composition of the entire harness. Run it from a clean slate:
+
+```sh
+uv run python -m vetsupport seed --scenario basic-clinic
+uv run python -m vetsupport ingest --pet-id <id> samples/luna/
+uv run python -m vetsupport chunk --pet-id <id>
+uv run python -m vetsupport index --pet-id <id> --embedder fake
+uv run python -m vetsupport pre-consultation --pet-id <id> --embedder fake --llm fake --output luna-briefing.md "vaccination history review"
+```
+
+The result is a Markdown briefing with seven sections: main reason, timeline, relevant history, documents used, suggested questions, points to confirm, and warning signs.
+
+## Where each capability shows up
+
+The briefing is a tour of the series:
+
+| Section | Capability | Module |
+|---|---|---|
+| Main reason | Safety assessment of the reason | 4 |
+| Timeline | Structured SQL retrieval | 3 |
+| Relevant history | Hybrid retrieval plus generation | 3, 4 |
+| Documents used | Verified citations | 3 |
+| Suggested questions | Constrained generation | 4 |
+| Warning signs | Safety layer and escalation | 4 |
+
+Nothing in the briefing is new code. It is the agent you built, plus a timeline, arranged for a specific audience and moment.
+
+## Safety is structural, not cosmetic
+
+The briefing never diagnoses or triages clinically. A routine reason produces a calm, organized briefing. An emergency-sounding reason escalates: the warning-signs section leads with an urgent-care message, because the safety layer ran on the consultation reason. Injected text in a record is flagged. Citations are verified. The disclaimers travel with the document. The briefing is exactly as safe as the agent, because it *is* the agent.
+
+## Designed to be used
+
+A briefing only helps if it fits a real workflow. Markdown output drops into a record, a calendar event, or a printout. The seven-section shape is scannable in under a minute. The questions are prompts for the veterinarian, not instructions. The format is part of the value: a perfect briefing no one can fit into their day is a failed briefing.
+
+## Read it as the veterinarian
+
+The test of this project is not whether it runs; it is whether it helps. Read the briefing as the person walking into the consultation. Does it tell you why the visit is happening, what the history says, where to look, and what to confirm, without telling you what to conclude? If it does, the agent has done its job: it organized the evidence so a professional can do theirs.
+
+## Checklist
+
+- The briefing is built from the full harness, not new logic.
+- Each section maps to a capability from earlier modules.
+- Safety, escalation, injection flagging, and citation verification carry through.
+- The output is portable Markdown shaped for real clinic workflows.
+- The briefing organizes evidence and never makes clinical decisions.
+
+## Exercise
+
+Produce two briefings for the same pet with different consultation reasons, one routine and one urgent, and compare how the safety framing changes. Then give the routine briefing to someone unfamiliar with the data and ask whether it would help them prepare. Refine the reason and evidence until the answer is clearly yes.
+
+---
+
+**Next up**: [Ch 27 - The Veterinary Education Agent](/hands-on-agentic-rag/ch-27-veterinary-education-agent/) answers general questions from trusted sources without personalizing.

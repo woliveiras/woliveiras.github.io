@@ -1,0 +1,73 @@
+---
+title: "The Veterinary History Agent"
+description: "A complete project: turn a pet's documents and events into an organized, cited history a veterinary team can use, built end to end from the VetSupport harness."
+module: 6
+order: 25
+---
+
+Module 6 assembles the pieces into complete projects. The first is the veterinary history agent: given a pet, organize its exams, vaccines, medications, weights, and clinical events into a coherent, cited history. This is the foundation the other projects build on, and it exercises the whole pipeline you have built.
+
+## What the history agent produces
+
+The goal is a veterinary summary a team can read quickly: a timeline, the relevant history with citations, and clear gaps. Everything is evidence and provenance; nothing is a diagnosis.
+
+```text
+Veterinary summary
+Timeline
+Relevant exams and records
+Vaccines
+Weight evolution
+Points of attention
+Questions for the veterinarian
+```
+
+## Build it end to end
+
+Every capability you need already exists as a harness command. The history agent is their composition.
+
+```sh
+# 1. Seed a clinic
+uv run python -m vetsupport seed --scenario basic-clinic
+
+# 2. Bring in the pet's documents
+uv run python -m vetsupport ingest --pet-id <id> samples/luna/
+
+# 3. Chunk and index for retrieval
+uv run python -m vetsupport chunk --pet-id <id>
+uv run python -m vetsupport index --pet-id <id> --embedder fake
+
+# 4. The structured backbone: a dated timeline
+uv run python -m vetsupport timeline --pet-id <id>
+
+# 5. The cited narrative: ask about the history
+uv run python -m vetsupport ask --pet-id <id> --embedder fake --llm fake "summarize Luna's vaccination and weight history"
+```
+
+The timeline is exact structured retrieval. The answer is cited, verified, evidence. Together they are the history agent.
+
+## Structure plus narrative
+
+The history agent works because it combines the two retrieval styles from Module 3. The timeline comes from SQL over dated events, so it is complete and ordered. The narrative comes from hybrid search over documents, so it reads naturally and cites its sources. Neither alone is the history: a timeline without narrative is a bare list, and a narrative without a timeline loses the sequence. The agent presents both.
+
+## Gaps are part of the history
+
+A good history names what is missing. If there is no recent weight, or a vaccine has no follow-up record, that absence is information the veterinary team needs. Because retrieval honestly returns "no evidence found" rather than inventing it, the agent can surface gaps instead of papering over them. "No vaccination record after 2025-03-15" is a useful line in a history, and an honest one.
+
+## Safety carries through
+
+The history agent inherits every guardrail. It never concludes that a pet is healthy or sick; it organizes what the records say and frames the rest as questions for the veterinarian. An emergency-sounding query still escalates. Citations are still verified. The history is a tool for a professional, not a substitute for one.
+
+## Checklist
+
+- The history combines a structured timeline with a cited narrative.
+- Every claim in the narrative is verified against real evidence.
+- Gaps and missing records are surfaced, not hidden.
+- The output is evidence and questions, never a clinical conclusion.
+
+## Exercise
+
+Build a full history for one pet using the commands above, then read it as a veterinarian would. Identify one gap the agent surfaced and one claim you could trace to its source document. Note what you would add to make the history more useful, and keep it for the pre-consultation project, which builds directly on this one.
+
+---
+
+**Next up**: [Ch 26 - The Veterinary Pre-Consultation Agent](/hands-on-agentic-rag/ch-26-veterinary-pre-consultation-agent/) turns the history into a briefing for a specific visit.
