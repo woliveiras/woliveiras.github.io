@@ -50,19 +50,18 @@ Conceptual posts should include:
 
 ## Blog and MDX Rules
 
-When producing final blog posts:
+When producing final series chapters:
 
-- New posts belong in `src/content/blog/*.mdx`.
-- Use valid YAML frontmatter.
-- Use ISO dates in `YYYY-MM-DD`.
-- Set `published: true` only when the post is intended to be published.
-- Use 3-7 tags, preferring existing tags such as `llm`, `ai-engineering`, `ai-agents`, `rag`, `python`, `architecture`, `security`, `privacy`, and `automation`.
+- Series chapters live in `src/content/hands-on-agentic-rag/chapters/*.mdx` as the `agenticRagSeries` content collection, routed at `/hands-on-agentic-rag/`. They are not in the `blog` collection. Standalone, non-series posts still belong in `src/content/blog/*.mdx`.
+- Chapter frontmatter uses `title`, `description`, `module` (number), and `order` (number). It does not use the blog frontmatter (`pubDate`, `published`, `tags`).
 - Do not add a duplicate H1 in the body because the layout renders the title from frontmatter.
+- Do not use Markdown autolinks like `<https://example.com>` in MDX; they parse as JSX and break the build. Use `[label](url)` instead.
 - Use `##` for main sections and `###` for subsections.
 - Always set a language on code fences.
 - Prefer official documentation links in references.
 - Include `## References` when a post depends on external tools, papers, or docs.
 - Include `## Conclusion` for long posts.
+- End each chapter with a "Next up" link to the following chapter.
 
 ## Quality Checklist
 
