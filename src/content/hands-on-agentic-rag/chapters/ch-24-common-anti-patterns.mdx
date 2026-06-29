@@ -1,0 +1,90 @@
+---
+title: "Common Anti-Patterns"
+description: "A field guide to the RAG mistakes this series has been steering you away from, each paired with the practice that replaces it."
+module: 5
+order: 24
+---
+
+This chapter is a checkpoint. Every previous chapter argued for a practice; here we name the mistakes those practices replace. Anti-patterns are worth naming because they are attractive: each one is the easy path that works in a demo and fails in production. Recognizing them by name makes them easier to refuse.
+
+## "Just put it in a vector database"
+
+The belief that every information need is a vector-search problem. It produces systems that answer passage questions adequately and fail silently on dates, counts, relations, and exact terms.
+
+**Instead:** treat RAG as an architecture for knowledge access. Route each question to the source that fits it: vector, keyword, SQL, graph, or a curated source.
+
+## Retrieval without provenance
+
+Storing chunks without their source, date, and owner. The system can retrieve text but cannot cite it, date it, or decide who may see it.
+
+**Instead:** carry metadata and provenance from ingestion through to the citation. Every fact knows where it came from.
+
+## Safety in the prompt only
+
+Telling the model "never diagnose" and trusting it. Prompts are probabilistic; a clever phrasing or an injected document can push the model across the line.
+
+**Instead:** enforce safety in deterministic code, before and after the model. Assess, constrain, verify, and disclaim.
+
+## Trusting retrieved content
+
+Treating document text as instructions. An injected note becomes a command, and the agent can be hijacked.
+
+**Instead:** treat every document as untrusted data. Scan for injection, flag it, and never follow embedded instructions.
+
+## Letting the model decide access
+
+Asking the model to respect permissions. A persuasive prompt can widen access the model was trusted to limit.
+
+**Instead:** enforce access in the retrieval layer, in code, before ranking. The model only ever sees what it was already allowed to see.
+
+## Citations without verification
+
+Letting the model cite freely and trusting the markers. A model can invent `[7]` for evidence that does not exist.
+
+**Instead:** verify citations against real evidence after generation, and keep only the ones that point to something real.
+
+## Context bloat
+
+Stuffing every matching chunk into the context. It raises cost and latency and buries the one fact that mattered.
+
+**Instead:** keep context small, relevant, ordered, and cited. Retrieve broadly, rerank to a few, send only those.
+
+## Non-deterministic pipelines
+
+Chunking, indexing, or seeding that produces different results each run. The index becomes impossible to reason about and bugs become unreproducible.
+
+**Instead:** make ingestion, chunking, and indexing deterministic and idempotent, with stable IDs.
+
+## Evaluating only the final answer
+
+Measuring the answer and never the retrieval. When something breaks, you cannot tell whether retrieval missed the evidence or generation misused it.
+
+**Instead:** evaluate retrieval and answer quality separately, with reproducible datasets, and measure safety as its own dimension.
+
+## Logging raw content
+
+Capturing prompts and document text in traces. Telemetry becomes a second, leakier copy of private data.
+
+**Instead:** capture metadata, IDs, counts, and decisions, never raw record content.
+
+## Over-engineering early
+
+Reaching for an approximate index, a graph database, or a model-based router before the data justifies it. Complexity arrives before the problem it solves.
+
+**Instead:** start simple and correct, measure, and add complexity only when evaluation shows the simpler approach failing.
+
+## Checklist
+
+- RAG routes to the right source, not only to vectors.
+- Provenance, safety, access, and citation verification are enforced in code.
+- Pipelines are deterministic; context is small; telemetry is metadata-only.
+- Evaluation covers retrieval, answer, and safety separately.
+- Complexity is added only when measurements justify it.
+
+## Exercise
+
+Audit your own design against this list. For each anti-pattern, decide whether your system avoids it and how you would prove it. Turn any gap into a task or an evaluation case. This checklist is the condensed argument of the entire series.
+
+---
+
+**Next up**: [Ch 25 - The Veterinary History Agent](/hands-on-agentic-rag/ch-25-veterinary-history-agent/) begins Module 6 by assembling a complete practical project.

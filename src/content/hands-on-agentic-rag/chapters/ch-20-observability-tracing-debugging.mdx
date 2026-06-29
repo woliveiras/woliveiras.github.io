@@ -1,0 +1,66 @@
+---
+title: "Observability, Tracing, and Debugging"
+description: "Traces and structured logs explain what the agent did, not just whether it answered. Capture decisions and IDs, never raw document text."
+module: 5
+order: 20
+---
+
+An agent can return a perfectly formatted answer that is wrong, and a metric dashboard will show it as a success: HTTP 200, low latency, no error. Traditional monitoring measures whether the service is healthy. Agent observability measures whether the agent *did the right thing*. This chapter makes VetSupport's behavior visible.
+
+## Trace the decisions, not just the request
+
+The unit of observability for an agent is the run, decomposed into the decisions it made. VetSupport instruments each agent node as a span under a single run, so a trace reads as the agent's reasoning path:
+
+```sh
+uv run python -m vetsupport ask --pet-id <id> --embedder fake --llm fake --trace "what vaccines has Luna received?" 2>trace.log
+```
+
+```text
+vetsupport.ask
+  classify_intent
+  retrieve
+  generate
+  verify
+```
+
+Each span carries attributes that matter for debugging: the intent, the retrieval mode, the evidence count, the number of flagged chunks, and the citation count. A trace turns "the agent answered" into a step-by-step account you can read.
+
+## Structured logs for searchable events
+
+Some things are easier to search than to visualize: a run's summary, an ingestion failure, an evaluation result. VetSupport emits a structured log line per answer with the fields that matter:
+
+```text
+{"event": "agent_answer", "intent": "vaccine_history", "retrieval_mode": "lexical", "evidence_count": 4, "citations": 4, "escalate": false, "flagged_evidence": 0, "pet_id": "..."}
+```
+
+Structured logs are greppable and aggregatable. "How often did the agent escalate this week?" and "which intents produce zero citations?" are one query away.
+
+## The rule: metadata over content
+
+The most important observability decision in a sensitive domain is what *not* to capture. VetSupport records IDs, counts, scores, intents, and decisions, never raw document text. A vaccination record's content does not belong in a trace, because telemetry tends to be replicated, retained, and widely accessible, and a trace full of clinical text becomes a second, leakier copy of private data.
+
+Capturing metadata instead of content keeps telemetry useful and safe at the same time. You can debug the agent's behavior without exposing a single tutor's records.
+
+## Observability is off by default
+
+Instrumentation that always runs is instrumentation that always costs. VetSupport's tracing is a no-op until enabled per run with `--trace`, at which point spans and logs go to stderr while the answer stays on stdout. This keeps the default path cheap and clean, and makes the debugging path explicit when you need it. In production, the same on/off discipline applies through sampling: trace enough to debug, not so much that telemetry becomes the dominant cost.
+
+## Debugging with traces
+
+When an answer is wrong, the trace narrows the search instantly. Wrong intent? The classify span shows it. No evidence? The retrieve span's count is zero. A hallucinated citation? The verify span dropped it. Each failure has a span that exposes it, so debugging becomes reading rather than guessing. This is the practical payoff of modeling decisions as nodes back in Module 4.
+
+## Checklist
+
+- Each agent decision is a span under a single run.
+- Spans carry IDs, counts, intents, and decisions.
+- Structured logs make run summaries searchable.
+- Telemetry captures metadata, never raw document content.
+- Instrumentation is off by default and sampled in production.
+
+## Exercise
+
+Trace two answers, one that succeeds and one you deliberately break by asking about a pet with no indexed documents. Compare the traces and identify the exact span where the broken run diverges. Then confirm that no raw record text appears anywhere in the trace or logs.
+
+---
+
+**Next up**: [Ch 21 - Privacy, Consent, and Governance](/hands-on-agentic-rag/ch-21-privacy-consent-governance/) makes data protection part of the retrieval layer.

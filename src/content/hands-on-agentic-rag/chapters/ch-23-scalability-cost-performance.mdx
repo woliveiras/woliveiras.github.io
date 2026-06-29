@@ -1,0 +1,67 @@
+---
+title: "Scalability, Cost, and Performance"
+description: "RAG costs add up: embeddings, model calls, index size, and latency. Control them with idempotent indexing, the right index type, caching, and small context."
+module: 5
+order: 23
+---
+
+A demo with one clinic and a few documents is cheap and fast. A real deployment with many clinics, thousands of pets, and growing histories is neither, unless you design for it. This chapter covers the cost and performance levers in an Agentic RAG system and the trade-offs each one carries.
+
+## Where the cost goes
+
+Four places dominate the bill and the latency:
+
+| Source | Cost driver | Lever |
+|---|---|---|
+| Embeddings | One call per chunk indexed | Index only new chunks; batch |
+| Model calls | Tokens in and out per answer | Small context; cheaper models where possible |
+| Index | Memory and query time as vectors grow | The right index type |
+| Latency | Each agent step adds time | Skip retrieval when not needed |
+
+Understanding which lever applies to which cost is half the work. The other half is not pulling a lever prematurely.
+
+## Idempotent indexing avoids repeated cost
+
+Embedding is the recurring cost of ingestion, and the cheapest embedding is the one you do not repeat. VetSupport's `index` command embeds only chunks that are not indexed yet, so re-running it costs nothing for existing data:
+
+```text
+Chunks: 4
+Inserted: 0
+Skipped: 4
+```
+
+Idempotency, the property emphasized since Module 1, is a cost control. It means re-syncs, retries, and restarts do not re-embed work already done. Reducing embedding dimensions, as VetSupport does, also lowers storage and query cost while keeping quality acceptable for the domain.
+
+## Index type is a deliberate trade-off
+
+For a small local demo, exact search over vectors is simple and correct. As the corpus grows, exact search gets slow, and approximate indexes like HNSW or IVFFlat trade a little recall for large gains in query speed and memory.
+
+The guidance from the pgvector resource is to not over-optimize early. Start with correctness, citations, and evaluation. Add an approximate index when the dataset is large enough that exact search hurts, and measure the recall you trade away against your evaluation set. An index that is fast but misses the right document is a regression hiding as an optimization.
+
+## Small context is cheap context
+
+The largest controllable model cost is context size. Every extra chunk in the context is tokens you pay for on every answer, and beyond a point it lowers quality too. The context discipline from Module 3, small, relevant, ordered, cited, is also the main cost control on generation. Retrieve broadly, rerank to a few, and send only those. You pay less and answer better.
+
+## Skip work the agent does not need
+
+The agentic structure is itself a performance lever. An emergency question should escalate without an expensive retrieval and generation pass. A general question may not need a per-pet document search at all. Because the agent decides whether to retrieve, it can avoid spending tokens on questions that do not need evidence. The cheapest retrieval is the one the router decides not to run.
+
+## Caching and reuse
+
+Repeated work is wasted money. Identical queries, stable embeddings, and unchanged documents are all candidates for caching. Embeddings, in particular, are deterministic for a given model and text, so they never need recomputing once stored. Designing the system so derived artifacts are stored and reused, rather than recomputed per request, keeps cost flat as traffic grows.
+
+## Checklist
+
+- Indexing is idempotent, so embedding cost is paid once.
+- Index type matches corpus size, with recall measured against evaluation.
+- Context stays small to control the dominant model cost.
+- The agent skips retrieval and generation when a question does not need them.
+- Deterministic artifacts like embeddings are stored and reused, not recomputed.
+
+## Exercise
+
+Re-run indexing on already-indexed data and confirm zero new embeddings. Then reason about your own scale: at how many vectors would exact search become a problem, and what evaluation would you run before switching to an approximate index? Write down the recall you would be willing to trade for speed.
+
+---
+
+**Next up**: [Ch 24 - Common Anti-Patterns](/hands-on-agentic-rag/ch-24-common-anti-patterns/) collects the mistakes this series has been steering you away from.
