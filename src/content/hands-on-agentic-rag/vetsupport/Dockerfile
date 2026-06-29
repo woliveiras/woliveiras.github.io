@@ -4,6 +4,7 @@ WORKDIR /app
 
 COPY pyproject.toml uv.lock README.md ./
 COPY src ./src
+COPY samples ./samples
 
 RUN uv sync --frozen --no-dev
 

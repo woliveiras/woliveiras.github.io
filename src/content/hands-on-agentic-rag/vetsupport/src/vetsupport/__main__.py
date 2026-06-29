@@ -1,6 +1,10 @@
+from pathlib import Path
+from typing import Annotated
+
 import typer
 
 from vetsupport.db import session_scope
+from vetsupport.ingest import ingest_documents
 from vetsupport.queries import get_pet_details, get_pet_timeline, list_pets
 from vetsupport.seed import seed_basic_clinic
 
@@ -27,6 +31,25 @@ def seed(scenario: str = typer.Option("basic-clinic", help="Seed scenario to loa
 	typer.echo(f"Pets: {summary.pets}")
 	typer.echo(f"Documents: {summary.documents}")
 	typer.echo(f"Events: {summary.events}")
+
+
+@app.command("ingest")
+def ingest_command(
+	path: Annotated[Path, typer.Argument(help="File or directory containing documents to ingest.")],
+	pet_id: Annotated[str, typer.Option(help="Pet ID that owns the documents.")],
+) -> None:
+	"""Ingest local Markdown or text documents with frontmatter metadata."""
+	try:
+		with session_scope() as session:
+			summary = ingest_documents(session, pet_id=pet_id, path=path)
+	except ValueError as error:
+		typer.echo(str(error))
+		raise typer.Exit(code=1) from error
+
+	typer.echo(f"Ingested documents for pet {summary.pet_id}")
+	typer.echo(f"Files: {summary.files}")
+	typer.echo(f"Inserted: {summary.inserted}")
+	typer.echo(f"Skipped: {summary.skipped}")
 
 
 @app.command("list-pets")

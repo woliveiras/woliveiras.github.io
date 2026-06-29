@@ -86,7 +86,53 @@ Documents: 2
 Events: 2
 ```
 
-## 6. Show a Pet Timeline
+## 6. Ingest Local Documents
+
+Sample documents live under `samples/` and use frontmatter for metadata:
+
+```md
+---
+title: Luna Dental Follow-up
+document_type: consultation_note
+source: clinic_note
+document_date: 2026-02-14
+---
+
+Luna returned for a dental follow-up...
+```
+
+Ingest Luna's sample documents:
+
+```sh
+uv run python -m vetsupport ingest --pet-id 30000000-0000-0000-0000-000000000001 samples/luna/
+```
+
+Expected output:
+
+```text
+Ingested documents for pet 30000000-0000-0000-0000-000000000001
+Files: 2
+Inserted: 2
+Skipped: 0
+```
+
+Re-running the same command is safe. The documents are skipped because their IDs are deterministic:
+
+```text
+Ingested documents for pet 30000000-0000-0000-0000-000000000001
+Files: 2
+Inserted: 0
+Skipped: 2
+```
+
+You can ingest the other sample folders too:
+
+```sh
+uv run python -m vetsupport ingest --pet-id 30000000-0000-0000-0000-000000000002 samples/bento/
+uv run python -m vetsupport ingest --pet-id 30000000-0000-0000-0000-000000000003 samples/kassandra/
+```
+
+## 7. Show a Pet Timeline
 
 ```sh
 uv run python -m vetsupport timeline --pet-id 30000000-0000-0000-0000-000000000001
@@ -108,9 +154,15 @@ Timeline for Luna (30000000-0000-0000-0000-000000000001)
 - 2026-01-10 [event:weight_record] Weight Record
   Source: clinic_record
   Weight recorded at 4.4kg.
+- 2026-02-14 [document:consultation_note] Luna Dental Follow-up
+  Source: clinic_note
+  Luna returned for a dental follow-up. The clinic team recorded that the tutor should discuss ongoing dental care with the veterinarian.
+- 2026-02-20 [document:tutor_note] Luna Appetite Note
+  Source: owner_note
+  Ana reported that Luna had a reduced appetite for one evening and returned to normal eating the next morning. No diagnosis is recorded in this note.
 ```
 
-## 7. Run Checks
+## 8. Run Checks
 
 ```sh
 uv run pytest
@@ -120,11 +172,11 @@ uv run ruff check .
 Expected result:
 
 ```text
-2 passed
+5 passed
 All checks passed!
 ```
 
-## 8. Validate the Docker Harness
+## 9. Validate the Docker Harness
 
 Build the harness image after changing Python code:
 
@@ -139,12 +191,13 @@ docker compose run --rm harness seed --scenario basic-clinic
 You can run the same inspection commands through Docker:
 
 ```sh
+docker compose run --rm harness ingest --pet-id 30000000-0000-0000-0000-000000000001 samples/luna/
 docker compose run --rm harness list-pets
 docker compose run --rm harness show-pet --pet-id 30000000-0000-0000-0000-000000000001
 docker compose run --rm harness timeline --pet-id 30000000-0000-0000-0000-000000000001
 ```
 
-## 9. Stop the Database
+## 10. Stop the Database
 
 ```sh
 docker compose down

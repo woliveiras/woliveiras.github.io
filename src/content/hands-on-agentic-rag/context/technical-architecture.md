@@ -43,11 +43,13 @@ VetSupport should include:
 - Database schema.
 - Seed data for clinics, tutors, pets, documents, and events.
 - Harness commands for reset and seed operations.
-- Harness commands for document ingestion.
+- Harness commands for document ingestion from local `.md` and `.txt` files.
 - Harness commands for retrieval.
 - Harness commands for agent execution.
 - Harness commands for evaluation.
 - Markdown or text outputs for consultation briefings.
+
+Document ingestion should use frontmatter metadata for `title`, `document_type`, `source`, and `document_date`. The body after the frontmatter becomes the raw document text stored for later chunking and retrieval.
 
 ## Retrieval Architecture
 
@@ -113,4 +115,3 @@ Response with citations and uncertainty
 - Observability is required to debug RAG systems systematically.
 - Prompt injection in documents is a real threat.
 - Privacy and access control must be part of the retrieval layer.
-
