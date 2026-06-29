@@ -239,6 +239,12 @@ def ask_command(
 	for disclaimer in answer.disclaimers:
 		typer.echo(f"- {disclaimer}")
 
+	if answer.flagged_evidence:
+		typer.echo("")
+		typer.echo("Flagged evidence (treated as untrusted, not followed)")
+		for chunk_id in answer.flagged_evidence:
+			typer.echo(f"- {chunk_id}")
+
 	typer.echo("")
 	typer.echo("Citations")
 	if not answer.citations:

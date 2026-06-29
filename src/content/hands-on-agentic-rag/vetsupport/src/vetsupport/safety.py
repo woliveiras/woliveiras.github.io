@@ -55,6 +55,23 @@ _MEDICATION_PATTERNS = (
 	r"change (the |his |her |its )?(medication|medicine|dose|dosage)",
 )
 
+# Patterns that suggest a document is trying to hijack the agent. Retrieved text
+# is data, not instructions; these are flagged so the agent never follows them.
+_INJECTION_PATTERNS = (
+	r"ignore (all |the )?previous",
+	r"ignore (all |the )?above",
+	r"disregard (all |the |previous |above )",
+	r"forget (all |the )?(previous|above|earlier)",
+	r"you are now",
+	r"act as",
+	r"reveal (the |your )?(system )?prompt",
+	r"system prompt",
+	r"override (the |your )?(rules|instructions|safety)",
+	r"send (all |the )?.*(data|records|information)",
+	r"exfiltrate",
+	r"forward .* to .*(http|@)",
+)
+
 
 class SafetyLevel(StrEnum):
 	ok = "ok"
@@ -107,6 +124,20 @@ def assess_query(query: str) -> SafetyAssessment:
 		reasons=reasons,
 		disclaimers=disclaimers,
 	)
+
+
+def detect_injection(text: str) -> list[str]:
+	"""Return reasons a piece of retrieved text looks like a prompt injection.
+
+	Retrieved document text is data, not instructions. Detected matches are used
+	to flag evidence so the agent and reader know not to trust embedded commands.
+	"""
+	lowered = text.lower()
+	reasons: list[str] = []
+	for pattern in _INJECTION_PATTERNS:
+		if re.search(pattern, lowered):
+			reasons.append(f"Matched suspicious instruction pattern: {pattern}")
+	return reasons
 
 
 def _matches(text: str, patterns: tuple[str, ...]) -> bool:

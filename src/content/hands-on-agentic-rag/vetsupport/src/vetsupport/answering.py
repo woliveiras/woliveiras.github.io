@@ -34,6 +34,13 @@ class AgentAnswer(BaseModel):
 	uncertainty: str
 	disclaimers: list[str]
 	citations: list[Citation]
+	flagged_evidence: list[str]
+
+
+_INJECTION_DISCLAIMER = (
+	"Some retrieved text contains embedded instructions. VetSupport treats "
+	"document text as untrusted content and does not follow those instructions."
+)
 
 
 def answer_question(
@@ -59,6 +66,11 @@ def answer_question(
 	draft = state["draft"]
 	cited_markers = state.get("citations", [])
 	citations = _build_citations(cited_markers, evidence)
+	flagged_evidence = state.get("flagged_chunk_ids", [])
+
+	disclaimers = list(safety.disclaimers)
+	if flagged_evidence:
+		disclaimers.append(_INJECTION_DISCLAIMER)
 
 	log_event(
 		"agent_answer",
@@ -69,6 +81,7 @@ def answer_question(
 		escalate=safety.escalate,
 		evidence_count=len(evidence),
 		citations=len(citations),
+		flagged_evidence=len(flagged_evidence),
 	)
 
 	return AgentAnswer(
@@ -82,8 +95,9 @@ def answer_question(
 		summary=draft.summary,
 		questions_for_vet=draft.questions_for_vet,
 		uncertainty=draft.uncertainty,
-		disclaimers=safety.disclaimers,
+		disclaimers=disclaimers,
 		citations=citations,
+		flagged_evidence=flagged_evidence,
 	)
 
 

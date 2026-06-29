@@ -71,6 +71,7 @@ The harness also implements a first answer flow behind the `ask` command:
 - The `pre-consultation` command (`briefing.py`) reuses the agent to gather cited evidence, adds the pet timeline, and assembles a structured Markdown briefing with suggested questions, points to confirm, and warning signs. It organizes information and never diagnoses or triages clinically.
 - The `eval` command (`evaluation.py`) measures retrieval quality (hit rate and MRR over labeled queries) separately from safety classification accuracy. It builds a fresh, deterministic in-memory database from the seed data and defaults to the offline embedder, so evaluation is reproducible without external calls.
 - Observability (`telemetry.py`) wraps each agent node in an OpenTelemetry span and emits a structured `agent_answer` log. It is off by default (a no-op with no cost) and is enabled per run with `ask --trace`, which writes spans and logs to stderr while keeping command output on stdout. Traces carry IDs, counts, intent, retrieval mode, and the safety decision, not raw document text.
+- Prompt injection defense (`safety.detect_injection`) scans retrieved evidence for hijack patterns. Flagged chunks are surfaced in the answer with a disclaimer, and the system prompt instructs the model to treat document text as untrusted content. Retrieval always filters by `pet_id`, so one pet's evidence never leaks into another pet's answer.
 
 ## Retrieval Architecture
 

@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from vetsupport.embeddings import Embedder
 from vetsupport.llm import AnswerDraft, EvidenceItem, LLMClient
 from vetsupport.retrieval import search_chunks
-from vetsupport.safety import SafetyAssessment, SafetyLevel, assess_query
+from vetsupport.safety import SafetyAssessment, SafetyLevel, assess_query, detect_injection
 from vetsupport.telemetry import span
 
 _CITATION_RE = re.compile(r"\[(\d+)\]")
@@ -34,6 +34,7 @@ class AgentState(TypedDict, total=False):
 	retrieval_mode: str
 	safety: SafetyAssessment
 	evidence: list[EvidenceItem]
+	flagged_chunk_ids: list[str]
 	draft: AnswerDraft
 	citations: list[int]
 
@@ -100,13 +101,15 @@ def build_agent_graph(session: Session, embedder: Embedder, llm: LLMClient):
 			)
 			for index, result in enumerate(results, start=1)
 		]
+		flagged = [item.chunk_id for item in evidence if detect_injection(item.text)]
 		with span(
 			"retrieve",
 			retrieval_mode=state["retrieval_mode"],
 			evidence_count=len(evidence),
+			flagged_evidence=len(flagged),
 		):
 			pass
-		return {"evidence": evidence}
+		return {"evidence": evidence, "flagged_chunk_ids": flagged}
 
 	def generate(state: AgentState) -> AgentState:
 		evidence = state.get("evidence", [])
