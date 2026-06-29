@@ -1,0 +1,81 @@
+---
+title: "Veterinary Pre-Consultation Agents"
+description: "The main project of the series: turn scattered records into a structured briefing for the veterinary team, with timeline, cited evidence, and questions to confirm."
+module: 4
+order: 17
+---
+
+The pre-consultation agent is the centerpiece of the series. Its job is humble and valuable: before a consultation, turn scattered records into a structured briefing the veterinary team can read in a minute. It does not diagnose or triage clinically. It organizes, cites, and prepares questions, so the consultation starts from evidence instead of a blank page.
+
+This chapter builds the briefing on top of everything from the previous modules.
+
+## What a briefing contains
+
+A useful pre-consultation briefing has a fixed shape:
+
+```text
+1. Main reason
+2. Timeline
+3. Relevant history
+4. Documents used
+5. Suggested questions
+6. Points to confirm
+7. Warning signs
+```
+
+Each section answers a question the veterinary team has before they walk in: why is this visit happening, what is the sequence of events, what does the record say, where did it come from, what should we ask, what must we confirm, and what would make this urgent.
+
+## Reuse, do not reinvent
+
+The briefing does not need a new agent. It reuses the one you already built. VetSupport's pre-consultation command calls the question-answering agent to gather cited evidence for the consultation reason, then adds the structured timeline and assembles the sections.
+
+```sh
+uv run python -m vetsupport pre-consultation --pet-id <id> --embedder fake --llm fake "vaccination history review"
+```
+
+```text
+# Veterinary consultation briefing for Luna
+
+## 2. Timeline
+- 2025-03-15 [document:vaccination_record] Luna vaccination card
+...
+
+## 4. Documents used
+- [1] Luna vaccination card (2025-03-15, source: clinic_record, id: ...)
+```
+
+The relevant-history section is the agent's cited answer. The timeline is structured retrieval. The documents-used section is the verified citations. The briefing is a composition of capabilities, not a new pile of code.
+
+## Evidence, not conclusions
+
+Every section is framed as evidence and questions. "Suggested questions" are prompts for the veterinarian, not recommendations. "Points to confirm" are reminders to check medications, vaccination status, and recent changes, not assertions about them. "Warning signs" describe what would make the case urgent, lifting straight from the safety layer when the consultation reason itself looks like an emergency. Nowhere does the briefing tell the veterinarian what is wrong or what to do.
+
+## Markdown output for real workflows
+
+The briefing renders as Markdown, which slots into the tools a clinic already uses: paste it into a record, attach it to a calendar event, or print it. VetSupport can write it straight to a file:
+
+```sh
+uv run python -m vetsupport pre-consultation --pet-id <id> --output luna-briefing.md "vaccination history review"
+```
+
+A briefing that is easy to read and easy to move is a briefing that gets used. The format is part of the product.
+
+## Safety carries through
+
+Because the briefing reuses the agent, it inherits every guardrail. An emergency consultation reason escalates and pushes an urgent-care warning to the top of the warning-signs section. Injected text in a record is flagged. Citations are verified. The disclaimers travel with the document. The briefing is exactly as safe as the agent that produced it, by construction.
+
+## Checklist
+
+- The briefing follows a fixed, scannable structure.
+- It reuses the question-answering agent rather than duplicating logic.
+- Every section is evidence and questions, never a diagnosis or a plan.
+- It renders as portable Markdown for real clinic workflows.
+- It inherits escalation, injection flagging, and citation verification.
+
+## Exercise
+
+Generate a briefing for a pet with a routine reason, then with an emergency-sounding reason, and compare the warning-signs section and the safety framing. Read the result as if you were the veterinarian: does it help you start the consultation faster without telling you what to conclude? Adjust the reason until the briefing is genuinely useful.
+
+---
+
+**Next up**: [Ch 18 - Internal Agents for Clinics and Teams](/hands-on-agentic-rag/ch-18-internal-agents-for-clinics-and-teams/) adds roles, permissions, and an audit trail.

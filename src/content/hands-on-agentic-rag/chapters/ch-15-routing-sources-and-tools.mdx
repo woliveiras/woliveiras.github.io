@@ -1,0 +1,69 @@
+---
+title: "Routing Sources and Tools"
+description: "An agent should not search every source on every question. Intent classification routes each query to the retriever that fits it, and exposes the decision in traces."
+module: 4
+order: 15
+---
+
+A naive agent runs every retriever on every question and hopes the right answer floats to the top. That is slow, expensive, and imprecise. A good agent decides first: this is a vaccine question, so use keyword search; this is a passage question, so use vector search; this is a date question, so use SQL. Routing is the decision that turns a pile of retrievers into an agent.
+
+This chapter builds the intent router and explains how to keep routing honest.
+
+## Classify, then route
+
+Routing has two steps. First, classify the question into an intent. Second, map the intent to a retriever. VetSupport's classifier inspects the query and the safety assessment, then assigns an intent and a retrieval mode:
+
+| Intent | Retrieval mode | Why |
+|---|---|---|
+| emergency | hybrid | breadth, but the safety layer leads |
+| vaccine_history | lexical | exact terms like a vaccine name |
+| medication_history | lexical | exact drug names |
+| timeline | hybrid | meaning plus terms over dated records |
+| document_question | vector | passage-style questions |
+| general | hybrid | a safe default |
+
+The mapping is a deliberate design surface. It encodes what you learned in Module 3 about which mode wins for which question.
+
+## Routing is observable
+
+A routing decision you cannot see is a routing decision you cannot debug. VetSupport records the intent and the chosen mode in the trace and in the answer itself:
+
+```sh
+uv run python -m vetsupport ask --pet-id <id> "what vaccines has Luna received?"
+```
+
+```text
+Intent: vaccine_history (retrieval: lexical)
+```
+
+When an answer is wrong, the first question is "did the agent route correctly?" Because the route is visible, that question has an immediate answer instead of a guess.
+
+## Deterministic routing first
+
+VetSupport's router is rule based: it looks for signals in the query and picks an intent. Rules are not glamorous, but they are deterministic, testable, and cheap. You can assert that "what vaccines has Luna received?" always routes to vaccine history, and that test never flakes.
+
+A model-based classifier can handle nuance that rules miss, and it has a place as the system grows. But a model in the routing path is another decision that can go wrong, costs latency, and needs its own evaluation. Start with rules, measure where they fail, and add a model only for the cases that justify it.
+
+## Tools are routed too
+
+Routing is not only about retrievers. As an agent gains tools, vector search, lexical search, SQL lookup, timeline lookup, a curated-source lookup, each tool needs a narrow schema and a clear purpose, and the agent must choose among them deliberately. The same principle applies: do not give the model open-ended access to "the database." Give it specific tools that return facts, citations, and uncertainty, and route to them by intent. Narrow tools are easier to reason about and far easier to keep safe.
+
+## Routing and safety interact
+
+Notice that the emergency intent exists in the router, but the real work for an emergency is done by the safety layer, not by retrieval. Routing and safety are complementary: routing decides where to look, safety decides whether looking is even the right response. A "my pet is not breathing" question should escalate to urgent care, not return a tidy list of past vaccines. The next chapter makes that safety layer explicit.
+
+## Checklist
+
+- Each question is classified into an intent before retrieval.
+- Intents map deliberately to the retriever that fits them.
+- The routing decision is visible in traces and the answer.
+- Routing starts deterministic; a model classifier is added only where needed.
+- Tools have narrow schemas and are chosen by intent, not given open access.
+
+## Exercise
+
+Ask VetSupport several questions of different kinds and record the intent and retrieval mode each one receives. Find a question that you think is misrouted, and decide whether the fix belongs in the rules or signals a case for a model classifier. You are now tuning the agent's most consequential decision.
+
+---
+
+**Next up**: [Ch 16 - Safety Layers and Guardrails](/hands-on-agentic-rag/ch-16-safety-layers-and-guardrails/) makes the safety boundary a structural part of the agent.
