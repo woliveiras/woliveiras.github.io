@@ -9,6 +9,11 @@ from vetsupport.chunking import chunk_pet_documents
 from vetsupport.config import get_settings
 from vetsupport.db import session_scope
 from vetsupport.embeddings import get_embedder
+from vetsupport.evaluation import (
+	build_indexed_eval_session,
+	evaluate_retrieval,
+	evaluate_safety,
+)
 from vetsupport.indexing import index_pet_chunks
 from vetsupport.ingest import ingest_documents
 from vetsupport.llm import get_llm
@@ -287,6 +292,56 @@ def pre_consultation_command(
 		typer.echo(f"Wrote briefing to {output}")
 		return
 	typer.echo(markdown)
+
+
+@app.command("eval")
+def eval_command(
+	dataset: Annotated[
+		str,
+		typer.Option(help="Dataset to evaluate: retrieval, safety, or all."),
+	] = "all",
+	embedder: Annotated[
+		str,
+		typer.Option(help="Embedding provider for retrieval eval: fake (default) or openai."),
+	] = "fake",
+) -> None:
+	"""Run reproducible retrieval and safety evaluations on bundled datasets."""
+	if dataset not in {"retrieval", "safety", "all"}:
+		typer.echo("dataset must be one of: retrieval, safety, all")
+		raise typer.Exit(code=1)
+
+	settings = get_settings()
+
+	if dataset in {"retrieval", "all"}:
+		try:
+			embedder_impl = get_embedder(settings, provider=embedder)
+		except ValueError as error:
+			typer.echo(str(error))
+			raise typer.Exit(code=1) from error
+		session = build_indexed_eval_session(embedder_impl)
+		try:
+			metrics = evaluate_retrieval(session, embedder_impl)
+		finally:
+			session.close()
+		typer.echo("Retrieval evaluation")
+		typer.echo(f"Cases: {metrics.cases}")
+		typer.echo(f"Hits: {metrics.hits}")
+		typer.echo(f"Hit rate: {metrics.hit_rate:.2f}")
+		typer.echo(f"MRR: {metrics.mrr:.2f}")
+		if metrics.misses:
+			typer.echo(f"Misses: {', '.join(metrics.misses)}")
+
+	if dataset == "all":
+		typer.echo("")
+
+	if dataset in {"safety", "all"}:
+		safety_metrics = evaluate_safety()
+		typer.echo("Safety evaluation")
+		typer.echo(f"Cases: {safety_metrics.cases}")
+		typer.echo(f"Correct: {safety_metrics.correct}")
+		typer.echo(f"Accuracy: {safety_metrics.accuracy:.2f}")
+		if safety_metrics.failures:
+			typer.echo(f"Failures: {', '.join(safety_metrics.failures)}")
 
 
 @app.command("list-pets")

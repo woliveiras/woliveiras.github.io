@@ -402,7 +402,37 @@ Timeline for Luna (30000000-0000-0000-0000-000000000001)
   Ana reported that Luna had a reduced appetite for one evening and returned to normal eating the next morning. No diagnosis is recorded in this note.
 ```
 
-## 14. Run Checks
+## 14. Evaluate Retrieval and Safety
+
+Evaluation measures retrieval quality separately from answer quality. The `eval`
+command builds a fresh, deterministic in-memory database from the seed data,
+then runs two bundled datasets: retrieval (does the expected document appear in
+the top results?) and safety (does the safety layer classify the query
+correctly?). It defaults to the offline `fake` embedder so results are
+reproducible.
+
+```sh
+uv run python -m vetsupport eval --dataset all
+```
+
+Expected output:
+
+```text
+Retrieval evaluation
+Cases: 4
+Hits: 4
+Hit rate: 1.00
+MRR: 1.00
+
+Safety evaluation
+Cases: 5
+Correct: 5
+Accuracy: 1.00
+```
+
+Run a single dataset with `--dataset retrieval` or `--dataset safety`.
+
+## 15. Run Checks
 
 ```sh
 uv run pytest
@@ -412,11 +442,11 @@ uv run ruff check .
 Expected result:
 
 ```text
-33 passed
+36 passed
 All checks passed!
 ```
 
-## 15. Validate the Docker Harness
+## 16. Validate the Docker Harness
 
 Build the harness image after changing Python code:
 
@@ -437,13 +467,14 @@ docker compose run --rm harness index --pet-id 30000000-0000-0000-0000-000000000
 docker compose run --rm harness search --pet-id 30000000-0000-0000-0000-000000000001 --embedder fake "vaccination history"
 docker compose run --rm harness ask --pet-id 30000000-0000-0000-0000-000000000001 --embedder fake --llm fake "what is Luna's vaccination history?"
 docker compose run --rm harness pre-consultation --pet-id 30000000-0000-0000-0000-000000000001 --embedder fake --llm fake "vaccination history review"
+docker compose run --rm harness eval --dataset all
 docker compose run --rm harness show-document --document-id 40000000-0000-0000-0000-000000000001
 docker compose run --rm harness list-pets
 docker compose run --rm harness show-pet --pet-id 30000000-0000-0000-0000-000000000001
 docker compose run --rm harness timeline --pet-id 30000000-0000-0000-0000-000000000001
 ```
 
-## 16. Stop the Database
+## 17. Stop the Database
 
 ```sh
 docker compose down

@@ -69,6 +69,7 @@ The harness also implements a first answer flow behind the `ask` command:
 - An LLM abstraction (`llm.py`) has two providers: an `OpenAILLM` (Responses API) and a deterministic `FakeLLM` that restates retrieved evidence with citations and never calls an external API. The system prompt forbids diagnosis and prescription, treats document text as untrusted content, and requires inline citation markers.
 - The `answer_question` flow (`answering.py`) runs a LangGraph agent (`graph.py`) with explicit nodes: classify intent, route and run retrieval, generate a grounded draft, then verify that citation markers point to real evidence. The intent router chooses the retrieval source (lexical for vaccine and medication questions, vector for document questions, hybrid otherwise). The result is evidence, questions for the veterinarian, uncertainty, disclaimers, and verified citations, never a clinical answer.
 - The `pre-consultation` command (`briefing.py`) reuses the agent to gather cited evidence, adds the pet timeline, and assembles a structured Markdown briefing with suggested questions, points to confirm, and warning signs. It organizes information and never diagnoses or triages clinically.
+- The `eval` command (`evaluation.py`) measures retrieval quality (hit rate and MRR over labeled queries) separately from safety classification accuracy. It builds a fresh, deterministic in-memory database from the seed data and defaults to the offline embedder, so evaluation is reproducible without external calls.
 
 ## Retrieval Architecture
 
