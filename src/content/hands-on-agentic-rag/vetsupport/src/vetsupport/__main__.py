@@ -20,6 +20,7 @@ from vetsupport.llm import get_llm
 from vetsupport.queries import get_document_details, get_pet_details, get_pet_timeline, list_pets
 from vetsupport.retrieval import search_chunks
 from vetsupport.seed import seed_basic_clinic
+from vetsupport.telemetry import configure_telemetry
 
 app = typer.Typer(help="VetSupport local agent harness.")
 
@@ -181,9 +182,14 @@ def ask_command(
 		str | None,
 		typer.Option(help="LLM provider override: openai or fake."),
 	] = None,
+	trace: Annotated[
+		bool,
+		typer.Option(help="Emit OpenTelemetry spans and structured logs to stderr."),
+	] = False,
 ) -> None:
 	"""Answer a question with cited evidence. This never diagnoses or prescribes."""
 	settings = get_settings()
+	configure_telemetry(enabled=trace)
 	try:
 		embedder_impl = get_embedder(settings, provider=embedder)
 		llm_impl = get_llm(settings, provider=llm)

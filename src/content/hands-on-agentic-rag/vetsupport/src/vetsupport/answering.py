@@ -9,6 +9,7 @@ from vetsupport.embeddings import Embedder
 from vetsupport.graph import build_agent_graph
 from vetsupport.llm import EvidenceItem, LLMClient
 from vetsupport.safety import SafetyLevel
+from vetsupport.telemetry import log_event, span
 
 
 class Citation(BaseModel):
@@ -50,13 +51,25 @@ def answer_question(
 	is evidence and questions, never a diagnosis or a prescription.
 	"""
 	agent = build_agent_graph(session, embedder, llm)
-	state = agent.invoke({"query": query, "pet_id": pet_id, "limit": limit})
+	with span("vetsupport.ask", pet_id=pet_id):
+		state = agent.invoke({"query": query, "pet_id": pet_id, "limit": limit})
 
 	safety = state["safety"]
 	evidence: list[EvidenceItem] = state.get("evidence", [])
 	draft = state["draft"]
 	cited_markers = state.get("citations", [])
 	citations = _build_citations(cited_markers, evidence)
+
+	log_event(
+		"agent_answer",
+		pet_id=pet_id,
+		intent=state["intent"],
+		retrieval_mode=state["retrieval_mode"],
+		safety_level=str(safety.level),
+		escalate=safety.escalate,
+		evidence_count=len(evidence),
+		citations=len(citations),
+	)
 
 	return AgentAnswer(
 		query=query,

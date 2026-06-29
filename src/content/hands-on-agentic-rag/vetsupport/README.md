@@ -432,7 +432,26 @@ Accuracy: 1.00
 
 Run a single dataset with `--dataset retrieval` or `--dataset safety`.
 
-## 15. Run Checks
+## 15. Trace an Agent Run
+
+Observability explains what the agent did, not just whether it answered. Pass
+`--trace` to the `ask` command to emit OpenTelemetry spans and a structured log
+line to stderr. Command output stays on stdout, so you can separate them.
+
+```sh
+uv run python -m vetsupport ask --pet-id 30000000-0000-0000-0000-000000000001 --embedder fake --llm fake --trace "what vaccines has Luna received?" 2>trace.log
+```
+
+The trace file shows one span per agent step (`classify_intent`, `retrieve`,
+`generate`, `verify`) under the `vetsupport.ask` run, plus a structured event:
+
+```text
+{"citations": 4, "escalate": false, "event": "agent_answer", "evidence_count": 4, "intent": "vaccine_history", "pet_id": "30000000-0000-0000-0000-000000000001", "retrieval_mode": "lexical", "safety_level": "ok"}
+```
+
+Without `--trace`, instrumentation stays a no-op, so it adds no output or cost.
+
+## 16. Run Checks
 
 ```sh
 uv run pytest
@@ -442,11 +461,11 @@ uv run ruff check .
 Expected result:
 
 ```text
-36 passed
+39 passed
 All checks passed!
 ```
 
-## 16. Validate the Docker Harness
+## 17. Validate the Docker Harness
 
 Build the harness image after changing Python code:
 
@@ -474,7 +493,7 @@ docker compose run --rm harness show-pet --pet-id 30000000-0000-0000-0000-000000
 docker compose run --rm harness timeline --pet-id 30000000-0000-0000-0000-000000000001
 ```
 
-## 17. Stop the Database
+## 18. Stop the Database
 
 ```sh
 docker compose down

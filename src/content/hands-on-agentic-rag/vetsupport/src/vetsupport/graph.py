@@ -10,6 +10,7 @@ from vetsupport.embeddings import Embedder
 from vetsupport.llm import AnswerDraft, EvidenceItem, LLMClient
 from vetsupport.retrieval import search_chunks
 from vetsupport.safety import SafetyAssessment, SafetyLevel, assess_query
+from vetsupport.telemetry import span
 
 _CITATION_RE = re.compile(r"\[(\d+)\]")
 
@@ -55,9 +56,18 @@ def classify_intent(state: AgentState) -> AgentState:
 	else:
 		intent = "general"
 
+	retrieval_mode = _INTENT_ROUTES[intent]
+	with span(
+		"classify_intent",
+		intent=intent,
+		retrieval_mode=retrieval_mode,
+		safety_level=str(safety.level),
+		escalate=safety.escalate,
+	):
+		pass
 	return {
 		"intent": intent,
-		"retrieval_mode": _INTENT_ROUTES[intent],
+		"retrieval_mode": retrieval_mode,
 		"safety": safety,
 	}
 
@@ -90,25 +100,34 @@ def build_agent_graph(session: Session, embedder: Embedder, llm: LLMClient):
 			)
 			for index, result in enumerate(results, start=1)
 		]
+		with span(
+			"retrieve",
+			retrieval_mode=state["retrieval_mode"],
+			evidence_count=len(evidence),
+		):
+			pass
 		return {"evidence": evidence}
 
 	def generate(state: AgentState) -> AgentState:
 		evidence = state.get("evidence", [])
-		if evidence:
-			draft = llm.draft_answer(state["query"], evidence, state["safety"])
-		else:
-			draft = AnswerDraft(
-				summary=(
-					"No indexed documents were found for this pet and query. "
-					"Ingest and index documents before asking again."
-				),
-				questions_for_vet=[],
-				uncertainty="No evidence was available to answer this question.",
-			)
+		with span("generate", evidence_count=len(evidence)):
+			if evidence:
+				draft = llm.draft_answer(state["query"], evidence, state["safety"])
+			else:
+				draft = AnswerDraft(
+					summary=(
+						"No indexed documents were found for this pet and query. "
+						"Ingest and index documents before asking again."
+					),
+					questions_for_vet=[],
+					uncertainty="No evidence was available to answer this question.",
+				)
 		return {"draft": draft}
 
 	def verify(state: AgentState) -> AgentState:
 		markers = verify_citation_markers(state["draft"].summary, state.get("evidence", []))
+		with span("verify", citations=len(markers)):
+			pass
 		return {"citations": markers}
 
 	graph = StateGraph(AgentState)
