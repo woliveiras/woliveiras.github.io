@@ -269,10 +269,12 @@ scores, and scores are only comparable within the same mode.
 
 ## 11. Ask a Question
 
-The `ask` command assesses safety, retrieves evidence, generates a grounded
-answer with citations, and verifies that every citation points to real evidence.
-It returns evidence and questions for the veterinarian. It never diagnoses or
-prescribes.
+The `ask` command runs a small LangGraph agent: it classifies the question into
+an intent, routes retrieval to a source (vaccine and medication questions use
+lexical search, document questions use vector search, everything else uses
+hybrid), generates a grounded answer with citations, and verifies that every
+citation points to real evidence. It returns evidence and questions for the
+veterinarian. It never diagnoses or prescribes.
 
 VetSupport ships two LLM providers, mirroring the embedding providers:
 
@@ -291,6 +293,7 @@ Expected output (deterministic offline answer):
 ```text
 Question: what is Luna's vaccination history?
 Pet: 30000000-0000-0000-0000-000000000001
+Intent: vaccine_history (retrieval: lexical)
 Safety: ok (escalate: false)
 
 Summary

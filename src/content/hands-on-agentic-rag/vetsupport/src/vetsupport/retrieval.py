@@ -139,9 +139,15 @@ def _lexical_candidates(
 	query: str,
 	limit: int,
 ) -> list[SearchResult]:
+	query_tokens = _TOKEN_RE.findall(query.lower())
+	if not query_tokens:
+		return []
+
 	if session.get_bind().dialect.name == "postgresql":
+		# OR the terms so a single missing word does not drop the whole match.
+		# to_tsquery normalizes each token with the english dictionary.
+		tsquery = func.to_tsquery("english", " | ".join(query_tokens))
 		tsvector = func.to_tsvector("english", DocumentChunk.text)
-		tsquery = func.plainto_tsquery("english", query)
 		rank = func.ts_rank(tsvector, tsquery)
 		statement = (
 			select(DocumentChunk, Document, rank.label("rank"))
@@ -156,9 +162,7 @@ def _lexical_candidates(
 			for chunk, document, rank_value in session.execute(statement).all()
 		]
 
-	query_tokens = set(_TOKEN_RE.findall(query.lower()))
-	if not query_tokens:
-		return []
+	query_token_set = set(query_tokens)
 	rows = session.execute(
 		select(DocumentChunk, Document)
 		.join(Document, Document.id == DocumentChunk.document_id)
@@ -169,7 +173,7 @@ def _lexical_candidates(
 		text_tokens = _TOKEN_RE.findall(chunk.text.lower())
 		if not text_tokens:
 			continue
-		matches = sum(1 for token in text_tokens if token in query_tokens)
+		matches = sum(1 for token in text_tokens if token in query_token_set)
 		if matches == 0:
 			continue
 		score = matches / len(text_tokens)

@@ -1,17 +1,14 @@
 from __future__ import annotations
 
-import re
 from datetime import date
 
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from vetsupport.embeddings import Embedder
-from vetsupport.llm import AnswerDraft, EvidenceItem, LLMClient
-from vetsupport.retrieval import search_chunks
-from vetsupport.safety import SafetyLevel, assess_query
-
-_CITATION_RE = re.compile(r"\[(\d+)\]")
+from vetsupport.graph import build_agent_graph
+from vetsupport.llm import EvidenceItem, LLMClient
+from vetsupport.safety import SafetyLevel
 
 
 class Citation(BaseModel):
@@ -26,6 +23,8 @@ class Citation(BaseModel):
 class AgentAnswer(BaseModel):
 	query: str
 	pet_id: str
+	intent: str
+	retrieval_mode: str
 	safety_level: SafetyLevel
 	escalate: bool
 	used_evidence: bool
@@ -46,41 +45,24 @@ def answer_question(
 ) -> AgentAnswer:
 	"""Answer one question about a pet with retrieved evidence and citations.
 
-	The flow is: assess safety, retrieve evidence, generate a grounded draft,
-	then verify citations. The answer is evidence and questions, never a
-	diagnosis or a prescription.
+	The work runs through the VetSupport agent graph: assess safety, route and
+	run retrieval, generate a grounded draft, then verify citations. The answer
+	is evidence and questions, never a diagnosis or a prescription.
 	"""
-	safety = assess_query(query)
-	results = search_chunks(session, pet_id, query, embedder, limit=limit, mode="hybrid")
-	evidence = [
-		EvidenceItem(
-			marker=index,
-			document_id=result.document_id,
-			document_title=result.document_title,
-			chunk_id=result.chunk_id,
-			document_date=result.document_date,
-			source=result.source,
-			text=result.text,
-		)
-		for index, result in enumerate(results, start=1)
-	]
+	agent = build_agent_graph(session, embedder, llm)
+	state = agent.invoke({"query": query, "pet_id": pet_id, "limit": limit})
 
-	if evidence:
-		draft = llm.draft_answer(query, evidence, safety)
-	else:
-		draft = AnswerDraft(
-			summary=(
-				"No indexed documents were found for this pet and query. "
-				"Ingest and index documents before asking again."
-			),
-			questions_for_vet=[],
-			uncertainty="No evidence was available to answer this question.",
-		)
+	safety = state["safety"]
+	evidence: list[EvidenceItem] = state.get("evidence", [])
+	draft = state["draft"]
+	cited_markers = state.get("citations", [])
+	citations = _build_citations(cited_markers, evidence)
 
-	citations = _verify_citations(draft.summary, evidence)
 	return AgentAnswer(
 		query=query,
 		pet_id=pet_id,
+		intent=state["intent"],
+		retrieval_mode=state["retrieval_mode"],
 		safety_level=safety.level,
 		escalate=safety.escalate,
 		used_evidence=bool(evidence),
@@ -92,12 +74,10 @@ def answer_question(
 	)
 
 
-def _verify_citations(summary: str, evidence: list[EvidenceItem]) -> list[Citation]:
-	"""Keep only citations that reference real evidence markers."""
+def _build_citations(markers: list[int], evidence: list[EvidenceItem]) -> list[Citation]:
 	by_marker = {item.marker: item for item in evidence}
-	cited_markers = sorted({int(marker) for marker in _CITATION_RE.findall(summary)})
 	citations: list[Citation] = []
-	for marker in cited_markers:
+	for marker in markers:
 		item = by_marker.get(marker)
 		if item is None:
 			continue
@@ -112,3 +92,4 @@ def _verify_citations(summary: str, evidence: list[EvidenceItem]) -> list[Citati
 			)
 		)
 	return citations
+

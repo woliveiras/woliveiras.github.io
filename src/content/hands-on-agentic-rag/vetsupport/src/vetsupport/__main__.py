@@ -205,6 +205,7 @@ def ask_command(
 
 	typer.echo(f"Question: {answer.query}")
 	typer.echo(f"Pet: {answer.pet_id}")
+	typer.echo(f"Intent: {answer.intent} (retrieval: {answer.retrieval_mode})")
 	typer.echo(f"Safety: {answer.safety_level} (escalate: {str(answer.escalate).lower()})")
 	typer.echo("")
 	typer.echo("Summary")
