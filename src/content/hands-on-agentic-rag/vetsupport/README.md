@@ -331,7 +331,48 @@ still never diagnoses:
 uv run python -m vetsupport ask --pet-id 30000000-0000-0000-0000-000000000001 --embedder fake --llm fake "my cat is not breathing, what should I do?"
 ```
 
-## 12. Show a Pet Timeline
+## 12. Build a Pre-Consultation Briefing
+
+The `pre-consultation` command turns scattered records into a structured Markdown
+briefing for the veterinary team. It reuses the agent to gather cited evidence,
+adds the pet timeline, and lists suggested questions, points to confirm, and
+warning signs. It organizes information; it does not diagnose or triage
+clinically.
+
+```sh
+uv run python -m vetsupport pre-consultation --pet-id 30000000-0000-0000-0000-000000000001 --embedder fake --llm fake "vaccination history review"
+```
+
+Expected output (Markdown, abbreviated):
+
+```text
+# Veterinary consultation briefing for Luna
+
+- Pet ID: 30000000-0000-0000-0000-000000000001
+- Safety level: ok (escalate: false)
+
+## 1. Main reason
+
+vaccination history review
+
+## 2. Timeline
+
+- 2025-03-15 [document:vaccination_record] Luna vaccination card
+...
+
+## 4. Documents used
+
+- [1] Luna vaccination card (2025-03-15, source: clinic_record, id: 40000000-0000-0000-0000-000000000001)
+...
+```
+
+Write the briefing to a file with `--output`:
+
+```sh
+uv run python -m vetsupport pre-consultation --pet-id 30000000-0000-0000-0000-000000000001 --embedder fake --llm fake --output luna-briefing.md "vaccination history review"
+```
+
+## 13. Show a Pet Timeline
 
 ```sh
 uv run python -m vetsupport timeline --pet-id 30000000-0000-0000-0000-000000000001
@@ -361,7 +402,7 @@ Timeline for Luna (30000000-0000-0000-0000-000000000001)
   Ana reported that Luna had a reduced appetite for one evening and returned to normal eating the next morning. No diagnosis is recorded in this note.
 ```
 
-## 13. Run Checks
+## 14. Run Checks
 
 ```sh
 uv run pytest
@@ -371,11 +412,11 @@ uv run ruff check .
 Expected result:
 
 ```text
-25 passed
+33 passed
 All checks passed!
 ```
 
-## 14. Validate the Docker Harness
+## 15. Validate the Docker Harness
 
 Build the harness image after changing Python code:
 
@@ -395,13 +436,14 @@ docker compose run --rm harness chunk --pet-id 30000000-0000-0000-0000-000000000
 docker compose run --rm harness index --pet-id 30000000-0000-0000-0000-000000000001 --embedder fake
 docker compose run --rm harness search --pet-id 30000000-0000-0000-0000-000000000001 --embedder fake "vaccination history"
 docker compose run --rm harness ask --pet-id 30000000-0000-0000-0000-000000000001 --embedder fake --llm fake "what is Luna's vaccination history?"
+docker compose run --rm harness pre-consultation --pet-id 30000000-0000-0000-0000-000000000001 --embedder fake --llm fake "vaccination history review"
 docker compose run --rm harness show-document --document-id 40000000-0000-0000-0000-000000000001
 docker compose run --rm harness list-pets
 docker compose run --rm harness show-pet --pet-id 30000000-0000-0000-0000-000000000001
 docker compose run --rm harness timeline --pet-id 30000000-0000-0000-0000-000000000001
 ```
 
-## 15. Stop the Database
+## 16. Stop the Database
 
 ```sh
 docker compose down

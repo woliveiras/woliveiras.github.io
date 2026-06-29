@@ -4,6 +4,7 @@ from typing import Annotated
 import typer
 
 from vetsupport.answering import answer_question
+from vetsupport.briefing import build_pre_consultation, render_briefing_markdown
 from vetsupport.chunking import chunk_pet_documents
 from vetsupport.config import get_settings
 from vetsupport.db import session_scope
@@ -237,6 +238,55 @@ def ask_command(
 			f"[{citation.marker}] {citation.document_title} | "
 			f"{citation.document_id} | {citation_date} | {citation.source}"
 		)
+
+
+@app.command("pre-consultation")
+def pre_consultation_command(
+	reason: Annotated[str, typer.Argument(help="Main reason for the consultation.")],
+	pet_id: Annotated[str, typer.Option(help="Pet ID the briefing is about.")],
+	output: Annotated[
+		Path | None,
+		typer.Option(help="Optional path to write the Markdown briefing to."),
+	] = None,
+	limit: Annotated[int, typer.Option(help="Maximum evidence chunks to use.")] = 5,
+	embedder: Annotated[
+		str | None,
+		typer.Option(help="Embedding provider override: openai or fake."),
+	] = None,
+	llm: Annotated[
+		str | None,
+		typer.Option(help="LLM provider override: openai or fake."),
+	] = None,
+) -> None:
+	"""Build a structured pre-consultation briefing. This never diagnoses."""
+	settings = get_settings()
+	try:
+		embedder_impl = get_embedder(settings, provider=embedder)
+		llm_impl = get_llm(settings, provider=llm)
+	except ValueError as error:
+		typer.echo(str(error))
+		raise typer.Exit(code=1) from error
+
+	try:
+		with session_scope() as session:
+			briefing = build_pre_consultation(
+				session,
+				pet_id=pet_id,
+				reason=reason,
+				embedder=embedder_impl,
+				llm=llm_impl,
+				limit=limit,
+			)
+	except ValueError as error:
+		typer.echo(str(error))
+		raise typer.Exit(code=1) from error
+
+	markdown = render_briefing_markdown(briefing)
+	if output is not None:
+		output.write_text(markdown, encoding="utf-8")
+		typer.echo(f"Wrote briefing to {output}")
+		return
+	typer.echo(markdown)
 
 
 @app.command("list-pets")
