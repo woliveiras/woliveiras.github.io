@@ -1,0 +1,151 @@
+---
+title: "Your Code Looks Professional. Can You Explain It?"
+description: "AI-assisted programming broke the link between how sophisticated software looks and how well its authors understand it. A practical test for spotting comprehension debt in your own work."
+pubDate: "2026-07-21"
+published: true
+tags: ["ai-engineering", "engineering-practices", "software-engineering", "ai-agents", "code-review", "maintainability"]
+---
+
+## Introduction
+
+Picture a pull request that has everything. A good architecture with clear layers. Unit and integration tests, all green. Structured logs. Metrics and traces wired up. Typed inputs, careful error handling, recognizable design patterns. On the surface, it looks better than most code written by hand (at least by me).
+
+Now ask a different set of questions. Why was this architecture chosen? What requirement justified each layer? What behavior do those tests actually protect, and which ones only confirm what the implementation already does? What would break if you removed one component? Could the author rebuild the core of this system without asking the agent again? Could they debug it at 2 a.m. during a production incident while Claude Code is offline?
+
+If the answers come out thin, then what looks like engineering maturity might be something much narrower: not maturity itself, but the model's ability to reproduce the visual signals we have learned to associate with it. That distance between the appearance of mastery and the actual possession of it is what this post is about, along with why AI-assisted programming makes it so easy to fall into and a practical test you can run on your own work to catch it.
+
+Think of this as the individual-level companion to something I wrote earlier about teams and process in [Code Review in the AI Era](/posts/code-review-in-the-ai-era-we-need-to-change/), where I worked through the research and the tensions it creates. This time I want to stay closer to the ground and hand you a test you can apply today, to your own code.
+
+## The correlation AI broke
+
+Before generative AI, producing a sophisticated artifact usually required getting close to understanding it. If you built all of that yourself, you almost certainly went through a long series of decisions, mistakes, and revisions along the way. That process was not a guarantee of mastery (systems have always been copied, outsourced, and cargo-culted), but there was a rough correlation between the work needed to build the artifact and the knowledge acquired while building it.
+
+AI weakens that correlation. Today you can ask for a production-ready version of all of it and receive it before you have thought about a single one of those decisions, and the change that matters there is subtler than raw speed. What really shifts is that you can now acquire the finished result without ever passing through the cognitive process that used to produce understanding as a byproduct of building the thing.
+
+The obvious objection is that **we have always copied code**. Stack Overflow, libraries, frameworks, and outsourcing all let us use work we did not produce. That is true, and it matters. The difference is scale and **speed**. An agent can generate whole modules, architectural decisions, and entire file ecosystems in a single interaction, faster than anyone can form a mental model of what just landed in the repository.
+
+The early research on AI-assisted programming points the same way. In studies of developers using GitHub Copilot, people liked the tool yet struggled to understand, edit, and debug the code it produced. A systematic review of the field frames the shift plainly: AI assistance moves effort away from writing code and toward understanding, verifying, and integrating what the model produced. Producing an implementation quickly does not remove the work of building a mental model of it.
+
+There is a name for the gap now, and it is not mine. In a 2026 study of GenAI-assisted software projects, Ahmad defines **comprehension debt** as the growing difference between what a team knows about its codebase and what it would need to understand to maintain and change it effectively. That study is built on student reflective diaries, so I would not claim the same patterns already hold at the same intensity in professional teams. What I want to do here is carry the idea into a professional setting and make it concrete enough to measure in your own work.
+
+## The illusion of sophistication
+
+The trap is that the signals we habitually read as "this is well engineered" are exactly the signals an agent produces most reliably. It is worth separating what we can actually observe from what those observations prove.
+
+| What we can observe | What it does not prove |
+|---|---|
+| The code compiles and the tests pass | That anyone understands the decisions |
+| The architecture looks organized | That it matches the actual requirements |
+| Documentation exists | That it describes the current system |
+| Dashboards show metrics | That they would help during an incident |
+| The pipeline runs and the deploy works | That the team can safely change the code |
+| Errors are handled and inputs are typed | That the failure modes were actually considered |
+
+None of these signals is worthless, and the argument here is not that we should ignore them. The problem starts only when we treat their mere presence as evidence of understanding, because an artifact can display every external sign of mature engineering while the mental model of whoever maintains it lags far behind what the code already does.
+
+This asymmetry is more than a rhetorical flourish, and the research keeps running into it. In eye-tracking experiments, model-generated code was rated about as readable as human-written code yet received less visual attention. In security tasks, people using an AI assistant produced less secure code while being more confident it was safe, which fits a long-known pattern in which we over-weight an automated recommendation even when other signals should give us pause. Familiarity and polish, in other words, can lower our suspicion at exactly the moment it should be rising.
+
+What we are left with is an asymmetry between the sophistication of the artifact and any real command over the system, where the artifact has raced ahead while the understanding needed to own it was quietly left behind.
+
+## The five questions
+
+If neither "it works" nor "it looks clean" is a strong enough bar, we need a more honest one. The test I use to decide whether I actually own a piece of software, rather than merely possess the files, comes down to five questions. Of course, I used an LLM to generate these questions based on the research I read and my own experience, so they are not a perfect or universal list. But they are a useful starting point that we can use.
+
+### Can I explain it?
+
+- What problem does this component solve?
+- How does data flow through the system?
+- Which invariants must stay true for it to keep working?
+- Where are the main boundaries and states?
+
+### Can I modify it?
+
+- Can I change a requirement without regenerating the whole solution?
+- Do I know which components a change will touch?
+- Can I preserve the important properties while I change the code?
+
+### Can I diagnose it?
+
+- Given a failure, do I know which hypotheses to investigate first?
+- Can I map a symptom back to a component?
+- Was the observability designed around real failure modes, or just switched on?
+
+### Can I justify it?
+
+- Why was this architecture chosen?
+- Which alternatives were considered and rejected?
+- Which requirement or constraint supports each decision?
+- What trade-off was accepted?
+
+### Can I reconstruct it?
+
+- Can I reproduce the core of the solution without asking for the full code again?
+- Can I rebuild the main flow from the requirements?
+- Can I draw the architecture from memory?
+
+The first question carries more weight than it looks. People routinely believe they understand a mechanism in far more depth than they actually do, and that illusion collapses the moment they are asked to produce a detailed explanation. Making yourself explain a system, out loud or in writing, is one of the cheapest ways to find the edge of what you really know.
+
+You do not need a perfect score on every system you touch. Nobody understands every line of every codebase they work in, and I am not arguing for that (sometimes we don't even understand the code we write by ourselves before the generative AI). But the pattern of your answers tells you something real. If you can execute and describe but cannot justify or reconstruct, the artifact is more sophisticated than your grasp of it.
+
+## A scale of command
+
+It helps to turn those questions into a scale, because "do I understand this?" is not a yes-or-no thing. There are levels.
+
+| Level | Capability |
+|---|---|
+| 0: Execution | I can run the code |
+| 1: Description | I can say, roughly, what it does |
+| 2: Explanation | I can explain the components and the flow |
+| 3: Modification | I can change the behavior safely |
+| 4: Diagnosis | I can investigate failures and surprising results |
+| 5: Justification | I can defend the decisions and compare alternatives |
+| 6: Reconstruction | I can rebuild the core from the requirements |
+
+The uncomfortable part is that AI makes it trivial to sit at level 0 while holding an artifact that, from the outside, looks like level 6. That combination used to be rare, because a level-6 looking system was expensive to produce, and its mere existence implied that its author had climbed most of the scale to get there. That inference no longer holds now that the sophistication of the artifact and the depth of your understanding have become two independent measurements, and reading the first one tells you almost nothing about the second.
+
+## Tests, docs, and observability can lie too
+
+This is where I want to be careful, because the easy version of this argument is "review your AI code," and that is not quite the point. The subtler problem is that the very artifacts we use as evidence of quality can be generated with the same blind spots as the code they describe.
+
+**Generated tests are not automatically evidence of understanding.** When the same agent writes both the implementation and the tests, it can reproduce the same wrong assumptions in both. The tests then confirm implementation details rather than requirements, cover lines without protecting behavior, and give a quantitative feeling of safety that is not backed by anything. The useful question is not "how many tests are there?" but "which important behaviors do these tests demonstrate, and which hypotheses do they try to invalidate?"
+
+**Generated documentation is not automatically organizational knowledge.** A model can perfectly explain the code it just produced. That does not mean the team has absorbed the explanation. Documentation that is never retrieved, discussed, or used is just another artifact produced outside anyone's head.
+
+**Generated observability is not automatically operational capability.** Adding tracing, dashboards, and structured logs does not make a system observable. Useful observability depends on questions the instrumentation cannot answer for you: which failures do we expect, what does degradation look like, which causal relationships do we want to investigate, and what decision will someone actually make from this metric? A system can be heavily instrumented and still be opaque.
+
+And the obvious escape hatch, "I can just ask the AI to explain it," does not really close the gap, because an explanation available on demand is not the same as an understanding you have incorporated. Having access to an answer says nothing about whether you could retrieve it under pressure, apply it to a case the model never saw, or recognize the moment it turns out to be wrong.
+
+## What I do now
+
+None of this is an argument against using AI. I rely on agents daily, and the gains are real. Offloading work to tools is not the problem in itself; we already offload memory to notes and arithmetic to machines. The problem is offloading the formation of the mental model we need to judge the result. It also helps to notice that the risk is uneven. Barke, one of the references I read while thinking about this post, describes two ways people work with these tools: acceleration, where you already know what you want and the model gets you there faster, and exploration, where you lean on its suggestions to work out the solution itself. Delegation is much easier to absorb when it speeds up an intention you already understand than when the solution, its criteria, and its mechanisms are handed over all at once.
+
+In the end the problem was never who typed the code, but the moment generation speed outruns our ability to validate, absorb, and take responsibility for what was generated. That same framing sets the goal: it is not about writing every line by hand but about keeping the ability to reason about the system, whoever or whatever produced it.
+
+**Ask for justifications, not descriptions.** In review, I try to replace "what does this code do?" with "why was this chosen, and what was rejected?" A model explains what code does effortlessly. Justifying that a solution fits the real context requires knowing the requirements and constraints, which is exactly the part that does not come for free.
+
+**Write a prediction before running generated code.** Before I accept or run a solution, I try to write down what I expect to happen, which risks I see, how I will know it is correct, and what result would prove me wrong. This forces a mental model to exist before the feedback arrives, instead of letting the green checkmark stand in for one. It helps to make that check cheap and immediate, because when validating a suggestion by actually running it is easy, people rely on it more appropriately, neither over-trusting nor dismissing it. Validating generated code is itself real cognitive work, so it is worth designing for rather than treating as a free step.
+
+**Do reconstruction tests.** Every so often, I try to draw a system without looking at the code, explain its main flow, change one rule, and diagnose a simulated failure. It is uncomfortable in a useful way, because it reliably surfaces the parts I only thought I understood.
+
+**Record decisions, not just results.** Code shows the outcome of a decision but rarely preserves its motivation. A short architecture decision record (context, constraints, alternatives, decision, consequences, open questions) keeps the reasoning around long after the reasoning has left everyone's head.
+
+## Conclusion
+
+Come back to that first pull request. It compiles, the tests pass, the documentation is there, the metrics are flowing, and it is already deployed, so every signal we are trained to read as quality is present. And yet the honest final question stays open: who can explain why it works, under what conditions it will stop working, and how it should change when the context does?
+
+The biggest risk of AI-assisted programming is probably not that it produces bad code, since bad code tends to announce its problems sooner or later. The harder risk to notice is that it produces impressive-looking software quickly while the gap widens between what our systems can do and what we can still explain. Technical debt was always a metaphor for trading future cost for present speed, and comprehension debt is that same trade made against understanding rather than against code. So the thing worth evaluating is no longer only whether the code works, but whether we can still explain it, modify it, diagnose it, justify it, and reconstruct it. When we cannot, we have not paid down technical debt at all; we have simply layered a debt of comprehension on top of it.
+
+## References
+
+- Ahmad, M. O. (2026). *Comprehension Debt in GenAI-Assisted Software Engineering Projects*. [arXiv:2604.13277](https://arxiv.org/abs/2604.13277).
+- Al Madi, N. (2022). *How Readable is Model-generated Code? Examining Readability and Visual Inspection of GitHub Copilot*. 37th IEEE/ACM International Conference on Automated Software Engineering. [doi:10.1145/3551349.3560438](https://dl.acm.org/doi/10.1145/3551349.3560438).
+- Barke, S., James, M. B., & Polikarpova, N. (2023). *Grounded Copilot: How Programmers Interact with Code-Generating Models*. Proc. ACM Program. Lang. 7, OOPSLA1. [doi:10.1145/3586030](https://dl.acm.org/doi/10.1145/3586030).
+- Ferdowsi, K., Huang, R., James, M. B., Polikarpova, N., & Lerner, S. (2024). *Validating AI-Generated Code with Live Programming*. CHI Conference on Human Factors in Computing Systems. [doi:10.1145/3613904.3642495](https://dl.acm.org/doi/10.1145/3613904.3642495).
+- Kruchten, P., Nord, R. L., & Ozkaya, I. (2012). *Technical Debt: From Metaphor to Theory and Practice*. IEEE Software, 29(6), 18-21. [doi:10.1109/MS.2012.167](https://ieeexplore.ieee.org/document/6336722).
+- Perry, N., Srivastava, M., Kumar, D., & Boneh, D. (2023). *Do Users Write More Insecure Code with AI Assistants?* ACM SIGSAC Conference on Computer and Communications Security. [doi:10.1145/3576915.3623157](https://dl.acm.org/doi/10.1145/3576915.3623157).
+- Qiao, Y., Shihab, M. I. H., & Hundhausen, C. (2025). *A Systematic Literature Review of the Use of GenAI Assistants for Code Comprehension*. ACM Transactions on Computing Education. [doi:10.1145/3785366](https://dl.acm.org/doi/10.1145/3785366).
+- Risko, E. F., & Gilbert, S. J. (2016). *Cognitive Offloading*. Trends in Cognitive Sciences, 20(9), 676-688. [doi:10.1016/j.tics.2016.07.002](https://pubmed.ncbi.nlm.nih.gov/27542527/).
+- Rozenblit, L., & Keil, F. (2002). *The Misunderstood Limits of Folk Science: An Illusion of Explanatory Depth*. Cognitive Science, 26(5), 521-562. [doi:10.1207/S15516709COG2605_1](https://pubmed.ncbi.nlm.nih.gov/21442007/).
+- Skitka, L. J., Mosier, K. L., & Burdick, M. (1999). *Does Automation Bias Decision-Making?* International Journal of Human-Computer Studies, 51(5), 991-1006. [doi:10.1006/ijhc.1999.0252](https://dl.acm.org/doi/abs/10.1006/ijhc.1999.0252).
+- Tang, N., Chen, M., Ning, Z., et al. (2024). *A Study on Developer Behaviors for Validating and Repairing LLM-Generated Code Using Eye Tracking and IDE Actions*. IEEE Symposium on Visual Languages and Human-Centric Computing. [arXiv:2405.16081](https://arxiv.org/abs/2405.16081).
+- Vaithilingam, P., Zhang, T., & Glassman, E. L. (2022). *Expectation vs. Experience: Evaluating the Usability of Code Generation Tools Powered by Large Language Models*. CHI Conference on Human Factors in Computing Systems Extended Abstracts. [doi:10.1145/3491101.3519665](https://dl.acm.org/doi/10.1145/3491101.3519665).
