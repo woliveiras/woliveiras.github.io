@@ -6,7 +6,7 @@ published: true
 tags: ["ai-engineering", "engineering-practices", "software-engineering", "ai-agents", "code-review", "maintainability"]
 ---
 
-## Introduction
+## The pull request that looks perfect
 
 Picture a pull request that has everything. A good architecture with clear layers. Unit and integration tests, all green. Structured logs. Metrics and traces wired up. Typed inputs, careful error handling, recognizable design patterns. On the surface, it looks better than most code written by hand (at least by me).
 
@@ -22,15 +22,15 @@ Before generative AI, producing a sophisticated artifact usually required gettin
 
 AI weakens that correlation. Today you can ask for a production-ready version of all of it and receive it before you have thought about a single one of those decisions, and the change that matters there is subtler than raw speed. What really shifts is that you can now acquire the finished result without ever passing through the cognitive process that used to produce understanding as a byproduct of building the thing.
 
-The obvious objection is that **we have always copied code**. Stack Overflow, libraries, frameworks, and outsourcing all let us use work we did not produce. That is true, and it matters. The difference is scale and **speed**. An agent can generate whole modules, architectural decisions, and entire file ecosystems in a single interaction, faster than anyone can form a mental model of what just landed in the repository.
+The obvious objection is that we have always copied code. Stack Overflow, libraries, frameworks, and outsourcing all let us use work we did not produce. That is true, and it matters. The difference is scale and speed. An agent can generate whole modules, architectural decisions, and entire file ecosystems in a single interaction, faster than anyone can form a mental model of what just landed in the repository.
 
 The early research on AI-assisted programming points the same way. In studies of developers using GitHub Copilot, people liked the tool yet struggled to understand, edit, and debug the code it produced. A systematic review of the field frames the shift plainly: AI assistance moves effort away from writing code and toward understanding, verifying, and integrating what the model produced. Producing an implementation quickly does not remove the work of building a mental model of it.
 
-There is a name for the gap now, and it is not mine. In a 2026 study of GenAI-assisted software projects, Ahmad defines **comprehension debt** as the growing difference between what a team knows about its codebase and what it would need to understand to maintain and change it effectively. That study is built on student reflective diaries, so I would not claim the same patterns already hold at the same intensity in professional teams. What I want to do here is carry the idea into a professional setting and make it concrete enough to measure in your own work.
+There is a name for the gap now, and it is not mine. In a 2026 study of GenAI-assisted software projects, Ahmad defines comprehension debt as the growing difference between what a team knows about its codebase and what it would need to understand to maintain and change it effectively. That study is built on student reflective diaries, so I would not claim the same patterns already hold at the same intensity in professional teams. What I want to do here is carry the idea into a professional setting and make it concrete enough to measure in your own work.
 
 ## The illusion of sophistication
 
-The trap is that the signals we habitually read as "this is well engineered" are exactly the signals an agent produces most reliably. It is worth separating what we can actually observe from what those observations prove.
+The trap is that the signals we habitually read as "this is well engineered" are exactly the signals an agent produces most reliably. Separate what we can actually observe from what those observations prove.
 
 | What we can observe | What it does not prove |
 |---|---|
@@ -107,11 +107,11 @@ The uncomfortable part is that AI makes it trivial to sit at level 0 while holdi
 
 This is where I want to be careful, because the easy version of this argument is "review your AI code," and that is not quite the point. The subtler problem is that the very artifacts we use as evidence of quality can be generated with the same blind spots as the code they describe.
 
-**Generated tests are not automatically evidence of understanding.** When the same agent writes both the implementation and the tests, it can reproduce the same wrong assumptions in both. The tests then confirm implementation details rather than requirements, cover lines without protecting behavior, and give a quantitative feeling of safety that is not backed by anything. The useful question is not "how many tests are there?" but "which important behaviors do these tests demonstrate, and which hypotheses do they try to invalidate?"
+Generated tests are not automatically evidence of understanding. When the same agent writes both the implementation and the tests, it can reproduce the same wrong assumptions in both. The tests then confirm implementation details rather than requirements, cover lines without protecting behavior, and give a quantitative feeling of safety that is not backed by anything. The useful question is not "how many tests are there?" but "which important behaviors do these tests demonstrate, and which hypotheses do they try to invalidate?"
 
-**Generated documentation is not automatically organizational knowledge.** A model can perfectly explain the code it just produced. That does not mean the team has absorbed the explanation. Documentation that is never retrieved, discussed, or used is just another artifact produced outside anyone's head.
+Generated documentation is not automatically organizational knowledge. A model can perfectly explain the code it just produced. That does not mean the team has absorbed the explanation. Documentation that is never retrieved, discussed, or used is just another artifact produced outside anyone's head.
 
-**Generated observability is not automatically operational capability.** Adding tracing, dashboards, and structured logs does not make a system observable. Useful observability depends on questions the instrumentation cannot answer for you: which failures do we expect, what does degradation look like, which causal relationships do we want to investigate, and what decision will someone actually make from this metric? A system can be heavily instrumented and still be opaque.
+Generated observability is not automatically operational capability. Adding tracing, dashboards, and structured logs does not make a system observable. Useful observability depends on questions the instrumentation cannot answer for you: which failures do we expect, what does degradation look like, which causal relationships do we want to investigate, and what decision will someone actually make from this metric? A system can be heavily instrumented and still be opaque.
 
 And the obvious escape hatch, "I can just ask the AI to explain it," does not really close the gap, because an explanation available on demand is not the same as an understanding you have incorporated. Having access to an answer says nothing about whether you could retrieve it under pressure, apply it to a case the model never saw, or recognize the moment it turns out to be wrong.
 
@@ -121,13 +121,13 @@ None of this is an argument against using AI. I rely on agents daily, and the ga
 
 In the end the problem was never who typed the code, but the moment generation speed outruns our ability to validate, absorb, and take responsibility for what was generated. That same framing sets the goal: it is not about writing every line by hand but about keeping the ability to reason about the system, whoever or whatever produced it.
 
-**Ask for justifications, not descriptions.** In review, I try to replace "what does this code do?" with "why was this chosen, and what was rejected?" A model explains what code does effortlessly. Justifying that a solution fits the real context requires knowing the requirements and constraints, which is exactly the part that does not come for free.
+Ask for justifications, not descriptions. In review, I try to replace "what does this code do?" with "why was this chosen, and what was rejected?" A model explains what code does effortlessly. Justifying that a solution fits the real context requires knowing the requirements and constraints, which is exactly the part that does not come for free.
 
-**Write a prediction before running generated code.** Before I accept or run a solution, I try to write down what I expect to happen, which risks I see, how I will know it is correct, and what result would prove me wrong. This forces a mental model to exist before the feedback arrives, instead of letting the green checkmark stand in for one. It helps to make that check cheap and immediate, because when validating a suggestion by actually running it is easy, people rely on it more appropriately, neither over-trusting nor dismissing it. Validating generated code is itself real cognitive work, so it is worth designing for rather than treating as a free step.
+Write a prediction before running generated code. Before I accept or run a solution, I try to write down what I expect to happen, which risks I see, how I will know it is correct, and what result would prove me wrong. This forces a mental model to exist before the feedback arrives, instead of letting the green checkmark stand in for one. It helps to make that check cheap and immediate, because when validating a suggestion by actually running it is easy, people rely on it more appropriately, neither over-trusting nor dismissing it. Validating generated code is itself real cognitive work, so it is worth designing for rather than treating as a free step.
 
-**Do reconstruction tests.** Every so often, I try to draw a system without looking at the code, explain its main flow, change one rule, and diagnose a simulated failure. It is uncomfortable in a useful way, because it reliably surfaces the parts I only thought I understood.
+Do reconstruction tests. Every so often, I try to draw a system without looking at the code, explain its main flow, change one rule, and diagnose a simulated failure. It is uncomfortable in a useful way, because it reliably surfaces the parts I only thought I understood.
 
-**Record decisions, not just results.** Code shows the outcome of a decision but rarely preserves its motivation. A short architecture decision record (context, constraints, alternatives, decision, consequences, open questions) keeps the reasoning around long after the reasoning has left everyone's head.
+Record decisions, not just results. Code shows the outcome of a decision but rarely preserves its motivation. A short architecture decision record (context, constraints, alternatives, decision, consequences, open questions) keeps the reasoning around long after the reasoning has left everyone's head.
 
 ## Conclusion
 
