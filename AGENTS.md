@@ -112,7 +112,8 @@ tags: ["tag-one", "tag-two", "tag-three"]
 Common existing tags (not exhaustive):
 
 - **AI/LLMs:** `llm`, `ai-engineering`, `ai-agents`, `ollama`, `langchain`, `langgraph`, `machine-learning`, `rag`
-- **Web/Frontend:** `javascript`, `typescript`, `react`, `nextjs`, `frontend`, `architecture`, `performance`
+- **Web/Frontend:** `javascript`, `typescript`, `react`, `nextjs`, `frontend`, `architecture`, `performance`, `web`
+- **Backend/Python:** `python`, `fastapi`, `uvicorn`, `asgi`, `backend`
 - **Tooling/DevOps:** `github-actions`, `devops`, `docker`, `monorepos`, `pnpm`, `automation`
 - **Hardware/Security:** `raspberry-pi`, `hardware`, `security`, `hacking`, `self-hosting`
 - **Career:** `engineering-practices`, `collaboration`, `pair-programming`, `productivity`
