@@ -98,6 +98,9 @@ importers:
         specifier: ^4.4.3
         version: 4.4.3
     devDependencies:
+      '@astrojs/markdown-remark':
+        specifier: 7.2.0
+        version: 7.2.0
       '@biomejs/biome':
         specifier: ^2.4.16
         version: 2.4.16

@@ -43,6 +43,7 @@
 		"zod": "^4.4.3"
 	},
 	"devDependencies": {
+		"@astrojs/markdown-remark": "7.2.0",
 		"@biomejs/biome": "^2.4.16",
 		"@sveltejs/vite-plugin-svelte": "^6.2.4",
 		"@tailwindcss/typography": "^0.5.19",
