@@ -10,7 +10,7 @@ import ShareWithGenAI from "$components/ShareWithGenAI.astro";
 import Tag from "$components/Tag.astro";
 import BaseLayout from "$layouts/BaseLayout.astro";
 import BlogPost from "$layouts/BlogPost.astro";
-import { SHOW_IMAGES } from "../../config.json";
+import { NAME, SHOW_IMAGES, SITE } from "../../config.json";
 
 export async function getStaticPaths() {
 	const posts = await getBlogPosts();
@@ -26,6 +26,25 @@ type Props = CollectionEntry<"blog">;
 const post = Astro.props;
 const { Content } = await render(post);
 
+const canonical = `${SITE}/posts/${post.id}/`;
+const jsonLd = {
+	"@context": "https://schema.org",
+	"@type": "BlogPosting",
+	headline: post.data.title,
+	description: post.data.description,
+	url: canonical,
+	datePublished: post.data.pubDate.toISOString(),
+	...(post.data.updatedDate && {
+		dateModified: post.data.updatedDate.toISOString(),
+	}),
+	...(post.data.tags?.length && { keywords: post.data.tags.join(", ") }),
+	author: { "@type": "Person", name: NAME, url: SITE },
+	publisher: { "@type": "Person", name: NAME, url: SITE },
+	mainEntityOfPage: { "@type": "WebPage", "@id": canonical },
+};
+// Escape "<" to prevent breaking out of the <script> context.
+const jsonLdString = JSON.stringify(jsonLd).replace(/</g, "\\u003c");
+
 const images = import.meta.glob<{ default: ImageMetadata }>(
 	"/src/assets/**/*.{jpeg,jpg,png,gif}",
 );
@@ -37,6 +56,15 @@ if (replacedHero && !images[replacedHero])
 ---
 
 <BaseLayout {...post.data} image={post.id + ".png"}>
+  <Fragment slot="head">
+    <link
+      rel="alternate"
+      type="text/markdown"
+      href={`${SITE}/posts/${post.id}.md`}
+    />
+    <script type="application/ld+json" set:html={jsonLdString} />
+  </Fragment>
+
   <Header active="blog" />
 
   <main class="max-w-2xl lg:max-w-3xl mx-auto my-0 h-full p-4">

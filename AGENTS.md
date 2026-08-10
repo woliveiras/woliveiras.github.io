@@ -49,6 +49,21 @@ pnpm lint:fix     # Biome check and format
 - **Path aliases:** `$components`, `$layouts`, `$pages`, `$assets`, `$content` (defined in `astro.config.ts`)
 - **Series collections:** `src/content/hands-on-coding-assistants/`, `src/content/building-with-supabase/`
 
+## AI Agent Readiness (auto-generated)
+
+These files help AI crawlers and agents discover and consume the blog. They are **generated at build time** from the content collections and `src/config.json` (same source as the sitemap/RSS), so they require **no manual updates**: write a post, push, and `pnpm build` regenerates them.
+
+| Artifact | URL | Generator |
+|---|---|---|
+| robots.txt (bot rules + `Content-Signal`, sitemap link) | `/robots.txt` | [src/pages/robots.txt.ts](src/pages/robots.txt.ts) |
+| llms.txt (curated index of posts + series) | `/llms.txt` | [src/pages/llms.txt.ts](src/pages/llms.txt.ts) |
+| Per-post Markdown (clean text version) | `/posts/<slug>.md` | [src/pages/posts/[...slug].md.ts](src/pages/posts/[...slug].md.ts) |
+| JSON-LD `BlogPosting` + `<link rel="alternate" type="text/markdown">` | in each post `<head>` | [src/pages/posts/[...slug].astro](src/pages/posts/[...slug].astro) via the `head` slot in [src/layouts/BaseLayout.astro](src/layouts/BaseLayout.astro) |
+
+- `BaseLayout.astro` exposes a named `head` slot so pages can inject `<head>` tags (JSON-LD, alternate links).
+- GitHub Pages cannot set HTTP `Link` headers; agent discovery of the Markdown version uses the `<link rel="alternate">` tag instead.
+- Edge-only items (AI Crawler Rules, `Link` header via Transform Rule) are configured in the Cloudflare dashboard, not in this repo.
+
 ## Code Style
 
 - Biome enforces tabs + double quotes; run `pnpm lint:fix` before committing
