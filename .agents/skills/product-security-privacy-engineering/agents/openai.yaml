@@ -1,0 +1,4 @@
+interface:
+  display_name: "Product Security & Privacy Engineering"
+  short_description: "Secure sensitive web and mobile product behavior"
+  default_prompt: "Use $product-security-privacy-engineering to threat-model and verify this sensitive web or mobile product behavior."

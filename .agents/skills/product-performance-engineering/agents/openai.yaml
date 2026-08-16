@@ -1,0 +1,4 @@
+interface:
+  display_name: "Product Performance Engineering"
+  short_description: "Diagnose and optimize web and mobile performance"
+  default_prompt: "Use $product-performance-engineering to diagnose and improve this measured web or mobile performance problem."

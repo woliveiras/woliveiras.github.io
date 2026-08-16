@@ -1,0 +1,4 @@
+interface:
+  display_name: "Product UI/UX Design"
+  short_description: "Design usable web and mobile products"
+  default_prompt: "Use $product-ui-ux-design to design or review this web or mobile product experience."

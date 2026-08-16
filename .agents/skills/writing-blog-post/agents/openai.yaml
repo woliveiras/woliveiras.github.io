@@ -1,0 +1,4 @@
+interface:
+  display_name: "Blog Post Writing"
+  short_description: "Write practical technical blog posts"
+  default_prompt: "Use $writing-blog-post to draft a practical technical blog post in the target repository voice."

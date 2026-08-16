@@ -1,0 +1,4 @@
+interface:
+  display_name: Product Testing Engineering
+  short_description: Design reliable web and mobile product test systems
+  default_prompt: Use $product-testing-engineering to design a risk-based test strategy for this web or mobile product.
