@@ -6,65 +6,47 @@ published: true
 tags: ["ai-engineering", "ai-agents", "architecture", "self-hosting", "software-engineering", "engineering-practices", "devops"]
 ---
 
-AI coding subscriptions are expensive, constrained by vendor quotas, and difficult to separate from questions about privacy, procurement, and lock-in. It is understandable that engineering leaders ask whether they can replace GitHub Copilot, Cursor, Claude Code, or Codex with something they operate themselves.
+Replacing an AI coding subscription does not require replacing every proprietary model behind it. The practical route is to unbundle the product: own the agent, identity, context, tools, routing, observability, and model access, then move suitable workloads to private inference.
 
-Today, it is possible to replace a commercial coding subscription with an internal platform that owns the agent, authentication, context, tools, routing, observability, and model access. But it is not so easy.
+Public implementations do not support the simpler story of installing one open model and canceling GitHub Copilot, Cursor, Claude Code, or Codex. Cloudflare still routes most complex agentic work to frontier providers. Samsung, Meta, and Ant Group own more of specific workloads; Walmart and Zup Innovation focus on the agent and control plane; Mistral sells private deployment; Infralovers tests the pattern on one shared machine.
 
-First of all, what does *self-hosted* mean here? A model running on each developer's laptop? A shared Mini PC? An internal API in front of external models? A licensed product deployed on company servers? A model trained by the company? Or an open client that still sends every difficult task to Anthropic, Google, or OpenAI?
+The evidence is selective. Companies rarely publish procurement records, routing policies, or subscription data. In this article, **confirmed** means the company or implementing team published technical details; **company-reported** and **vendor-reported** identify the source of an outcome; **reported substitution** relies on reputable reporting rather than a company statement. Undisclosed architecture remains undisclosed.
 
-The public implementations do not support a simple story in which companies find one open model, point every developer at it, and cancel every subscription. No. They support a more interesting thesis:
+## Table of contents
 
-> Companies are unbundling the AI coding assistant. They are taking ownership of the infrastructure, the platform over it. Once that control plane exists, they can progressively move frequent workloads to self-hosted models while retaining frontier-model fallbacks for harder and more impactful tasks.
-
-Cloudflare provides the clearest modern example. Samsung, Meta, and Ant Group show deeper ownership of particular parts of the stack. Walmart and Zup Innovation show why owning the agent can matter even when model inference is not publicly shown to be internal. Mistral Code shows a different path: buying a privately deployed commercial platform rather than building one. Infralovers shows what the same idea looks like on one shared machine.
-
-None of those cases establishes a universal transition. Public information about internal developer infrastructure is selective, and companies rarely publish procurement records, model-routing policies, or subscription data. So, throughout this article, **confirmed** means that a company or its implementing team published technical details. **Company-reported** means the outcome comes from the organization itself. **Vendor-reported** means a supplier describes a customer's deployment. **Reported substitution** means reputable reporting, rather than a public company statement, establishes the change. Where the architecture is not disclosed, I will say so rather than complete it from imagination.
-
-I added a lot of information on this post, because it is something I'm studing have a long time. You don't need to read it all, you can check the table of contents below and jump to the sections that interest you. The conclusion summarizes the evidence and its limits.
-
-## Table of Contents
-
-- [“Replacement” describes three different changes](#replacement-describes-three-different-changes)
-- [“Local,” “private,” “on-premises,” and “self-hosted” are not synonyms](#local-private-on-premises-and-self-hosted-are-not-synonyms)
+- [Replacement means three different changes](#replacement-means-three-different-changes)
+- [Local, private, on-premises, and self-hosted are not synonyms](#local-private-on-premises-and-self-hosted-are-not-synonyms)
 - [Do not route every coding workload to the same model](#do-not-route-every-coding-workload-to-the-same-model)
 - [Companies owning most of a workload-specific stack](#companies-owning-most-of-a-workload-specific-stack)
 - [Companies owning the agent and control plane](#companies-owning-the-agent-and-control-plane)
 - [Buying a private platform instead of building one](#buying-a-private-platform-instead-of-building-one)
 - [A shared local server for a small team](#a-shared-local-server-for-a-small-team)
 - [Specialize the high-volume path](#specialize-the-high-volume-path)
-- [Comparing what “replacement” means in practice](#comparing-what-replacement-means-in-practice)
+- [Comparing replacement in practice](#comparing-replacement-in-practice)
 - [The recurring internal architecture](#the-recurring-internal-architecture)
 - [Why the control plane often comes first](#why-the-control-plane-often-comes-first)
 - [The honest limits of local and private models](#the-honest-limits-of-local-and-private-models)
 - [The economics: from seats to a shared capacity pool](#the-economics-from-seats-to-a-shared-capacity-pool)
 - [A staged adoption path](#a-staged-adoption-path)
-- [What the evidence supports—and what it does not](#what-the-evidence-supports—and-what-it-does-not)
+- [What the evidence supports, and what it does not](#what-the-evidence-supports-and-what-it-does-not)
 - [Conclusion](#conclusion)
 - [References](#references)
 
-## “Replacement” describes three different changes
+## Replacement means three different changes
 
-At least three materially different replacements are visible in the evidence we can observe. They are not mutually exclusive, and they do not imply that a company has eliminated every external dependency.
+The evidence shows three replacements. They can coexist, and none implies that every external dependency disappeared.
 
 ### Level 1: replace the commercial client or agent
 
-The company replaces a per-seat client with OpenCode, Continue, Code Puppy, Pi, an internal CLI, or another model-neutral interface. Authentication, configuration, tools, and provider access can now be governed centrally. The underlying inference may still come entirely from paid external APIs.
-
-This is primarily a **control-plane replacement**. Cloudflare and Walmart fit here, although Cloudflare has also moved a minority of the measured request volume in its published snapshot onto Workers AI. Zup's internal CodeGen agent is another implementation of this layer, but its paper does not claim that it replaced a named commercial subscription.
+The company replaces a per-seat client with OpenCode, Continue, Code Puppy, Pi, an internal CLI, or another model-neutral interface. It governs authentication, configuration, tools, and provider access centrally, while inference may still come entirely from paid APIs. Cloudflare, Walmart, and Zup's CodeGen illustrate this **control-plane replacement**, although Zup does not claim that it replaced a named subscription and Cloudflare also routes a minority of its measured volume to Workers AI.
 
 ### Level 2: move inference into a private environment
 
-The company runs models on-premises, in its cloud account, in a private VPC, or through dedicated capacity. Source code and prompts can stay inside an approved boundary, and the organization is no longer dependent on a public coding SaaS data path.
-
-That does **not** imply that the company owns the models or the software. It may pay for model licenses, an enterprise add-on, support, updates, and the infrastructure underneath. Mistral Code's reported deployments at ABANCA and planned deployment at Capgemini illustrate this level. GitLab's current self-hosted documentation makes the commercial boundary explicit: customers can host the AI gateway and models while still requiring a GitLab Duo add-on and either enterprise, usage-based, or seat-based billing, depending on the configuration ([GitLab documentation](https://docs.gitlab.com/administration/gitlab_duo_self_hosted/)).
-
-This is best understood as **private deployment**, not “free AI.”
+The company runs models on-premises, in its cloud account, in a private VPC, or through dedicated capacity, keeping prompts and source code inside an approved boundary. It may still pay for model licenses, an enterprise add-on, support, updates, and infrastructure. Mistral Code's reported ABANCA deployment and planned Capgemini deployment fit this level. GitLab likewise lets customers host the gateway and models while requiring a Duo add-on and enterprise, usage-based, or seat-based billing, depending on the configuration ([GitLab documentation](https://docs.gitlab.com/administration/gitlab_duo_self_hosted/)). This is **private deployment**, not "free AI."
 
 ### Level 3: own the agent, model, and inference stack
 
-At the deepest level, the company develops the interface, trains or fine-tunes one or more models, and operates the serving infrastructure. Samsung's `code.i`, Meta's CodeCompose, and Ant Group's CodeFuse provide public evidence for substantial ownership at this level, although they expose different amounts of infrastructure detail and are not equivalent products.
-
-Even here, ownership is rarely absolute. Training may use licensed data or rented accelerators. A product may keep third-party models for some features. A company may own a code-completion model but not a frontier reasoning model. “Owns most of the stack” is usually more accurate than “owns everything.”
+The company develops the interface, trains or fine-tunes models, and operates serving infrastructure. Samsung's `code.i`, Meta's CodeCompose, and Ant Group's CodeFuse provide evidence at this level, but they are different products with different levels of disclosure. Training may still use licensed data or rented accelerators, and some features may retain third-party models. "Owns most of the stack" is more accurate than "owns everything."
 
 | Level | What changes | What may remain external | Representative evidence |
 |---|---|---|---|
@@ -72,29 +54,29 @@ Even here, ownership is rarely absolute. Training may use licensed data or rente
 | 2. Private inference | Model endpoint and data boundary move into an approved environment | Product license, support, model license, some fallback | ABANCA and planned Capgemini Mistral Code deployments |
 | 3. Agent, model, and serving | Client, model development, customization, and inference are operated internally | Training infrastructure, selected APIs, or undisclosed dependencies | Samsung, Meta CodeCompose, Ant Group CodeFuse |
 
-These levels are not a maturity ladder that every company must climb. This is my interpretation of the public evidence, not a prescription. A regulated bank may stop at a supported on-premises product because transferring model-maintenance risk to a vendor is the correct decision. A small company may stop at an internal gateway because its usage cannot justify GPUs. A model company may own inference because doing so is already part of its core business.
+These levels are not a maturity ladder. A regulated bank may transfer model-maintenance risk to an on-premises vendor; a small company may not use enough inference to justify GPUs; a model company may already have the infrastructure to own serving.
 
-## “Local,” “private,” “on-premises,” and “self-hosted” are not synonyms
+## Local, private, on-premises, and self-hosted are not synonyms
 
 I use these terms narrowly:
 
-- **On-device or laptop-local:** model weights and inference run on each developer's workstation. No shared inference service is required.
-- **Shared local server:** a team sends requests to one machine on an office network or VPN. Infralovers' Mac Mini experiment is an example.
-- **On-premises:** inference runs on infrastructure physically operated in a company-controlled facility. The software may still be commercially licensed.
-- **Private cloud:** inference runs in a segregated account, VPC, or dedicated capacity at a cloud provider. It is private, but not physically on-premises.
-- **Company-operated distributed inference:** the organization schedules and serves models across a cluster or network it operates. Meta's CodeCompose GPU tier and Cloudflare Workers AI are examples at very different scales.
-- **Hybrid:** policy routes some work to private or company-operated models and other work to approved external providers.
-- **Self-hosted:** the organization is responsible for deploying and operating the service. This term says who operates it; it does not, by itself, say where the hardware is, who owns the model, whether licensing fees apply, or whether external fallbacks exist.
+- On-device or laptop-local inference runs on each developer's workstation without a shared service.
+- A shared local server receives team requests over an office network or VPN, as in Infralovers' Mac Mini experiment.
+- On-premises inference runs in a company-operated facility, although the software may still be commercially licensed.
+- Private-cloud inference runs in a segregated cloud account, VPC, or dedicated capacity.
+- Company-operated distributed inference runs across an organization-operated cluster or network. Meta's CodeCompose GPU tier and Cloudflare Workers AI use this pattern at different scales.
+- Hybrid policy routes work between private or company-operated models and approved external providers.
+- Self-hosted means the organization deploys and operates the service; it does not specify hardware location, model ownership, licensing, or fallback.
 
-In the public company implementations examined here, shared inference services are more prominent than one large agentic model per laptop. That makes operational sense. Shared serving can pool bursty demand, batch work, centralize upgrades, and enforce one policy boundary. Laptop inference still has valid uses, particularly low-latency completion, offline work, and individual experimentation, but it fragments capacity and makes uniform governance harder.
+The public implementations favor shared inference over one large agentic model per laptop. Shared serving pools bursty demand, batches work, centralizes upgrades, and enforces one policy boundary. Laptop inference suits low-latency completion, offline work, and experimentation, but fragments capacity and governance.
 
-JetBrains exposes both patterns. It offers Mellum-all running through Ollama or LM Studio on one developer's machine ([JetBrains, July 2025](https://blog.jetbrains.com/ai/2025/07/whats-new-with-mellum-expanded-language-support-and-new-ways-to-use-it-locally/)). Its enterprise documentation instead tells small organizations to use a shared GPU machine and larger ones to use a multi-node deployment, while requiring a JetBrains access token for the on-premises package ([JetBrains IDE Services documentation](https://www.jetbrains.com/help/ide-services/jetbrains-mellum.html)). “Local” is therefore a topology choice, not an ownership category.
+JetBrains exposes both patterns. Mellum-all runs through Ollama or LM Studio on a developer's machine ([JetBrains, July 2025](https://blog.jetbrains.com/ai/2025/07/whats-new-with-mellum-expanded-language-support-and-new-ways-to-use-it-locally/)). Its enterprise documentation recommends a shared GPU machine for small organizations and a multi-node deployment for larger ones, with a JetBrains access token required for the on-premises package ([JetBrains IDE Services documentation](https://www.jetbrains.com/help/ide-services/jetbrains-mellum.html)). "Local" is a topology choice, not an ownership category.
 
 For the individual-workstation version of this problem, see [the separate guide to running a Copilot-style assistant with Continue and a local model](/posts/run-copilot-style-assistant-locally-llm-vs-code/). The rest of this article stays with the organizational platform problem.
 
 ## Do not route every coding workload to the same model
 
-Autocomplete and autonomous software work have different performance envelopes. Treating them as one workload makes the economics worse and the architecture less reliable.
+Autocomplete and autonomous software work have different performance envelopes. One route for both wastes capacity and reduces reliability.
 
 | Workload | Typical requirement |
 |---|---|
@@ -105,63 +87,53 @@ Autocomplete and autonomous software work have different performance envelopes. 
 | Autonomous agent | Long context, planning, execution, testing, error recovery, durable state |
 | Difficult debugging | Strong reasoning, ambiguous evidence, often a frontier fallback |
 
-The distinction is visible in real systems. [Mistral Code](https://mistral.ai/news/mistral-code/) assigns separate models to fill-in-the-middle completion, embeddings, agentic work, and chat. [JetBrains built Mellum](https://blog.jetbrains.com/ai/2025/04/mellum-how-we-trained-a-model-to-excel-in-code-completion/) because general chat models were too slow, expensive, and inconsistent for on-the-fly completion. [Cloudflare](https://blog.cloudflare.com/internal-ai-engineering-stack/) sends lightweight and repetitive work to Workers AI while frontier models still handle most complex agentic coding requests in its published traffic snapshot.
+[Mistral Code](https://mistral.ai/news/mistral-code/) assigns separate models to completion, embeddings, agentic work, and chat. [JetBrains built Mellum](https://blog.jetbrains.com/ai/2025/04/mellum-how-we-trained-a-model-to-excel-in-code-completion/) because general chat models were too slow, expensive, and inconsistent for inline completion. [Cloudflare](https://blog.cloudflare.com/internal-ai-engineering-stack/) sends repetitive work to Workers AI while frontier models handle most complex agentic requests in its published snapshot.
 
-This is not merely cost-based routing. The best completion model may be a poor agent because it cannot call tools consistently. The strongest reasoning model may be an unusable completion engine because it responds too slowly. An embedding model should not consume the memory footprint of an autonomous coding model. Model specialization lets the platform optimize each path independently.
+Routing is about capability as well as cost. A completion model may call tools poorly; a reasoning model may respond too slowly for completion; an embedding model should not consume agent-scale memory. Specialization gives each path its own latency, quality, and capacity target.
 
 ## Companies owning most of a workload-specific stack
 
 ### Samsung: an internal assistant on an internal model family
 
-Samsung is one of the clearest public examples of an organization developing both the coding assistant and its underlying model.
+At its November 2023 AI Forum, Samsung said Samsung Research developed the Gauss language, code, and image model family. Gauss Code powered the internal `code.i` assistant for code explanation and test generation ([Samsung Global Newsroom, November 2023](https://news.samsung.com/global/samsung-ai-forum-2023-day-2-discussing-technological-trends-and-the-future-of-generative-ai)).
 
-At the Samsung AI Forum in November 2023, the company described Samsung Gauss as a model developed by Samsung Research. It separated the family into language, code, and image models and said that Samsung Gauss Code powered an internal coding assistant called `code.i`, with code explanation and test-generation functions ([Samsung Global Newsroom, November 2023](https://news.samsung.com/global/samsung-ai-forum-2023-day-2-discussing-technological-trends-and-the-future-of-generative-ai)).
+In November 2024, Samsung reported that `code.i` had moved to the Compact, Balanced, and Supreme variants of Gauss2, reached DX business units and overseas research institutes, and quadrupled monthly usage since launch. About 60% of DX software developers used it as of November 21, 2024 ([Samsung Global Newsroom](https://news.samsung.com/global/samsung-electronics-hosts-samsung-developer-conference-korea-2024-unveils-its-improved-gen-ai-model)).
 
-One year later, Samsung introduced Gauss2 in Compact, Balanced, and Supreme variants. The company reported that `code.i` had moved to Gauss2, was being used in Device eXperience business units and overseas research institutes, and had quadrupled its monthly usage since launch. As of November 21, 2024, Samsung said about 60% of software developers in its DX division used it ([Samsung Global Newsroom](https://news.samsung.com/global/samsung-electronics-hosts-samsung-developer-conference-korea-2024-unveils-its-improved-gen-ai-model)).
-
-That is strong evidence for an internally developed model and assistant in substantial internal use. It is not evidence that Samsung canceled Copilot, Cursor, Claude Code, or Codex. Samsung's public post also does not disclose the production serving topology, accelerator fleet, identity layer, or whether `code.i` can route some tasks to third-party models. The defensible conclusion is that Samsung owns the assistant and model family and operates them as an employee service; the exact infrastructure boundary is not public.
-
-Samsung therefore supports the thesis at a deep ownership level, but not the claim that every external coding subscription has been eliminated.
+This confirms substantial internal use of an internally developed assistant and model family. It does not show canceled subscriptions, the serving topology, accelerator fleet, identity layer, or third-party routing. Samsung owns much of the stack, but the exact infrastructure boundary is not public.
 
 ### Meta CodeCompose: production completion, not a modern autonomous agent
 
-Meta's CodeCompose predates the current wave of terminal agents, but it is valuable because it documents how a large company internalized high-volume completion.
+Meta's 2023 CodeCompose paper documents a client-server completion system built on InCoder and fine-tuned on internal source code across more than nine languages. A Rust language server handled requests from VS Code, Android Studio, notebooks, and other clients, plus telemetry, debouncing, and caching. An A100 GPU tier ran inference ([the CodeCompose paper](https://arxiv.org/html/2305.12050)).
 
-The implementing team's 2023 paper describes a client-server system built on InCoder, fine-tuned on Meta's internal source code across more than nine programming languages. A Rust language server handled inline-completion requests from VS Code, Android Studio, notebooks, and other clients. It called an inference tier running the fine-tuned model on A100 GPU machines, while the language server handled telemetry, debouncing, and caching ([the CodeCompose paper](https://arxiv.org/html/2305.12050)).
-
-The architecture was optimized for completion latency rather than agent throughput. Requests were processed immediately rather than batched; the language server waited for a 20-millisecond typing pause and cached duplicate contexts. This is almost the inverse of a long-running agent workload, where continuous batching, large KV caches, durable execution, and queue management become important ([the CodeCompose architecture](https://arxiv.org/html/2305.12050#S3)).
+The system optimized completion latency, not agent throughput: it processed requests immediately instead of batching them, waited for a 20-millisecond typing pause, and cached duplicate contexts. Long-running agents instead need continuous batching, large KV caches, durable execution, and queue management ([the CodeCompose architecture](https://arxiv.org/html/2305.12050#S3)).
 
 In the paper's deployment snapshot, CodeCompose produced 4.5 million suggestions for 16,000 engineers across nine languages, with a 22% suggestion acceptance rate. The authors estimated that 8% of typed changed code came from accepted CodeCompose suggestions and said the feature had been rolled out to all Meta engineers ([deployment results](https://arxiv.org/html/2305.12050#S4.SS2)). Those are implementing-team measurements, not an independent productivity study.
 
-CodeCompose demonstrates internal ownership of model fine-tuning, inference, editor integration, and telemetry. It does **not** demonstrate a replacement for Claude Code or Codex. It could not autonomously inspect a repository, run tests, recover from a failed build, and open a patch. Its role in this article is narrower: large organizations were already taking control of the frequent, latency-sensitive completion layer before modern coding agents arrived.
+CodeCompose owns model fine-tuning, inference, editor integration, and telemetry. It does **not** replace Claude Code or Codex: it could not autonomously inspect a repository, run tests, recover from a failed build, and open a patch. It shows that companies internalized the frequent, latency-sensitive completion layer before modern coding agents.
 
 ### Ant Group CodeFuse: deep model work, limited public adoption data
 
-Ant Group's CodeFuse paper documents another internally developed code-model stack. The team reported collecting more than 200 TB of code-related data, refining it to about 1.6 TB or one trillion tokens, and pretraining a 13-billion-parameter model on Ant Group's technology stack. The training program included static program analysis, supervised and multi-task fine-tuning, evaluation infrastructure, and operational work for training across hundreds or thousands of GPU instances ([CodeFuse-13B paper](https://arxiv.org/html/2310.06266v2)).
+Ant Group's CodeFuse team reported collecting more than 200 TB of code-related data, refining it to about 1.6 TB or one trillion tokens, and pretraining a 13-billion-parameter model on the company's technology stack. The program covered static analysis, supervised and multi-task fine-tuning, evaluations, and training across hundreds or thousands of GPU instances ([CodeFuse-13B paper](https://arxiv.org/html/2310.06266v2)).
 
 The team integrated CodeFuse into Ant Group's development process and built extensions for VS Code, JetBrains IDEs, and Ant CloudIDE. It collected human feedback over several months for code-comment and explanation tasks. It also open-sourced components including the CodeFuse evaluation suite and MFTCoder fine-tuning framework.
 
-This is credible evidence of model development and internal integration. The paper does not publish a developer count, an active-use rate, subscription changes, or enough production telemetry to compare adoption with Samsung or Meta. The [CodeFuse GitHub organization](https://github.com/codefuse-ai) remained active in 2026, but current open-source activity is not proof that the original model remains deployed internally at the same scale.
+This confirms model development and internal integration, but the paper provides no developer count, active-use rate, subscription change, or comparable production telemetry. The [CodeFuse GitHub organization](https://github.com/codefuse-ai) remained active in 2026; that does not prove the original model still runs internally at the same scale.
 
 ### Alibaba: an explicit reported substitution with an undisclosed inference boundary
 
-Alibaba is different because the public story begins with a reported prohibition, not an architecture post.
-
 On July 3, 2026, Reuters reported, citing one person familiar with the order, that Alibaba had prohibited employees from using Claude Code for work and was directing them to its own Qoder coding platform. Reuters connected the decision to scrutiny of Claude Code mechanisms that inspected environment signals associated with China-linked users and to broader legal and compliance concerns. Alibaba and Anthropic did not respond to Reuters' requests for comment at the time ([Reuters report, syndicated by Investing.com](https://www.investing.com/news/stock-market-news/alibaba-to-ban-claude-code-in-workplace-over-alleged-backdoor-risks-source-says-4775035)).
 
-This is the strongest evidence in this set for an organizational substitution of a named external agent. It is still a **reported substitution**, based on an unnamed source rather than Alibaba's published engineering documentation.
+This is the strongest evidence here for replacing a named external agent, but it remains a **reported substitution** based on an unnamed source, not Alibaba engineering documentation.
 
 Qoder is clearly more than one model. Alibaba Cloud describes it as an agentic coding platform with desktop, CLI, and JetBrains clients ([Alibaba Cloud documentation](https://www.alibabacloud.com/help/en/model-studio/qoder-agent)). Public Qoder documentation also supports Alibaba Cloud Model Studio and third-party provider keys, while Qoder has published a customized Qwen-Coder-Qoder model for agentic workflows ([Qoder's model documentation](https://docs.qoder.com/en/cli/model), [Qoder engineering post](https://qoder.com/blog/qwen-coder-qoder)).
 
-What is not public is more important: the model mix Alibaba employees receive, whether their requests use privately hosted Qwen weights or a company cloud endpoint, what fallback exists, and whether all coding data remains inside one corporate boundary. The existence of Qwen, Qwen Coder, and Qoder does not prove that every internal Qoder request is served by a self-hosted Qwen model.
-
-The Alibaba case supports a security, compliance, supply-chain, and geopolitical motivation for owning the client boundary. It does not yet disclose enough to classify the full internal deployment at level 3.
+Alibaba has not published the employee model mix, whether requests use privately hosted Qwen weights or a company cloud endpoint, fallback policy, or data boundary. Qwen, Qwen Coder, and Qoder do not prove that every internal request uses a self-hosted Qwen model. The case supports security, compliance, supply-chain, and geopolitical reasons to own the client boundary, but not a level-3 classification.
 
 ## Companies owning the agent and control plane
 
 ### Cloudflare: control first, hybrid inference by design
 
-Cloudflare's April 20, 2026 architecture post is the most complete public account of this transition. Its importance is not that the company eliminated proprietary models. The post shows almost the opposite: Cloudflare centralized control while continuing to use them heavily ([Cloudflare's published architecture](https://blog.cloudflare.com/internal-ai-engineering-stack/)).
+Cloudflare's April 20, 2026 architecture post is the most complete public account of control-plane ownership with continued heavy use of proprietary models ([Cloudflare's published architecture](https://blog.cloudflare.com/internal-ai-engineering-stack/)).
 
 Cloudflare distributed OpenCode internally behind one discovery and authentication endpoint. An engineer starts with a command resembling:
 
@@ -169,83 +141,77 @@ Cloudflare distributed OpenCode internally behind one discovery and authenticati
 opencode auth login https://opencode.internal.domain
 ```
 
-The endpoint returns authentication requirements plus shared provider, MCP, agent, command, and permission configuration. OpenCode invokes Cloudflare Access, the employee authenticates with the company's existing SSO, and `cloudflared` returns a signed token. Local configuration can override selected defaults, but organization-wide policy is centrally delivered.
+The endpoint returns authentication requirements and shared provider, MCP, agent, command, and permission configuration. OpenCode invokes Cloudflare Access, the employee uses company SSO, and `cloudflared` returns a signed token. Local configuration can override selected defaults; organization policy remains central.
 
-Provider requests do not go directly from the laptop to model vendors. A proxy Worker validates the employee token, removes user authorization headers, injects the server-side AI Gateway credential, and forwards the request through a provider-specific route. Cloudflare says no model-provider API keys are stored on developer machines. It maps employee identity to an anonymous UUID for per-user cost attribution without placing the employee email in provider-facing gateway metadata.
+A proxy Worker validates the employee token, removes user authorization headers, injects the server-side AI Gateway credential, and forwards each request to the selected provider. No provider API keys remain on developer machines. An anonymous UUID enables per-user cost attribution without sending employee email in provider-facing metadata.
 
-The same endpoint distributes configuration as code. Agents and commands are Markdown files with YAML frontmatter, compiled into schema-validated JSON and deployed centrally. Cloudflare reported that one deployment could update the coding environment received by more than 3,000 people. Its internal MCP portal aggregated 13 production MCP servers and more than 182 tools across systems including GitLab, Jira, Sentry, Prometheus, and internal services. One Access flow governed the portal.
+The endpoint also distributes configuration as code. Markdown agent and command files with YAML frontmatter compile into schema-validated JSON. One deployment can update the environment received by more than 3,000 people. An Access-protected MCP portal aggregates 13 production servers and more than 182 tools across GitLab, Jira, Sentry, Prometheus, and internal services.
 
-The platform also covers execution and context. Cloudflare described an internal knowledge graph with more than 16,000 entities, code review on its standard CI path, and isolated environments for cloning, building, and testing. Its planned background-agent architecture uses durable orchestration and sandbox containers; the post presents that background-agent layer as the next evolution, not as already equivalent to the local OpenCode rollout Cloudflare's published architecture.
+Cloudflare also described a knowledge graph with more than 16,000 entities, code review on its standard CI path, and isolated environments for cloning, building, and testing. Its planned background-agent architecture adds durable orchestration and sandbox containers; the post does not present that layer as already equivalent to the local OpenCode rollout.
 
-The adoption numbers are company-reported and dated. For the 30 days preceding April 20, 2026, Cloudflare reported 3,683 active internal users, 60% of roughly 6,100 employees and 93% of R&D, across 295 teams. It reported 47.95 million AI requests overall, 20.18 million monthly AI Gateway requests, 241.37 billion tokens routed through the gateway, and 51.83 billion tokens processed on Workers AI. These categories are not all the same denominator, so they should not be added together Cloudflare's metrics.
+For the 30 days preceding April 20, 2026, Cloudflare reported 3,683 active users across 295 teams: 60% of roughly 6,100 employees and 93% of R&D. It also reported 47.95 million AI requests overall, 20.18 million monthly AI Gateway requests, 241.37 billion tokens routed through the gateway, and 51.83 billion tokens processed on Workers AI. These company-reported categories use different denominators and should not be added.
 
-The routing split is the crucial fact. In the provider breakdown Cloudflare published for the previous month, OpenAI, Anthropic, and Google frontier models handled 13.38 million requests, or 91.16% of the measured provider request volume. Workers AI handled 1.3 million requests, or 8.84%. Cloudflare explicitly said frontier models were still doing most complex agentic coding work Cloudflare's provider breakdown.
+In Cloudflare's provider breakdown for the previous month, OpenAI, Anthropic, and Google frontier models handled 13.38 million requests, or 91.16% of measured provider volume. Workers AI handled 1.3 million, or 8.84%. Frontier models still performed most complex agentic coding work.
 
-Workers AI nevertheless handled workloads where capability, volume, and economics aligned: documentation review, generation of repository context files, lightweight inference, and a high-volume security agent. Cloudflare reported that the security workload processed more than seven billion tokens per day on Kimi K2.5. It estimated that an unspecified “mid-tier proprietary model” would cost $2.4 million per year for that load and that Workers AI was 77% cheaper.
+Workers AI handled documentation review, repository context generation, lightweight inference, and a high-volume security agent. Cloudflare said that security workload processed more than seven billion tokens per day on Kimi K2.5; an unspecified "mid-tier proprietary model" would cost an estimated $2.4 million per year, while Workers AI was 77% cheaper.
 
-This is the thesis in production form. Cloudflare owns the interface distribution, SSO, proxy, credentials, policy, model catalog, tool portal, configuration, observability, and routing decision. It can shift a suitable workload to open-weight inference without changing every developer's client. But its own numbers show that control-plane replacement came before full inference replacement.
+Cloudflare owns interface distribution, SSO, proxy, credentials, policy, model catalog, tool portal, configuration, observability, and routing. It can move suitable workloads to open-weight inference without changing every client, but its numbers show control-plane replacement preceding inference replacement.
 
 ### Walmart Code Puppy: provider independence without public hosting details
 
-Code Puppy is an open-source, MIT-licensed coding agent created by Walmart engineers Michael Pfaffenberger and John Choi. The public project can use multiple model providers, supports local OpenAI-compatible servers, exposes file and shell tools, reads `AGENTS.md`, and integrates MCP. Its privacy documentation is explicit that prompts go directly to the configured provider unless the user points it at a local vLLM, SGLang, or llama.cpp endpoint ([Code Puppy repository](https://github.com/mpfaffenberger/code_puppy)).
+Code Puppy is an open-source, MIT-licensed coding agent created by Walmart engineers Michael Pfaffenberger and John Choi. It supports multiple providers, local OpenAI-compatible servers, file and shell tools, `AGENTS.md`, and MCP. Prompts go directly to the configured provider unless the user selects a local vLLM, SGLang, or llama.cpp endpoint ([Code Puppy repository](https://github.com/mpfaffenberger/code_puppy)).
 
-Business Insider reported in June 2026 that Code Puppy had spread inside Walmart from engineers to other roles and that provider flexibility, cost control, and avoiding lock-in motivated the design. The report says it can switch, compare, or rotate among models rather than binding the client to one supplier ([Business Insider Japan edition](https://www.businessinsider.jp/article/2606walmart-code-puppy-ai-anthropic-claude-code-openai-codex/)).
+Business Insider reported in June 2026 that Code Puppy had spread from engineers to other Walmart roles, motivated by provider flexibility, cost control, and avoiding lock-in. It can switch, compare, or rotate models instead of binding the client to one supplier ([Business Insider Japan edition](https://www.businessinsider.jp/article/2606walmart-code-puppy-ai-anthropic-claude-code-openai-codex/)).
 
-There is direct company acknowledgment of broad internal scope, although the available figures are informal. Walmart's CTO said Code Puppy “supports the entire company” in a public post recognizing its creators ([Suresh Kumar, 2026](https://www.linkedin.com/posts/suresh-kumar-cto_congratulations-to-walmart-associates-john-activity-7468818436496875520--pgX)). A Walmart employee wrote in March 2026 that the program supported AI development for more than 30,000 associates and that more than 6,500 joined an update session in person or online ([Johnathan Williams, March 2026](https://www.linkedin.com/posts/johnathan-williams-4b5308163_we-had-an-incredible-session-last-friday-activity-7434313314563710976-RLcP)).
+Walmart's CTO said Code Puppy "supports the entire company" ([Suresh Kumar, 2026](https://www.linkedin.com/posts/suresh-kumar-cto_congratulations-to-walmart-associates-john-activity-7468818436496875520--pgX)). A Walmart employee wrote in March 2026 that the program supported AI development for more than 30,000 associates and that more than 6,500 joined an update session ([Johnathan Williams, March 2026](https://www.linkedin.com/posts/johnathan-williams-4b5308163_we-had-an-incredible-session-last-friday-activity-7434313314563710976-RLcP)). These figures are informal.
 
-The evidence establishes an internal, model-neutral agent at significant organizational scope. It does not establish Walmart's internal model-hosting topology, the proportion of local versus external inference, or cancellation of named subscriptions. Code Puppy is therefore a level-1 case: Walmart can manage provider dependence at the agent layer even if it continues buying inference from multiple suppliers.
+The evidence establishes a model-neutral internal agent at significant scope, not Walmart's hosting topology, local-versus-external split, or canceled subscriptions. It is a level-1 case: provider dependence is managed at the agent layer while inference may still come from multiple suppliers.
 
 ### Zup CodeGen: the model is not the operational system
 
-An implementing-team preprint from Zup Innovation provides a useful corroborating case. Its internal CodeGen system uses a Node.js CLI for developer interaction and local tool execution, a FastAPI backend for authentication and routing, and a central “Maestro” for the agent loop. PostgreSQL and Redis hold session and event state, while a durable timeline records model responses, tool calls, and state transitions for debugging and compliance ([Zup's April 2026 paper](https://arxiv.org/html/2604.09805)).
+Zup Innovation's implementing-team preprint describes an internal CodeGen system with a Node.js CLI for interaction and local tools, a FastAPI backend for authentication and routing, and a central "Maestro" agent loop. PostgreSQL and Redis hold session and event state; a durable timeline records model responses, tool calls, and transitions for debugging and compliance ([Zup's April 2026 paper](https://arxiv.org/html/2604.09805)).
 
-The team says the agent is used daily by developers, but publishes no adoption count and does not claim that a commercial subscription was eliminated. Its value here is architectural. Zup reports that targeted edit tools, consistent safety policies, and progressive approval modes mattered more to reliability and adoption than prompt-only tuning. A powerful model simplified reasoning, but did not remove the need for orchestration, state management, or guardrails.
-
-That is another form of control-plane ownership: the company owns what the model is allowed to do and how its actions become observable, even when the paper leaves model hosting unspecified.
+The team reports daily use but no adoption count or eliminated subscription. Targeted edit tools, consistent safety policies, and progressive approvals mattered more to reliability and adoption than prompt-only tuning. The model simplified reasoning but did not replace orchestration, state, or guardrails. Zup owns what the model can do and how actions become observable; hosting remains unspecified.
 
 ## Buying a private platform instead of building one
 
 ### Mistral Code: private deployment with a commercial owner
 
-Not every company wants to maintain an agent, four model classes, and an inference service. Mistral Code packages those layers as an enterprise product built on a fork of Continue.
+Mistral Code packages an agent, four model classes, and inference as an enterprise product built on a Continue fork.
 
-At its June 4, 2025 announcement, Mistral described four workload-specific models: Codestral for fill-in-the-middle completion, Codestral Embed for code search, Devstral for agentic coding, and Mistral Medium for chat. It advertised deployment in its cloud, on reserved capacity, or on air-gapped on-premises GPUs, with fine-grained access controls, audit logging, and usage and acceptance metrics ([Mistral Code announcement](https://mistral.ai/news/mistral-code/)). The product was a private beta at that date, which matters when interpreting the customer statements published with it.
+On June 4, 2025, Mistral described Codestral for fill-in-the-middle completion, Codestral Embed for code search, Devstral for agentic coding, and Mistral Medium for chat. Deployment options included its cloud, reserved capacity, or air-gapped on-premises GPUs, with access controls, audit logs, and usage and acceptance metrics ([Mistral Code announcement](https://mistral.ai/news/mistral-code/)). The product was then in private beta.
 
 Mistral reported three different customer configurations:
 
-- **ABANCA:** Mistral said the bank had deployed Mistral Code at scale in a hybrid setup, using cloud prototyping while keeping core banking code on-premises.
-- **Capgemini:** Mistral said Capgemini *was to deploy* the product on-premises for more than 1,500 developers serving regulated-industry projects. The wording describes a planned deployment, not a completed rollout.
-- **SNCF:** Mistral said France's railway group was enabling 4,000 developers through Mistral Code Serverless. That is a substantial customer claim, but it is the cloud/serverless configuration, not an on-premises example.
+- ABANCA had deployed Mistral Code at scale in a hybrid setup, according to Mistral, using cloud prototyping while keeping core banking code on-premises.
+- Capgemini *was to deploy* the product on-premises for more than 1,500 developers serving regulated-industry projects. Mistral's wording describes a plan, not a completed rollout.
+- SNCF was enabling 4,000 developers through Mistral Code Serverless, according to Mistral. This is a cloud configuration, not an on-premises example.
 
-All three figures and statuses come from Mistral, the vendor. They are not equivalent evidence. ABANCA is described as deployed, Capgemini as planned, and SNCF as serverless. I found no later first-party customer architecture that exposes active usage, completion rates, or the exact production topology for ABANCA or Capgemini.
+All three claims come from Mistral. ABANCA is deployed, Capgemini planned, and SNCF serverless; I found no later first-party customer architecture with active usage, completion rates, or exact ABANCA or Capgemini topology.
 
-These cases still demonstrate an important option. A company can replace a public SaaS coding boundary with a privately deployed and supported stack without training a model or forking an agent itself. It gains data-location and operational control while continuing to depend on Mistral for software, models, support, and commercial terms. On-premises enterprise AI can replace a per-user SaaS dependency and still include license and support costs.
+This route replaces a public SaaS data boundary without requiring the customer to train a model or fork an agent. It adds data-location and operational control while retaining dependence on Mistral's software, models, support, licenses, and commercial terms.
 
 ## A shared local server for a small team
 
 ### Infralovers: one Mac Mini, OpenCode clients, and an honest fallback
 
-Infralovers evaluated the smallest credible shared version of this architecture: a Mac Mini M4 with 32 GB of memory running Ollama, reachable through a self-hosted Headscale control server and Tailscale clients. Each developer ran OpenCode locally and pointed it to the shared OpenAI-compatible Ollama endpoint. The example configuration exposed Qwen3-Coder 30B and Llama 3.1 8B locally, with Claude Sonnet 4.5 available as an external fallback ([Infralovers, March 3, 2026](https://www.infralovers.com/blog/2026-03-03-company-ai-solved-mac-mini-opencode/)).
+Infralovers tested a Mac Mini M4 with 32 GB of memory running Ollama behind a self-hosted Headscale control server and Tailscale clients. Developers ran OpenCode locally against the shared OpenAI-compatible endpoint. The example exposed Qwen3-Coder 30B and Llama 3.1 8B locally, with Claude Sonnet 4.5 as fallback ([Infralovers, March 3, 2026](https://www.infralovers.com/blog/2026-03-03-company-ai-solved-mac-mini-opencode/)).
 
-The company is unusually clear about the evidence boundary. It calls the project a proof-of-concept evaluation, not a blueprint. It publishes no team size and says its local-versus-cloud workload split is a working hypothesis rather than a measurement. It observed noticeably slower responses when three or more developers used the same 14-billion-parameter model concurrently, and it warns that long autonomous runs, parallel agents, and large contexts will outgrow one Mac Mini quickly.
+This was a proof-of-concept evaluation, not a blueprint. The company publishes no team size and calls its local-versus-cloud split a hypothesis. Responses slowed noticeably when three or more developers shared the same 14-billion-parameter model; long runs, parallel agents, and large contexts would outgrow one Mac Mini quickly.
 
-The design is nevertheless useful. The client and endpoint are decoupled. Routine work can remain on the team network. Developers can switch to an external model when local reasoning or context is insufficient. The team can learn what its workloads actually require before purchasing a cluster.
-
-The lesson is not that one small computer replaces enterprise coding AI. It is that the same control-plane principle scales down: standardize the endpoint and client first, then discover which inference belongs behind it.
+The decoupled client and endpoint keep routine work on the team network and permit external fallback when local capability is insufficient. A small team can measure workloads before buying a cluster: standardize the endpoint and client, then decide which inference belongs behind them.
 
 ## Specialize the high-volume path
 
 ### JetBrains Mellum: do not spend agent-scale compute on every keystroke
 
-JetBrains built Mellum after concluding that general chat models had excessive cost and latency for inline completion and lacked reliable fill-in-the-middle behavior. The team targeted a model below four billion parameters with a code-specific vocabulary, trained it from scratch, and optimized it for the product's completion interface ([JetBrains, April 2025](https://blog.jetbrains.com/ai/2025/04/mellum-how-we-trained-a-model-to-excel-in-code-completion/)).
+JetBrains built Mellum because general chat models cost too much, responded too slowly, and lacked reliable fill-in-the-middle completion. The team targeted fewer than four billion parameters, used a code-specific vocabulary, trained the model from scratch, and optimized it for its completion interface ([JetBrains, April 2025](https://blog.jetbrains.com/ai/2025/04/mellum-how-we-trained-a-model-to-excel-in-code-completion/)).
 
 JetBrains reported pretraining the four-billion-parameter base model on about three trillion sampled tokens with an 8,192-token context window. Training ran for roughly 15 days on 16 nodes with eight H100 GPUs each. It then used context-aware fine-tuning, language specializations, and preference optimization. The company's cloud completion had used its custom model since the 2024.2 release ([deployment context](https://blog.jetbrains.com/ai/2025/02/why-and-how-jetbrains-built-mellum-the-llm-designed-for-code-completion/)).
 
-Mellum is not an internal employee platform replacing Claude Code. It is a vendor building and operating a specialized model inside its product, and later making local and enterprise deployment options available. Its relevance is the operational principle: the request generated by each keystroke should not be sent to the most expensive reasoning model merely because that model is strongest on autonomous software tasks.
+Mellum is a vendor-operated completion model, not an employee platform replacing Claude Code. It later gained local and enterprise deployment options. The operational lesson is to separate completion, retrieval, editing, and difficult debugging into services with distinct latency targets, scaling policies, and update cycles.
 
-Completion, retrieval, editing, and difficult debugging can be separate services with separate latency targets, scaling policies, and update cycles.
-
-## Comparing what “replacement” means in practice
+## Comparing replacement in practice
 
 | Company | Internal agent/client | Model deployment | External fallback | What the company owns | What appears to be replaced | Evidence strength |
 |---|---|---|---|---|---|---|
@@ -261,15 +227,11 @@ Completion, retrieval, editing, and difficult debugging can be separate services
 | Infralovers | OpenCode on developer laptops | Shared Ollama on one Mac Mini | Anthropic API configured | Shared endpoint, VPN, local models, client configuration | Part of routine inference and client dependence in a proof of concept | Direct technical write-up with explicit limits; not an enterprise rollout |
 | JetBrains | JetBrains AI Assistant and editor integrations | JetBrains cloud, laptop-local, or licensed enterprise deployment | Broader models remain appropriate for non-completion tasks | Completion model training and product integration | Specialized completion inference, not a full coding agent | Detailed company training account and current deployment docs |
 
-The table resists a single ranking because the systems solve different problems. Meta has deeper completion ownership than Cloudflare, but Cloudflare exposes a broader agent control plane. ABANCA may have a stricter data boundary than Walmart, but it buys more of the stack from one vendor. Alibaba has the clearest reported product prohibition and the least public internal topology.
+The systems do not fit one ranking. Meta owns more of completion; Cloudflare operates a broader control plane. ABANCA may have a stricter data boundary than Walmart but buys more from one vendor. Alibaba has the clearest reported prohibition and the least public internal topology.
 
 ## The recurring internal architecture
 
-Across these cases, a recognizable platform emerges. I represent it schematically on the following graph.
-
-Not every company implements every box, and the boxes can be products, internal services, or both.
-
-The platform is also the organization's coding-agent harness: the system around the model that controls context, tools, execution, and evidence. [A separate article examines how to make that harness verifiable](/posts/how-to-build-a-reliable-coding-agent-harness/); here the concern is who operates each layer.
+Across these cases, the same platform layers recur. Each box can be a product, an internal service, or absent. Together they form the coding-agent harness around context, tools, execution, and evidence. [A separate article explains how to make that harness verifiable](/posts/how-to-build-a-reliable-coding-agent-harness/); this diagram focuses on who operates each layer.
 
 ```mermaid
 flowchart TB
@@ -301,132 +263,97 @@ flowchart TB
     V --> S
 ```
 
-Read the diagram from the developer downward. The developer uses one approved client, but authenticates with corporate identity rather than a personal model-provider key. Every inference request crosses an internal gateway. A router chooses an internal or external endpoint. Context tools and execution are separate from inference, because repository access and shell access require their own authorization and audit policies. Observability spans the whole path. Version-controlled configuration lets the platform team change models, tools, and guardrails without manually reconfiguring every laptop.
+The developer authenticates with corporate identity through one approved client. An internal gateway routes inference to internal or external endpoints. Context tools and execution remain separate because repository and shell access need their own authorization and audit policies. Observability spans the path; version-controlled configuration updates models, tools, and guardrails without reconfiguring every laptop.
 
 ### 1. Developer client or coding agent
 
-This is the visible product: OpenCode, Continue, Code Puppy, a VS Code or JetBrains extension, a CLI, or an internal application. For an autonomous workflow, the client or its backend also owns the loop that interprets model tool calls, returns observations, manages context, and decides when to stop.
-
-A model-neutral client is necessary but not sufficient. If every developer supplies a personal API key and arbitrary configuration, the company has changed the UI without creating a platform.
+OpenCode, Continue, Code Puppy, editor extensions, CLIs, and internal apps are the visible product. For autonomous work, the client or backend also interprets tool calls, returns observations, manages context, and decides when to stop. A model-neutral UI with personal API keys and arbitrary configuration is not an internal platform.
 
 ### 2. Corporate identity and policy
 
-The employee should authenticate as an employee. SSO and short-lived credentials make access revocable. RBAC and repository permissions should constrain both what context the agent can read and which tools it can call. Quotas, model allowlists, and sensitivity policies belong here.
-
-Cloudflare's design is concrete: Access authenticates the user, the proxy validates the signed token, and provider credentials remain server-side. The principle is portable even if the implementation is not.
+SSO and short-lived credentials make access revocable. RBAC and repository permissions constrain context and tool calls; quotas, model allowlists, and sensitivity policies use the same employee identity. Cloudflare implements this with Access, signed-token validation, and server-side provider credentials.
 
 ### 3. Internal AI gateway
 
-The gateway is the stable contract between developer tools and model backends. It can expose an OpenAI-compatible API or a more neutral internal protocol. Its job is not just proxying. It centralizes credentials, retention rules, request metadata, rate limits, cost attribution, and provider failover.
-
-This is often the highest-leverage first component because it breaks direct coupling between a client and a provider. GitLab's self-hosted documentation makes the distinction explicit: a customer can operate the AI Gateway while choosing self-hosted, cloud-hosted, or hybrid model backends ([GitLab](https://docs.gitlab.com/administration/gitlab_duo_self_hosted/)).
+The gateway is the stable contract between tools and model backends, exposed through an OpenAI-compatible API or an internal protocol. It centralizes credentials, retention, metadata, rate limits, cost attribution, and failover while decoupling client and provider. GitLab customers, for example, can operate the AI Gateway with self-hosted, cloud-hosted, or hybrid backends ([GitLab](https://docs.gitlab.com/administration/gitlab_duo_self_hosted/)).
 
 ### 4. Model router
 
-The router selects a backend using more than a model name. Inputs can include task class, repository sensitivity, required context, measured model success, latency budget, queue depth, regional availability, and current cost.
-
-Some decisions should be deterministic. Embeddings can always go to one private model. Code completion can use the latency-optimized pool. Security-sensitive repositories can disallow external inference. Difficult debugging can use a frontier model only after the local path fails or when a policy permits it. A learned router may help later, but explicit rules are easier to audit at the start.
+The router selects a backend by task class, repository sensitivity, required context, measured success, latency budget, queue depth, regional availability, and cost. Start with auditable rules: embeddings use a private model, completion uses a low-latency pool, sensitive repositories disallow external inference, and difficult debugging reaches a frontier model only when policy permits.
 
 ### 5. Self-hosted inference
 
-One organization may operate several inference services: a small completion model, an embedding model, a reranker, a code-search model, and an agentic coding model. They do not need the same hardware or autoscaling strategy.
-
-Serving systems such as vLLM and SGLang matter because shared inference is a scheduling problem. Batching improves accelerator utilization. KV and prefix caching avoid recomputing repeated repository instructions or conversation prefixes. Quantization can reduce memory and increase capacity, with a quality and compatibility trade-off. vLLM's automatic prefix caching documentation is precise about the limit: it skips computation for shared prompt prefixes, but does not make generation of new output tokens faster ([vLLM documentation](https://docs.vllm.ai/en/latest/features/automatic_prefix_caching/)).
+Completion, embedding, reranking, code search, and agentic coding can use different services, hardware, and autoscaling. vLLM and SGLang schedule shared inference: batching raises accelerator utilization, KV and prefix caching avoid recomputing shared prefixes, and quantization trades quality and compatibility for memory and capacity. Prefix caching skips computation for shared prompt prefixes; it does not accelerate generation of new tokens ([vLLM documentation](https://docs.vllm.ai/en/latest/features/automatic_prefix_caching/)).
 
 ### 6. External fallback
 
-Fallback is not an architectural embarrassment. It is a controlled admission that model capability is uneven.
-
-Cloudflare's numbers show external frontier models doing most complex agentic work. Infralovers explicitly switches to Anthropic for architecture, difficult debugging, security review, novel problems, and long contexts. GitLab supports per-feature hybrid configuration. These systems retain a stable internal policy boundary even when the selected inference runs elsewhere.
-
-The important difference from individual subscriptions is that fallback is governed: approved providers, corporate credentials, retention terms, budgets, and audit rules apply consistently.
+Fallback acknowledges uneven model capability. Cloudflare uses external frontier models for most complex agentic work; Infralovers switches to Anthropic for architecture, difficult debugging, security review, novel problems, and long contexts; GitLab supports per-feature hybrid configuration. Unlike individual subscriptions, these routes share approved providers, corporate credentials, retention terms, budgets, and audit rules.
 
 ### 7. Context and tool integrations
 
-Repositories are only part of the context. Useful internal agents need design documentation, ownership catalogs, issue trackers, CI results, incidents, metrics, package registries, and internal APIs. MCP can standardize those tools, but it does not solve authorization by itself.
-
-Each tool call should execute under an identity and least-privilege scope that the organization can explain. Tool descriptions also consume context and influence model behavior. Cloudflare's portal and Zup's tool-manifest experience both show that the tool layer is a designed platform surface, not a collection of arbitrary plugins.
+Agents also need design documentation, ownership catalogs, issue trackers, CI results, incidents, metrics, package registries, and internal APIs. MCP can standardize tools but does not authorize them. Each call needs an attributable identity and least-privilege scope; tool descriptions also consume context and influence behavior. Cloudflare's portal and Zup's manifests treat this layer as a designed platform surface.
 
 ### 8. Execution sandbox
 
-An agent that only generates text is not an autonomous coding agent. It needs to inspect files, edit them, install dependencies, run builds, execute tests, and observe failures. Running all of that directly on a developer laptop or a shared CI runner expands the blast radius.
-
-Ephemeral containers or microVMs provide a safer execution boundary. The sandbox should control network egress, secrets, filesystem mounts, compute budgets, and lifetime. Repository tokens should be scoped to the task. A model prompt saying “do not push” is not an authorization control.
+Autonomous agents inspect and edit files, install dependencies, run builds and tests, and observe failures. Doing that on a developer laptop or shared CI runner expands the blast radius. Ephemeral containers or microVMs should constrain network egress, secrets, filesystem mounts, compute budgets, lifetime, and repository tokens. A prompt saying "do not push" is not an authorization control.
 
 ### 9. Observability and governance
 
-Token counts and cost are necessary, but they are not outcome metrics. The platform should also record latency, queue time, cache reuse, model and route selection, tool-call failures, sandbox policy violations, test results, developer acceptance, task completion, retries, and fallback rate.
-
-The hardest question is whether the work helped. A cheaper token that produces more failed edits is not cheaper. A suggestion acceptance rate is meaningful for completion but inadequate for an autonomous issue-resolution agent. Metrics must follow the workload class.
+Alongside tokens and cost, record latency, queue time, cache reuse, route selection, tool failures, sandbox violations, test results, developer acceptance, task completion, retries, and fallback rate. A cheaper token that produces more failed edits is not cheaper; completion acceptance cannot measure an autonomous issue-resolution agent. Metrics must match the workload.
 
 ### 10. Central configuration and evaluations
 
-Prompts, approved models, MCP definitions, agent policies, permissions, and routing rules should be versioned and reviewed. Cloudflare compiles shared OpenCode configuration from source. Zup promotes changes through development, staging, and production. Both patterns turn agent behavior into an operable software release rather than a set of undocumented laptop settings.
-
-Representative evaluations should be versioned alongside that configuration. Public coding benchmarks are useful for model screening, but only internal tasks reveal whether a model understands the company's build systems, frameworks, languages, and failure modes.
+Version and review prompts, approved models, MCP definitions, agent policies, permissions, routing rules, and representative evaluations. Cloudflare compiles OpenCode configuration from source; Zup promotes changes through development, staging, and production. Public benchmarks can screen models, but internal tasks test the company's build systems, frameworks, languages, and failure modes.
 
 ## Why the control plane often comes first
 
-Finding a one-for-one local replacement for the strongest proprietary model is a difficult first milestone. It asks the platform team to solve model quality, serving, integration, security, and adoption simultaneously.
+Replacing the strongest proprietary model first forces one team to solve model quality, serving, integration, security, and adoption at once. A client and gateway produce value earlier, even when every request still uses a paid API:
 
-Replacing the client and gateway first produces benefits even when every request still uses a paid API:
+- Employees use SSO instead of personal provider accounts and keys.
+- Central policy enforces providers, repositories, retention modes, quotas, and tool permissions.
+- One endpoint lets the platform team change backends without migrating developers.
+- Provider and user costs become attributable instead of fragmented across seats and expenses.
+- Secrets, source classifications, and external-routing rules share enforcement points.
+- Issue trackers, CI, documentation, and service catalogs integrate once for every approved model.
+- Private embedding or completion can enter behind the gateway incrementally.
 
-- **One authentication system:** employees use SSO rather than personal provider accounts and keys.
-- **Central policy:** the organization can enforce approved providers, repositories, retention modes, quotas, and tool permissions.
-- **Model portability:** clients depend on one internal endpoint while the platform team can test or change backends.
-- **Cost visibility:** provider and user attribution becomes measurable instead of fragmented across seats and expense reports.
-- **Negotiating leverage:** workloads are less entangled with a proprietary client, so a provider change is an internal routing change rather than a developer migration.
-- **Data controls:** secrets, source-code classifications, and external-routing rules are enforced at shared choke points.
-- **Internal context:** issue trackers, CI, documentation, and service catalogs can be integrated once for every approved model.
-- **Incremental self-hosting:** a local embedding or completion model can enter behind the gateway without replacing the entire developer experience.
+Cloudflare's proxy enabled per-user attribution, catalog management, and policy enforcement without client changes, while 91.16% of its dated provider requests still went to frontier vendors. Walmart makes the agent and provider interface replaceable without public evidence of internal inference. Zup owns tools, state, and safety without disclosing model hosting.
 
-Cloudflare is strong evidence for this sequence. Its proxy was the early design decision that later enabled per-user attribution, catalog management, and policy enforcement without changing client configuration. Yet 91.16% of the provider requests in its dated snapshot still went to frontier vendors.
-
-Walmart's case supports the same idea from another angle. Code Puppy makes the agent source and provider interface replaceable, even though the public evidence does not show internal inference. Zup shows that ownership of tools, state, and safety produces operational value independent of model ownership.
-
-The control plane does not automatically reduce cost or improve model quality. A badly governed gateway can become another bottleneck. An internal client can lag commercial products. Centralization also creates a high-value service that must be reliable and secure. The claim is narrower: control-plane ownership makes later inference changes possible without reorganizing the whole developer workflow.
+A gateway can become a bottleneck, an internal client can lag commercial products, and centralization creates a high-value service that must be reliable and secure. Control-plane ownership does not guarantee savings or quality; it makes later inference changes possible without reorganizing the developer workflow.
 
 ## The honest limits of local and private models
 
-Open-weight coding models have improved quickly, but an organization should evaluate them as components, not as symbols of independence.
+Evaluate open-weight models as components, not as symbols of independence.
 
 ### Ambiguous work remains difficult
 
-Routine generation, transformation, retrieval, and templated edits are easier to evaluate and route. Ambiguous bugs, incomplete requirements, cross-repository behavior, and architectural changes demand better judgment and recovery. A local model can produce plausible code while missing the actual system constraint.
+Routine generation, transformation, retrieval, and templated edits are easier to evaluate and route. Ambiguous bugs, incomplete requirements, cross-repository behavior, and architecture demand stronger judgment and recovery. A local model can produce plausible code while missing the governing constraint.
 
 ### Long context is both a model and infrastructure problem
 
-A large advertised context window does not guarantee that the model uses distant evidence reliably. Large contexts also consume KV-cache memory and reduce concurrency. GitLab's vLLM deployment reference notes that VRAM requirements vary with both context length and concurrency; those two variables compete for the same serving capacity ([GitLab vLLM reference](https://docs.gitlab.com/administration/gitlab_duo_self_hosted/vllm_gpt_oss_120b/)).
-
-Repository retrieval and context compression remain necessary even when the model accepts a large prompt.
+A large advertised window does not guarantee reliable use of distant evidence. Context also consumes KV-cache memory and reduces concurrency: GitLab's vLLM reference notes that context length and concurrency compete for the same VRAM ([GitLab vLLM reference](https://docs.gitlab.com/administration/gitlab_duo_self_hosted/vllm_gpt_oss_120b/)). Repository retrieval and compression remain necessary.
 
 ### Tool calls fail differently from text generation
 
-An autonomous agent needs correctly structured calls, stable argument schemas, meaningful error interpretation, and recovery after partial execution. Some small models that write acceptable functions are unreliable tool users. Infralovers explicitly warns that not every local model supports the tool-calling behavior OpenCode requires.
+Autonomous agents need structured calls, stable schemas, error interpretation, and recovery after partial execution. Some small models write acceptable functions but use tools unreliably. Infralovers warns that not every local model supports OpenCode's required tool-calling behavior.
 
 ### Shared infrastructure creates contention
 
-Developer demand is interactive and bursty. Inline completion needs consistently low latency; autonomous tasks may occupy a large context for minutes. One large agent request can evict useful cache state or delay many completion requests if the platform does not isolate pools and budgets.
-
-SGLang's serving guidance captures the underlying trade-off: larger batches and fuller KV-cache utilization can improve throughput, while aggressive admission increases memory pressure; reducing concurrent requests avoids out-of-memory errors but reduces peak throughput ([SGLang documentation](https://docs.sglang.ai/advanced_features/hyperparameter_tuning.html)). A production platform needs capacity planning, backpressure, priorities, and graceful fallback—not merely a running model server.
+Developer demand is interactive and bursty. Completion needs stable low latency; autonomous tasks can hold large contexts for minutes. Without isolated pools and budgets, one agent request can evict cache state or delay many completions. Larger batches and fuller KV caches improve throughput but increase memory pressure; reducing concurrency avoids out-of-memory errors at the cost of peak throughput ([SGLang documentation](https://docs.sglang.ai/advanced_features/hyperparameter_tuning.html)). Production needs capacity planning, backpressure, priorities, and graceful fallback.
 
 ### The evaluation and update burden becomes internal
 
-Every model upgrade can change tool behavior, formatting, security properties, context handling, and output quality. Quantization changes may affect correctness. New prompt templates can invalidate cache behavior or evaluation baselines. Platform teams must maintain representative tasks and run them before changing routes.
-
-Owning the model endpoint means owning incident response for model regressions, serving failures, and bad rollouts.
+Model upgrades can change tool behavior, formatting, security, context handling, and output quality. Quantization may affect correctness; prompt templates can invalidate cache behavior or evaluation baselines. Platform teams need representative tasks before changing routes and incident response for regressions, serving failures, and bad rollouts.
 
 ### Agents expand the security boundary
 
-The largest risk may not be code sent to a model. It may be what the agent is authorized to do after the model responds.
+The larger risk may be what the agent can do after inference. It can execute untrusted scripts, retrieve poisoned instructions, expose secrets through tool output, modify CI, or call the network from a build environment. Sandboxes, scoped credentials, egress policy, human approval for irreversible actions, and audit trails remain necessary. Self-hosting does not neutralize excessive authority.
 
-An agent can execute untrusted repository scripts, retrieve poisoned instructions, expose secrets through tool output, modify CI, or make network calls from a build environment. Sandboxes, scoped credentials, egress policy, human approval for irreversible actions, and complete audit trails are platform requirements. Self-hosted inference does not neutralize a dangerously permissive agent.
-
-These constraints explain why hybrid fallback is common in the best-documented cases. It lets the organization move the workloads that pass internal evaluations while preserving capability for the ones that do not.
+Hybrid routing moves only workloads that pass internal evaluations and preserves fallback for those that do not.
 
 ## The economics: from seats to a shared capacity pool
 
-A subscription allocates a product entitlement to a developer. An internal platform allocates shared inference, storage, networking, and operational capacity to requests. The unit of planning changes.
+A subscription allocates an entitlement to a developer; an internal platform allocates requests across shared inference, storage, networking, and operational capacity.
 
 | Subscription model | Internal capacity model |
 |---|---|
@@ -436,99 +363,75 @@ A subscription allocates a product entitlement to a developer. An internal platf
 | Product and model may be bundled | Client, gateway, model, and provider can be costed independently |
 | Limits are set by the vendor plan | Limits are set by fleet capacity, routing policy, and budgets |
 
-Centralization can improve unit economics when the organization keeps shared accelerators busy. Continuous batching lets concurrent requests share an inference step. Prefix and KV caching avoid recomputing common system instructions, repository summaries, or conversation history. Quantization can fit more model capacity into available memory. Specialized smaller models can handle high-volume completion and retrieval while expensive reasoning capacity is reserved for harder work.
+When accelerators stay busy, continuous batching shares inference steps, prefix and KV caching avoid recomputing common instructions or history, quantization fits more capacity into memory, and smaller models handle completion and retrieval while expensive reasoning serves harder work.
 
-The opposite is also true. Low utilization makes owned or reserved GPUs expensive. Peak concurrency may force the organization to provision capacity that sits idle most of the day. Power, cooling, networking, hardware failures, cluster software, security patching, model licenses, support contracts, and the engineers operating the platform remain real costs. External fallback continues to generate API spend.
+Low utilization makes owned or reserved GPUs expensive, while peak concurrency can require capacity that sits idle most of the day. Power, cooling, networking, hardware failures, cluster software, patches, licenses, support, staff, and external fallback remain costs.
 
-Self-hosting tends to become more attractive when usage is high and predictable, developers repeat similar workloads, data must remain in a controlled environment, the organization can pool demand across teams, smaller models pass internal evaluations for a meaningful share of tasks, and a platform team already exists to operate the service.
+Self-hosting fits high, predictable, pooled demand; repeated workloads; controlled-data requirements; smaller models that pass internal evaluations; and an existing platform team. Subscriptions or APIs fit sporadic usage, small teams, unpredictable concurrency, frontier-quality requirements, limited operational capacity, or urgency.
 
-Subscriptions or APIs often remain better when usage is sporadic, the team is small, frontier quality is required for nearly every task, concurrency is unpredictable, the organization cannot operate inference reliably, or time-to-value matters more than optimizing the marginal request.
-
-There is no responsible universal break-even number. Cloudflare's 77% estimate describes one enormous, repetitive security workload on its own platform. It cannot be applied to a bank, a 20-person startup, or an autonomous debugging workload without their traffic, staffing, and quality data.
-
-The strategic benefit of centralization is not guaranteed savings. It is control over the unit economics: the company can see what each workload costs, choose the appropriate model class, and decide where operational ownership is justified.
+There is no universal break-even number. Cloudflare's 77% estimate describes one enormous, repetitive security workload on its own platform, not a bank, a 20-person startup, or autonomous debugging. Centralization makes workload cost visible and ownership choices possible; it does not guarantee savings.
 
 ## A staged adoption path
 
-The following sequence is a decision framework, not a prescription. Organizations should stop at the stage where additional ownership costs more than it returns.
+Stop at the stage where additional ownership costs more than it returns.
 
 ### 1. Measure current subscription and API usage
 
-Inventory seats, active users, quota exhaustion, API traffic, latency, repositories, languages, and task types. Separate completion from chat and autonomous work. Expense data alone is insufficient because it does not reveal whether the tool completed useful tasks.
-
-A small team with low, irregular usage may learn at this stage that commercial subscriptions are the economical answer.
+Inventory seats, active users, quota exhaustion, API traffic, latency, repositories, languages, and task types. Separate completion, chat, and autonomous work; expenses do not show task success. Low, irregular usage may already justify keeping subscriptions.
 
 ### 2. Introduce a model-neutral internal gateway
 
-Give approved tools one stable endpoint. Move provider keys off developer machines. Preserve enough request metadata to attribute cost and diagnose failures without collecting unnecessary source code or employee data.
-
-An organization may stop here and continue using external inference. It has already gained policy, visibility, and provider portability.
+Give approved tools one endpoint, remove provider keys from developer machines, and retain only enough metadata for cost attribution and diagnosis. The organization can stop here with external inference while gaining policy, visibility, and provider portability.
 
 ### 3. Centralize authentication, policy, observability, and secrets
 
-Connect the gateway to SSO. Define repository and model policies, retention rules, quotas, and audit events. Decide which metadata can be logged and for how long. Treat the gateway as production security infrastructure.
+Connect the gateway to SSO. Define repository and model policies, retention, quotas, audit events, and metadata lifetimes. Treat it as production security infrastructure.
 
 ### 4. Standardize an open or internal agent
 
-Choose the client surface deliberately. A CLI reduces cross-IDE maintenance; an IDE extension improves discovery and completion UX; a background agent needs remote state and sandboxes. Version shared configuration while allowing bounded developer overrides.
-
-If the main problem was per-seat client lock-in, the organization can stop here. Walmart's public evidence is closest to this outcome.
+Choose the client deliberately. A CLI reduces cross-IDE maintenance; an extension improves discovery and completion UX; a background agent needs remote state and sandboxes. Version shared configuration with bounded overrides. If per-seat client lock-in was the problem, stop here; Walmart is the closest public case.
 
 ### 5. Self-host low-risk, high-volume workloads first
 
-Embeddings, code search, reranking, repository summaries, documentation checks, and specialized completion are easier starting points than autonomous repository-wide edits. Their outputs are more constrained, their traffic is easier to characterize, and their failure modes are easier to measure.
-
-Meta CodeCompose and JetBrains Mellum show why completion deserves a dedicated path. Cloudflare shows the same principle for repetitive internal workloads.
+Start with embeddings, code search, reranking, repository summaries, documentation checks, and specialized completion. Their outputs, traffic, and failure modes are easier to measure than autonomous repository-wide edits. Meta CodeCompose and JetBrains Mellum support a dedicated completion path; Cloudflare applies the principle to repetitive internal work.
 
 ### 6. Build representative evaluations from internal repositories
 
-Create tasks from real languages, frameworks, build tools, and incidents. Remove secrets and personal data. Include success criteria beyond compilation: correct tests, no unauthorized files, acceptable tool trajectory, latency, and human review effort.
-
-Keep evaluation separate from the model-serving team when possible. A router should not promote a local model merely because it is cheaper.
+Build tasks from real languages, frameworks, build tools, and incidents after removing secrets and personal data. Evaluate correct tests, unauthorized files, tool trajectory, latency, and review effort, not only compilation. When possible, separate evaluation from serving so cost alone cannot promote a model.
 
 ### 7. Add local agentic models only where they pass
 
-Test repository navigation, structured editing, shell tools, test recovery, and context limits. Route only the task classes where the model meets the required quality and security threshold. “Available on the cluster” is not the same as “approved for autonomous execution.”
-
-Many organizations should stop before this stage. Private completion and external agentic reasoning can be a sound steady state.
+Test repository navigation, structured editing, shell tools, test recovery, and context limits. Route only task classes that meet quality and security thresholds. "Available on the cluster" does not mean "approved for autonomous execution." Private completion with external agentic reasoning can remain the steady state.
 
 ### 8. Keep a controlled frontier fallback
 
-Fallback should be explicit, observable, and policy-bound. Define which repositories can use it, which providers are approved, what data-retention terms apply, and whether a developer must consent before source leaves the private boundary.
-
-Track why fallback occurred. Those reasons become the roadmap for evaluations, retrieval improvements, and future local models.
+Make fallback explicit, observable, and policy-bound. Define eligible repositories, approved providers, retention terms, and developer consent before source leaves the private boundary. Track each reason to guide evaluations, retrieval, and future local models.
 
 ### 9. Measure task and developer outcomes
 
-Track successful builds, accepted changes, escaped defects, time to verified completion, review effort, retries, and developer opt-out—not only tokens and suggestion counts. Compare outcomes within the same workload class.
-
-For autonomous agents, inspect the trajectory. A task that eventually passes after unsafe commands, excessive retries, or accidental network access is not a clean success.
+Track builds, accepted changes, escaped defects, time to verified completion, review effort, retries, and opt-out, not only tokens and suggestions. Compare the same workload class and inspect autonomous trajectories: passing after unsafe commands, excessive retries, or accidental network access is not a clean success.
 
 ### 10. Shrink external usage only where evidence supports it
 
-Move routes gradually. Use canaries, capacity limits, and rollback. Re-evaluate after model, prompt, tool, or repository changes. External usage should decline because internal routes meet quality and operational targets, not because a leadership slide declared a migration complete.
+Move routes with canaries, capacity limits, and rollback. Re-evaluate after model, prompt, tool, or repository changes. Reduce external usage only when internal routes meet quality and operational targets.
 
 ## What the evidence supports, and what it does not
 
-The thesis holds most strongly for the well-documented hybrid cases. Cloudflare owns a sophisticated control plane while frontier providers still handle most of its measured provider requests. Infralovers uses the same pattern on one machine and explicitly keeps Anthropic for difficult work. GitLab and Mistral productize private and hybrid deployment as supported configurations. Walmart and Zup Innovation show value at the agent layer without public proof of self-hosted inference.
+The best-documented cases are hybrid. Cloudflare owns the control plane while frontier providers handle most measured requests. Infralovers keeps Anthropic fallback on one shared machine. GitLab and Mistral support private and hybrid deployment. Walmart and Zup show value at the agent layer without public proof of self-hosted inference.
 
-The thesis is less descriptive of Samsung, Meta CodeCompose, and Ant Group, which invested directly in models and internal integrations. Yet even those cases support workload decomposition. Meta's system was designed for completion, not autonomous work. JetBrains says its completion model works alongside broader models. Owning one high-volume model does not imply that one model should serve the whole software lifecycle.
+Samsung, Meta, and Ant Group invested directly in models and integrations, but still support workload decomposition. Meta designed for completion, not autonomous work; JetBrains runs completion alongside broader models. One owned model need not serve the whole software lifecycle.
 
-Alibaba is the important exception in another direction. Reuters reports an explicit removal of Claude Code in favor of Qoder, driven by security and compliance concerns. That is more abrupt than progressive workload migration. Still, the public record describes the client decision more clearly than the inference architecture. Even the exception reinforces the importance of controlling the agent and supply-chain boundary.
+Alibaba is the exception: Reuters reports an abrupt removal of Claude Code in favor of Qoder for security and compliance reasons. The public record describes the client decision more clearly than the inference architecture.
 
-What the evidence does **not** support is a broad claim that companies have canceled all Copilot, Cursor, Claude Code, or Codex subscriptions; that open weights remove licensing and operating costs; that every private deployment is self-hosted; or that today's local agentic models match frontier systems on every internal task.
+The evidence does **not** show that companies canceled every Copilot, Cursor, Claude Code, or Codex subscription; that open weights remove licensing and operating costs; that every private deployment is self-hosted; or that local agents match frontier systems on every internal task.
 
 ## Conclusion
 
-The interesting question is not “Which local model replaces Claude Code?” That question assumes the product is indivisible and that model quality is the only dependency.
+Do not start by asking, "Which local model replaces Claude Code?" Start by deciding which boundaries to own. An internal gateway may be enough; regulated teams may buy a supported private deployment; organizations with predictable demand and platform expertise may operate specialized models.
 
-The implementations tell a different story. Cloudflare replaced the client and policy boundary while retaining a hybrid model portfolio. Samsung built an internal assistant on its own model family. Meta internalized completion at enormous scale without building a modern coding agent. Mistral customers can move inference into controlled environments while continuing to buy a commercial platform. Walmart owns a model-neutral agent without publishing evidence that it owns inference. Infralovers can explore the same architecture with one shared machine, provided it accepts strict concurrency limits and a cloud fallback.
+The right boundary depends on workload, risk, utilization, and operational capability. Own the client and control plane first when you need identity, tool authorization, routing, observability, and data policy independent of any model provider. Move inference only where internal evaluations justify it.
 
-Replacing subscriptions often begins at the control-plane and agent layer, not by finding a one-for-one local replacement for the best proprietary model. That sequence creates one place to authenticate users, authorize tools, route models, observe cost, enforce data policy, and introduce private inference incrementally.
-
-Some organizations should stop at an internal gateway. Some should buy a supported private deployment. Some can economically operate specialized models. A small number have the scale and expertise to own nearly the whole stack. The correct boundary depends on workload, risk, utilization, and organizational capability—not on whether a model is labeled open.
-
-> The strategic shift is not from one model to another. It is from renting an inseparable coding product to operating a platform where agents, models, and providers can be replaced independently.
+> The shift is from renting an inseparable coding product to operating a platform where agents, models, and providers can change independently.
 
 ## References
 
