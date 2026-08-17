@@ -6,17 +6,11 @@ published: true
 tags: ["ai-agents", "ai-engineering", "software-engineering", "architecture", "engineering-practices"]
 ---
 
-When a coding agent opens a repository, it usually does not start by writing code. It reads instructions, searches for symbols, opens files, follows imports, inspects tests, and builds a partial picture of where the change belongs. Only then does it edit anything.
+Before a coding agent edits a repository, it reads instructions, searches for symbols, follows imports, inspects tests, and builds a partial map of the change. The repository is therefore more than compiler input. It is **an interface the agent has to navigate**.
 
-That makes the repository more than a set of instructions for a compiler. It is also **an interface the agent has to navigate**.
+Clear names, meaningful boundaries, and visible dependencies can shorten that route, but the evidence does not support the broad claim that clean code makes agents more correct. In a controlled study, cleaner and messier versions of the same repositories produced [similar pass rates](https://arxiv.org/abs/2605.20049): 91.3% and 92.1%. What changed was the operational footprint.
 
-This reframing has a practical consequence. The same properties that help humans find their way around a codebase—clear names, meaningful boundaries, and visible dependencies—also influence how much work an agent must do before and after an edit. If a concept has a name the agent can search for, it has a route into the code. If a dependency is implicit, scattered, or lexically unrelated to the task, the agent may never discover it.
-
-I want to be honest about the payoff because the evidence is narrower than the usual “clean code makes AI better” claim. In a controlled study, cleaner and messier versions of the same repositories produced [essentially the same pass rate](https://arxiv.org/abs/2605.20049): 91.3% on the cleaner side and 92.1% on the messier side. Navigability did not make the agent more correct in that experiment. It changed the cost and shape of the journey.
-
-This article turns that result, and related evidence about identifiers, structural navigation, and long-running agent work, into practical rules. It is a companion to [How to Build a Reliable Coding-Agent Harness](/posts/how-to-build-a-reliable-coding-agent-harness/). That article is about the system **around** the model: maps, controls, oracles, evidence, and verification. This one is about the code **inside** that system.
-
-Most of the research cited here is recent preprint work. Some studies use one model, one harness, or one repository, and the practices below have not been evaluated as a complete package. I will distinguish the measurements from my engineering interpretation instead of pretending the research proves more than it does.
+This article turns that result, plus research on identifiers, structural navigation, and long-running agent work, into practical rules for code. Its companion, [How to Build a Reliable Coding-Agent Harness](/posts/how-to-build-a-reliable-coding-agent-harness/), covers the system around the model. Most sources here are recent preprints limited to particular models, harnesses, or repositories. I separate their measurements from my engineering interpretation because no study evaluated these practices as a complete package.
 
 ## Code is a navigation interface
 
@@ -24,7 +18,7 @@ A task normally arrives in the language of behavior:
 
 > Normalize the search query before checking the result cache.
 
-The repository does not hand the agent a perfect map from that sentence to the implementation. The agent has to construct one from what it can observe: filenames, identifiers, imports, call sites, tests, configuration, comments, documentation, and search results.
+The agent must map that sentence to implementation using filenames, identifiers, imports, call sites, tests, configuration, comments, documentation, and search results.
 
 A simplified trajectory looks like this:
 
@@ -33,15 +27,13 @@ A simplified trajectory looks like this:
 3. **Edit:** implement the behavior in that surface.
 4. **Recheck:** revisit files, tests, and callers to reduce the chance of missing something.
 
-The final edit may be small while the route to it is long. A five-line patch can require reading twenty files because the agent does not know in advance which five matter.
+A five-line patch can require reading twenty files because the agent does not know which five matter. Navigable code makes the first useful search more likely to reach the right area, keeps related responsibilities easy to follow, and exposes non-obvious relationships before they become omissions.
 
-Writing navigable code is therefore not about optimizing the destination. The destination is still correct behavior. It is about shortening and clarifying the route: making the first useful search more likely to land near the right code, making related responsibilities easier to follow, and making non-obvious relationships visible before they become omissions.
+This is why "put the whole repository in the context window" is incomplete. Capacity and discovery are different problems: a file that fits in context still contributes nothing if the agent never has a reason to open it.
 
-This is also why “put the whole repository in the context window” is not a complete answer. Capacity and discovery are different problems. A file that could fit in context still provides no value if the agent never has a reason to open it.
+## What navigability buys you and what it does not
 
-## What navigability buys you—and what it does not
-
-The 2026 preprint [*Does Code Cleanliness Affect Coding Agents?*](https://arxiv.org/abs/2605.20049) created six minimal repository pairs across Java and Python. Each pair matched architecture, dependencies, tests, and external behavior while differing in static-analysis violations and cognitive complexity. The authors ran 33 tasks ten times on each side, producing 660 Claude Code trials with Claude Sonnet 4.6.
+The 2026 preprint [*Does Code Cleanliness Affect Coding Agents?*](https://arxiv.org/abs/2605.20049) created six minimal Java and Python repository pairs. Each pair matched architecture, dependencies, tests, and external behavior while differing in static-analysis violations and cognitive complexity. The authors ran 33 tasks ten times on each side, producing 660 Claude Code trials with Claude Sonnet 4.6.
 
 Aggregate pass rate barely moved: 91.3% on cleaner code and 92.1% on messier code. The operational footprint did move. On the cleaner variants:
 
@@ -51,23 +43,21 @@ Aggregate pass rate barely moved: 91.3% on cleaner code and 92.1% on messier cod
 - conversation messages fell 7.0%;
 - file revisitations fell 33.8%.
 
-The study did not directly measure confidence or confusion. File revisitation is an observable behavior, not access to the model's internal state. Still, repeated reading is a reasonable proxy for uncertainty in the route: the agent is returning to material it already inspected instead of moving directly through the change.
+File revisitation is observable behavior, not a direct measure of confidence or confusion. It is still a useful proxy for an uncertain route because the agent returns to material it already inspected.
 
-The cost matters because agentic coding is already resource-intensive. [*How Do AI Agents Spend Your Money?*](https://arxiv.org/abs/2604.22750) evaluated eight frontier models on SWE-bench Verified with four runs per problem. In that setup, agentic tasks consumed roughly 1,000 times more tokens than the code-reasoning and code-chat comparisons. Runs on the same task differed by as much as 30 times in total tokens, and accuracy often peaked at an intermediate cost before saturating at higher cost.
-
-These studies do not show that navigable code eliminates cost variance. They do show why avoidable navigation is worth removing. More tokens are not automatically more useful work.
+[*How Do AI Agents Spend Your Money?*](https://arxiv.org/abs/2604.22750) evaluated eight frontier models on SWE-bench Verified with four runs per problem. In that setup, agentic tasks consumed roughly 1,000 times more tokens than the code-reasoning and code-chat comparisons. Runs on the same task varied by up to 30 times in total tokens, while accuracy often peaked at an intermediate cost and then saturated. This does not show that navigable code eliminates variance, but it shows why avoidable navigation is worth removing.
 
 The defensible claim is narrow:
 
 > Navigability is a cost-and-navigation lever, not a correctness guarantee.
 
-You still need specifications, tests, review, and a harness that can contradict a bad implementation. Navigable code helps the agent reach and inspect the change surface with less waste. It does not prove that the resulting patch is right.
+You still need specifications, tests, review, and a harness capable of rejecting bad implementations. Navigable code reduces waste while the agent finds and inspects the change surface; it does not prove the patch is right.
 
 ## Names are the retrieval interface
 
-When an agent translates a natural-language task into repository locations, names are the bridge.
+Names bridge a natural-language task and repository locations.
 
-If the task says “normalize the search query,” this symbol is a useful search target:
+If the task says "normalize the search query," this symbol is a useful target:
 
 ```typescript
 export function normalizeSearchQuery(query: string): string {
@@ -75,7 +65,7 @@ export function normalizeSearchQuery(query: string): string {
 }
 ```
 
-This one may behave identically, but it removes the bridge:
+This one may behave identically, but it removes that bridge:
 
 ```typescript
 export function xfmQ2(value: string): string {
@@ -83,35 +73,33 @@ export function xfmQ2(value: string): string {
 }
 ```
 
-The [*When Names Disappear* study](https://arxiv.org/abs/2510.03178) helps explain why. Its authors applied semantics-preserving identifier obfuscation and measured code summarization and execution prediction. On ClassEval class-level summarization, GPT-4o's score fell from 87.3 on original code to 58.7 on obfuscated code. Other models also declined, although by different amounts. The identifiers were carrying intent that structure alone did not reliably recover.
+The [*When Names Disappear* study](https://arxiv.org/abs/2510.03178) applied semantics-preserving identifier obfuscation and measured code summarization and execution prediction. On ClassEval class-level summarization, GPT-4o's score fell from 87.3 on original code to 58.7 on obfuscated code. Other models also declined by different amounts. Identifiers carried intent that structure alone did not reliably recover.
 
-That experiment evaluated summarization, not an agent searching a repository. It does not directly prove that `normalizeSearchQuery` lowers navigation cost. My engineering inference is that names which preserve intent give lexical tools—grep, symbol search, BM25, and the model's own reasoning—better anchors.
+The experiment evaluated summarization, not repository search, so it does not prove that `normalizeSearchQuery` lowers navigation cost. My engineering inference is that names which preserve intent give grep, symbol search, BM25, and model reasoning better anchors.
 
-The useful rule is not “make every name long.” It is:
+The rule is not "make every name long":
 
 > Use stable domain and behavior vocabulary where someone is likely to search for it.
 
-Prefer the words used by requirements, public APIs, user-visible behavior, and established domain language. Avoid private shorthand unless it is already universal in the codebase. Apply the vocabulary consistently across the implementation, tests, configuration, and documentation so one search reveals a coherent path.
+Prefer vocabulary from requirements, public APIs, user-visible behavior, and the domain. Avoid private shorthand unless the codebase uses it universally. Use the same vocabulary in implementation, tests, configuration, and documentation so one search reveals a coherent path.
 
-Names also need to remain honest. A beautifully greppable name attached to a mixed or misleading responsibility is worse than a plain one. Retrieval gets the agent to a symbol; the symbol's boundary must still match the concept it advertises.
+A searchable name attached to a mixed or misleading responsibility is worse than a plain one. Retrieval reaches the symbol; its boundary must still match the concept it advertises.
 
 ## Structure that helps versus structure that scatters
 
-“Make functions smaller” is not a sufficient rule for agent-friendly code. Smaller units can create precise search targets, or they can spread one task across more places without creating any new meaning.
+"Make functions smaller" is not a sufficient rule. Smaller units can create precise search targets or scatter one task without adding meaning.
 
 The cleanliness study found both outcomes. Across 14 multi-module tasks, the cleaner variants used 10.7% fewer input tokens and had 50.8% fewer file revisitations. Across 13 cognitive-hotspot tasks, however, distinct files read increased 11.2% and input tokens increased 1.8%.
 
-Two case studies make the contrast concrete.
+The case studies show both directions. In a Java bytecode-disassembly task, the cleaner variant replaced opcode dispatch inside two large switch-based methods with thin dispatchers and roughly ten named helpers each. Agents used 35% fewer input tokens, opened 25% fewer files, and took 32% fewer conversation turns. The files were not meaningfully smaller; the helpers became precise grep targets.
 
-In one Java bytecode-disassembly task, the cleaner variant replaced opcode dispatch inside two large switch-based methods with thin dispatchers and roughly ten named helpers each. Agents used 35% fewer input tokens, opened 25% fewer files, and took 32% fewer conversation turns. The files were not meaningfully smaller. The improvement came from helpers that acted as precise grep targets.
+In a cluster job-limit task, helper extraction left the focal launch logic in place and spread surrounding work across more methods. Input tokens increased 8%, while most other metrics remained within a few percentage points of zero. The refactoring added surface without improving the route.
 
-In a cluster job-limit task, helper extraction left the focal launch logic in place while spreading the surrounding work across more methods. On that cleaner variant, input tokens increased 8%, while most other metrics stayed within a few percentage points of zero. The refactoring added surface without giving the agent a better route.
-
-The practical rule is:
+Use this rule:
 
 > Extract a boundary when it creates a discoverable concept, not merely because a function is long.
 
-Before splitting code, I find these questions more useful than a line-count threshold:
+Before splitting code, I use these questions instead of a line-count threshold:
 
 - Does the new unit own a recognizable domain behavior, policy, protocol, or transformation?
 - Would a task naturally use words that match its filename or symbol name?
@@ -119,21 +107,17 @@ Before splitting code, I find these questions more useful than a line-count thre
 - Does it centralize related behavior, or force the same change to touch more locations?
 - Will a caller need fewer facts after the extraction, or just more jumps?
 
-A good boundary compresses knowledge behind a name. A bad extraction redistributes the same complexity and increases the number of places an agent has to inspect.
+A good boundary compresses knowledge behind a name. A bad one redistributes the same complexity across more places.
 
 ## The dependencies code search cannot reveal
 
-Names solve semantic discovery: the task and the code share vocabulary. Some dependencies are structural instead. They matter because of imports, inheritance, instantiation, registration, events, or dependency injection, even when they share almost no words with the request.
+Names support semantic discovery when the task and code share vocabulary. Structural dependencies through imports, inheritance, instantiation, registration, events, or dependency injection may share almost no words with the request.
 
-The [CodeCompass study](https://arxiv.org/abs/2602.20048) calls this the **Navigation Paradox**. Its clearest example asks an agent to “add a logger parameter to `BaseRepository.__init__`.” A complete change also requires editing `app/api/dependencies/database.py`, which instantiates repositories through `get_repository()`. That file has no lexical overlap with “logger,” “parameter,” or “BaseRepository.”
+The [CodeCompass study](https://arxiv.org/abs/2602.20048) calls this the **Navigation Paradox**. One task asks an agent to "add a logger parameter to `BaseRepository.__init__`." The complete change also requires `app/api/dependencies/database.py`, which instantiates repositories through `get_repository()` but has no lexical overlap with "logger," "parameter," or "BaseRepository."
 
-On the study's hidden-dependency tasks, vanilla navigation achieved 76.2% final required-file coverage and BM25 retrieval achieved 78.2%. Graph navigation over imports, inheritance, and instantiation reached 99.4%. This was a coverage result on one FastAPI repository, not proof that 99.4% of implementations were correct. It nevertheless exposes a real limit of naming: semantic similarity cannot reveal every architectural relationship.
+On the hidden-dependency tasks, vanilla navigation achieved 76.2% final required-file coverage, BM25 retrieval reached 78.2%, and graph navigation over imports, inheritance, and instantiation reached 99.4%. This measured coverage in one FastAPI repository, not implementation correctness. It exposes a limit of naming: semantic similarity cannot reveal every architectural relationship.
 
-There are two responses, and mature codebases usually need both.
-
-The harness-level response is structural tooling: dependency graphs, call hierarchies, symbol references, and mandatory impact analysis. I cover that side in the [reliable harness article](/posts/how-to-build-a-reliable-coding-agent-harness/).
-
-The code-level response is to make composition and registration points explicit and searchable. Prefer named factories and composition roots over important wiring hidden behind reflection or auto-discovery. When a relationship remains non-obvious, leave a short, durable signpost at the wiring point:
+Codebases usually need two responses. At the harness level, use dependency graphs, call hierarchies, symbol references, and mandatory impact analysis, as described in the [reliable harness article](/posts/how-to-build-a-reliable-coding-agent-harness/). In code, make composition and registration points explicit and searchable. Prefer named factories and composition roots over important wiring hidden behind reflection or auto-discovery. When a relationship remains non-obvious, leave a short signpost at the wiring point:
 
 ```typescript title="src/orders/create-order-repository.ts"
 import { OrderRepository } from "./order-repository";
@@ -154,33 +138,27 @@ export function createOrderRepository(
 }
 ```
 
-The factory name makes an instantiation search productive. The dependency object makes constructor requirements visible. The comment points to the separate test composition root using a symbol that can also be searched.
-
-Comments are a fallback, not a substitute for structure. “Remember to update another file” will rot. A useful signpost names the relationship and the exact symbol, registry, or composition root that owns it.
+The factory name makes instantiation searchable, the dependency object exposes constructor requirements, and the comment names the separate test composition root. Comments remain a fallback: "remember to update another file" will rot, while a useful signpost names the relationship and its exact symbol, registry, or composition root.
 
 ## Agents erode structure, so guidance must be continuous
 
-There is a tension at the center of this practice: we want agents to navigate clear code, but repeated agent changes can make that code harder to extend.
+Repeated agent changes can make previously clear code harder to extend.
 
-Version 2 of [SlopCodeBench](https://arxiv.org/abs/2603.24755) evaluated 15 coding agents on 36 problems containing 196 sequential checkpoints. At each checkpoint, an agent extended its own previous implementation under an evolving external specification. The benchmark tracked two deliberately limited quality dimensions: **verbosity**, meaning redundant code, and **structural erosion**, meaning complexity concentrated in already-complex functions.
+Version 2 of [SlopCodeBench](https://arxiv.org/abs/2603.24755) evaluated 15 coding agents on 36 problems with 196 sequential checkpoints. At each checkpoint, an agent extended its previous implementation under an evolving external specification. The benchmark tracked two limited dimensions: **verbosity** (redundant code) and **structural erosion** (complexity concentrated in already-complex functions).
 
 No evaluated agent completed an entire problem end to end, and the best strict pass rate was 14.8% of checkpoints. Structural erosion increased in 77% of trajectories and verbosity in 75.5%. Compared with a panel of 473 open-source Python repositories, agent checkpoints averaged 2.0 times more structural erosion and 2.3 times more verbosity.
 
-Explicit quality prompts improved the starting point. Depending on the model and prompt, initial erosion fell by as much as 62.3% and initial verbosity by as much as 34.8%. But average quality velocity remained about 1.3 percentage points of degradation per checkpoint. Across the prompt strategies, cost per checkpoint increased 12.1% on average, and aggregate correctness fell 2.3 percentage points.
+Explicit quality prompts improved the starting point: depending on the model and prompt, initial erosion fell by up to 62.3% and verbosity by up to 34.8%. Average quality velocity still degraded about 1.3 percentage points per checkpoint. Across prompt strategies, cost per checkpoint increased 12.1% on average and aggregate correctness fell 2.3 percentage points.
 
-The study does not define all of maintainability through two metrics, and it does not prove that every agent-assisted repository will degrade. It shows that a one-time “write clean code” request did not arrest the measured drift in this benchmark and introduced trade-offs of its own.
-
-My engineering conclusion is that navigability cannot be a slogan at the top of a prompt. It has to be part of implementation instructions, review criteria, and longitudinal observation. The correction has to recur because the pressure that erodes the structure recurs.
+Two metrics do not define maintainability, and this benchmark does not prove that every agent-assisted repository will degrade. It does show that a one-time "write clean code" prompt did not stop the measured drift. My engineering conclusion is that navigability must recur in implementation instructions, review criteria, and longitudinal observation.
 
 ## How to direct agents to write navigable code
 
-The following practices are a synthesis of the evidence, not a bundle that any of the studies evaluated directly. Treat them as hypotheses to apply proportionally and inspect in your own codebase.
+No cited study evaluated the following practices as a bundle. Treat them as engineering hypotheses to apply proportionally and inspect in your codebase.
 
 ### 1. Encode naming and boundary rules as instructions
 
-“Write clean code” leaves the important decisions undefined. Tell the agent what navigability means in your repository.
-
-This is a starting point I would adapt to the project's domain language and architecture:
+"Write clean code" leaves the decisions undefined. I would adapt this starting point to the project's domain language and architecture:
 
 ```markdown title="AGENTS.md"
 ## Navigability rules
@@ -200,21 +178,17 @@ This is a starting point I would adapt to the project's domain language and arch
   adjacent refactors or add speculative abstractions unless the task requires them.
 ```
 
-These instructions still rely on judgment. Their value is that they turn an abstract preference into choices an implementation or review agent can examine.
+These instructions turn an abstract preference into choices an implementation or review agent can inspect.
 
 ### 2. Make wiring a first-class search surface
 
-Factories, dependency-injection containers, route tables, event registries, serializers, and plugin lists are common hidden-dependency sites. Give them explicit names and stable locations.
+Factories, dependency-injection containers, route tables, event registries, serializers, and plugin lists are common hidden-dependency sites. Give them explicit names and stable locations. If all production construction of `OrderRepository` flows through `createOrderRepository`, a constructor task can find the composition root by searching for either symbol. Reflection based on a string in an unrelated file may provide no lexical route.
 
-For example, if all production construction of `OrderRepository` flows through `createOrderRepository`, a constructor task can reach the composition root by searching for either symbol. If construction happens through reflection based on a string in an unrelated file, the same task may have no lexical route to it.
-
-Centralization alone is not the goal. A giant service locator can become its own hotspot. The goal is a small number of explicit composition surfaces whose names describe what they wire.
+Do not centralize everything in a giant service locator. Prefer a small number of explicit composition surfaces whose names describe what they wire.
 
 ### 3. Add a navigability pass to review
 
-Correctness review asks whether the patch implements the requested behavior. A navigability pass asks what route the next change will have to take.
-
-In my experience, this works better as a focused review than as one more sentence inside a broad “review everything” prompt:
+Correctness review asks whether the patch implements the requested behavior. A navigability pass asks what route the next change will take. In my experience, a focused review works better than another sentence in a broad "review everything" prompt:
 
 ```markdown title="Navigability review"
 Review the changed code for navigability. Do not propose unrelated refactors.
@@ -230,24 +204,20 @@ Report exact files and symbols for each finding. Check whether:
 If no concrete issue exists, say so rather than inventing one.
 ```
 
-A reviewer agent is not an independent oracle by default. It may share the implementation agent's blind spots. The pass is useful because it changes the question being asked and demands concrete locations, not because a second model is automatically objective.
+A reviewer agent may share the implementation agent's blind spots, so it is not an independent oracle by default. This pass is useful because it asks a different question and demands concrete locations.
 
 ### 4. Enforce the smallest coherent change
 
-“Smallest change” is easy to misread as “fewest changed lines.” A dense patch inside the wrong module can be smaller and still make future work harder.
-
-The better target is the **smallest coherent change**: all behavior required by the task, placed behind the right existing boundary, without adjacent cleanup or abstractions for hypothetical future requirements.
-
-This reduces two common navigation regressions:
+"Smallest change" is easy to misread as "fewest changed lines." The better target is the **smallest coherent change**: all required behavior behind the right existing boundary, without adjacent cleanup or abstractions for hypothetical requirements. This avoids two common navigation regressions:
 
 - opportunistic refactoring that changes names and locations unrelated to the task;
 - speculative layers that add files and indirection before there is a stable concept to name.
 
-Sometimes the smallest coherent change includes a refactor because the current boundary cannot express the behavior safely. When that happens, require the agent to explain which responsibility moves, what new contract appears, and how the new name improves discovery. “The function was long” is not enough.
+When the current boundary cannot express the behavior safely, the smallest coherent change may include a refactor. Require the agent to explain which responsibility moves, what contract appears, and how the new name improves discovery. "The function was long" is not enough.
 
 ### 5. Observe navigation over a series of changes
 
-SlopCodeBench is a reminder that a good-looking patch says little about the fifth or twentieth extension. If your harness records trajectories, watch navigability as a trend:
+SlopCodeBench shows why a good-looking patch says little about the fifth or twentieth extension. If your harness records trajectories, watch navigability as a trend:
 
 | Signal | What it may reveal | Important caveat |
 |---|---|---|
@@ -257,13 +227,13 @@ SlopCodeBench is a reminder that a good-looking patch says little about the fift
 | Repeated hotspot growth | New behavior keeps accumulating in an already-complex boundary | Complexity metrics do not capture every design quality |
 | Unrelated files changed | Scope control or ownership boundaries may be weak | A hidden dependency can make a distant edit necessary |
 
-Do not turn these signals into universal thresholds without calibration. Compare similar tasks, repeat runs when cost permits, and inspect the trajectory behind an outlier. A low token count is not proof of good architecture, just as a high count is not proof of bad architecture.
+Do not turn these signals into universal thresholds without calibration. Compare similar tasks, repeat runs when cost permits, and inspect outlier trajectories. Token count alone does not prove architecture quality.
 
-No study cited here has shown exactly how the per-task footprint effect from cleaner code compounds into long-horizon erosion in the same repositories. Monitoring that connection is a reasoned practice and an open empirical question, not a proven formula.
+No cited study shows how the per-task footprint effect of cleaner code compounds into long-horizon erosion in the same repositories. Monitoring that connection is a reasoned practice, not a proven formula.
 
 ## What the evidence does not prove
 
-The central limitations are worth collecting in one place:
+The evidence has five central limitations:
 
 - The cleanliness study found lower operational footprint, not higher correctness, and used one model and harness across six controlled repository pairs.
 - The identifier study shows that names carry intent for summarization and affect execution prediction. It did not test repository search or the naming rules proposed here.
@@ -271,17 +241,11 @@ The central limitations are worth collecting in one place:
 - SlopCodeBench measures verbosity and concentrated complexity. Those are useful signals, not a complete definition of maintainability.
 - None of the studies evaluated this article's combined instructions, signposts, review pass, and metrics as one system.
 
-That leaves room for a useful engineering synthesis, but not for certainty. Apply the rules where they make the repository easier to explain, then measure whether agents actually search less, revisit less, and preserve the boundaries over repeated work.
+Apply the rules where they make the repository easier to explain, then measure whether agents search less, revisit less, and preserve boundaries over repeated work.
 
 ## Conclusion
 
-Code is an interface for the next agent and the next human. Names expose intent to search. Boundaries determine whether a concept has one discoverable home or several arbitrary fragments. Explicit composition points reveal relationships that lexical search would otherwise miss.
-
-The honest thesis is modest: navigable code can reduce operational waste and repeated navigation, but it does not make a coding agent correct. Correctness still depends on specifications, strong oracles, tests, review, and a harness that records evidence rather than trusting the final diff.
-
-So optimize the route without confusing it for the destination. Give behavior names people will search for. Extract boundaries that compress knowledge rather than scatter it. Signpost structural dependencies. Review the change surface, not only the implementation. Then watch what happens over the next series of changes, because agents can erode the structure you gave them.
-
-Once the code provides a usable navigation surface, surround the agent with a system capable of verifying what it does there. That is the role of a [reliable coding-agent harness](/posts/how-to-build-a-reliable-coding-agent-harness/).
+Navigable code can reduce operational waste, but it cannot make an agent correct. Give behavior names people will search for, extract boundaries that compress knowledge, expose structural dependencies, and review the change surface over repeated work. Specifications, strong oracles, tests, review, and a [reliable coding-agent harness](/posts/how-to-build-a-reliable-coding-agent-harness/) must still verify the result.
 
 ## References
 
