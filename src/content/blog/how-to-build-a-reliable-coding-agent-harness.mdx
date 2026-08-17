@@ -6,31 +6,21 @@ published: true
 tags: ["ai-engineering", "ai-agents", "software-engineering", "testing", "automation", "architecture"]
 ---
 
-Software engineers have been using coding agents for a while. They have seen them make mistakes, and they have seen them succeed. They have seen them fail to find the right files, fail to follow instructions, fail to write tests, fail to run the suite, and fail to produce evidence. They have also seen them succeed at all of those things.
+Coding agents can find the right files, follow conventions, write tests, and produce a green build. They can also miss every one of those steps. Even when the build passes, the patch may be wrong or make later changes harder.
 
-It is hard to know what to conclude. A green build is not a guarantee of correctness. A patch that passes the suite may still be wrong, and a patch that fails may still be right. The same agent can produce both outcomes on the same task.
-
-And also, we can have our own code design conventions that we would like to the agent follows and, sometimes, the agent may not follow them. It may be a matter of the agent not being able to understand our conventions or it may be a matter of the agent not being able to follow them. Or only ignore our instructions for no reason. In either case, we need to have a way to ensure that the agent is following our conventions.
-
-For a coding agent to be reliable, it must be surrounded by a harness that optimizes the workflow. But, what kind of instructions and controls should that harness provide? How can we know whether the agent is following them? How can we know whether the agent is producing a patch that will survive future changes?
-
-This article synthesizes some evidence from recent research to propose a reference architecture for such a harness.
+Reliability therefore depends on the system around the agent. This article uses recent research on navigation, test quality, longitudinal degradation, and resource variance to propose a reference architecture for that system.
 
 ## The model is not the system
 
-When we run a coding agent, we are not running a model in isolation. We are running a model inside a `system` that prepares the repository, constructs context, provides navigation tools, decomposes tasks, controls flow, manages permissions, runs tests, evaluates results, enforces deterministic gates, collects telemetry, retries failures, and decides when the task is complete.
+In this article, a **coding-agent harness** is the execution and verification system surrounding the model. It prepares the repository, constructs context, provides navigation tools, manages permissions and workflow, runs checks, collects evidence, retries failures, and decides what counts as complete. A system prompt, agent framework, test runner, MCP server, or instruction file may be part of it, but none is the whole harness.
 
-In this article, a **coding-agent harness** is the execution system surrounding the model. It is broader than a system prompt, an agent framework, a test runner, an MCP server, a collection of scripts, or a set of coding instructions. It is the complete execution and verification environment around the model.
-
-The model is therefore a component of the coding system, not the whole system. The harness decides what the model can see, which actions it may take, which evidence it must produce, and what is allowed to count as complete.
-
-We can also think about the coding agents like a component of the harness. Codex, Claude, Pi, OpenCode, they also have their own internal architecture, and they have their own internal failure modes.
+The model is one component in that system. Codex, Claude, Pi, and OpenCode each add internal architecture and failure modes, while the harness determines what they can see and do and which evidence they must produce.
 
 My narrower claim throughout this article is this: **a reliable harness must optimize the repository/project/workspace for agent navigation and move most verification from natural-language instructions into executable, independent, and measurable mechanisms.** Prompts, tests, review, and capable models all remain useful, but none is sufficient alone.
 
-I followed some recent research to support that claim. The studies are not a complete evaluation of the architecture I will propose. They are pieces of evidence about particular behaviors and failure modes. The architecture is an engineering synthesis from their combined evidence, not a scientifically proven configuration.
+The cited studies measure particular behaviors and failure modes, not this architecture as a complete system. The architecture is an engineering synthesis, not a scientifically validated configuration.
 
-The research can be organized around three main ideas: **maps**, which determine what the agent discovers; **oracles**, which determine whether the result can be contradicted; and **erosion**, which determines whether a series of successful changes leaves the system easier or harder to extend. From those ideas follow five harness responsibilities.
+The evidence points to three ideas: **maps** determine what the agent discovers, **oracles** determine whether something can contradict its result, and **erosion** shows whether successive patches make the system harder to extend. They provide this starting map:
 
 | Responsibility | The question it must answer |
 |---|---|
@@ -42,37 +32,31 @@ The research can be organized around three main ideas: **maps**, which determine
 
 ## Requirement one: give the agent a map, not merely more context
 
-Repositories do not present themselves to an agent as architecture diagrams. They present files, names, imports, search results, tool outputs, and whatever context the harness chooses to assemble. The quality of that interface changes how the agent works.
+Agents see repositories through files, names, imports, search results, tool outputs, and context assembled by the harness. The quality of that interface changes how they work.
 
 ### Cleaner code changed the journey, not the destination
 
-The 2026 preprint [*Does Code Cleanliness Affect Coding Agents?*](https://arxiv.org/abs/2605.20049) constructed six minimal pairs of repositories: three primarily Java and three primarily Python. Each pair matched architecture, dependencies, external behavior, and tests while differing in SonarQube violations and cognitive complexity. The authors designed 33 tasks, ran each task ten times on each side, and evaluated 660 Claude Sonnet 4.6 trials with hidden tests at the applications' public surfaces.
+The 2026 preprint [*Does Code Cleanliness Affect Coding Agents?*](https://arxiv.org/abs/2605.20049) compared six minimal repository pairs, three primarily Java and three primarily Python. Each pair kept architecture, dependencies, external behavior, and tests constant while changing SonarQube violations and cognitive complexity. The study ran 33 tasks ten times on each side: 660 Claude Sonnet 4.6 trials evaluated by hidden tests at the applications' public surfaces.
 
-Pass rates were effectively unchanged: 91.3% on the cleaner side and 92.1% on the messier side, a difference of -0.9 percentage points. The operational footprint did change. On cleaner code, input tokens fell 7.1%, output tokens 8.5%, reasoning characters 11.1%, conversation messages 7.0%, messages before the first edit 3.6%, and characters before the first edit 4.6%. Distinct files read increased 3.2%, lines edited fell 3.2%, and file revisitations fell 33.8% - the largest aggregate effect in the study. These are relative changes except for the pass-rate difference, which is absolute. [The results appear in Table 2 and Section 4.1 of the preprint](https://arxiv.org/abs/2605.20049).
+Pass rates barely changed: 91.3% on cleaner code and 92.1% on messier code, an absolute difference of -0.9 percentage points. The operational footprint did. On cleaner code, input tokens fell 7.1%, output tokens 8.5%, reasoning characters 11.1%, conversation messages 7.0%, messages before the first edit 3.6%, characters before the first edit 4.6%, lines edited 3.2%, and file revisitations 33.8%. Distinct files read increased 3.2%. Except for pass rate, these are relative changes. [Table 2 and Section 4.1 report these results](https://arxiv.org/abs/2605.20049).
 
-Cleaner code did not make the model more correct in this experiment. It changed the route the model took. A defensible interpretation is that the cleaner variants reduced uncertainty and repeated checking rather than increasing the model's underlying task-solving ability. That interpretation is plausible, not directly measured: revisitation is a behavioral proxy, not a window into the model's internal state.
+Cleaner code changed the route, not correctness. Reduced uncertainty is a plausible interpretation of fewer revisits, but revisitation is only a behavioral proxy.
 
-The result becomes more interesting when the tasks are separated by topology. Across 14 multi-module tasks, cleaner code changed pass rate by -2.6 percentage points, reduced input tokens by 10.7%, left distinct files read almost flat at -0.6%, reduced revisitations by 50.8%, and increased lines edited by 2.2%. Across 13 cognitive-hotspot tasks, pass rate changed by only +0.1 percentage points, input tokens increased 1.8%, files read increased 11.2%, revisitations fell 20.2%, and lines edited fell 9.3%. Six calibration tasks completed the 33-task set. [These track-level results are reported in Table 3 and Section 4.2](https://arxiv.org/abs/2605.20049).
+Topology changed the effect. Across 14 multi-module tasks, cleaner code reduced pass rate by 2.6 percentage points, input tokens by 10.7%, files read by 0.6%, and revisitations by 50.8%, while lines edited rose 2.2%. Across 13 cognitive-hotspot tasks, pass rate rose 0.1 percentage points, input tokens 1.8%, and files read 11.2%, while revisitations fell 20.2% and lines edited 9.3%. Six calibration tasks completed the set. [Table 3 and Section 4.2 report these results](https://arxiv.org/abs/2605.20049). Cleaner boundaries reduced repeated navigation in multi-module work, while helper extraction sometimes spread hotspot work across more locations.
 
-In multi-module work, cleaner boundaries substantially reduced repeated navigation. In cognitive hotspots, extracting logic into helpers sometimes distributed the work across more locations. That is the tension: searchable structure can make agents cheaper and less uncertain, but decomposition that merely redistributes complexity may increase the navigational surface.
-
-Two case studies make the point concrete. In one task, large opcode dispatch structures had been replaced with semantically named helpers. Agents on the cleaner version used 35% fewer input tokens, opened 25% fewer files, edited 31% fewer lines, and used 32% fewer conversation turns. The files were not simply shorter; the helpers gave the agent precise grep targets. In another task, helper extraction left the focal complexity largely intact while spreading surrounding work across more methods. Input tokens increased 8%, while the other measured changes stayed within a few percentage points of zero. [Both cases are described in Section 4.4](https://arxiv.org/abs/2605.20049).
-
-The evidence supports a narrower claim than "small functions are better for agents." Meaningful structure helps when it creates useful navigation targets and boundaries. Moving complexity without improving discoverability can add surface area instead.
+Two case studies illustrate the distinction. Replacing large opcode dispatch structures with semantically named helpers gave agents precise grep targets: they used 35% fewer input tokens, opened 25% fewer files, edited 31% fewer lines, and used 32% fewer conversation turns. In another task, helper extraction left the focal complexity in place and spread surrounding work across more methods; input tokens rose 8%, while other changes stayed near zero. [Section 4.4 describes both cases](https://arxiv.org/abs/2605.20049). Meaningful boundaries help; moving complexity without improving discoverability can add surface area.
 
 ### Identifier names are part of the navigation interface
 
-Names are not cosmetic when an agent has to translate a task written in natural language into repository locations. The 2025 preprint [*When Names Disappear*](https://arxiv.org/abs/2510.03178) created semantics-preserving obfuscations and evaluated code summarization and execution prediction. On ClassEval class-level summarization, GPT-4o's rubric-scored accuracy fell from 87.3% with original identifiers to 58.7% after obfuscation. The study also evaluated other models and tasks, with effects that varied by benchmark. [The exact result is in Table 2](https://arxiv.org/abs/2510.03178).
-
-This does not demonstrate that models understand code only through names. It demonstrates that informative identifiers carry intent that at least some models use heavily for summarization. In a repository workflow, the same names also connect task vocabulary to symbols, grep results, and neighboring concepts. Naming is now both a maintainability mechanism and a retrieval interface.
+Names connect task language to repository locations. The 2025 preprint [*When Names Disappear*](https://arxiv.org/abs/2510.03178) evaluated semantics-preserving identifier obfuscations across code summarization and execution prediction. On ClassEval class-level summarization, GPT-4o's rubric score fell from 87.3% to 58.7%, though effects varied by model, task, and benchmark. [Table 2 contains the exact result](https://arxiv.org/abs/2510.03178). This does not show that models understand code only through names; it shows that identifiers carry intent used by at least some models and provide useful targets for symbols and grep.
 
 ### Semantic retrieval and structural navigation answer different questions
 
-The CodeCompass preprint evaluated navigation directly. It used one FastAPI RealWorld application of roughly 3,500 lines and 40 source files, 30 tasks divided into three discoverability groups, and Claude Sonnet 4.5 through Claude Code. Of 270 planned trials, 258 completed: 89 vanilla, 81 with BM25 rankings prepended to the prompt, and 88 with a graph-navigation tool. The graph contained only three AST-derived edge types: `IMPORTS`, `INHERITS`, and `INSTANTIATES`. [The design is described in Sections 4.1-4.5](https://arxiv.org/abs/2602.20048).
+The CodeCompass preprint evaluated navigation on one FastAPI RealWorld application of about 3,500 lines and 40 source files. It used 30 tasks, Claude Sonnet 4.5 through Claude Code, and three conditions: vanilla, BM25 rankings prepended to the prompt, and a graph tool with the AST-derived edges `IMPORTS`, `INHERITS`, and `INSTANTIATES`. Of 270 planned trials, 258 completed: 89 vanilla, 81 BM25, and 88 graph-enabled. [Sections 4.1-4.5 describe the design](https://arxiv.org/abs/2602.20048).
 
-The task groups were deliberately different. G1 semantic tasks had required files discoverable through task vocabulary. G2 structural tasks required files connected by import chains. G3 hidden-dependency tasks required architecturally connected files with little or no lexical overlap with the task description.
+The tasks covered semantic discovery through shared vocabulary, structural discovery through import chains, and hidden dependencies with little or no lexical overlap.
 
-The primary metric, Architectural Coverage Score (ACS), is the fraction of required files the agent accessed. It is a navigation metric, not an implementation-correctness metric. An agent can access every required file and still implement the change incorrectly.
+Architectural Coverage Score (ACS), the primary metric, is the fraction of required files accessed. It measures navigation, not implementation correctness.
 
 | Task type | Vanilla ACS | BM25 ACS | Graph ACS |
 |---|---:|---:|---:|
@@ -80,87 +64,75 @@ The primary metric, Architectural Coverage Score (ACS), is the fraction of requi
 | Structural | 79.7% | 85.1% | 76.4% |
 | Hidden dependency | 76.2% | 78.2% | 99.4% |
 
-BM25 was best for semantic tasks. Graph navigation was dramatically better for hidden dependencies, but it did not outperform retrieval across every category. Overall ACS was 82.0% for vanilla, 87.1% for BM25, and 88.3% for graph-enabled trials. Complete required-file coverage occurred in 54%, 62%, and 66% of trials respectively, while mean steps to the first required file were 1.67, 1.36, and 1.93. [The group and aggregate data are in Sections 5.1 and 5.2](https://arxiv.org/abs/2602.20048).
+BM25 led on semantic tasks; graph navigation led on hidden dependencies but not every category. Overall ACS was 82.0% for vanilla, 87.1% for BM25, and 88.3% with the graph. Complete required-file coverage occurred in 54%, 62%, and 66% of trials, while mean steps to the first required file were 1.67, 1.36, and 1.93. [Sections 5.1 and 5.2 contain the group and aggregate data](https://arxiv.org/abs/2602.20048).
 
-Retrieval asks, "Which files resemble the task description?" Structural navigation asks, "Which files are connected to the code being changed?" A production harness should be able to combine or select among symbol search, grep, lexical or embedding retrieval, import and call graphs, inheritance, instantiation, dependency injection, registrations, routes, events, configuration consumers, schemas, ownership boundaries, and public contracts.
-
-Only imports, inheritance, and instantiation were evaluated in CodeCompass. The other relationships are engineering extensions for real repositories, not empirical results from that paper.
+Retrieval asks which files resemble the task; structural navigation asks which files connect to the code being changed. A production harness should combine or select among symbol search, grep, lexical or embedding retrieval, import and call graphs, inheritance, instantiation, dependency injection, registrations, routes, events, configuration consumers, schemas, ownership boundaries, and public contracts. CodeCompass evaluated only imports, inheritance, and instantiation; the rest are engineering extensions.
 
 More context is not the same as a better map.
 
 ## Requirement two: instructions are not controls
 
-The graph tool was effective when used, but availability did not guarantee adoption. Across the 88 graph-enabled CodeCompass trials, the agent invoked it in 37 trials, or 42.0%, and ignored it in 51, or 58.0%. Mean ACS was 99.5% when the tool was used and 80.2% when it was skipped. Adoption was 22.2% for semantic tasks (6 of 27), 0% for structural tasks (0 of 30), and 100% for hidden-dependency tasks (31 of 31) after a prompt revision. [These values are reported in Section 5.3](https://arxiv.org/abs/2602.20048).
+Tool availability did not ensure use. Across 88 graph-enabled CodeCompass trials, the agent invoked the graph in 37 (42.0%) and ignored it in 51 (58.0%). Mean ACS was 99.5% when used and 80.2% when skipped. Adoption was 22.2% for semantic tasks (6 of 27), 0% for structural tasks (0 of 30), and 100% for hidden-dependency tasks (31 of 31) after a prompt revision. [Section 5.3 reports these values](https://arxiv.org/abs/2602.20048). The model ignored the structural tool during every structural-task execution despite an explicit instruction; the authors suggest it chose a cheaper built-in search heuristic when the task looked easy enough.
 
-The structural group is the uncomfortable result. The model skipped a structural-navigation tool in every structural-task execution, despite an explicit instruction to call it and despite structural navigation being the tool's intended purpose. The authors suggest that the model chose a cheaper built-in search heuristic when the task did not appear difficult enough.
-
-Prompt structure still mattered. In an earlier set of hidden-dependency trials, adoption was 85.7% (30 of 35). Moving a mandatory checklist to the end of the prompt raised adoption to 100% (31 of 31), while mean G3 ACS rose from 96.6% to 99.4%. [The prompt intervention is documented in Section 5.3](https://arxiv.org/abs/2602.20048). Prompts are not irrelevant. They can materially change behavior.
+Prompt structure still mattered. In an earlier hidden-dependency set, adoption was 85.7% (30 of 35). Moving a mandatory checklist to the prompt's end raised it to 100% (31 of 31), while mean G3 ACS rose from 96.6% to 99.4%. [Section 5.3 documents the intervention](https://arxiv.org/abs/2602.20048).
 
 The evidence supports a narrower operational principle: **a prompt can describe a workflow; it cannot prove that the workflow occurred.**
 
-Some instructions can remain advisory: explanation style, optional exploration strategies, naming preferences, documentation tone, or how the final response should be organized. Failure to follow one may reduce consistency without invalidating the engineering result.
-
-Other requirements need an executable or externally verifiable representation: impact analysis, dependency discovery, test and build commands, protected tests, protected directories, migration checks, API compatibility, schema validation, static analysis, security and secret scanning, dependency policy, required approvals, and evidence completeness.
+Style, optional exploration strategies, naming preferences, documentation tone, and response structure can remain advisory. Requirements whose omission can invalidate the result need executable or externally verifiable controls: impact analysis, dependency discovery, test and build commands, protected tests and directories, migration and compatibility checks, schema validation, static analysis, security and secret scanning, dependency policy, approvals, and evidence completeness.
 
 Compare these two forms:
 
 > Inspect all consumers before changing this interface.
 
-That sentence states an expectation. A control changes the state machine:
+That is an expectation. A control changes the state machine:
 
 > The implementation phase cannot begin until an impact map containing known importers, implementations, registrations, and instantiation sites has been generated.
 
-The CodeCompass paper did not evaluate this complete control architecture. It measured tool adoption under prompts. The control design is a synthesis from the gap it observed. The more important a constraint is, the less its enforcement should depend on the model remembering it.
+CodeCompass measured tool adoption under prompts, not this control architecture. The design is an engineering response to that gap: the more important the constraint, the less enforcement should depend on model memory.
 
 ## Requirement three: separate implementation from its oracle
 
-"The agent wrote tests" sounds reassuring because it borrows credibility from a good engineering practice. But a test artifact is not automatically a strong oracle. The relevant question is whether it can reject a plausible incorrect implementation.
+"The agent wrote tests" says nothing about whether those tests can reject a plausible incorrect implementation.
 
 ### Test-writing frequency is not a correctness metric
 
-The 2026 preprint [*Rethinking the Value of Agent-Generated Tests*](https://arxiv.org/abs/2602.07900) ran six models over all 500 SWE-bench Verified tasks using mini-SWE-agent, producing one trajectory per model-task pair. Claude Opus 4.5 wrote test artifacts in 83.0% of tasks and resolved 74.4%. GPT-5.2 wrote tests in only 0.6% and resolved 71.8%. Kimi K2 Thinking and MiniMax M2 wrote tests in 97.4% and 98.6% of tasks respectively. Within each model, resolved and unresolved tasks generally had similar test-writing rates. [The model-level results are in Table 1](https://arxiv.org/abs/2602.07900).
+The 2026 preprint [*Rethinking the Value of Agent-Generated Tests*](https://arxiv.org/abs/2602.07900) ran six models over all 500 SWE-bench Verified tasks with mini-SWE-agent, one trajectory per model-task pair. Claude Opus 4.5 wrote test artifacts in 83.0% of tasks and resolved 74.4%; GPT-5.2 wrote tests in 0.6% and resolved 71.8%; Kimi K2 Thinking and MiniMax M2 wrote tests in 97.4% and 98.6% respectively. Within each model, resolved and unresolved tasks generally had similar test-writing rates. [Table 1 reports the model-level results](https://arxiv.org/abs/2602.07900).
 
-The artifacts often behaved as probes rather than discriminative tests. For resolved Claude tasks that included tests, the study measured an average of 25.00 value-revealing print statements and 5.16 assertions per task. Across all five models included in this content analysis, prints outnumbered assertions. [The signal counts are reported in Table 4 and Figure 2](https://arxiv.org/abs/2602.07900).
+The artifacts often acted as probes. Resolved Claude tasks with tests averaged 25.00 value-revealing print statements and 5.16 assertions; prints outnumbered assertions across all five models in the content analysis. [Table 4 and Figure 2 report the counts](https://arxiv.org/abs/2602.07900).
 
-Prompt interventions changed cost more than outcome. Encouraging GPT-5.2 to write tests left its resolved rate at 71.8%, while average input tokens rose 9.0% and output tokens 19.8%. Discouraging Kimi from writing tests reduced input tokens by 49.0% and API calls by 35.4%, while its resolved rate fell 2.6 percentage points. These were paired interventions over the same 500 tasks; the authors do not claim that tests never help. [The intervention results are in Table 8](https://arxiv.org/abs/2602.07900).
-
-The study measured spontaneous behavior in one lightweight agent environment. It does not demonstrate that testing is useless. It shows that test-writing volume was not a dependable proxy for success in that setting, and that asking for more tests could alter resource use far more than resolution.
+Encouraging GPT-5.2 to write tests kept its resolved rate at 71.8%, while average input tokens rose 9.0% and output tokens 19.8%. Discouraging Kimi from writing tests cut input tokens 49.0% and API calls 35.4%, while its resolved rate fell 2.6 percentage points. These paired interventions covered the same 500 tasks. [Table 8 reports the results](https://arxiv.org/abs/2602.07900). The study does not show that tests are useless; it shows that test-writing volume was not a dependable success proxy in this lightweight agent environment.
 
 ### Tests written after implementation can inherit its mistake
 
-Another 2026 preprint, [*On the Risk of Coding Before Testing*](https://arxiv.org/abs/2607.05139), compared tests generated independently from task descriptions with tests generated after exposure to faulty implementations. Across five models and controlled Python programming benchmarks, specification-only tests detected about 25% of the selected faulty implementations, while tests generated after the faulty code detected about 14%. Providing both task and code reduced fault detection by 13.2% on average relative to the task alone. [The aggregate comparison appears in the abstract, Figure 2, and Finding 1](https://arxiv.org/abs/2607.05139).
+The 2026 preprint [*On the Risk of Coding Before Testing*](https://arxiv.org/abs/2607.05139) compared tests generated from task descriptions with tests generated after exposure to faulty implementations. Across five models and controlled Python benchmarks, specification-only tests detected about 25% of selected faulty implementations, versus about 14% for tests written after the faulty code. Providing both task and code reduced fault detection by 13.2% on average relative to the task alone. [The abstract, Figure 2, and Finding 1 report the aggregate comparison](https://arxiv.org/abs/2607.05139).
 
-The effect appeared for all five evaluated models. In test-driven workflows, where test generation occurred in a fresh interaction before code generation, fault detection improved by 7.9% to 17.7% relative to the corresponding agentic workflow, depending on the model. Summarization, Chain-of-Thought, and Chain-of-Verification did not remove the gap. [The workflow comparisons are reported in Findings 2 and 3 and Table IV](https://arxiv.org/abs/2607.05139).
+The effect appeared in all five models. Generating tests in a fresh interaction before code improved fault detection by 7.9% to 17.7% over the corresponding agentic workflow, depending on the model. Summarization, Chain-of-Thought, and Chain-of-Verification did not remove the gap. [Findings 2 and 3 and Table IV report the comparisons](https://arxiv.org/abs/2607.05139).
 
-Neither test quantity nor statement coverage explained the difference. Several configurations reached roughly 95% to 99% line coverage while showing very different fault-detection rates. [Table V reports test counts and Table VI reports coverage](https://arxiv.org/abs/2607.05139). Coverage and oracle strength were measuring different things.
+Test quantity and statement coverage did not explain the difference. Several configurations reached roughly 95% to 99% line coverage with very different fault-detection rates. [Table V reports test counts and Table VI coverage](https://arxiv.org/abs/2607.05139). The same context and assumptions can align implementation and tests around the same mistake.
 
-The same model can make the implementation and the tests mutually consistent without making either correct. That does not imply intent to manipulate the suite. It means shared context and assumptions can align two artifacts around the same error.
-
-The study used HumanEval+, MBPP, and BigCodeBench to construct researcher-selected faulty Python implementations. Its effect sizes should not be assumed for every enterprise repository. But it supports concrete harness requirements: define acceptance criteria before implementation, construct at least part of the oracle in a fresh context, preserve held-out scenarios, protect independent tests from the implementation agent, and evaluate against information that did not originate in the implementation trajectory.
+The study used HumanEval+, MBPP, and BigCodeBench with researcher-selected faulty Python implementations, so its effect sizes should not be generalized to every repository. It supports defining acceptance criteria before implementation, constructing part of the oracle in a fresh context, preserving held-out scenarios, and protecting independent tests from the implementation agent.
 
 ### The changed code may not be exercised
 
-The ICSME 2026 paper [*Test Coverage Analysis of Agentic Pull Requests*](https://arxiv.org/abs/2607.18057) analyzed 4,882 agent-generated pull requests from five coding agents: 532 Java PRs and 4,350 Python PRs. Among 4,387 PRs that modified code under test, 50.4% contained no test changes. [The population and classification are reported in the abstract and Section IV](https://arxiv.org/abs/2607.18057).
+The ICSME 2026 paper [*Test Coverage Analysis of Agentic Pull Requests*](https://arxiv.org/abs/2607.18057) analyzed 4,882 agent-generated pull requests from five agents: 532 Java and 4,350 Python. Of 4,387 PRs that modified code under test, 50.4% contained no test changes. [The abstract and Section IV report the population and classification](https://arxiv.org/abs/2607.18057).
 
-For coverage, the authors could build and instrument 213 Java and 1,664 Python PRs from the filtered merged subset. Existing tests covered 61.5% of changed executable lines in Java and 27.0% in Python; 64.8% of Python PRs had zero changed lines executed. Among Code + Tests PRs, agent-added tests increased diff coverage in only 35.9% of Java cases (23 of 64) and 22.5% of Python cases (136 of 605). Lines inside try/catch constructs had miss rates of 86.0% in Java and 81.0% in Python. [The denominators and results appear in Sections III-A and IV](https://arxiv.org/abs/2607.18057).
+The authors could build and instrument 213 Java and 1,664 Python PRs from the filtered merged subset. Existing tests covered 61.5% of changed executable lines in Java and 27.0% in Python; 64.8% of Python PRs executed none of the changed lines. Agent-added tests increased diff coverage in only 35.9% of Java Code + Tests cases (23 of 64) and 22.5% of Python cases (136 of 605). Lines inside try/catch constructs had miss rates of 86.0% in Java and 81.0% in Python. [Sections III-A and IV report the denominators and results](https://arxiv.org/abs/2607.18057).
 
-Coverage cannot prove that expectations are correct. It can show that changed behavior was not executed. Zero diff coverage is therefore strong evidence of a validation gap, especially for failure paths that happy-path suites routinely miss.
-
-A harness can act on that distinction with changed-code coverage, branch coverage, explicit error scenarios, checks that new tests increase exercised behavior, and integration-level validation where unit tests cannot reach the real boundary.
+Coverage cannot prove that expectations are correct, but it can reveal unexecuted changes. A harness can use changed-code and branch coverage, explicit error scenarios, checks that new tests increase exercised behavior, and integration validation where unit tests cannot reach the boundary.
 
 ### A green suite may still accept semantic mistakes
 
-The STING preprint started with all 500 SWE-bench Verified reference patches, generated operator-based and LLM-based semantic variants in the patch region, and ran the original regression suites against them. In 385 instances, or 77.0%, at least one program variant survived the original tests. That statement does **not** mean 77% of accepted agent patches were wrong. It means that in 77% of benchmark instances, the suite accepted at least one plausible semantic alteration of the reference patch. [The result is in Table 3 and RQ1](https://arxiv.org/abs/2604.01518).
+The STING preprint generated operator-based and LLM-based semantic variants of all 500 SWE-bench Verified reference patches, then ran the original regression suites. At least one variant survived in 385 instances, or 77.0%. This does **not** mean 77% of accepted agent patches were wrong; it means those benchmark suites accepted at least one plausible semantic alteration. [Table 3 and RQ1 report the result](https://arxiv.org/abs/2604.01518).
 
-STING generated 1,316 candidate tests and retained 1,014 across 211 instances. A retained test had to pass the reference patch, fail at least one surviving variant, and remain valid under behavior-preserving transformations intended to reduce implementation-specific overfitting. Re-evaluating ten repair agents with the augmented suites reduced their resolved rates by 4.2 to 9.0 percentage points and changed leaderboard ordering. [The validation criteria appear in Section 3.4; counts and agent results appear in RQ2, Table 7, and RQ3](https://arxiv.org/abs/2604.01518).
+STING generated 1,316 candidate tests and retained 1,014 across 211 instances. Retained tests had to pass the reference patch, fail a surviving variant, and remain valid under behavior-preserving transformations designed to reduce overfitting. With the augmented suites, ten repair agents' resolved rates fell by 4.2 to 9.0 percentage points, changing leaderboard order. [Section 3.4 gives the criteria; RQ2, Table 7, and RQ3 report counts and agent results](https://arxiv.org/abs/2604.01518).
 
-The study diagnoses under-constrained suites. It does not prove that every mutation is equally realistic or severe, and its LLM-based components used one model. Mutation score is a diagnostic signal, not proof of production correctness.
+The study diagnoses under-constrained suites; it does not make every mutation realistic or severe, and its LLM-based components used one model. Mutation score is a diagnostic signal, not proof of production correctness.
 
 The oracle requirement is now clearer: **the test suite must contain information that did not originate from the implementation it is judging.**
 
 ## Requirement four: challenge the suite, not only the patch
 
-Most workflows ask one question: does the patch pass the suite? A more reliable harness asks a second: can this suite reject credible wrong behavior?
+A green suite answers whether the patch passed existing checks. A reliable harness also asks whether those checks can reject credible wrong behavior.
 
 A proportional verification stack can include:
 
@@ -174,55 +146,47 @@ A proportional verification stack can include:
 8. an independent evaluator;
 9. risk-based human review.
 
-Not every layer belongs on every task. A documentation correction should not pay the verification cost of an authentication change. Formatting does not need the same controls as a schema migration. A private helper refactor does not carry the contract risk of a public API change.
-
-That suggests risk classification, perhaps routine, significant, and critical, informed by architectural reach, data and security risk, external contracts, migrations, reversibility, observability, and blast radius. No paper above tested that taxonomy. It is an engineering mechanism for applying the evidence proportionally.
+Apply these layers by risk. A documentation correction, authentication change, schema migration, private refactor, and public API change do not need the same controls. A practical classification might use routine, significant, and critical levels based on architectural reach, data and security risk, external contracts, migrations, reversibility, observability, and blast radius. No cited paper tested this taxonomy; it is an engineering mechanism for proportional verification.
 
 ## Requirement five: evaluate trajectories, not only patches
 
-One-shot benchmarks hide an important cost. A patch can pass now while making the next patch harder.
+One-shot benchmarks miss whether a passing patch makes the next change harder.
 
-Version 2 of the [SlopCodeBench preprint](https://arxiv.org/abs/2603.24755) evaluated 15 coding agents on 36 problems containing 196 sequential checkpoints. Each checkpoint extended the agent's own previous implementation under an evolving external specification. The benchmark measured correctness plus two deliberately limited quality dimensions: verbosity, meaning redundant or unnecessary code, and structural erosion, meaning complexity concentrated in already-complex functions.
+Version 2 of the [SlopCodeBench preprint](https://arxiv.org/abs/2603.24755) evaluated 15 coding agents on 36 problems with 196 sequential checkpoints. Each checkpoint extended the agent's previous implementation under an evolving external specification. The benchmark measured correctness, verbosity (redundant or unnecessary code), and structural erosion (complexity accumulating in already-complex functions).
 
-No evaluated agent completed an entire problem end to end. The best strict pass rate was 14.8% of the 196 checkpoints. Structural erosion increased in 77% of trajectories and verbosity in 75.5%. Against a comparison panel of 473 open-source Python repositories, agent checkpoints averaged 2.0 times more structural erosion and 2.3 times more verbosity. [The benchmark design and results appear in Sections 2, 3, and Table 1](https://arxiv.org/abs/2603.24755).
+No agent completed a whole problem. The best strict pass rate was 14.8% of 196 checkpoints. Structural erosion increased in 77% of trajectories and verbosity in 75.5%; compared with 473 open-source Python repositories, agent checkpoints averaged 2.0 times more structural erosion and 2.3 times more verbosity. [Sections 2 and 3 and Table 1 describe the benchmark and results](https://arxiv.org/abs/2603.24755).
 
-Explicit quality guidance improved the starting point but did not stop degradation. Depending on the prompt and model, initial erosion fell by as much as 62.3% and initial verbosity by as much as 34.8%, yet average quality velocity remained 1.3 percentage points per checkpoint. Prompt variants also raised cost per checkpoint by 12.1% on average and reduced strict correctness by 2.3 percentage points in the aggregate comparison. [These results are summarized under RQ4 and Table 3](https://arxiv.org/abs/2603.24755).
+Quality guidance improved the starting point but did not stop degradation. Depending on prompt and model, initial erosion fell by up to 62.3% and verbosity by up to 34.8%, yet average quality velocity remained 1.3 percentage points per checkpoint. Prompt variants also raised average cost per checkpoint 12.1% and reduced strict correctness 2.3 percentage points in aggregate. [RQ4 and Table 3 summarize the results](https://arxiv.org/abs/2603.24755).
 
-Verbosity and concentrated complexity are not a complete definition of maintainability. They are two measurable dimensions. Still, the longitudinal result exposes what single-patch evaluation cannot see.
+Verbosity and concentrated complexity cover only two dimensions of maintainability. The cleanliness study links repository structure to per-task navigation and cost; SlopCodeBench shows structural degradation across repeated changes. No study demonstrates how the two effects compound in the same repositories and workflows.
 
-The connection to the cleanliness study must remain cautious. One controlled study shows that repository structure changes per-task cost and navigation. Another long-horizon benchmark shows that agents often erode structure while repeatedly modifying their own code. No study yet demonstrates exactly how the first effect compounds into the second in the same repositories and workflows. This remains an open empirical question.
-
-A harness therefore needs sequential benchmarks, regression retention across checkpoints, complexity and duplication trajectories, repeated-hotspot tracking, architectural-boundary checks, and tests for requirements satisfied earlier in the sequence.
-
-A patch should be evaluated not only by what it fixes, but by what it makes easier or harder next.
+A harness therefore needs sequential benchmarks, regression retention, complexity and duplication trajectories, repeated-hotspot tracking, architectural-boundary checks, and tests for earlier requirements. Evaluate a patch by what it fixes and what it makes easier or harder next.
 
 ## Requirement six: make the trajectory observable
 
-The final diff does not explain why the agent chose those files, which tools it ignored, which tests it ran, or what happened before the successful attempt. Without that information, a failed patch is merely a failure. With trajectory data, it becomes evidence about navigation, tools, oracles, and workflow design.
+The final diff does not show why the agent chose its files, which tools it ignored, which tests it ran, or what preceded the successful attempt. Trajectory data turns those unknowns into evidence about navigation, tools, oracles, and workflow design.
 
-When technically and legally appropriate, a harness should record the normalized task, model and harness versions, repository revision, tool and policy versions, files discovered, read, revisited, and edited, semantic and structural queries, tool calls, tools available but unused, mandatory steps completed or skipped, commands, test and gate results, coverage and mutation changes, tokens, cache usage, API calls, wall-clock time, retries, context resets, permission escalations, protected-resource attempts, evaluator decisions, approvals, and final evidence for completion.
+When technically and legally appropriate, record the normalized task; model, harness, repository, tool, and policy versions; files discovered, read, revisited, and edited; semantic and structural queries; available and invoked tools; completed or skipped steps; commands; test, gate, coverage, and mutation results; tokens, cache usage, calls, time, retries, and context resets; permission escalations and protected-resource attempts; evaluator decisions, approvals, and final evidence.
 
-This is not a request to store or expose hidden chain-of-thought. Observable actions, artifacts, decisions, commands, and outcomes are enough to distinguish specification failure from navigation, adoption, implementation, oracle, environment, policy, or evaluation failure.
-
-The distinction matters operationally. A harness cannot improve a graph that was never called, a test oracle that never reached the changed path, or a gate that was silently bypassed unless it can tell those failures apart.
+Do not store or expose hidden chain-of-thought. Observable actions, artifacts, decisions, commands, and outcomes are enough to distinguish specification, navigation, adoption, implementation, oracle, environment, policy, and evaluation failures. Without that distinction, the harness cannot tell a weak graph from a graph never called, a weak oracle from one that missed the changed path, or a failed gate from a bypassed one.
 
 ## Requirement seven: measure efficiency and variance
 
-Agent trajectories are stochastic enough that a single successful run can mislead us about both cost and improvement.
+A single successful run can misrepresent both cost and improvement.
 
-The 2026 preprint [*How Do AI Agents Spend Your Money?*](https://arxiv.org/abs/2604.22750) evaluated eight frontier models through OpenHands on SWE-bench Verified, with four independent runs per problem. The paper's abstract summarizes agentic coding as consuming roughly 1,000 times more tokens than code reasoning and chat. The more precise body comparison reports about 3,500 times a single-round reasoning task and 1,200 times a multi-round coding chat task, with repeated input context dominating consumption. Some runs on the same task differed by up to 30 times in total tokens. [The study design is in Section 2; comparisons and variance are in Section 3](https://arxiv.org/abs/2604.22750).
+The 2026 preprint [*How Do AI Agents Spend Your Money?*](https://arxiv.org/abs/2604.22750) evaluated eight frontier models through OpenHands on SWE-bench Verified, with four runs per problem. Its abstract summarizes agentic coding as consuming roughly 1,000 times more tokens than code reasoning and chat; the body reports about 3,500 times a single-round reasoning task and 1,200 times a multi-round coding chat task, with repeated input context dominating. Runs on the same task differed by up to 30 times. [Section 2 describes the design; Section 3 reports comparisons and variance](https://arxiv.org/abs/2604.22750).
 
-More tokens did not reliably produce more accuracy. Across repeated runs, accuracy peaked at an intermediate cost level and then saturated. The models also predicted their own consumption poorly: the best reported Pearson correlation was 0.39, and predictions systematically underestimated actual usage. [The accuracy analysis is in Figure 3; self-prediction is in Figures 10 and 11](https://arxiv.org/abs/2604.22750).
+More tokens did not reliably improve accuracy, which peaked at an intermediate cost and then saturated. Models also predicted consumption poorly: the best Pearson correlation was 0.39, with systematic underestimation. [Figure 3 covers accuracy; Figures 10 and 11 cover self-prediction](https://arxiv.org/abs/2604.22750).
 
-The cleanliness study found the same methodological problem at a smaller scale. For ten repetitions of the same task on the same repository side, the most expensive input-token run typically cost about 2.5 times the cheapest, and roughly 72% of task-side groups exceeded a 2x ratio. Across 27 non-calibration tasks, per-task cleaner-versus-messier input-token changes ranged from -47% to +44%; cleaner code used fewer tokens on 16 tasks and more on 11. [These results are in Section 4.3](https://arxiv.org/abs/2605.20049).
+The cleanliness study found similar variance at a smaller scale. Across ten repetitions of the same task and repository side, the most expensive input-token run typically cost about 2.5 times the cheapest, and roughly 72% of task-side groups exceeded 2x. Across 27 non-calibration tasks, cleaner-versus-messier changes ranged from -47% to +44%; cleaner code used fewer tokens on 16 tasks and more on 11. [Section 4.3 reports these results](https://arxiv.org/abs/2605.20049).
 
-A single run is not sufficient evidence that a harness change helped. Evaluate repeated runs, report distributions rather than averages alone, pair comparisons at task level, stratify by task topology, include calibration tasks, report cost and correctness together, and define outlier handling before seeing the result.
+Evaluate repeated runs, report distributions, pair comparisons by task, stratify by topology, include calibration tasks, report cost with correctness, and define outlier handling in advance.
 
-Tokens are not money. Financial cost depends on provider pricing, cache behavior, model, queueing, infrastructure, and execution strategy. Token counts are still a useful resource measure, but converting them directly to currency hides configuration-dependent assumptions.
+Tokens are a resource measure, not money. Financial cost also depends on pricing, cache behavior, model, queueing, infrastructure, and execution strategy.
 
 ## A reference architecture derived from the evidence
 
-The following architecture is a synthesis of the evidence, not a configuration directly evaluated by any single study.
+This architecture synthesizes the evidence; no cited study evaluated it as a whole.
 
 ```mermaid
 flowchart TD
@@ -240,25 +204,23 @@ flowchart TD
     L --> M["Longitudinal evaluation across later changes"]
 ```
 
-**Task normalization and risk classification** turn an ambiguous request into expected behavior, affected contracts, verification depth, and required approvals. The risk class determines which later gates are proportionate.
+**Task normalization and risk classification** convert an ambiguous request into expected behavior, affected contracts, verification depth, and approvals. The risk class selects proportionate gates.
 
-**Semantic localization** uses symbols, grep, BM25, or embeddings to find code that shares vocabulary or concepts with the task. **Structural impact mapping** follows relationships that may share no vocabulary: imports, calls, inheritance, instantiation, dependency injection, registrations, routes, events, configuration keys, schemas, migrations, ownership, and public APIs. CodeCompass empirically evaluated only imports, inheritance, and instantiation; the rest are extensions.
+**Semantic localization** uses symbols, grep, BM25, or embeddings to find shared vocabulary. **Structural impact mapping** follows imports, calls, inheritance, instantiation, dependency injection, registrations, routes, events, configuration keys, schemas, migrations, ownership, and public APIs. CodeCompass evaluated only imports, inheritance, and instantiation; the others are engineering extensions.
 
-**Independent oracle construction** produces some combination of acceptance criteria, protected tests, properties, semantic variants, contract scenarios, and failure cases without simply replaying the implementation context. The implementation agent can see public criteria and tests where useful, but it should not control every artifact that will judge it.
+**Independent oracle construction** creates acceptance criteria, protected tests, properties, semantic variants, contract scenarios, or failure cases without replaying the implementation context. The implementation agent can see public criteria and tests, but should not control everything that judges it.
 
-**Deterministic gates** can include formatting, build, type checking, linting, regression tests, diff and branch coverage, static analysis, security and dependency scanning, secret detection, compatibility checks, schemas, migrations, and policy. The point is not to run everything. It is to make required checks produce explicit, reproducible outcomes.
+**Deterministic gates** cover the checks required by the risk class: formatting, build, type checking, linting, regression tests, changed-code and branch coverage, static analysis, security and dependency scanning, secret detection, compatibility, schemas, migrations, and policy. Each produces an explicit, reproducible result.
 
-**Independent evaluation** looks for specification gaps, unexplained behavior, suspicious test edits, missing failure paths, contract impact, and architecture-sensitive changes. Independence is relative, not magical. Another agent can share the implementation model's training and biases; it should not automatically be treated as an objective oracle.
+**Independent evaluation** looks for specification gaps, unexplained behavior, suspicious test edits, missing failure paths, contract impact, and architecture-sensitive changes. Another agent may share the implementation model's biases, so independence is relative.
 
-**Human review** remains important where expectations are ambiguous or weakly formalized: architecture, security, privacy, migrations, financial behavior, legal constraints, irreversible operations, public APIs, and production-incident risk. That does not require humans to read every line of every patch. It requires review effort to follow risk.
-
-Finally, the **evidence manifest** provides machine-readable and human-readable records of what changed, what was inspected and executed, what passed or failed, which checks were not applicable, what uncertainty remains, who approved the result, and which artifact and tool versions produced it.
+**Human review** follows risk, especially for architecture, security, privacy, migrations, financial behavior, legal constraints, irreversible operations, public APIs, and production incidents. The **evidence manifest** records what changed, what ran, what passed or failed, what was not applicable, remaining uncertainty, approvals, and artifact and tool versions.
 
 ## Evaluate the harness like a software system
 
-A harness should not improve by accumulating longer prompts, more agents, more tools, and more gates without measurement. Every layer adds latency, token and infrastructure cost, false positives, cognitive overhead, maintenance, and new failure modes.
+A harness should not accumulate prompts, agents, tools, and gates without measurement. Every layer adds latency, resource cost, false positives, maintenance, and failure modes.
 
-Use ablations. Compare a baseline model with standard repository tools against semantic localization, then add structural mapping, independent oracle construction, deterministic gates, an evaluator, and risk-based review one controlled step at a time.
+Use ablations: start with a baseline model and standard repository tools, then add semantic localization, structural mapping, independent oracles, deterministic gates, evaluation, and risk-based review one controlled step at a time.
 
 Measure more than pass rate:
 
@@ -270,9 +232,9 @@ Measure more than pass rate:
 - **Evolution:** sequential checkpoint success, regression retention, complexity, duplication, hotspot growth, and boundary violations.
 - **Operational reliability:** skipped mandatory steps, ignored tools, bypassed gates, protected artifacts modified, environment failures, nondeterminism, and evidence completeness.
 
-Stratify the tasks too. Separate semantic, structural, and hidden dependencies; local, hotspot, and multi-module changes; routine, contract, security, data, architecture, and migration risks; and single-patch from long-horizon evaluation. Include calibration tasks where a mechanism should have little effect. If a new component appears to improve everything, including tasks where it should be irrelevant, you may be measuring prompt overhead, benchmark artifacts, or noise.
+Stratify semantic, structural, and hidden dependencies; local, hotspot, and multi-module changes; routine, contract, security, data, architecture, and migration risks; and single-patch versus long-horizon evaluation. Include calibration tasks where a mechanism should have little effect. Improvement there may indicate prompt overhead, benchmark artifacts, or noise.
 
-A reliable harness should not merely contain more scaffolding. Each component should justify its cost through controlled evaluation.
+Each component should justify its cost through controlled evaluation.
 
 ## A concise matrix of harness responsibilities
 
@@ -289,25 +251,21 @@ A reliable harness should not merely contain more scaffolding. Each component sh
 
 ## What these studies do not prove
 
-Most of the sources in this article are recent preprints, and several have not yet received broad independent replication. Some evaluate one model, one harness, one repository, or controlled Python tasks. Their measurements are useful because they are specific, not because they settle every production question.
+Most sources are recent preprints without broad independent replication. Some evaluate one model, harness, repository, or set of controlled Python tasks. Their measurements are specific, not universal.
 
-The [cleanliness study](https://arxiv.org/abs/2605.20049) used Claude Sonnet 4.6 in Claude Code and treated SonarQube violations and cognitive complexity as proxies, not a complete definition of clean code. [CodeCompass](https://arxiv.org/abs/2602.20048) used one relatively small Python application, measured ACS rather than implementation correctness, and built its graph from only imports, inheritance, and instantiation. Its own discussion also contains inconsistent rounded adoption figures, while the result table reports the 58% ignored and 42% used split cited here.
+The [cleanliness study](https://arxiv.org/abs/2605.20049) used Claude Sonnet 4.6 in Claude Code and treated SonarQube violations and cognitive complexity as proxies for clean code. [CodeCompass](https://arxiv.org/abs/2602.20048) used one small Python application, measured navigation rather than correctness, and modeled only imports, inheritance, and instantiation. Its discussion also contains inconsistent rounded adoption figures; the result table reports the 58% ignored and 42% used split cited here.
 
-The agent-generated-test study used SWE-bench Verified with mini-SWE-agent. The code-before-test study used controlled Python benchmarks and selected faulty implementations. The pull-request coverage study could instrument only a subset of the collected repositories and PRs. Diff coverage cannot determine whether assertions are correct, and high coverage does not imply a strong oracle.
+The agent-generated-test study used SWE-bench Verified with mini-SWE-agent. The code-before-test study used controlled Python benchmarks and selected faulty implementations. The pull-request coverage study instrumented only a subset of collected repositories and PRs. Diff coverage cannot judge assertions, and high coverage does not imply a strong oracle.
 
-Mutation testing does not guarantee production correctness. A surviving variant is not automatically a severe real-world defect, and an oracle patch may not be the only valid implementation. SlopCodeBench measures verbosity and complexity concentration, not every dimension of maintainability. Token counts are not monetary cost. Benchmarks do not reproduce every production constraint.
+Mutation testing does not guarantee production correctness. A surviving variant may not be a severe defect, and an oracle patch may not be the only valid implementation. SlopCodeBench measures two dimensions of maintainability. Token counts are not monetary cost. Benchmarks do not reproduce every production constraint.
 
-Most importantly, the reference harness described here has not been validated as a complete system. Added tools and gates can create regressions, latency, false positives, and their own maintenance burden. Enforcement should remain proportional to task risk, and the harness itself should remain under evaluation.
+The reference harness has not been validated as a complete system. Its tools and gates can add regressions, latency, false positives, and maintenance. Keep enforcement proportional to risk and evaluate the harness itself.
 
 ## Conclusion: from prompts to proof
 
-Return to the green patch. The build still matters. Tests still matter. Review still matters. But the harness determines how much confidence those signals deserve.
+A build, tests, and review matter only as much as the harness makes their evidence trustworthy. That requires semantic and structural maps, executable controls for critical steps, oracles independent of the implementation trajectory, observable runs, longitudinal evaluation, and controlled evaluation of the harness itself.
 
-The agent needs a map that combines semantic and structural discovery. Critical workflow steps need executable controls. Tests need information independent of the implementation trajectory. The suite needs to be challenged, not merely passed. The trajectory needs to be observable, the patch needs to be evaluated against later changes, and the harness needs controlled evaluation of its own.
-
-This extends, rather than replaces, the human concerns I have written about in [code review under increased agent output](/posts/code-review-in-the-ai-era-we-need-to-change/) and [the gap between polished code and real understanding](/posts/your-code-looks-professional-can-you-explain-it/). The question here is different: what must the execution system assume responsibility for before a patch is allowed to present itself as trustworthy?
-
-A reliable harness does not merely ask an agent to behave correctly. It gives the agent a map, surrounds the implementation with independent oracles, turns critical instructions into executable controls, and records enough evidence to show why the resulting patch should be trusted.
+This complements my posts on [code review under increased agent output](/posts/code-review-in-the-ai-era-we-need-to-change/) and [the gap between polished code and real understanding](/posts/your-code-looks-professional-can-you-explain-it/). A reliable harness turns instructions into controls and records enough evidence to justify trust in the resulting patch.
 
 ## References
 
