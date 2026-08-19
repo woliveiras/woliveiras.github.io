@@ -1,0 +1,252 @@
+---
+import BaselineLayout from "$layouts/BaselineLayout.astro";
+
+const description =
+	"How Baseline separates evidence, inference, product decisions, limitations, proportional risk, fail-first checks, safety boundaries, and human authority.";
+
+const evidenceTypes = [
+	{
+		id: "01",
+		name: "Observed fact",
+		definition:
+			"Directly inspectable in the current repository, system, diff, or recorded result.",
+		limit: "True only for the observed state and time.",
+	},
+	{
+		id: "02",
+		name: "Governing specification",
+		definition:
+			"The request, contract, accepted decision, or policy that defines expected behavior.",
+		limit: "Defines intent; it does not prove implementation.",
+	},
+	{
+		id: "03",
+		name: "Executable check",
+		definition:
+			"A reproducible test, build, validator, or inspection that distinguishes an expected result.",
+		limit: "Supports the checked boundary, not universal correctness.",
+	},
+	{
+		id: "04",
+		name: "Empirical validation",
+		definition:
+			"Behavior observed with a named client, version, fixture, model, or environment.",
+		limit: "Does not transfer automatically to other configurations.",
+	},
+	{
+		id: "05",
+		name: "Heuristic",
+		definition:
+			"A practical routing signal or engineering rule that guides judgment under uncertainty.",
+		limit: "Useful guidance, not an enforced guarantee.",
+	},
+	{
+		id: "06",
+		name: "Product decision",
+		definition:
+			"An intentional Baseline choice about scope, proportionality, portability, or authority.",
+		limit: "A design commitment, not an external fact.",
+	},
+	{
+		id: "07",
+		name: "Inference",
+		definition:
+			"A conclusion that connects evidence to a decision or risk assessment.",
+		limit: "Must stay labeled and revisable when evidence changes.",
+	},
+];
+---
+
+<BaselineLayout title="Methodology" description={description}>
+  <section class="baseline-page-hero baseline-methodology-hero">
+    <div class="baseline-container baseline-page-hero__grid">
+      <div>
+        <p class="baseline-eyebrow">METHODOLOGY</p>
+        <h1>Trust comes from visible boundaries.</h1>
+      </div>
+      <p>
+        Baseline does not ask you to trust a popularity signal or a broad promise. It makes the
+        governing input, risk, evidence, limitations, and authority behind a software change easier
+        to inspect.
+      </p>
+    </div>
+  </section>
+
+  <section class="baseline-methodology-intro">
+    <div class="baseline-container baseline-methodology-intro__grid">
+      <p class="baseline-methodology-intro__statement">
+        Evidence-driven engineering means making the basis of a claim explicit—and keeping the
+        claim no broader than that basis.
+      </p>
+      <div>
+        <p>
+          Baseline combines established software-engineering practices with explicit product
+          decisions about proportionality, portability, safety, and human authority. It is not a
+          claim that every workflow is scientifically proven or that declarative instructions can
+          enforce an agent's behavior.
+        </p>
+        <p>
+          The standard is narrower and more useful: state what was observed, how it was checked,
+          what remains uncertain, and what would make the conclusion change.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="baseline-section baseline-evidence-types">
+    <div class="baseline-container">
+      <div class="baseline-section-heading">
+        <p class="baseline-eyebrow">EVIDENCE LANGUAGE</p>
+        <h2>Different claims require different labels.</h2>
+        <p>
+          These categories prevent repository state, specifications, tests, empirical observations,
+          and judgment from being presented as if they carried the same confidence.
+        </p>
+      </div>
+
+      <div class="baseline-evidence-list">
+        <div class="baseline-evidence-list__header" aria-hidden="true">
+          <span>Type</span>
+          <span>What it means</span>
+          <span>Confidence limit</span>
+        </div>
+        {evidenceTypes.map((evidence) => (
+          <article>
+            <div class="baseline-evidence-list__type">
+              <span>{evidence.id}</span>
+              <h3>{evidence.name}</h3>
+            </div>
+            <p>{evidence.definition}</p>
+            <p>{evidence.limit}</p>
+          </article>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <section class="baseline-section baseline-proportionality">
+    <div class="baseline-container baseline-proportionality__grid">
+      <div class="baseline-section-heading">
+        <p class="baseline-eyebrow">PROPORTIONALITY</p>
+        <h2>Risk selects the depth.</h2>
+        <p>
+          Baseline classifies the highest applicable risk from blast radius, crossed boundaries,
+          reversibility, ambiguity, persistence, public compatibility, validation difficulty,
+          rollout, and rollback. Line count is not a risk model.
+        </p>
+      </div>
+
+      <div class="baseline-risk-scale" aria-label="Proportional risk scale">
+        <article>
+          <span>S</span>
+          <div><h3>Contained</h3><p>Simple recovery, narrow behavior, direct validation.</p></div>
+        </article>
+        <article>
+          <span>M</span>
+          <div><h3>Crossing a boundary</h3><p>More than one surface, public behavior, or meaningful integration.</p></div>
+        </article>
+        <article>
+          <span>L</span>
+          <div><h3>Material exposure</h3><p>Broad blast radius, difficult validation, persistence, or rollout risk.</p></div>
+        </article>
+        <article>
+          <span>XL</span>
+          <div><h3>Critical consequence</h3><p>Sensitive systems, hard reversal, broad authority, or severe failure cost.</p></div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="baseline-section baseline-method-loop">
+    <div class="baseline-container">
+      <div class="baseline-section-heading">
+        <p class="baseline-eyebrow">FAIL-FIRST TO VERIFICATION</p>
+        <h2>A green check matters only after the right red signal.</h2>
+        <p>
+          The smallest useful check must first fail for the expected behavioral reason. The
+          implementation then changes the behavior—not the assertion—and review reconnects the
+          result to the full governing input and diff.
+        </p>
+      </div>
+
+      <ol class="baseline-method-loop__steps">
+        <li><span>01</span><h3>Define the boundary</h3><p>Translate the governing input into observable expected behavior.</p></li>
+        <li><span>02</span><h3>See the right failure</h3><p>Confirm the check distinguishes the missing behavior from infrastructure noise.</p></li>
+        <li><span>03</span><h3>Change the minimum</h3><p>Implement the smallest coherent behavior without weakening the evidence.</p></li>
+        <li><span>04</span><h3>Review the whole story</h3><p>Reconcile request, behavior, tests, diff, risks, fresh results, and limitations.</p></li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="baseline-section baseline-safety-boundaries">
+    <div class="baseline-container baseline-safety-boundaries__grid">
+      <div class="baseline-section-heading">
+        <p class="baseline-eyebrow">SAFETY AND ISOLATION</p>
+        <h2>Safety is more than a sandbox.</h2>
+        <p>
+          Source state, execution, machine and kernel, mutable services, credentials, approval, and
+          verification are separate boundaries. Strengthening one does not silently strengthen the
+          others.
+        </p>
+      </div>
+
+      <div class="baseline-boundary-stack">
+        <div><span>01</span><p><strong>Source state</strong> — branch, worktree, and concurrent changes</p></div>
+        <div><span>02</span><p><strong>Execution</strong> — processes, dependencies, generated commands, and network</p></div>
+        <div><span>03</span><p><strong>Machine</strong> — filesystem mounts, user, kernel, device, and privileges</p></div>
+        <div><span>04</span><p><strong>Services</strong> — databases, queues, buckets, emulators, and shared state</p></div>
+        <div><span>05</span><p><strong>Authority</strong> — credentials, approvals, external mutations, and destructive actions</p></div>
+        <div><span>06</span><p><strong>Verification</strong> — preserved diff, logs, results, limitations, and integrated review</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="baseline-section baseline-claims">
+    <div class="baseline-container">
+      <div class="baseline-section-heading">
+        <p class="baseline-eyebrow">CLAIM BOUNDARIES</p>
+        <h2>What Baseline does not claim.</h2>
+      </div>
+
+      <div class="baseline-claims__grid">
+        <article><span>×</span><p>Skill discovery does not prove that a model selected or followed the workflow correctly.</p></article>
+        <article><span>×</span><p>A passing test does not establish correctness outside the behavior and environment it checked.</p></article>
+        <article><span>×</span><p>Declarative guidance does not enforce permissions, isolation, review quality, or production policy.</p></article>
+        <article><span>×</span><p>Client compatibility does not transfer behavioral evidence across versions, models, or configurations.</p></article>
+        <article><span>×</span><p>Proportionality does not mean skipping necessary rigor; the highest applicable risk wins.</p></article>
+        <article><span>×</span><p>Human authority cannot be inferred from an earlier engineering step or a successful local result.</p></article>
+      </div>
+    </div>
+  </section>
+
+  <section class="baseline-section baseline-inspect-source">
+    <div class="baseline-container baseline-inspect-source__grid">
+      <div>
+        <p class="baseline-eyebrow">INSPECT THE EVIDENCE</p>
+        <h2>The repository is the product.</h2>
+        <p>
+          Baseline's public contract, vocabulary, workflow composition, deterministic tests, and
+          evaluation limits remain reviewable in source.
+        </p>
+      </div>
+      <div class="baseline-source-links">
+        <a href="https://github.com/woliveiras/baseline/blob/main/AGENTS.md"><span>Engineering contract</span><span>↗</span></a>
+        <a href="https://github.com/woliveiras/baseline/blob/main/GLOSSARY.md"><span>Canonical glossary</span><span>↗</span></a>
+        <a href="https://github.com/woliveiras/baseline/blob/main/plugins/baseline/skills/catalog.md"><span>Skill composition contract</span><span>↗</span></a>
+        <a href="https://github.com/woliveiras/baseline/blob/main/docs/architecture/evaluations.md"><span>Evaluation architecture and limits</span><span>↗</span></a>
+        <a href="https://github.com/woliveiras/baseline/tree/main/tests"><span>Deterministic tests</span><span>↗</span></a>
+      </div>
+    </div>
+  </section>
+
+  <section class="baseline-cta-band">
+    <div class="baseline-container baseline-cta-band__inner">
+      <div>
+        <p class="baseline-eyebrow">APPLY THE METHOD</p>
+        <h2>Bring the minimum discipline into your repository.</h2>
+      </div>
+      <p>Install the static skills, then let <code>$setup-baseline</code> create or safely reconcile the project-owned engineering contract.</p>
+      <a class="baseline-button baseline-button--primary" href="/baseline/install/">Install Baseline</a>
+    </div>
+  </section>
+</BaselineLayout>
