@@ -1,0 +1,128 @@
+---
+import type { GetStaticPaths } from "astro";
+import BaselineLayout from "$layouts/BaselineLayout.astro";
+import {
+	type BaselineSkill,
+	baselineSkills,
+	getBaselineSkill,
+} from "../../../microsites/baseline-skills";
+
+interface SkillWithGroup extends BaselineSkill {
+	groupId: string;
+	groupName: string;
+}
+
+interface Props {
+	skill: SkillWithGroup;
+	previous?: SkillWithGroup;
+	next?: SkillWithGroup;
+}
+
+export const getStaticPaths = (() =>
+	baselineSkills.map((skill, index) => ({
+		params: { slug: skill.slug },
+		props: {
+			skill,
+			previous: baselineSkills[index - 1],
+			next: baselineSkills[index + 1],
+		},
+	}))) satisfies GetStaticPaths;
+
+const { skill, previous, next } = Astro.props;
+const relatedSkills = skill.related
+	.map(getBaselineSkill)
+	.filter(Boolean) as SkillWithGroup[];
+const sourceUrl = `https://github.com/woliveiras/baseline/tree/main/plugins/baseline/skills/${skill.slug}`;
+---
+
+<BaselineLayout title={`${skill.slug} skill`} description={skill.summary}>
+  <article class="baseline-skill-detail">
+    <header class="baseline-skill-detail__hero">
+      <div class="baseline-container">
+        <nav class="baseline-breadcrumbs" aria-label="Breadcrumb">
+          <a href="/baseline/skills/">Skills</a>
+          <span aria-hidden="true">/</span>
+          <a href={`/baseline/skills/#${skill.groupId}`}>{skill.groupName}</a>
+        </nav>
+        <p class="baseline-eyebrow">${skill.slug}</p>
+        <h1>{skill.summary}</h1>
+        <p>{skill.when}</p>
+        <div class="baseline-skill-detail__badges">
+          <span>{skill.explicitOnly ? "Explicit invocation" : "Intent-routed"}</span>
+          <span>Independent skill</span>
+          <span>Static instructions</span>
+        </div>
+      </div>
+    </header>
+
+    <div class="baseline-container baseline-skill-detail__body">
+      <section>
+        <p class="baseline-eyebrow">BOUNDARY</p>
+        <h2>What this skill owns</h2>
+        <p class="baseline-skill-detail__lead">{skill.owns}</p>
+      </section>
+
+      <dl class="baseline-contract-grid">
+        <div>
+          <dt>Input</dt>
+          <dd>{skill.input}</dd>
+        </div>
+        <div>
+          <dt>Output</dt>
+          <dd>{skill.output}</dd>
+        </div>
+        <div>
+          <dt>Stop condition</dt>
+          <dd>{skill.stop}</dd>
+        </div>
+      </dl>
+
+      <section class="baseline-skill-detail__section">
+        <div>
+          <p class="baseline-eyebrow">INVOCATION</p>
+          <h2>Ask for the activity, not the implementation detail.</h2>
+        </div>
+        <div>
+          {skill.explicitOnly ? (
+            <p>This workflow starts only when you explicitly request its activity. You do not need to remember the skill name, but the request must be deliberate.</p>
+          ) : (
+            <p>Your agent may select this workflow when the intent matches. Use <code>${skill.slug}</code> when you want to make the route deterministic.</p>
+          )}
+          <a class="baseline-text-link" href={sourceUrl}>Inspect the source <span aria-hidden="true">↗</span></a>
+        </div>
+      </section>
+
+      {relatedSkills.length > 0 ? (
+        <section class="baseline-skill-detail__related">
+          <p class="baseline-eyebrow">RELATED WORKFLOWS</p>
+          <div>
+            {relatedSkills.map((related) => (
+              <a href={`/baseline/skills/${related.slug}/`}>
+                <code>${related.slug}</code>
+                <span>{related.summary}</span>
+                <span aria-hidden="true">→</span>
+              </a>
+            ))}
+          </div>
+        </section>
+      ) : null}
+    </div>
+
+    <nav class="baseline-skill-pagination" aria-label="Adjacent skills">
+      <div class="baseline-container">
+        {previous ? (
+          <a href={`/baseline/skills/${previous.slug}/`} rel="prev">
+            <span>← Previous</span>
+            <strong>${previous.slug}</strong>
+          </a>
+        ) : <span></span>}
+        {next ? (
+          <a href={`/baseline/skills/${next.slug}/`} rel="next">
+            <span>Next →</span>
+            <strong>${next.slug}</strong>
+          </a>
+        ) : <span></span>}
+      </div>
+    </nav>
+  </article>
+</BaselineLayout>

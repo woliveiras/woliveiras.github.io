@@ -1,0 +1,70 @@
+---
+import BaselineLayout from "$layouts/BaselineLayout.astro";
+import { baselineSkillGroups } from "../../../microsites/baseline-skills";
+
+const description =
+	"Explore Baseline's independent engineering workflows for risk classification, fail-first implementation, architecture, evidence, safety, documentation, and review.";
+---
+
+<BaselineLayout title="Skills" description={description}>
+  <section class="baseline-page-hero">
+    <div class="baseline-container baseline-page-hero__grid">
+      <div>
+        <p class="baseline-eyebrow">SKILL CATALOG</p>
+        <h1>Workflows, not prompt tricks.</h1>
+      </div>
+      <p>
+        Each skill owns a bounded engineering activity, states when to stop, and keeps its evidence
+        and authority limits visible. Use one directly or let your agent select a matching path.
+      </p>
+    </div>
+  </section>
+
+  <nav class="baseline-section-index" aria-label="Skill groups">
+    <div class="baseline-container">
+      {baselineSkillGroups.map((group) => <a href={`#${group.id}`}>{group.name}</a>)}
+    </div>
+  </nav>
+
+  <div class="baseline-skill-catalog">
+    {baselineSkillGroups.map((group, index) => (
+      <section id={group.id} class="baseline-skill-group">
+        <div class="baseline-container baseline-skill-group__grid">
+          <div class="baseline-skill-group__intro">
+            <p class="baseline-skill-group__number">{String(index + 1).padStart(2, "0")}</p>
+            <h2>{group.name}</h2>
+            <p>{group.description}</p>
+            <p class="baseline-skill-group__start">Start with <a href={`/baseline/skills/${group.startWith}/`}>${group.startWith}</a></p>
+          </div>
+
+          <div class="baseline-skill-list">
+            {group.skills.map((skill) => (
+              <a class="baseline-skill-row" href={`/baseline/skills/${skill.slug}/`}>
+                <div>
+                  <code>${skill.slug}</code>
+                  {skill.explicitOnly ? <span>explicit</span> : null}
+                </div>
+                <h3>{skill.summary}</h3>
+                <span class="baseline-skill-row__arrow" aria-hidden="true">↗</span>
+              </a>
+            ))}
+          </div>
+        </div>
+      </section>
+    ))}
+  </div>
+
+  <section class="baseline-cta-band">
+    <div class="baseline-container baseline-cta-band__inner">
+      <div>
+        <p class="baseline-eyebrow">KEEP THE BOUNDARY CLEAR</p>
+        <h2>Skills guide work. Your environment enforces policy.</h2>
+      </div>
+      <p>
+        Declarative instructions do not enforce chronology, scope, sandboxing, permissions, branch
+        protection, or production authority. Those controls remain authoritative where configured.
+      </p>
+      <a class="baseline-button" href="/baseline/methodology/">Read the methodology</a>
+    </div>
+  </section>
+</BaselineLayout>
