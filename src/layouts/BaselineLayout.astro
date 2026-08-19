@@ -18,7 +18,7 @@ const { title, description, activePath, image } = Astro.props;
   title={title}
   description={description}
   activePath={activePath}
-  image={image}
+  image={image ?? "baseline.png"}
   bodyClass="baseline-site"
 >
   <slot />

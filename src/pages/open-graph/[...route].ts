@@ -40,12 +40,23 @@ export const { getStaticPaths, GET } = await OGImageRoute({
 			useHero: false,
 		},
 		...pages,
+		baseline: {
+			title: "Baseline",
+			description:
+				"The portable minimum for disciplined, proportional software engineering with coding agents.",
+			useHero: false,
+		},
 	},
 
 	// For each page, this callback will be used to customize the OpenGraph image.
 	getImageOptions: (
 		_: string,
-		page: { title: string; description: string; useHero: boolean; heroImage?: string },
+		page: {
+			title: string;
+			description: string;
+			useHero: boolean;
+			heroImage?: string;
+		},
 	) => ({
 		title: page.title,
 		description: page.description,

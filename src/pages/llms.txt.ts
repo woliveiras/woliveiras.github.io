@@ -21,6 +21,10 @@ export const GET: APIRoute = async () => {
 
 > ${SITE_DESCRIPTION}
 
+## Products
+
+- [Baseline](${SITE}/baseline/): The portable minimum for disciplined, proportional software engineering with coding agents.
+
 ## Blog posts
 
 ${postLines}
