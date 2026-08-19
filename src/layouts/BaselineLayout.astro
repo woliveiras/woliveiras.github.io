@@ -1,0 +1,25 @@
+---
+import MicrositeLayout from "$layouts/MicrositeLayout.astro";
+import { baselineSite } from "../microsites/baseline";
+import "../styles/baseline.css";
+
+interface Props {
+	title?: string;
+	description?: string;
+	activePath?: string;
+	image?: string;
+}
+
+const { title, description, activePath, image } = Astro.props;
+---
+
+<MicrositeLayout
+  site={baselineSite}
+  title={title}
+  description={description}
+  activePath={activePath}
+  image={image}
+  bodyClass="baseline-site"
+>
+  <slot />
+</MicrositeLayout>

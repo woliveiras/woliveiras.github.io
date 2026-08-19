@@ -1,0 +1,177 @@
+---
+import WorkflowDiagram from "$components/baseline/WorkflowDiagram.astro";
+import BaselineLayout from "$layouts/BaselineLayout.astro";
+
+const description =
+	"Baseline gives coding agents a proportional path from a software request to a verified change, while keeping risk, evidence, safety, and authority explicit.";
+---
+
+<BaselineLayout description={description}>
+  <section class="baseline-hero">
+    <div class="baseline-container baseline-hero__grid">
+      <div class="baseline-hero__copy">
+        <p class="baseline-eyebrow"><span></span> OPEN AGENT SKILLS · MIT</p>
+        <h1>Engineering discipline for coding agents.</h1>
+        <p class="baseline-hero__lede">
+          Baseline gives your agent a proportional path from a software request to a verified
+          change—without adding a runtime, CLI, or project dependency.
+        </p>
+        <div class="baseline-actions">
+          <a class="baseline-button baseline-button--primary" href="#workflow">
+            Explore the workflow <span aria-hidden="true">↓</span>
+          </a>
+          <a class="baseline-button" href="/baseline/methodology/">Read the methodology</a>
+        </div>
+      </div>
+
+      <div class="baseline-hero__signal" aria-hidden="true">
+        <div class="baseline-hero__terminal">
+          <div class="baseline-hero__terminal-bar">
+            <span></span><span></span><span></span>
+            <p>baseline / governing input</p>
+          </div>
+          <div class="baseline-hero__terminal-body">
+            <p><span>01</span> classify by risk</p>
+            <p><span>02</span> resolve material ambiguity</p>
+            <p><span>03</span> check behavior fail-first</p>
+            <p><span>04</span> implement the smallest change</p>
+            <p><span>05</span> verify proportionally</p>
+            <p class="baseline-hero__terminal-result">authority remains explicit <span>✓</span></p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="baseline-trust" aria-label="Baseline principles">
+    <div class="baseline-container baseline-trust__grid">
+      <article>
+        <span>01</span>
+        <h2>Risk before ritual</h2>
+        <p>Depth follows blast radius, reversibility, ambiguity, and validation difficulty—not line count.</p>
+      </article>
+      <article>
+        <span>02</span>
+        <h2>Evidence before confidence</h2>
+        <p>Expected behavior, fail-first checks, complete diffs, and fresh results stay visible.</p>
+      </article>
+      <article>
+        <span>03</span>
+        <h2>Safety before speed</h2>
+        <p>Trust, isolation, sensitive data, destructive actions, and blast radius remain explicit.</p>
+      </article>
+      <article>
+        <span>04</span>
+        <h2>Authority stays human</h2>
+        <p>Commits, releases, deployments, and irreversible actions require explicit permission.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="baseline-section baseline-problem">
+    <div class="baseline-container">
+      <div class="baseline-section-heading">
+        <p class="baseline-eyebrow">WHY BASELINE</p>
+        <h2>Fast code is useful. Unexamined confidence is not.</h2>
+        <p>
+          Coding agents can produce plausible changes quickly. Baseline keeps the engineering
+          judgment around those changes proportional, inspectable, and under human authority.
+        </p>
+      </div>
+
+      <div class="baseline-problem__grid">
+        <article>
+          <p class="baseline-card-label">THE PROBLEM</p>
+          <h3>Speed can hide uncertainty.</h3>
+          <p>An agent can write convincing code before it has identified the governing behavior, risk, or validation boundary.</p>
+        </article>
+        <article>
+          <p class="baseline-card-label">THE RESPONSE</p>
+          <h3>Route the work by risk.</h3>
+          <p>Measure first, refine only real ambiguity, prove behavior at the smallest useful seam, then review at the selected depth.</p>
+        </article>
+        <article>
+          <p class="baseline-card-label">THE RESULT</p>
+          <h3>A workflow you can inspect.</h3>
+          <p>Each step has a reason, a stopping condition, and an evidence boundary. Passing checks still do not become a claim of perfect correctness.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section id="workflow" class="baseline-section baseline-workflow">
+    <div class="baseline-container">
+      <WorkflowDiagram />
+    </div>
+  </section>
+
+  <section class="baseline-section baseline-capabilities">
+    <div class="baseline-container baseline-capabilities__grid">
+      <div class="baseline-section-heading">
+        <p class="baseline-eyebrow">COMPOSABLE WORKFLOWS</p>
+        <h2>Use the path the change needs.</h2>
+        <p>
+          Baseline is a set of independent Agent Skills. Your agent can select a matching workflow
+          from your request, or you can invoke one explicitly when you need a deterministic path.
+        </p>
+        <a class="baseline-text-link" href="/baseline/skills/">Explore the skills <span aria-hidden="true">→</span></a>
+      </div>
+
+      <div class="baseline-capabilities__list">
+        <article>
+          <code>$measurer</code>
+          <div>
+            <h3>Choose the depth</h3>
+            <p>Classify risk, boundaries, reversibility, ambiguity, validation, and rollout exposure.</p>
+          </div>
+        </article>
+        <article>
+          <code>$tdd</code>
+          <div>
+            <h3>Prove the change</h3>
+            <p>Start approved behavior with the smallest executable check that fails for the right reason.</p>
+          </div>
+        </article>
+        <article>
+          <code>$verify</code>
+          <div>
+            <h3>Review the whole story</h3>
+            <p>Reconcile the request, expected behavior, tests, complete diff, fresh results, and residual risk.</p>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="baseline-section baseline-methodology-teaser">
+    <div class="baseline-container baseline-methodology-teaser__inner">
+      <div>
+        <p class="baseline-eyebrow">EVIDENCE-DRIVEN METHODOLOGY</p>
+        <h2>Credibility should be inspectable.</h2>
+      </div>
+      <div>
+        <p>
+          Baseline separates repository observations, specifications, executable checks, empirical
+          validation, heuristics, product decisions, and inference. It states limitations instead
+          of turning discovery or a passing test into a broader claim.
+        </p>
+        <a class="baseline-button" href="/baseline/methodology/">Examine the methodology</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="baseline-section baseline-install-teaser">
+    <div class="baseline-container baseline-install-teaser__inner">
+      <div>
+        <p class="baseline-eyebrow">START HERE</p>
+        <h2>Install the skills. Keep your stack.</h2>
+        <p>Static instructions, loaded on demand. No Baseline process runs in your project.</p>
+      </div>
+      <div class="baseline-command" aria-label="Codex installation command">
+        <span aria-hidden="true">$</span>
+        <code>codex plugin marketplace add woliveiras/baseline --ref v0.5.0</code>
+      </div>
+      <a class="baseline-button baseline-button--primary" href="/baseline/install/">Choose your agent</a>
+    </div>
+  </section>
+</BaselineLayout>
