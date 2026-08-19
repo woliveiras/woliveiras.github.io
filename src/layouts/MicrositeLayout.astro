@@ -1,0 +1,136 @@
+---
+import BaseHead from "$components/BaseHead.astro";
+import type { MicrositeDefinition } from "../microsites/types";
+import "../styles/microsite.css";
+
+interface Props {
+	site: MicrositeDefinition;
+	title?: string;
+	description?: string;
+	activePath?: string;
+	image?: string;
+	bodyClass?: string;
+}
+
+const {
+	site,
+	title,
+	description = site.description,
+	activePath = Astro.url.pathname,
+	image = "main.png",
+	bodyClass,
+} = Astro.props;
+
+const pageTitle = title ? `${title} · ${site.name}` : site.name;
+const themeStyle = [
+	`--site-accent: ${site.theme.accent}`,
+	`--site-accent-strong: ${site.theme.accentStrong}`,
+	`--site-accent-muted: ${site.theme.accentMuted}`,
+	`--site-background: ${site.theme.background}`,
+	`--site-surface: ${site.theme.surface}`,
+	`--site-text: ${site.theme.text}`,
+	`--site-muted-text: ${site.theme.mutedText}`,
+	`--site-border: ${site.theme.border}`,
+].join("; ");
+
+const isActive = (href: string) => {
+	if (href === site.homeHref) {
+		return activePath === href || activePath === href.slice(0, -1);
+	}
+
+	return activePath.startsWith(href);
+};
+---
+
+<!doctype html>
+<html lang="en" class="microsite-document">
+  <head>
+    <BaseHead title={pageTitle} description={description} image={image} />
+    <meta name="theme-color" content={site.theme.background} />
+    <slot name="head" />
+  </head>
+
+  <body class:list={["microsite-body", bodyClass]} style={themeStyle}>
+    <a class="microsite-skip-link" href="#main-content">Skip to content</a>
+
+    <header class="microsite-header">
+      <div class="microsite-header__inner">
+        <a class="microsite-brand" href={site.homeHref} aria-label={`${site.name} home`}>
+          <span class="microsite-brand__mark" aria-hidden="true">
+            {site.monogram}
+          </span>
+          <span class="microsite-brand__name">{site.name}</span>
+        </a>
+
+        <nav class="microsite-nav microsite-nav--desktop" aria-label={`${site.name} navigation`}>
+          {site.navigation.map((item) => (
+            <a
+              href={item.href}
+              aria-current={isActive(item.href) ? "page" : undefined}
+              target={item.external ? "_blank" : undefined}
+              rel={item.external ? "noreferrer" : undefined}
+            >
+              {item.label}
+              {item.external ? <span aria-hidden="true">↗</span> : null}
+            </a>
+          ))}
+        </nav>
+
+        <details class="microsite-menu">
+          <summary aria-label={`Open ${site.name} navigation`}>
+            <span aria-hidden="true"></span>
+            <span aria-hidden="true"></span>
+            <span aria-hidden="true"></span>
+          </summary>
+          <nav aria-label={`${site.name} mobile navigation`}>
+            {site.navigation.map((item) => (
+              <a
+                href={item.href}
+                aria-current={isActive(item.href) ? "page" : undefined}
+                target={item.external ? "_blank" : undefined}
+                rel={item.external ? "noreferrer" : undefined}
+              >
+                {item.label}
+                {item.external ? <span aria-hidden="true">↗</span> : null}
+              </a>
+            ))}
+          </nav>
+        </details>
+      </div>
+    </header>
+
+    <main id="main-content" class="microsite-main">
+      <slot />
+    </main>
+
+    <footer class="microsite-footer">
+      <div class="microsite-footer__inner">
+        <div>
+          <a class="microsite-brand" href={site.homeHref}>
+            <span class="microsite-brand__mark" aria-hidden="true">
+              {site.monogram}
+            </span>
+            <span class="microsite-brand__name">{site.name}</span>
+          </a>
+          <p>{site.description}</p>
+        </div>
+
+        <nav aria-label={`${site.name} footer navigation`}>
+          {site.navigation.map((item) => (
+            <a
+              href={item.href}
+              target={item.external ? "_blank" : undefined}
+              rel={item.external ? "noreferrer" : undefined}
+            >
+              {item.label}
+            </a>
+          ))}
+        </nav>
+
+        <p class="microsite-footer__owner">
+          A project by <a href={site.ownerHref}>{site.ownerName}</a>
+        </p>
+      </div>
+    </footer>
+  </body>
+</html>
