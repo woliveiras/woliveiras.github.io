@@ -1,0 +1,45 @@
+---
+interface Props {
+	command: string;
+	label: string;
+}
+
+const { command, label } = Astro.props;
+---
+
+<div class="baseline-install-command">
+  <pre><code>{command}</code></pre>
+  <button type="button" data-copy-command aria-label={`Copy ${label} commands`}>
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <rect x="8" y="8" width="11" height="11" rx="2"></rect>
+      <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"></path>
+    </svg>
+    <span>Copy</span>
+  </button>
+</div>
+
+<script>
+  const copyButtons = document.querySelectorAll<HTMLButtonElement>("[data-copy-command]");
+
+  for (const button of copyButtons) {
+    button.addEventListener("click", async () => {
+      const command = button.parentElement?.querySelector("code")?.textContent;
+      const status = button.querySelector("span");
+
+      if (!command || !status) return;
+
+      try {
+        await navigator.clipboard.writeText(command);
+        status.textContent = "Copied";
+        button.dataset.copied = "true";
+      } catch {
+        status.textContent = "Select text";
+      }
+
+      window.setTimeout(() => {
+        status.textContent = "Copy";
+        delete button.dataset.copied;
+      }, 1800);
+    });
+  }
+</script>

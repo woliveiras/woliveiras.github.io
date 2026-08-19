@@ -1612,3 +1612,333 @@
 		grid-row: 2;
 	}
 }
+
+/* Installation */
+.baseline-install-hero .baseline-page-hero__grid > div:last-child {
+	display: grid;
+	gap: 1.5rem;
+}
+
+.baseline-release-tag {
+	display: inline-flex;
+	align-items: center;
+	justify-self: start;
+	border: 1px solid var(--site-border);
+	border-radius: 999px;
+	overflow: hidden;
+	font-family: var(--baseline-mono);
+	font-size: 0.75rem;
+}
+
+.baseline-release-tag span,
+.baseline-release-tag strong {
+	padding: 0.55rem 0.8rem;
+}
+
+.baseline-release-tag span {
+	color: var(--site-muted-text);
+}
+
+.baseline-release-tag strong {
+	border-left: 1px solid var(--site-border);
+	background: var(--site-accent-muted);
+	color: var(--site-accent-strong);
+	font-weight: 500;
+}
+
+.baseline-install-section,
+.baseline-project-setup,
+.baseline-install-trust,
+.baseline-install-footer {
+	padding: clamp(4.5rem, 8vw, 8rem) 0;
+	border-top: 1px solid var(--site-border);
+}
+
+.baseline-section-heading {
+	display: grid;
+	grid-template-columns: minmax(0, 0.75fr) minmax(0, 1.4fr);
+	gap: 1rem 4rem;
+	align-items: start;
+	margin-bottom: clamp(2rem, 5vw, 4rem);
+}
+
+.baseline-section-heading .baseline-eyebrow {
+	grid-row: 1 / span 2;
+}
+
+.baseline-section-heading h2 {
+	margin: 0;
+	max-width: 14ch;
+	font-size: clamp(2rem, 4vw, 3.8rem);
+	line-height: 1.02;
+	letter-spacing: -0.045em;
+}
+
+.baseline-section-heading > p:last-child {
+	margin: 0;
+	color: var(--site-muted-text);
+}
+
+.baseline-client-list {
+	display: grid;
+	gap: 1rem;
+}
+
+.baseline-client-card {
+	display: grid;
+	grid-template-columns: minmax(13rem, 0.55fr) minmax(20rem, 1.45fr);
+	gap: 1rem 2.5rem;
+	padding: clamp(1.4rem, 3vw, 2.2rem);
+	border: 1px solid var(--site-border);
+	border-radius: 0.9rem;
+	background: rgba(255, 255, 255, 0.012);
+}
+
+.baseline-client-card header {
+	display: flex;
+	gap: 1rem;
+	grid-row: 1 / span 2;
+	align-items: flex-start;
+}
+
+.baseline-client-card header > span {
+	padding-top: 0.25rem;
+	color: var(--site-accent);
+	font-family: var(--baseline-mono);
+	font-size: 0.7rem;
+}
+
+.baseline-client-card h3 {
+	margin: 0 0 0.25rem;
+	font-size: 1.45rem;
+}
+
+.baseline-client-card header p,
+.baseline-client-card__note {
+	margin: 0;
+	color: var(--site-muted-text);
+}
+
+.baseline-client-card header p {
+	font-family: var(--baseline-mono);
+	font-size: 0.74rem;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+}
+
+.baseline-client-card__note {
+	font-size: 0.88rem;
+	line-height: 1.6;
+}
+
+.baseline-install-command {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	align-items: stretch;
+	min-width: 0;
+	border: 1px solid var(--site-border);
+	border-radius: 0.7rem;
+	background: #090d0b;
+	overflow: hidden;
+}
+
+.baseline-install-command pre {
+	margin: 0;
+	padding: 1rem 1.1rem;
+	min-width: 0;
+	overflow-x: auto;
+	color: var(--site-text);
+	font-family: var(--baseline-mono);
+	font-size: 0.82rem;
+	line-height: 1.7;
+}
+
+.baseline-install-command button {
+	display: flex;
+	gap: 0.45rem;
+	align-items: center;
+	justify-content: center;
+	min-width: 5.8rem;
+	padding: 0.75rem;
+	border: 0;
+	border-left: 1px solid var(--site-border);
+	background: var(--site-accent-muted);
+	color: var(--site-accent-strong);
+	cursor: pointer;
+	font-family: var(--baseline-mono);
+	font-size: 0.74rem;
+}
+
+.baseline-install-command button:hover,
+.baseline-install-command button:focus-visible,
+.baseline-install-command button[data-copied="true"] {
+	background: rgba(138, 245, 181, 0.18);
+}
+
+.baseline-install-command button:focus-visible {
+	outline: 2px solid var(--site-accent);
+	outline-offset: -3px;
+}
+
+.baseline-install-command svg {
+	width: 1rem;
+	fill: none;
+	stroke: currentColor;
+	stroke-width: 1.6;
+}
+
+.baseline-install-alternatives {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 1rem;
+	margin-top: 1rem;
+}
+
+.baseline-install-alternatives article {
+	padding: clamp(1.4rem, 3vw, 2.2rem);
+	border: 1px solid var(--site-border);
+	border-radius: 0.9rem;
+}
+
+.baseline-install-alternatives h3 {
+	margin: 1rem 0 0.65rem;
+	font-size: 1.4rem;
+}
+
+.baseline-install-alternatives__description {
+	margin: 0 0 1.5rem;
+	color: var(--site-muted-text);
+	line-height: 1.65;
+}
+
+.baseline-install-alternatives code {
+	color: var(--site-text);
+	font-family: var(--baseline-mono);
+	font-size: 0.85em;
+}
+
+.baseline-install-alternatives a {
+	color: var(--site-accent-strong);
+	font-family: var(--baseline-mono);
+	font-size: 0.78rem;
+}
+
+.baseline-project-setup {
+	background: var(--site-surface);
+}
+
+.baseline-project-setup__grid {
+	display: grid;
+	grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+	gap: clamp(2.5rem, 7vw, 7rem);
+}
+
+.baseline-project-setup h2,
+.baseline-install-trust h2,
+.baseline-install-footer h2 {
+	margin: 1rem 0;
+	font-size: clamp(2rem, 4vw, 3.7rem);
+	line-height: 1.04;
+	letter-spacing: -0.04em;
+}
+
+.baseline-project-setup__grid > div:first-child > p:last-child {
+	color: var(--site-muted-text);
+	line-height: 1.7;
+}
+
+.baseline-project-setup ul {
+	display: grid;
+	gap: 0.85rem;
+	margin: 2rem 0 0;
+	padding: 0;
+	list-style: none;
+}
+
+.baseline-project-setup li {
+	position: relative;
+	padding-left: 1.4rem;
+	color: var(--site-muted-text);
+}
+
+.baseline-project-setup li::before {
+	position: absolute;
+	top: 0.1rem;
+	left: 0;
+	color: var(--site-accent);
+	content: "→";
+}
+
+.baseline-install-trust__grid {
+	display: grid;
+	grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+	gap: 1.5rem clamp(2.5rem, 7vw, 7rem);
+	align-items: start;
+}
+
+.baseline-install-trust__grid > p {
+	margin: 2.2rem 0 0;
+	color: var(--site-muted-text);
+	font-size: 1.05rem;
+	line-height: 1.75;
+}
+
+.baseline-install-trust .baseline-text-link {
+	grid-column: 2;
+}
+
+.baseline-install-footer__inner {
+	display: flex;
+	gap: 2rem;
+	align-items: flex-end;
+	justify-content: space-between;
+}
+
+.baseline-install-footer h2 {
+	max-width: 19ch;
+}
+
+@media (max-width: 56.25rem) {
+	.baseline-client-card,
+	.baseline-project-setup__grid,
+	.baseline-install-trust__grid {
+		grid-template-columns: 1fr;
+	}
+
+	.baseline-client-card header {
+		grid-row: auto;
+	}
+
+	.baseline-install-trust .baseline-text-link {
+		grid-column: auto;
+	}
+
+	.baseline-install-trust__grid > p {
+		margin-top: 0;
+	}
+}
+
+@media (max-width: 43.75rem) {
+	.baseline-section-heading,
+	.baseline-install-alternatives {
+		grid-template-columns: 1fr;
+	}
+
+	.baseline-section-heading .baseline-eyebrow {
+		grid-row: auto;
+	}
+
+	.baseline-install-command {
+		grid-template-columns: 1fr;
+	}
+
+	.baseline-install-command button {
+		border-top: 1px solid var(--site-border);
+		border-left: 0;
+	}
+
+	.baseline-install-footer__inner {
+		align-items: flex-start;
+		flex-direction: column;
+	}
+}

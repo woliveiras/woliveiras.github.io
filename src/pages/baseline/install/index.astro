@@ -1,0 +1,146 @@
+---
+import InstallCommand from "$components/baseline/InstallCommand.astro";
+import BaselineLayout from "$layouts/BaselineLayout.astro";
+
+const description =
+	"Install the current Baseline release for Codex, GitHub Copilot, Claude Code, or standalone Agent Skills, then initialize your project explicitly.";
+
+const clients = [
+	{
+		name: "Codex",
+		status: "Pinned release",
+		command:
+			"codex plugin marketplace add woliveiras/baseline --ref v0.5.0\ncodex plugin add baseline@baseline",
+		note: "The marketplace is pinned to the immutable v0.5.0 release. Start a new Codex session after installation.",
+	},
+	{
+		name: "GitHub Copilot",
+		status: "Marketplace",
+		command:
+			"copilot plugin marketplace add woliveiras/baseline\ncopilot plugin install baseline@baseline",
+		note: "Copilot follows the repository marketplace. Its current command does not expose Codex's explicit tag pin.",
+	},
+	{
+		name: "Claude Code",
+		status: "Mutable channel",
+		command:
+			"claude plugin marketplace add https://github.com/woliveiras/baseline.git\nclaude plugin install baseline@baseline",
+		note: "This short HTTPS route follows the default branch. Use the tag-qualified route in the full guide when reproducibility matters.",
+	},
+];
+---
+
+<BaselineLayout title="Install" description={description}>
+  <section class="baseline-page-hero baseline-install-hero">
+    <div class="baseline-container baseline-page-hero__grid">
+      <div>
+        <p class="baseline-eyebrow">INSTALLATION</p>
+        <h1>Static files. Explicit adoption.</h1>
+      </div>
+      <div>
+        <p>
+          Baseline installs as portable Agent Skills. It adds no consumer runtime, telemetry, daemon,
+          package manager, or generated build output to your project.
+        </p>
+        <div class="baseline-release-tag"><span>Current release</span><strong>v0.5.0</strong></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="baseline-install-section">
+    <div class="baseline-container">
+      <div class="baseline-section-heading">
+        <p class="baseline-eyebrow">01 / CLIENT</p>
+        <h2>Choose the route your agent supports.</h2>
+        <p>These commands are a static snapshot of the current published release.</p>
+      </div>
+
+      <div class="baseline-client-list">
+        {clients.map((client, index) => (
+          <article class="baseline-client-card">
+            <header>
+              <span>{String(index + 1).padStart(2, "0")}</span>
+              <div>
+                <h3>{client.name}</h3>
+                <p>{client.status}</p>
+              </div>
+            </header>
+            <InstallCommand command={client.command} label={client.name} />
+            <p class="baseline-client-card__note">{client.note}</p>
+          </article>
+        ))}
+      </div>
+
+      <div class="baseline-install-alternatives">
+        <article>
+          <p class="baseline-eyebrow">STANDALONE AGENT SKILLS</p>
+          <h3>Cursor and OpenCode</h3>
+          <p class="baseline-install-alternatives__description">
+            Install the published tag into <code>$HOME/.baseline</code> and link its canonical skills
+            into <code>$HOME/.agents/skills</code>. The full block refuses to overwrite an existing skill.
+          </p>
+          <a href="https://github.com/woliveiras/baseline/blob/v0.5.0/docs/guides/installation.md#cursor-and-opencode">Open the standalone guide <span aria-hidden="true">↗</span></a>
+        </article>
+        <article>
+          <p class="baseline-eyebrow">LOCAL PACKAGE</p>
+          <h3>Pi</h3>
+          <p class="baseline-install-alternatives__description">
+            Use the pinned repository checkout and its dependency-free Pi descriptor. The guide
+            includes installation, listing, reinstall, and removal.
+          </p>
+          <a href="https://github.com/woliveiras/baseline/blob/v0.5.0/docs/guides/installation.md#pi">Open the Pi guide <span aria-hidden="true">↗</span></a>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="baseline-project-setup">
+    <div class="baseline-container baseline-project-setup__grid">
+      <div>
+        <p class="baseline-eyebrow">02 / PROJECT</p>
+        <h2>Initialize the engineering contract.</h2>
+        <p>
+          Client installation makes the skills discoverable. It does not modify the repository.
+          Start a new agent session at the project root and invoke setup once.
+        </p>
+      </div>
+      <div>
+        <InstallCommand
+          command="Use $setup-baseline to create or safely reconcile this project's AGENTS.md."
+          label="project initialization"
+        />
+        <ul>
+          <li>Inspects current project evidence before writing.</li>
+          <li>Preserves stronger existing instructions.</li>
+          <li>Stops for material conflicts instead of overwriting them.</li>
+          <li>Does not install a runtime or commit the resulting file.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="baseline-install-trust">
+    <div class="baseline-container baseline-install-trust__grid">
+      <div>
+        <p class="baseline-eyebrow">EVIDENCE LIMIT</p>
+        <h2>Discovery is not behavioral certification.</h2>
+      </div>
+      <p>
+        An installation check can establish that a client sees the skills. It does not prove that a
+        particular model, version, configuration, or session will select and follow every workflow
+        correctly. Keep client evidence named and bounded.
+      </p>
+      <a class="baseline-text-link" href="/baseline/methodology/">See how claims are bounded <span aria-hidden="true">→</span></a>
+    </div>
+  </section>
+
+  <section class="baseline-install-footer">
+    <div class="baseline-container baseline-install-footer__inner">
+      <div>
+        <p class="baseline-eyebrow">FULL LIFECYCLE</p>
+        <h2>Updates, private forks, sparse checkouts, and removal.</h2>
+      </div>
+      <a class="baseline-button" href="https://github.com/woliveiras/baseline/blob/v0.5.0/docs/guides/installation.md">Read the complete guide <span aria-hidden="true">↗</span></a>
+    </div>
+  </section>
+</BaselineLayout>
