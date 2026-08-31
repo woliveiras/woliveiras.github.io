@@ -1,0 +1,118 @@
+---
+title: "Turning Unknown Duplication into Deliberate Architecture"
+description: "How we reviewed duplication in a monorepo, created canonical owners, and used coding agents to speed up refactoring without abstracting everything in sight."
+pubDate: "2026-08-31"
+published: true
+tags: ["software-engineering", "maintainability", "architecture", "engineering-practices", "ai-agents"]
+---
+
+Code duplication usually enters the conversation as a number in a static analysis report. The tool finds dozens or hundreds of similar blocks, someone opens a task to "reduce duplication," and the search begins for functions that can take a few more parameters.
+
+That can lower the metric while making the code worse.
+
+We recently went through this kind of review in CADU, a monorepo with web and mobile applications, shared packages, APIs, and operational scripts. The initial measurement, or baseline, found 636 clones in production code. We finished with 168. More important than the reduction was what happened to each case: clones disappeared because they gained a canonical owner, meaning one clearly responsible module, or they remained visible because there was a good reason to keep them that way.
+
+That is how we turned unknown duplication into canonical architecture or a deliberate decision.
+
+## A tool finds text, not responsibility
+
+A tool such as jscpd can tell that two pieces of code look alike. It cannot tell why they exist, who should own the rule, or whether both pieces need to change together.
+
+Two identical validation schemas in an application and a package probably point to a shared responsibility. Two similar authorization guards in different endpoints may mean the opposite: they can be local controls that we want to keep easy to audit.
+
+The same applies to user interfaces. Two screens may share states and styles but serve different roles, navigation flows, and change cycles. Creating a component with a dozen callbacks just to remove repeated lines trades duplication for coupling.
+
+During the review, we used four simple outcomes:
+
+| Situation | Decision |
+| --- | --- |
+| Same rule and same reason to change | Create a canonical owner |
+| Similar code, but different domains or roles | Keep it as intentional duplication |
+| Repeated structure that leaves a control point explicit | Accept it as boilerplate |
+| Textual similarity without shared responsibility | Record it as a false positive |
+
+This classification changed the conversation. Instead of asking, "How do we remove this clone?" we started asking, "Where should this responsibility live?"
+
+## First, make the report trustworthy
+
+The first report mixed production code, tests, and a script used to carry a patch into another repository. It was reproducible, but it did not represent the system we wanted to review.
+
+We corrected the scope once, documented the exclusions, and froze the command. From that point on, we could not add new production code exclusions just to improve the percentage.
+
+This matters in any initiative driven by metrics. If the ruler changes while the work is underway, it becomes easy to report an improvement that came from tool configuration rather than architecture.
+
+We also inventoried every clone in the baseline. Each occurrence was connected to real file paths and placed in a group with a domain, responsibility, risk, and decision. Nothing went into a vague "review later" bucket.
+
+## From clone to canonical owner
+
+For each group, we tried to answer a few questions:
+
+1. Would a rule change require us to edit every copy?
+2. Is there a shared contract, or only similar syntax?
+3. Which layer should own this behavior?
+4. Does the extraction reduce how many facts the caller needs to know?
+5. Does the abstraction preserve authorization, isolation, and domain differences?
+
+When the answers pointed to a shared responsibility, we moved the behavior to the appropriate layer.
+
+Services repeated across the web application and packages moved into a common package. Zod schemas gained a single source of truth. Domain types and date utilities used by web and mobile were promoted to shared packages. Messages, notifications, and settings in the mobile app gained common flows, while roles and navigation remained explicit in each screen.
+
+In the APIs, we extracted helpers for resolving clinic context, loading documents, and preparing shared data. Route handlers kept authentication, role checks, rate limits, mutations, and response details. The reusable part gained an owner, while the control points remained easy to read.
+
+In some cases, we kept a facade, a thin layer that preserved an old import so existing consumers would not break. It only reexported the canonical contract. This let us migrate the code gradually without creating a disguised second implementation.
+
+The practical effect becomes clear during the next change. Before, someone had to find the copies, compare their differences, and decide which ones were still correct. Now, the shared rule has a known address and its own tests. Local differences remain where they make sense.
+
+## Tests were part of the investigation
+
+Tests were not included in the production duplication report, but they were essential to the refactoring.
+
+Several extractions began with a test that exposed a difference between copies. In one case, an implementation in a package had fallen behind the version used by the web application. The test failed first, recorded the expected behavior, and only then did we promote the correct version to the common owner.
+
+That deliberate initial failure kept us from choosing one copy arbitrarily. It also helped us turn large pieces of code into smaller, testable functions with injectable dependencies. Rules that once required setting up a route, screen, or real client could be checked directly.
+
+We worked in small batches. Each batch covered one cohesive family, ran focused tests, type checking, linting, and dependency boundary checks, then generated the duplication report again. If something went wrong, we could revert the commit without undoing a long sequence of unrelated decisions.
+
+## Where coding agents helped
+
+Building this inventory by hand would have been possible, but tedious. Coding agents made the process practical at a larger scale.
+
+They helped us walk through the report, resolve paths, find consumers, compare implementations, migrate imports, write focused tests, and repeat the checks after each batch. They also kept the inventory and supporting evidence in sync with the changes.
+
+An agent, however, cannot decide on its own whether an abstraction is good. Given nothing more than "remove all duplication," it may create generic helpers, components full of options, and functions that hide authorization logic. Editing speed amplifies a sound direction and a bad decision equally well.
+
+That is why the work followed a specification with clear constraints: preserve contracts, keep isolation through `clinic_id` and Row Level Security (RLS), do not move sensitive checks without a reason, respect the boundaries between applications and packages, and require a shared reason to change before extracting code.
+
+This approach also helps contain a problem I discussed in [code review with AI agents](/posts/code-review-in-the-ai-era-we-need-to-change/): code can be produced faster than we can understand it. An inventory, small commits, and evidence for each batch help keep understanding close to execution.
+
+## Why we did not aim for zero
+
+At the end, 168 clones remained in the report. Every one of them was classified as intentional duplication, acceptable boilerplate, or a false positive.
+
+The cases we kept included mobile screens with their own state and navigation, authentication forms with different destinations, API guards, and role updates that should remain visible for auditing. Some structures also looked alike while belonging to separate domains.
+
+Removing those clones would have required more parameters, more indirection, and more hidden knowledge. The code would have contained less repetition but become harder to change.
+
+This fits the idea I explored in [The Myth of Perfect Code](/posts/the-myth-of-perfect-code/): the goal is not to chase an architecture that looks elegant on paper. We want code the team can understand, test, change, and delete safely.
+
+## A repeatable practice
+
+You do not need to wait until duplication becomes a major project. This kind of review can be part of regular codebase maintenance:
+
+1. Define what counts as production code and freeze the analysis command.
+2. Generate the report and resolve every clone to real file paths.
+3. Group occurrences by responsibility, not only by file.
+4. Write a discriminating test before choosing the canonical implementation.
+5. Refactor one cohesive family at a time.
+6. Run tests, type checking, linting, and boundary rules after each batch.
+7. Classify what remains and record why it should stay explicit.
+
+Agents can speed up almost every step. The team still has to define the contracts, assess the risks, and decide where each responsibility belongs.
+
+## Conclusion
+
+The duplication percentage helped us find the problem and track the work. It did not tell us which abstractions should exist.
+
+The code improved when every clone received a decision. Shared rules gained canonical owners. Sensitive control points remained local. Textual coincidences stopped being treated as debt. Tests recorded behavior before migrations began.
+
+Reviewing duplication from time to time is a practical way to rediscover the architecture that a codebase has accumulated. Coding agents let us do that work faster. The judgment remains human: share only what truly changes for the same reason.
