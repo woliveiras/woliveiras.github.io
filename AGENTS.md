@@ -2,6 +2,19 @@
 
 This repo is an Astro blog. Detailed documentation lives in `docs/`. **Read the relevant doc before working on a topic.**
 
+## Writing voice
+
+- Every text written or revised in this repository must load the `writing`
+  skill and use the house voice defined in
+  [`.agents/skills/writing/SKILL.md`](.agents/skills/writing/SKILL.md). The only
+  exception is when the user explicitly requests a different voice.
+- This applies to blog posts, series, documentation, pages, UI copy,
+  descriptions, announcements, and any other prose.
+- Do not replace the house voice with generic technical, corporate, academic,
+  or assistant prose.
+- Never invent personal experience, opinions, project outcomes, measurements,
+  or emotional reactions to make text sound more personal.
+
 ## Confidence and verification rules
 
 - Do not present uncertain assumptions as facts. Say when something is inferred, unverified, or needs confirmation.
@@ -24,65 +37,6 @@ This repo is an Astro blog. Detailed documentation lives in `docs/`. **Read the 
 | Code quality (Biome, style guidelines, utilities) | [docs/code-quality.md](docs/code-quality.md) |
 
 ---
-
-## Stack & Development
-
-- **Stack:** Astro 5, TypeScript, Svelte, Tailwind CSS
-- **Package manager:** pnpm
-- **Linter/formatter:** Biome — **tabs** for indentation, **double quotes** for JS/TS (not ESLint/Prettier)
-- **Deploy:** GitHub Pages via GitHub Actions
-
-```bash
-pnpm dev          # Development server
-pnpm build        # Type-check + build + pagefind
-pnpm lint         # Biome linter with auto-fix
-pnpm lint:fix     # Biome check and format
-```
-
-> **Build note:** `pnpm build` runs `astro check && astro build`, then `postbuild` runs `pagefind` to generate search indexes. Never skip the postbuild step.
-
-## Architecture Essentials
-
-- **Content:** MDX blog posts in `src/content/blog/`
-- **Config:** `src/config.json` is the single source of truth for site metadata, colors, feature flags, and social links
-- **Key directories:** `src/components/`, `src/layouts/`, `src/pages/`, `src/embeds/`
-- **Path aliases:** `$components`, `$layouts`, `$pages`, `$assets`, `$content` (defined in `astro.config.ts`)
-- **Series collections:** `src/content/hands-on-coding-assistants/`, `src/content/building-with-supabase/`
-
-## AI Agent Readiness (auto-generated)
-
-These files help AI crawlers and agents discover and consume the blog. They are **generated at build time** from the content collections and `src/config.json` (same source as the sitemap/RSS), so they require **no manual updates**: write a post, push, and `pnpm build` regenerates them.
-
-| Artifact | URL | Generator |
-|---|---|---|
-| robots.txt (bot rules + `Content-Signal`, sitemap link) | `/robots.txt` | [src/pages/robots.txt.ts](src/pages/robots.txt.ts) |
-| llms.txt (curated index of posts + series) | `/llms.txt` | [src/pages/llms.txt.ts](src/pages/llms.txt.ts) |
-| Per-post Markdown (clean text version) | `/posts/<slug>.md` | [src/pages/posts/[...slug].md.ts](src/pages/posts/[...slug].md.ts) |
-| JSON-LD `BlogPosting` + `<link rel="alternate" type="text/markdown">` | in each post `<head>` | [src/pages/posts/[...slug].astro](src/pages/posts/[...slug].astro) via the `head` slot in [src/layouts/BaseLayout.astro](src/layouts/BaseLayout.astro) |
-
-- `BaseLayout.astro` exposes a named `head` slot so pages can inject `<head>` tags (JSON-LD, alternate links).
-- GitHub Pages cannot set HTTP `Link` headers; agent discovery of the Markdown version uses the `<link rel="alternate">` tag instead.
-- Edge-only items (AI Crawler Rules, `Link` header via Transform Rule) are configured in the Cloudflare dashboard, not in this repo.
-
-## Code Style
-
-- Biome enforces tabs + double quotes; run `pnpm lint:fix` before committing
-- Use path aliases (`$components`, `$layouts`, etc.) consistently
-- When `any` is necessary (dynamic posts, AST), add `biome-ignore lint/suspicious/noExplicitAny` with a reason
-- Follow existing patterns for new embeds, components, or content types
-
----
-
-## Writing Blog Posts
-
-**Read [docs/blog-post-authoring.md](docs/blog-post-authoring.md) for the full guide.** Below is the essential summary.
-
-### Language & Voice
-
-- **Language:** English
-- **Tone:** technical but accessible; explain jargon when introduced
-- **Personal voice:** include lived experience ("In my experience…", "What I usually do…")
-- **Actionable:** prefer step-by-step instructions, commands, expected outcomes, and trade-offs
 
 ### Creating a Post
 
@@ -136,11 +90,3 @@ Common existing tags (not exhaustive):
 ### Safety (security/hacking posts)
 
 Add a disclaimer near the top: "educational purposes only, only on systems you own or have permission to test."
-
-### Quality Checklist
-
-- [ ] Frontmatter validates: required keys, ISO date, `published: true`, 3–7 tags
-- [ ] Intro answers: **what**, **why**, **who it's for**
-- [ ] Commands are explicit with `sh` fences
-- [ ] Long posts have `## Conclusion`; external-tool posts have `## References`
-- [ ] Tag names match existing tags (no typos, consistent singular/plural)

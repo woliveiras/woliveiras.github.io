@@ -1,0 +1,4 @@
+interface:
+  display_name: "Writing"
+  short_description: "Write in the repository's established voice"
+  default_prompt: "Use $writing to draft or revise text in the repository's established authorial voice."
