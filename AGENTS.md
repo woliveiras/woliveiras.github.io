@@ -64,9 +64,13 @@ tags: ["tag-one", "tag-two", "tag-three"]
 
 | Shape | When to use |
 |---|---|
-| **How-to / tutorial** | Hands-on steps: intro → requirements → steps → troubleshooting → conclusion → references |
-| **Understanding X / conceptual** | Mental model + trade-offs: intro → model → how it works → trade-offs → pitfalls → conclusion |
-| **Short note / opinion** | Personal + practical: intro → observations → what I do now → conclusion |
+| **How-to / tutorial** | Hands-on work: problem → necessary requirements → executable steps → relevant failures and boundaries |
+| **Understanding X / conceptual** | Mental model: engineering problem → mechanism → concrete example → relevant trade-offs |
+| **Short note / opinion** | Supplied personal context → clear position → evidence or limits → current recommendation |
+
+These shapes are guides, not required outlines. Do not add a section, table,
+list, or conclusion only to complete a template. End when the reader has the
+necessary consequence, action, or remaining boundary.
 
 ### Markdown/MDX
 

@@ -4,6 +4,9 @@ Write in the repository's established authorial voice, not as a generic
 technical publication. Preserve the point of view and relationship with the
 reader while producing natural, grammatically correct English.
 
+Voice comes from the supplied reasoning and details. It is not a layer of
+first-person phrases added after a generic article has already been written.
+
 ## Core voice
 
 Write beside the reader, not above them. Authority comes from specific
@@ -25,6 +28,42 @@ prose is direct and conversational without becoming careless.
   use `I think`, `I do not know`, or define the boundary when evidence is weak.
 - Use dry humor or a brief aside only when it arises naturally from the event.
   Humor is usually self-aware or situational, not a prepared joke.
+- Preserve direct recommendations and relevant personal constraints when the
+  author supplies them. Do not soften a supported position into neutral advice.
+- Keep the rhythm human. A paragraph may be brief, uneven, emphatic, or carry a
+  self-correction when that shape follows the thought. Do not make every section
+  equally polished or comprehensive.
+
+## Start from the author's material
+
+Before drafting authorial prose, identify the sentence the author could defend
+in a conversation. It may be a result, a disagreement, a mistake, a practical
+constraint, or a recommendation. Build outward from that sentence.
+
+Definitions, industry context, and tool descriptions can follow when the reader
+needs them. They should not replace the reason this author is writing now.
+
+Compare these openings:
+
+> A fantastic tool used by the JavaScript community to preserve code quality is
+> jscpd. Using that tool, we can check if we have code duplication in our
+> projects.
+
+This praises and explains the tool before reaching the article's evidence. The
+authorial material is the measured result and the decision it created:
+
+> Our first jscpd report found 636 clones in production code. Reducing that
+> number looked like the obvious goal, until we started asking whether every
+> duplicate represented the same responsibility.
+
+The second version does not sound personal because it says `our`. It sounds
+specific because it begins with the supplied result and exposes the wrong first
+reading.
+
+The same rule applies to advice. A generic claim such as "pair programming
+improves collaboration" says little about the author. A supplied constraint
+such as "frequent role changes break my focus, so I agree on longer intervals"
+changes the recommendation and belongs in the argument.
 
 ## Build the argument
 
@@ -121,6 +160,10 @@ evidence, not automatic evidence of current beliefs.
 Use primary sources for current technical behavior. Personal experience can
 explain a decision, but it does not prove a universal claim.
 
+Do not treat first person as evidence by itself. `I think`, `for me`, and `in my
+experience` become generic when they introduce a claim with no supplied event,
+decision, or consequence behind it.
+
 ## Write natural English
 
 - Keep direct address, concrete examples, conversational pivots, and honest
@@ -134,6 +177,9 @@ explain a decision, but it does not prove a universal claim.
 - Do not copy characteristic sentences from old posts. Recreate the reasoning
   pattern with the facts of the new text.
 - Do not exaggerate non-native phrasing to make the voice seem personal.
+- Correct grammar and unclear wording without replacing direct, simple language
+  with magazine prose. Fluency should not erase the author's cadence, cultural
+  setting, emphasis, or supplied choice of register.
 
 ## Avoid the generic assistant voice
 
@@ -153,10 +199,39 @@ Remove or rewrite:
 - advice that treats structural constraints as a lack of discipline;
 - political commentary inserted into a topic that does not support it.
 
+## Anti-generic pass
+
+Run this pass on the complete draft, not only on the opening:
+
+1. Find sentences that would still work in hundreds of articles after replacing
+   the product or topic name. Remove them or rebuild the paragraph around a
+   supplied fact, decision, example, constraint, or reaction.
+2. Remove praise, definitions, topic announcements, section previews, and
+   recaps that delay the actual point.
+3. Check whether each substantial section contains source-specific material.
+   Merge or delete sections that exist only to make the article look complete.
+4. Break repeated paragraph shapes, forced groups of three, balanced
+   pros-and-cons blocks, and rows of polished short sentences when the content
+   does not require that rhythm.
+5. Replace abstract importance claims with the visible consequence. Delete the
+   claim if the source provides no consequence.
+6. Inspect the ending separately. Keep it only when it adds a decision,
+   implication, next action, honest uncertainty, or unresolved boundary.
+7. Compare the revised text with the source. Restore any fact, opinion,
+   uncertainty, emphasis, or useful irregularity that the polishing pass erased.
+
+Do not humanize by blacklist. One em dash, transition, rhetorical question,
+short sentence, or first-person phrase is not evidence of generic AI prose.
+Look for several empty patterns working together and ask what information each
+sentence contributes. Preserve a deliberate habit when it carries the author's
+meaning or rhythm.
+
 ## Voice test
 
 - Could the opening belong to hundreds of technical blogs? If yes, replace it
   with the actual problem, disagreement, or supplied moment.
+- Could the same article have been generated from its title alone? If yes, the
+  draft has not used enough author-supplied material.
 - Is the author present through a real observation or decision, or has the text
   become an anonymous manual?
 - Does `you` help the reader act or think, or is it filler?

@@ -2,40 +2,44 @@
 
 Select a structure from the reader's job, not from a fixed template.
 
+The sections below are ingredient lists, not required outlines. Choose only the
+parts needed by the source material and the reader's task. Do not create a
+requirements, trade-offs, pitfalls, troubleshooting, references, or conclusion
+section merely to make the post look complete.
+
 ## Tutorial
 
 Use when the reader should complete a task.
 
-1. Problem, audience, outcome
-2. Requirements and exact assumptions
-3. Small numbered steps with commands/files
-4. Expected observation after meaningful steps
-5. Troubleshooting and rollback
-6. Trade-offs and limitations
-7. Primary references and, only when useful, a concluding implication or action
+- the concrete problem and reproducible outcome;
+- requirements and exact assumptions that affect the result;
+- small executable steps with commands or files;
+- expected observations after consequential steps;
+- troubleshooting or rollback for failures the source can support;
+- trade-offs, limitations, and primary references where they matter;
+- a final implication or action only when it adds something new.
 
 ## Conceptual explainer
 
 Use when the reader needs a mental model.
 
-1. Motivation and scope
-2. Mental model and vocabulary
-3. Mechanism or flow
-4. Concrete example
-5. Trade-off comparison
-6. Pitfalls and boundary cases
-7. Primary references and, only when useful, a concluding implication
+- the engineering problem that makes the concept useful;
+- a mental model and only the vocabulary needed to use it;
+- the mechanism or flow;
+- a concrete example;
+- relevant trade-offs, pitfalls, boundaries, and primary references;
+- a concluding implication only when the argument needs one.
 
 ## Engineering opinion
 
 Use when experience supports a reasoned position.
 
-1. Personal context and tension
-2. Claim and scope
-3. Observations versus external evidence
-4. Counterargument and trade-offs
-5. Current practice or recommendation
-6. Concluding implication only when it adds to the recommendation
+- supplied personal context and the tension that produced the position;
+- the claim and its boundary;
+- a clear distinction between observation and external evidence;
+- counterarguments or trade-offs that genuinely affect the recommendation;
+- the author's current practice or recommendation;
+- a final implication only when it adds to that recommendation.
 
 Do not stretch a short point into a tutorial or present an opinion as measured
 evidence.

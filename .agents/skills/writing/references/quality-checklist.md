@@ -16,6 +16,18 @@
 - Examples are reproducible or explicitly illustrative
 - Trade-offs, prerequisites, limitations, and failure modes are visible
 
+## Authorship
+
+- Authorial prose has a supplied observation, decision, disagreement, failure,
+  constraint, result, or example at its center
+- The draft could not have been produced from the title alone
+- First-person claims are supported by supplied context rather than added as
+  decoration
+- Direct recommendations, uncertainty, humor, and personal constraints have not
+  been polished out
+- Missing authorial evidence remains a targeted question or placeholder, not a
+  generic paragraph
+
 ## Information density
 
 - Length matches the problem's complexity and the audience's existing knowledge
@@ -40,5 +52,6 @@
 - Code fences, links, images, tables, diagrams, and internal links validate
 - Conclusion adds an implication or action, or is omitted when it would only
   repeat the text
+- The anti-generic pass in the voice profile has been completed
 - Repository content checks, lint, and build pass where applicable
 - Publishing, deployment, and promotion remain separately authorized

@@ -56,36 +56,43 @@ noTextInOGImage: false
 - **Language**: English.
 - **Tone**: technical but accessible; explain jargon when you introduce it.
 - **Personal voice**: include lived experience when it adds clarity ("In my experience…", "For me…", "What I usually do…").
-- **Reader empathy**: assume the reader is busy; optimize for fast scanning and predictable structure.
+- **Reader empathy**: assume the reader is busy; make the argument easy to
+  follow without forcing every post into the same structure.
 - **Actionable by default**: prefer step-by-step instructions, commands, expected outcomes, and trade-offs.
 
-## Recommended Post Shapes
+## Possible Post Shapes
+
+These are starting points, not required outlines. Keep only the sections the
+reader and source material need. A post does not need a conclusion, table,
+troubleshooting section, or list merely because its category includes one.
 
 ### A) "How to" / tutorial (hands-on)
 
-- Short introduction (2–3 paragraphs): problem → why it matters → what we'll do.
-- `## Requirements` (versions, OS notes, accounts, prerequisites).
-- `## Step 1: ...`, `## Step 2: ...` (small steps; each ends with "what you should see").
-- `## Troubleshooting` (common errors + fixes).
-- `## Conclusion` (short recap + next step).
-- `## References` (docs links for tools used).
+- Open with the actual problem, failed attempt, or outcome.
+- Include requirements only when versions, OS details, accounts, or other
+  prerequisites affect the result.
+- Use numbered steps when order matters and show observable checkpoints.
+- Include troubleshooting for failures the article can support.
+- End with a useful consequence, next action, or remaining boundary. Omit a
+  recap-only conclusion.
+- Add references when the post relies on external material.
 
 ### B) "Understanding X" / conceptual (mental model + trade-offs)
 
-- Short introduction (2–3 paragraphs): motivation + what you'll learn.
-- `## A mental model` (how to think about it).
-- `## How it works` (diagrams welcomed).
-- `## Trade-offs at a glance` (prefer a table).
-- `## Pitfalls to watch for` (practical gotchas).
-- `## Conclusion` (what to remember).
-- `## References` (docs/links when applicable).
+- Start from the engineering problem that makes the concept necessary.
+- Introduce a mental model and vocabulary after the reader has a reason to care.
+- Explain the mechanism with an example, diagram, or comparison when useful.
+- Include only the trade-offs and pitfalls that change how the concept should be
+  used.
+- Add a final implication and references when they add information.
 
 ### C) Short note / opinion (personal + practical)
 
-- Short introduction (personal context + tension/problem).
-- `## What I noticed` (observations).
-- `## What I do now` (habits/process).
-- `## Conclusion` (one-paragraph takeaway).
+- Start from supplied personal context and the tension that produced the
+  position.
+- Distinguish observations, external evidence, and opinion.
+- State the current practice or recommendation and its boundary.
+- End when the argument is complete. Do not add a generic takeaway.
 
 ## Markdown/MDX Conventions
 
@@ -129,9 +136,12 @@ If the post covers cracking, exploitation, or offensive security:
 ## Quality Checklist
 
 - Frontmatter validates: required keys present; `pubDate` is ISO; `published: true`; `tags` has 3–7 items.
-- The introduction answers: **what**, **why**, **who this is for**, and **what you'll do/learn**.
+- The opening gives the reader a concrete problem, claim, result, or reason to
+  continue. It does not need to preview the entire article.
 - Commands are explicit (paths, filenames, placeholders) and use `sh` fences.
-- Long posts include `## Conclusion`. Posts that rely on external material include `## References`.
+- Conclusions add an implication, next action, or unresolved boundary; omit
+  them when they would only recap. Posts that rely on external material include
+  `## References`.
 - Tag names are consistent (no typos, no random singular/plural changes).
 
 ## Tags (use existing ones first)
