@@ -72,7 +72,7 @@ From the JSON report, we created a Markdown inventory in the repository. For eac
 
 We also stopped changing the production exclusions after establishing that baseline. Without that constraint, we could make the graph look better by excluding another directory instead of improving the architecture. Nothing went into a vague "review later" bucket either (which is usually where this kind of work goes to disappear).
 
-## From duplications to canonical owner
+## From clones to canonical owners
 
 For each group, we tried to answer a few questions:
 
@@ -82,23 +82,27 @@ For each group, we tried to answer a few questions:
 4. Does the extraction reduce how many facts the caller needs to know?
 5. Does the abstraction preserve authorization, isolation, and domain differences?
 
-Services repeated across the web application and packages moved into a common package. Zod schemas gained a single source of truth. Domain types and date utilities used by web and mobile were promoted to shared packages. Messages, notifications, and settings in the mobile app gained common flows, while roles and navigation remained explicit in each screen.
+Services repeated across the web application and packages moved into a common package. Domain types and date utilities used by web and mobile were promoted to shared packages. Messages, notifications, and settings in the mobile app gained common flows, while roles and navigation remained explicit in each screen.
+
+The Zod schemas are a concrete example. The report found 14 clones between schemas in the web application and the package that already owned the shared validation contracts. We moved the missing contracts to that package, removed the web copies, and kept thin reexports where consumers still depended on the old imports. Before measuring again, we ran all 223 tests in the schema package and another 28 tests covering the web-specific validation that remained local. The next jscpd report contained 14 fewer clones.
 
 In the APIs, we extracted helpers for resolving clinic context, loading documents, and preparing shared data. Route handlers kept authentication, role checks, rate limits, mutations, and response details. The reusable part gained an owner, while the control points remained easy to read.
 
-In some cases, we kept a facade: a thin layer that preserved an old import so existing consumers would not break. The facade only reexported the canonical contract. It let us migrate the code gradually without creating a disguised second implementation.
+The thin reexports were facades, not second implementations. They preserved public imports while consumers migrated, but the validation rule itself existed in only one place.
 
 The benefit appears during the next change. Instead of finding all the copies, comparing their differences, and guessing which ones are still correct, we now know where the shared rule lives and which tests describe it. The local differences remain local.
 
-## Tests were part of the investigation
+## The report found the copies. Tests told us what to keep
 
-Tests were not part of the production duplication metric. They were part of the investigation.
+We excluded tests from the production duplication report because we did not want fixtures and setup code distorting the number. But once we started moving code, tests became our way to decide which copy was actually correct.
 
-Several extractions began with a test that exposed a difference between copies. In one case, an implementation in a package had fallen behind the version used by the web application. The test failed first, recorded the expected behavior, and only then did we promote the correct version to the common owner.
+One migration made that clear. A package looked like the natural owner for a shared rule, but its implementation had fallen behind the version used by the web application. Making the package canonical without checking the behavior would have preserved the wrong copy.
 
-That initial failure kept us from choosing one copy arbitrarily. It also helped us turn large pieces of code into smaller functions with injectable dependencies. Rules that once required setting up a route, screen, or real client could then be tested directly.
+So we wrote the expected behavior as a test and ran it against the package. It failed. We brought the package implementation up to date, watched the test pass, and only then moved the consumers. That failure was useful: it stopped us from treating a directory name as proof that the code inside it was the source of truth.
 
-We worked in small batches. Each batch covered one cohesive family, ran focused tests, type checking, linting, and dependency boundary checks, then generated the duplication report again. If something went wrong, we could revert the commit without undoing a long sequence of unrelated decisions.
+The same approach pushed us to pull rules out of routes and screens into smaller functions that received their dependencies. Instead of setting up an entire route, screen, or real client, we could test the rule directly.
+
+We kept each batch limited to one related family. After moving it, we ran its focused tests, type checking, linting, and dependency boundary checks before generating the duplication report again. If we got the decision wrong, the commit was small enough to revert without taking unrelated work with it.
 
 ## Where coding agents helped
 
