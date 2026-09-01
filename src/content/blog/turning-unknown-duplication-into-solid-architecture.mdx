@@ -10,21 +10,21 @@ A fantastic tool used by the JavaScript community to preserve code quality is [j
 
 Using the jscpd, we ran a duplication test on our monorepo. Our first report for the project found 636 clones in production code. The clear goal was to reduce that number. The obvious solution was to find similar blocks, extract functions, and keep adding parameters until the report looked better like we learned when reading the [Refactoring book](https://link.amazon/B0ddLumD3) from Martin Fowler and Kent Beck.
 
-To create the picture in your mind, it is a monorepo with web and mobile applications, shared packages, APIs, and operational scripts. Similar code in those places does not always mean the same thing. Some copies were shared rules waiting for an owner. Others kept authorization, navigation, or domain decisions visible where they mattered.
+The project has web and mobile applications, shared packages, APIs, and operational scripts. Similar code across those places does not always carry the same responsibility. Some copies were shared rules waiting for an owner. Others kept authorization, navigation, or domain decisions visible where they mattered.
 
 This is the same project I wrote about in [What I Found and Had to Fix After Joining a Vibecoded Project](/posts/what-a-senior-engineer-found-in-a-vibecoded-app/). That post covers what I found when I joined and read the code for the first time. This one follows one of the maintenance efforts that came after: deciding which duplicated code should become shared architecture and which duplication should remain visible.
 
-We finished the review with 168 clones. The reduction was useful, but the number was not the most important result. By the end, each clone either had one clearly responsible module (what we called its canonical owner) or a recorded reason to remain duplicated (teach your agents to create documentation, please!).
+We finished with 168 clones. By then, every clone either had one clearly responsible module (what we called its canonical owner) or a recorded reason to remain duplicated. Teach your agents to create documentation, please. You will need it when a report contains hundreds of findings.
 
-## jscpd can find text, not responsibility
+## jscpd finds similar code. We still have to understand it
 
-A tool such as jscpd can tell us that two pieces of code look alike. It cannot tell us why they exist, who should own the rule, or whether both copies need to change together.
+jscpd can tell us that two blocks look alike. It cannot tell us why they exist, who should own the rule, or whether both copies need to change together.
 
 Two identical validation schemas in an application and a package probably point to a shared responsibility. Two similar authorization guards in different endpoints may mean the opposite: they can be local controls that we want to keep easy to audit.
 
-The same problem appears in user interfaces. Two screens may share states and styles but serve different roles, navigation flows, and change cycles. We can remove the repeated lines by creating a component with a dozen callbacks, but then we have traded duplication for coupling.
+The same thing happens in user interfaces. Two screens may share states and styles while serving different roles and navigation flows. We could remove the repeated lines with a component full of callbacks, but that would replace duplication with coupling.
 
-To avoid thinking that any kind of duplication is bad, we classified each group into one of four outcomes:
+So we stopped treating every match as debt and gave each group one of four outcomes:
 
 | Situation | Decision |
 | --- | --- |
@@ -33,11 +33,11 @@ To avoid thinking that any kind of duplication is bad, we classified each group 
 | Repeated structure that leaves a control point explicit | Accept it as boilerplate |
 | Textual similarity without shared responsibility | Record it as a false positive |
 
-This changed the question from "How do we remove this clone?" to "Where should this responsibility live?" Sometimes the answer was: **right where it is**.
+The question was no longer "How do we remove this clone?" It became "Where should this responsibility live?" Sometimes the answer was **right where it is**.
 
 ## First iteration: make the report trustworthy
 
-The first report mixed production code, tests, and a script used to carry a patch into another repository. We could reproduce the result, but it did not represent the system we wanted to review.
+Our first report was reproducible and still wrong for what we wanted to measure. It mixed production code, tests, and a script used to carry a patch into another repository.
 
 Before running the analysis, we used the Node.js version defined by the repository and checked which jscpd version `pnpm dlx` would execute:
 
@@ -64,17 +64,19 @@ pnpm dlx jscpd@5 \
 	--output reports/jscpd
 ```
 
-The command printed a summary in the terminal and generated two files: a navigable HTML report at `reports/jscpd/jscpd-report.html` and structured data at `reports/jscpd/jscpd-report.json`. The corrected production baseline contained 636 clones and 15,887 duplicated lines across 144,979 lines of code, a duplication ratio of 10.95%. This is not a bad number, but we could be missing opportunity of creating shared architecture and reducing maintenance costs by 10%.
+The command printed a summary in the terminal and generated two files: a navigable HTML report at `reports/jscpd/jscpd-report.html` and structured data at `reports/jscpd/jscpd-report.json`. After correcting the scope, the production baseline contained 636 clones and 15,887 duplicated lines across 144,979 lines of code, a duplication ratio of 10.95%.
 
-We kept the command and its exclusion criteria fixed for every measurement that followed. The generated reports remained local, but their JSON data became the source for the versioned inventory instead of relying on a number copied from the terminal.
+That percentage gave us a reason to investigate. It did not mean that 10.95% of the code should move into shared modules, and it certainly did not mean that removing it would reduce maintenance costs by the same amount.
 
-From the JSON report, we created a Markdown inventory in the repository. For each group, we recorded the file paths, domain, responsibility, risk, and decision: extract it, keep it as intentional duplication, accept it as boilerplate, or mark it as a false positive. Because the inventory was versioned with the code, a later change had to explain what happened to the clone instead of simply making it disappear from the total.
+We used that exact command for every measurement that followed. The generated reports remained local, but the JSON became the source for a versioned inventory. We did not want the work to depend on a number copied from the terminal.
 
-We also stopped changing the production exclusions after establishing that baseline. Without that constraint, we could make the graph look better by excluding another directory instead of improving the architecture. Nothing went into a vague "review later" bucket either (which is usually where this kind of work goes to disappear).
+The inventory was a Markdown file in the repository. For each group, it recorded the paths, domain, responsibility, risk, and decision. A later change had to explain whether we extracted the code, kept the duplication, accepted boilerplate, or found a false positive. Making a clone disappear from the total was not enough.
+
+We also froze the production exclusions. Otherwise, we could improve the graph by excluding another directory and pretend we had improved the architecture. Every group needed a decision; "review later" was not one of them.
 
 ## From clones to canonical owners
 
-For each group, we tried to answer a few questions:
+For each group, we answered the same questions:
 
 1. Would a rule change require us to edit every copy?
 2. Is there a shared contract, or only similar syntax?
@@ -82,53 +84,55 @@ For each group, we tried to answer a few questions:
 4. Does the extraction reduce how many facts the caller needs to know?
 5. Does the abstraction preserve authorization, isolation, and domain differences?
 
-Services repeated across the web application and packages moved into a common package. Domain types and date utilities used by web and mobile were promoted to shared packages. Messages, notifications, and settings in the mobile app gained common flows, while roles and navigation remained explicit in each screen.
+The answers did not always lead to a new abstraction. When a service was duplicated between the web application and a package, and both copies represented the same rule, the package became the owner. Shared types and date utilities followed the same path. In mobile, messages, notifications, and settings shared common flows, but roles and navigation stayed in their screens.
 
-The Zod schemas are a concrete example. The report found 14 clones between schemas in the web application and the package that already owned the shared validation contracts. We moved the missing contracts to that package, removed the web copies, and kept thin reexports where consumers still depended on the old imports. Before measuring again, we ran all 223 tests in the schema package and another 28 tests covering the web-specific validation that remained local. The next jscpd report contained 14 fewer clones.
+The Zod schemas show how this worked. jscpd found 14 clones between the web application and the package that already owned the shared validation contracts. We moved the missing contracts into that package and removed the web copies. Where code still used an old import, we left a thin reexport in place.
 
-In the APIs, we extracted helpers for resolving clinic context, loading documents, and preparing shared data. Route handlers kept authentication, role checks, rate limits, mutations, and response details. The reusable part gained an owner, while the control points remained easy to read.
+Then we ran the 223 tests in the schema package and another 28 for the validation that remained specific to the web application. Only after those tests passed did we run jscpd again. The next report had 14 fewer clones.
 
-The thin reexports were facades, not second implementations. They preserved public imports while consumers migrated, but the validation rule itself existed in only one place.
+The API work required a stricter boundary. We extracted repeated code for resolving clinic context, loading documents, and preparing shared data. Authentication, role checks, rate limits, mutations, and response details stayed in the route handlers, where we could still audit them without jumping through helpers.
 
-The benefit appears during the next change. Instead of finding all the copies, comparing their differences, and guessing which ones are still correct, we now know where the shared rule lives and which tests describe it. The local differences remain local.
+Those thin reexports were temporary facades, not second implementations. They kept public imports working while consumers migrated. The validation rule itself existed in one place.
+
+The payoff comes with the next change. We know where the shared rule lives and which tests describe it. We no longer have to find every copy and guess which one is current, while the differences that belong to one application remain there.
 
 ## The report found the copies. Tests told us what to keep
 
-We excluded tests from the production duplication report because we did not want fixtures and setup code distorting the number. But once we started moving code, tests became our way to decide which copy was actually correct.
+Tests did not count toward the production metric because fixtures and setup code would distort it. Once we started moving code, however, tests helped us decide which copy was correct.
 
 One migration made that clear. A package looked like the natural owner for a shared rule, but its implementation had fallen behind the version used by the web application. Making the package canonical without checking the behavior would have preserved the wrong copy.
 
-So we wrote the expected behavior as a test and ran it against the package. It failed. We brought the package implementation up to date, watched the test pass, and only then moved the consumers. That failure was useful: it stopped us from treating a directory name as proof that the code inside it was the source of truth.
+We wrote down the expected behavior as a test and ran it against the package. It failed. After bringing the package implementation up to date, we ran the test again and then moved the consumers. The directory looked like the right owner, but the failing test showed that its code was not yet the source of truth.
 
 The same approach pushed us to pull rules out of routes and screens into smaller functions that received their dependencies. Instead of setting up an entire route, screen, or real client, we could test the rule directly.
 
-We kept each batch limited to one related family. After moving it, we ran its focused tests, type checking, linting, and dependency boundary checks before generating the duplication report again. If we got the decision wrong, the commit was small enough to revert without taking unrelated work with it.
+Each batch covered one related family. We ran its focused tests, type checking, linting, and dependency boundary checks before generating the duplication report again. Keeping the commits small also meant we could revert a bad decision without taking unrelated work with it.
 
 ## Where coding agents helped
 
-Building this inventory by hand was possible. Repeating the same path resolution, consumer search, and import migration hundreds of times was the tedious part. Coding agents made that work practical at this scale.
+The difficult part of the inventory was not reading one clone. It was repeating the same work hundreds of times: resolve both paths, find the consumers, compare the implementations, update the inventory, and do it again. This is where coding agents helped most.
 
-They helped us walk through the report, resolve paths, find consumers, compare implementations, migrate imports, write focused tests, and repeat the checks after each batch. They also kept the inventory and supporting evidence in sync with the changes.
+We used them to walk through the report, find consumers, compare copies, migrate imports, write focused tests, and keep the inventory aligned with the code. That removed much of the mechanical work without outsourcing the decision.
 
-But an agent cannot decide by itself whether an abstraction is good. Ask it only to "remove all duplication" and it may create generic helpers, components full of options, and functions that hide authorization logic. The agent makes the edit faster. It does not make the direction correct.
+I would not give an agent a prompt such as "remove all duplication" and trust the result. It can easily produce generic helpers, components full of options, or functions that hide authorization logic. It will make those changes quickly, which is not helpful when the direction is wrong.
 
-That is why the work followed a specification with clear constraints: preserve contracts, keep isolation through `clinic_id` and Row Level Security (RLS), do not move sensitive checks without a reason, respect the boundaries between applications and packages, and require a shared reason to change before extracting code.
+The specification constrained the work before an agent touched a group. Existing contracts had to remain compatible. Isolation through `clinic_id` and Row Level Security (RLS) could not move silently into a shared helper. Application and package boundaries still applied. Most importantly, similar syntax was not enough: the copies needed the same reason to change.
 
-This also helps with a problem I discussed in [code review with AI agents](/posts/code-review-in-the-ai-era-we-need-to-change/): we can now produce code faster than we can understand it. The inventory, small commits, and evidence for each batch kept that understanding close to the work.
+This is the same problem I discussed in [code review with AI agents](/posts/code-review-in-the-ai-era-we-need-to-change/): we can produce code faster than we can understand it. The inventory and small commits forced us to leave evidence for each decision before moving to the next group.
 
-## Why we did not aim for zero
+## Zero would have been a worse result
 
-At the end, 168 clones remained in the report. We classified every one as intentional duplication, acceptable boilerplate, or a false positive.
+The final report still contained 168 clones. We had reviewed and classified every one as intentional duplication, acceptable boilerplate, or a false positive.
 
-The cases we kept included mobile screens with their own state and navigation, authentication forms with different destinations, API guards, and role updates that should remain visible for auditing. Some structures also looked alike while belonging to separate domains.
+Among them were mobile screens with their own state and navigation, authentication forms with different destinations, API guards, and role updates that should remain visible during an audit. Other blocks looked alike but belonged to separate domains.
 
-Removing those clones would have required more parameters, more indirection, and more hidden knowledge. We would have improved the duplication metric and made the code harder to change.
+We could have forced those numbers down with more parameters and indirection. The report would look cleaner, but the code would hide more knowledge and become harder to change.
 
-This is the same problem I explored in [The Myth of Perfect Code](/posts/the-myth-of-perfect-code/): an architecture that looks elegant on paper is not automatically useful. We need code the team can understand, test, change, and delete safely.
+That is the trap I wrote about in [The Myth of Perfect Code](/posts/the-myth-of-perfect-code/). An architecture that looks elegant on paper is not automatically useful. I would rather leave a justified copy visible than create an abstraction the team has to decode every time it changes.
 
-## A repeatable practice
+## What I would repeat
 
-You do not need to wait until duplication becomes a project of its own. The same review can be part of regular codebase maintenance:
+I would use the same process again without waiting for duplication to become a project of its own:
 
 1. Define what counts as production code and freeze the analysis command.
 2. Generate the report and resolve every clone to real file paths.
@@ -138,6 +142,6 @@ You do not need to wait until duplication becomes a project of its own. The same
 6. Run tests, type checking, linting, and boundary rules after each batch.
 7. Classify what remains and record why it should stay explicit.
 
-Agents can speed up almost every step, but the team still has to define the contracts, assess the risks, and decide where each responsibility belongs. The duplication percentage can show us where to look. It cannot tell us which abstractions should exist.
+Agents can help with almost every step in that list. The percentage only tells us where to look. We still have to decide what belongs together.
 
-That decision remains ours: share only what truly changes for the same reason.
+Share only what truly changes for the same reason.
