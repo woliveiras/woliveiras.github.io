@@ -33,7 +33,7 @@
 		"rehype-mathjax": "^7.1.0",
 		"rehype-mermaid": "^3.0.0",
 		"remark-math": "^6.0.0",
-		"sharp": "^0.34.5",
+		"sharp": "^0.35.4",
 		"svelte": "^5.56.1",
 		"tailwind-merge": "^3.6.0",
 		"tailwindcss": "^4.3.0",
