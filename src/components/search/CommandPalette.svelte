@@ -7,7 +7,12 @@ export let showResults = true;
 
 export let placeholder = "Search...";
 
-export let results: { title: string; content: string; href: string }[] = [
+export let results: {
+	title: string;
+	content: string;
+	href: string;
+	type?: string;
+}[] = [
 	{
 		title: "Title",
 		content:
@@ -47,6 +52,7 @@ let search = async () => {
 			title: result.meta.title,
 			content: excerpt,
 			href: result.url,
+			type: result.meta.type,
 		};
 	}
 
@@ -210,6 +216,9 @@ $: if ($showSearch) {
                       : 'hover:bg-white/5'} select-none px-4 py-2 text-left"
                   >
                     <div class="font-semibold">
+                      {#if result.type === "Brief"}
+                        <span class="mr-2 rounded border border-accent-300 px-1.5 py-0.5 text-xs text-accent-700 dark:border-accent-800 dark:text-accent-300">Brief</span>
+                      {/if}
                       {result.title}
                     </div>
                     <div class="text-xs mt-2 line-clamp-2">

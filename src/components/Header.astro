@@ -53,11 +53,17 @@ const { active } = Astro.props;
     </button>
 
     <!-- Desktop nav -->
-    <div class="hidden md:flex gap-x-3 md:gap-x-10 items-center">
+    <div class="hidden md:flex gap-x-5 lg:gap-x-8 items-center">
       <HeaderLink
         href={BASE + "/"}
         active={active === "blog"}
         class="text-sm font-semibold leading-6">Blog</HeaderLink
+      >
+      <HeaderLink
+        href={BASE + "/brief/"}
+        active={active === "brief"}
+        aria-current={active === "brief" ? "page" : undefined}
+        class="text-sm font-semibold leading-6">Brief</HeaderLink
       >
       <HeaderLink
         href={BASE + "/about"}
@@ -127,6 +133,16 @@ const { active } = Astro.props;
             : "text-base-900 dark:text-base-50",
         ]}
       >Blog</a>
+      <a
+        href={BASE + "/brief/"}
+        aria-current={active === "brief" ? "page" : undefined}
+        class:list={[
+          "block text-lg font-semibold py-3 border-b border-base-200 dark:border-base-800",
+          active === "brief"
+            ? "text-accent-700 dark:text-accent-500"
+            : "text-base-900 dark:text-base-50",
+        ]}
+      >Brief</a>
       <a
         href={BASE + "/about"}
         class:list={[

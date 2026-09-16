@@ -1,0 +1,138 @@
+---
+import type { BriefEntry } from "../brief/content";
+import {
+	BRIEF_TITLE,
+	BRIEF_TOPICS,
+	briefArchivePath,
+	briefPath,
+	isBriefPublic,
+} from "../brief/model";
+import Footer from "$components/Footer.astro";
+import Header from "$components/Header.astro";
+import BaseLayout from "./BaseLayout.astro";
+import ProseWrapper from "./ProseWrapper.astro";
+import { BASE, NAME, SITE } from "../config.json";
+import "../styles/brief.css";
+
+interface Props {
+	entry: BriefEntry;
+	previous?: BriefEntry;
+	next?: BriefEntry;
+}
+
+const { entry, previous, next } = Astro.props;
+const { title, description, pubDate, updatedDate, issue, period, topics } = entry.data;
+const isPublic = isBriefPublic(entry);
+const canonical = new URL(`${BASE}${briefPath(entry.data.slug)}`, SITE).href;
+const formatDate = (date: Date) => new Intl.DateTimeFormat("en-US", {
+	day: "numeric",
+	month: "long",
+	year: "numeric",
+	timeZone: "UTC",
+}).format(date);
+const image = isPublic ? `brief/${entry.data.slug}.png` : "brief.png";
+const jsonLd = {
+	"@context": "https://schema.org",
+	"@type": "BlogPosting",
+	headline: title,
+	description,
+	url: canonical,
+	datePublished: pubDate.toISOString(),
+	...(updatedDate && { dateModified: updatedDate.toISOString() }),
+	inLanguage: "en",
+	keywords: topics.map((topic) => BRIEF_TOPICS[topic]).join(", "),
+	author: { "@type": "Person", name: NAME, url: SITE },
+	publisher: { "@type": "Person", name: NAME, url: SITE },
+	mainEntityOfPage: { "@type": "WebPage", "@id": canonical },
+	isPartOf: { "@type": "Blog", name: BRIEF_TITLE, url: new URL(`${BASE}${briefArchivePath()}`, SITE).href },
+};
+const jsonLdString = JSON.stringify(jsonLd).replace(/</g, "\\u003c");
+---
+
+<BaseLayout title={`${title} — ${BRIEF_TITLE}`} {description} {image} lang="en" ogType="article">
+  <Fragment slot="head">
+    <link rel="alternate" type="application/rss+xml" title={`${BRIEF_TITLE} — RSS`} href={`${BASE}/brief/rss.xml`} />
+    {isPublic ? (
+      <>
+        <meta property="article:published_time" content={pubDate.toISOString()} />
+        {updatedDate && <meta property="article:modified_time" content={updatedDate.toISOString()} />}
+        <script is:inline type="application/ld+json" set:html={jsonLdString} />
+      </>
+    ) : <meta name="robots" content="noindex, nofollow" />}
+  </Fragment>
+
+  <a href="#brief-main" class="brief-skip-link">Skip to content</a>
+  <Header active="brief" />
+  <main id="brief-main" class="brief-page brief-edition" tabindex="-1" data-pagefind-ignore={isPublic ? undefined : "all"}>
+    <a class="brief-back-link" href={`${BASE}${briefArchivePath()}`}>← All issues</a>
+    {!isPublic && <aside class="brief-draft-notice"><strong>Unpublished issue preview.</strong> Visible only in the development environment.</aside>}
+
+    <article data-pagefind-body={isPublic ? true : undefined}>
+      <header class="brief-edition-header">
+        <p class="brief-eyebrow">
+          <a href={`${BASE}${briefArchivePath()}`}>{BRIEF_TITLE}</a>
+          {issue !== undefined && <span> · Issue {issue}</span>}
+        </p>
+        {isPublic && <span class="sr-only" data-pagefind-meta="type">Brief</span>}
+        <h1 data-pagefind-meta={isPublic ? "title" : undefined}>{title}</h1>
+        <p class="brief-edition-description" data-pagefind-meta={isPublic ? "description" : undefined}>{description}</p>
+        <div class="brief-publication-dates">
+          <p>{isPublic ? "Published on" : "Planned date:"} <time datetime={pubDate.toISOString()}>{formatDate(pubDate)}</time></p>
+          {updatedDate && <p>Updated on <time datetime={updatedDate.toISOString()}>{formatDate(updatedDate)}</time></p>}
+          <p class="brief-coverage">Coverage: <time datetime={period.start.toISOString().slice(0, 10)}>{formatDate(period.start)}</time> to <time datetime={period.end.toISOString().slice(0, 10)}>{formatDate(period.end)}</time></p>
+        </div>
+      </header>
+
+      <nav class="brief-contents" aria-labelledby="nesta-edicao" data-pagefind-ignore>
+        <h2 id="nesta-edicao">In this issue</h2>
+        <ul>{topics.map((topic) => <li><a href={`#${topic}`}>{BRIEF_TOPICS[topic]} <span aria-hidden="true">↓</span></a></li>)}</ul>
+      </nav>
+
+      <ProseWrapper class="brief-content">
+        <slot />
+      </ProseWrapper>
+    </article>
+
+    {isPublic && (previous || next) && (
+      <nav class="brief-neighbors" aria-label="Browse issues">
+        <div>{previous && <a href={`${BASE}${briefPath(previous.data.slug)}`} rel="prev"><span>← Previous issue</span><strong>{previous.data.title}</strong></a>}</div>
+        <div class="brief-neighbor-next">{next && <a href={`${BASE}${briefPath(next.data.slug)}`} rel="next"><span>Next issue →</span><strong>{next.data.title}</strong></a>}</div>
+      </nav>
+    )}
+
+    <aside class="brief-edition-subscribe">
+      <p>Follow upcoming issues in your feed reader.</p>
+      <a class="brief-text-link" href={`${BASE}/brief/rss.xml`}>Subscribe to the Brief RSS feed <span aria-hidden="true">↗</span></a>
+    </aside>
+  </main>
+  <Footer />
+</BaseLayout>
+
+<script>
+  const enhanced = new WeakMap<HTMLElement, Set<string>>();
+  const updateScrollableContent = () => {
+    document.querySelectorAll<HTMLElement>(".brief-content pre, .brief-content table, .brief-content .mjx-container, .brief-content .MathJax").forEach((element) => {
+      const overflowing = element.scrollWidth > element.clientWidth;
+      const addedAttributes = enhanced.get(element) ?? new Set<string>();
+      if (overflowing) {
+        const addAttribute = (name: string, value: string) => {
+          if (element.hasAttribute(name)) return;
+          element.setAttribute(name, value);
+          addedAttributes.add(name);
+        };
+        addAttribute("tabindex", "0");
+        if (element.tagName !== "TABLE") addAttribute("role", "region");
+        if (!element.hasAttribute("aria-labelledby") && !element.querySelector("caption")) {
+          addAttribute("aria-label", element.tagName === "TABLE" ? "Horizontally scrollable table" : "Horizontally scrollable content");
+        }
+        enhanced.set(element, addedAttributes);
+      } else {
+        for (const name of addedAttributes) element.removeAttribute(name);
+        enhanced.delete(element);
+      }
+    });
+  };
+  updateScrollableContent();
+  window.addEventListener("resize", updateScrollableContent);
+  document.addEventListener("astro:page-load", updateScrollableContent);
+</script>

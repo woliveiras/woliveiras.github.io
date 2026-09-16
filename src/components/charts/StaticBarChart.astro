@@ -1,0 +1,271 @@
+---
+export type BarDatum = {
+	label: string;
+	value: number;
+	displayValue: string;
+	detail?: string;
+	tone?: "default" | "accent" | "open" | "negative";
+};
+
+type Props = {
+	id: string;
+	title: string;
+	description: string;
+	data: BarDatum[];
+	min?: number;
+	max?: number;
+	source: string;
+	note?: string;
+};
+
+const { id, title, description, data, min, max, source, note } = Astro.props;
+const values = data.map(({ value }) => value);
+const scaleMin = min ?? Math.min(0, ...values);
+const scaleMax = max ?? Math.max(0, ...values);
+const span = scaleMax - scaleMin || 1;
+const zeroPosition = ((0 - scaleMin) / span) * 100;
+const rows = data.map((datum) => {
+	const start =
+		datum.value < 0 ? ((datum.value - scaleMin) / span) * 100 : zeroPosition;
+	const width = (Math.abs(datum.value) / span) * 100;
+
+	return { ...datum, start, width };
+});
+---
+
+<figure class="chart-figure not-prose" aria-labelledby={`${id}-title`} aria-describedby={`${id}-description`}>
+	<figcaption>
+		<p class="chart-kicker">DATA</p>
+		<h3 id={`${id}-title`}>{title}</h3>
+		<p id={`${id}-description`} class="chart-description">{description}</p>
+	</figcaption>
+
+	<div class="chart" aria-hidden="true">
+		{
+			rows.map((row) => (
+				<div class="chart-row">
+					<div class="chart-label">
+						<strong>{row.label}</strong>
+						{row.detail && <span>{row.detail}</span>}
+					</div>
+					<div class="chart-track">
+						<span class="chart-zero" style={`left: ${zeroPosition}%`} />
+						<span
+							class="chart-bar"
+							data-tone={row.tone ?? (row.value < 0 ? "negative" : "default")}
+							style={`left: ${row.start}%; width: ${row.width}%`}
+						/>
+					</div>
+					<strong class="chart-value">{row.displayValue}</strong>
+				</div>
+			))
+		}
+	</div>
+
+	<table class="sr-only">
+		<caption>{title}</caption>
+		<thead>
+			<tr>
+				<th scope="col">Item</th>
+				<th scope="col">Value</th>
+				<th scope="col">Context</th>
+			</tr>
+		</thead>
+		<tbody>
+			{
+				data.map((datum) => (
+					<tr>
+						<th scope="row">{datum.label}</th>
+						<td>{datum.displayValue}</td>
+						<td>{datum.detail}</td>
+					</tr>
+				))
+			}
+		</tbody>
+	</table>
+
+	<div class="chart-meta">
+		<p><strong>Source:</strong> {source}</p>
+		{note && <p><strong>Read with care:</strong> {note}</p>}
+	</div>
+</figure>
+
+<style>
+	.chart-figure {
+		--chart-border: #d6d3d1;
+		--chart-muted: #57534e;
+		--chart-panel: #fafaf9;
+		--chart-track: #e7e5e4;
+		--chart-bar: #57534e;
+		--chart-accent: #7c3aed;
+		--chart-negative: #dc2626;
+		--chart-zero: #78716c;
+		margin: 2rem 0;
+		padding: 1.25rem;
+		border: 1px solid var(--chart-border);
+		border-radius: 1rem;
+		background: var(--chart-panel);
+		color: #1c1917;
+	}
+
+	:global(html.dark) .chart-figure {
+		--chart-border: #44403c;
+		--chart-muted: #a8a29e;
+		--chart-panel: #1c1917;
+		--chart-track: #292524;
+		--chart-bar: #a8a29e;
+		--chart-accent: #a78bfa;
+		--chart-negative: #f87171;
+		--chart-zero: #d6d3d1;
+		color: #fafaf9;
+	}
+
+	.chart-kicker {
+		margin: 0 0 0.35rem;
+		color: var(--chart-accent);
+		font-size: 0.7rem;
+		font-weight: 800;
+		letter-spacing: 0.14em;
+	}
+
+	h3 {
+		margin: 0;
+		font-size: 1.15rem;
+		line-height: 1.35;
+	}
+
+	.chart-description,
+	.chart-meta p {
+		color: var(--chart-muted);
+	}
+
+	.chart-description {
+		margin: 0.45rem 0 0;
+		font-size: 0.9rem;
+		line-height: 1.55;
+	}
+
+	.chart {
+		display: grid;
+		gap: 0.9rem;
+		margin-top: 1.4rem;
+	}
+
+	.chart-row {
+		display: grid;
+		grid-template-columns: minmax(9rem, 1.15fr) minmax(10rem, 2fr) minmax(4.4rem, auto);
+		align-items: center;
+		gap: 0.8rem;
+	}
+
+	.chart-label {
+		display: grid;
+		gap: 0.12rem;
+		font-size: 0.84rem;
+		line-height: 1.35;
+	}
+
+	.chart-label span {
+		color: var(--chart-muted);
+		font-size: 0.72rem;
+	}
+
+	.chart-track {
+		position: relative;
+		height: 1.4rem;
+		overflow: hidden;
+		border-radius: 0.35rem;
+		background: var(--chart-track);
+	}
+
+	.chart-zero {
+		position: absolute;
+		z-index: 2;
+		top: 0;
+		bottom: 0;
+		border-left: 1px solid var(--chart-zero);
+	}
+
+	.chart-bar {
+		position: absolute;
+		top: 0.18rem;
+		bottom: 0.18rem;
+		min-width: 2px;
+		border-radius: 0.22rem;
+		background: var(--chart-bar);
+	}
+
+	.chart-bar[data-tone="accent"] {
+		background: var(--chart-accent);
+	}
+
+	.chart-bar[data-tone="open"] {
+		background: repeating-linear-gradient(
+			135deg,
+			var(--chart-accent) 0,
+			var(--chart-accent) 5px,
+			transparent 5px,
+			transparent 9px
+		);
+		outline: 1px solid var(--chart-accent);
+		outline-offset: -1px;
+	}
+
+	.chart-bar[data-tone="negative"] {
+		background: var(--chart-negative);
+	}
+
+	.chart-value {
+		font-size: 0.84rem;
+		font-variant-numeric: tabular-nums;
+		text-align: right;
+		white-space: nowrap;
+	}
+
+	.chart-meta {
+		display: grid;
+		gap: 0.25rem;
+		margin-top: 1.35rem;
+		padding-top: 0.85rem;
+		border-top: 1px solid var(--chart-border);
+	}
+
+	.chart-meta p {
+		margin: 0;
+		font-size: 0.72rem;
+		line-height: 1.45;
+	}
+
+	.sr-only {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+		border: 0;
+	}
+
+	@media (max-width: 640px) {
+		.chart-figure {
+			padding: 1rem;
+		}
+
+		.chart-row {
+			grid-template-columns: minmax(0, 1fr) auto;
+			gap: 0.35rem 0.75rem;
+		}
+
+		.chart-track {
+			grid-column: 1 / -1;
+			grid-row: 2;
+		}
+
+		.chart-value {
+			grid-column: 2;
+			grid-row: 1;
+		}
+	}
+</style>

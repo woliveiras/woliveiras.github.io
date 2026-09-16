@@ -1,0 +1,308 @@
+<figure class="capex-figure not-prose" aria-labelledby="capex-title" aria-describedby="capex-description">
+	<figcaption>
+		<p class="capex-kicker">CAPITAL EXPENDITURE</p>
+		<h3 id="capex-title">Three views of the AI infrastructure build-out</h3>
+		<p id="capex-description">
+			Each panel uses its own period and scale. They belong together as evidence of investment intensity, not as a ranking of companies.
+		</p>
+	</figcaption>
+
+	<div class="capex-grid" aria-hidden="true">
+		<section>
+			<div class="panel-heading">
+				<p>ALPHABET</p>
+				<strong>H1 actual capex</strong>
+			</div>
+			<div class="paired-bars">
+				<div class="bar-row">
+					<span>2025</span>
+					<div class="track"><i style="width: 49.1%"></i></div>
+					<b>$39.6B</b>
+				</div>
+				<div class="bar-row">
+					<span>2026</span>
+					<div class="track"><i class="accent" style="width: 100%"></i></div>
+					<b>$80.6B</b>
+				</div>
+			</div>
+			<p class="panel-note">Up 103.5% year over year.</p>
+		</section>
+
+		<section>
+			<div class="panel-heading">
+				<p>META</p>
+				<strong>Full-year 2026 guidance</strong>
+			</div>
+			<div class="range-labels">
+				<span>$0</span>
+				<b>$130B–$145B</b>
+				<span>$160B</span>
+			</div>
+			<div class="range-track">
+				<i class="range-base"></i>
+				<i class="range-band"></i>
+			</div>
+			<p class="panel-note">Shown as guidance range, not a $137.5B point estimate.</p>
+		</section>
+
+		<section>
+			<div class="panel-heading">
+				<p>MICROSOFT</p>
+				<strong>Q4 FY2026 capex: $41B</strong>
+			</div>
+			<div class="split-bar">
+				<i class="short-lived"><span>~2/3 short-lived</span></i>
+				<i class="long-lived"><span>~1/3 long-lived</span></i>
+			</div>
+			<p class="panel-note">Short-lived assets were mainly CPUs and GPUs.</p>
+		</section>
+	</div>
+
+	<table class="sr-only">
+		<caption>Company capital expenditure snapshots</caption>
+		<thead>
+			<tr><th scope="col">Company</th><th scope="col">Period</th><th scope="col">Value</th><th scope="col">Context</th></tr>
+		</thead>
+		<tbody>
+			<tr><th scope="row">Alphabet</th><td>First half 2025</td><td>$39.6 billion</td><td>Actual capital expenditure</td></tr>
+			<tr><th scope="row">Alphabet</th><td>First half 2026</td><td>$80.6 billion</td><td>Actual capital expenditure, up 103.5%</td></tr>
+			<tr><th scope="row">Meta</th><td>Full year 2026</td><td>$130-$145 billion</td><td>Company guidance range</td></tr>
+			<tr><th scope="row">Microsoft</th><td>Fourth quarter fiscal 2026</td><td>$41 billion</td><td>Roughly two-thirds short-lived assets, mainly CPUs and GPUs</td></tr>
+		</tbody>
+	</table>
+
+	<div class="capex-meta">
+		<p>
+			<strong>Sources:</strong>
+			<a href="https://www.sec.gov/Archives/edgar/data/1652044/000165204426000071/goog-20260630.htm">Alphabet Form 10-Q</a>,
+			<a href="https://investor.atmeta.com/investor-news/press-release-details/2026/Meta-Reports-Second-Quarter-2026-Results/default.aspx">Meta Q2 2026 results</a>, and
+			<a href="https://www.microsoft.com/en-us/investor/events/fy-2026/earnings-fy-2026-q4">Microsoft FY2026 Q4 earnings call</a>.
+		</p>
+		<p><strong>Read with care:</strong> The reporting periods and company definitions are different, so the panels do not share an axis.</p>
+	</div>
+</figure>
+
+<style>
+	.capex-figure {
+		--capex-border: #d6d3d1;
+		--capex-muted: #57534e;
+		--capex-panel: #fafaf9;
+		--capex-card: #f5f5f4;
+		--capex-track: #e7e5e4;
+		--capex-bar: #78716c;
+		--capex-accent: #7c3aed;
+		margin: 2rem 0;
+		padding: 1.25rem;
+		border: 1px solid var(--capex-border);
+		border-radius: 1rem;
+		background: var(--capex-panel);
+		color: #1c1917;
+	}
+
+	:global(html.dark) .capex-figure {
+		--capex-border: #44403c;
+		--capex-muted: #a8a29e;
+		--capex-panel: #1c1917;
+		--capex-card: #292524;
+		--capex-track: #44403c;
+		--capex-bar: #a8a29e;
+		--capex-accent: #a78bfa;
+		color: #fafaf9;
+	}
+
+	.capex-kicker,
+	.panel-heading p {
+		margin: 0;
+		color: var(--capex-accent);
+		font-size: 0.7rem;
+		font-weight: 800;
+		letter-spacing: 0.12em;
+	}
+
+	h3 {
+		margin: 0.35rem 0 0;
+		font-size: 1.15rem;
+		line-height: 1.35;
+	}
+
+	figcaption > p:last-child,
+	.panel-note,
+	.capex-meta p {
+		color: var(--capex-muted);
+	}
+
+	figcaption > p:last-child {
+		margin: 0.45rem 0 0;
+		font-size: 0.9rem;
+		line-height: 1.55;
+	}
+
+	.capex-grid {
+		display: grid;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		gap: 0.85rem;
+		margin-top: 1.4rem;
+	}
+
+	.capex-grid section {
+		display: flex;
+		min-height: 12rem;
+		flex-direction: column;
+		padding: 0.9rem;
+		border: 1px solid var(--capex-border);
+		border-radius: 0.75rem;
+		background: var(--capex-card);
+	}
+
+	.panel-heading {
+		display: grid;
+		gap: 0.25rem;
+	}
+
+	.panel-heading strong {
+		font-size: 0.82rem;
+		line-height: 1.35;
+	}
+
+	.paired-bars {
+		display: grid;
+		gap: 0.55rem;
+		margin-top: 1.2rem;
+	}
+
+	.bar-row {
+		display: grid;
+		grid-template-columns: auto minmax(3.5rem, 1fr) auto;
+		align-items: center;
+		gap: 0.4rem;
+		font-size: 0.7rem;
+	}
+
+	.track,
+	.range-track {
+		position: relative;
+		height: 1rem;
+		overflow: hidden;
+		border-radius: 0.25rem;
+		background: var(--capex-track);
+	}
+
+	.track i,
+	.range-track i {
+		position: absolute;
+		top: 0;
+		bottom: 0;
+		left: 0;
+		background: var(--capex-bar);
+	}
+
+	.track .accent {
+		background: var(--capex-accent);
+	}
+
+	.range-labels {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.35rem;
+		margin-top: 1.8rem;
+		font-size: 0.68rem;
+	}
+
+	.range-labels b {
+		color: var(--capex-accent);
+	}
+
+	.range-track {
+		margin-top: 0.35rem;
+	}
+
+	.range-track .range-base {
+		width: 81.25%;
+		background: var(--capex-bar);
+	}
+
+	.range-track .range-band {
+		left: 81.25%;
+		width: 9.375%;
+		background: var(--capex-accent);
+	}
+
+	.split-bar {
+		display: flex;
+		height: 3.4rem;
+		margin-top: 1.45rem;
+		overflow: hidden;
+		border-radius: 0.35rem;
+		font-size: 0.66rem;
+		line-height: 1.2;
+		text-align: center;
+	}
+
+	.split-bar i {
+		display: grid;
+		place-items: center;
+		padding: 0.25rem;
+		font-style: normal;
+	}
+
+	.short-lived {
+		width: 66.67%;
+		background: var(--capex-accent);
+		color: white;
+	}
+
+	.long-lived {
+		width: 33.33%;
+		background: var(--capex-track);
+	}
+
+	.panel-note {
+		margin: auto 0 0;
+		padding-top: 0.9rem;
+		font-size: 0.68rem;
+		line-height: 1.4;
+	}
+
+	.capex-meta {
+		display: grid;
+		gap: 0.25rem;
+		margin-top: 1.35rem;
+		padding-top: 0.85rem;
+		border-top: 1px solid var(--capex-border);
+	}
+
+	.capex-meta p {
+		margin: 0;
+		font-size: 0.72rem;
+		line-height: 1.45;
+	}
+
+	.capex-meta a {
+		color: var(--capex-accent);
+		text-decoration: underline;
+		text-underline-offset: 2px;
+	}
+
+	.sr-only {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+		border: 0;
+	}
+
+	@media (max-width: 760px) {
+		.capex-grid {
+			grid-template-columns: 1fr;
+		}
+
+		.capex-grid section {
+			min-height: 10rem;
+		}
+	}
+</style>

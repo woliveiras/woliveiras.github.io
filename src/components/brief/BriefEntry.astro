@@ -1,0 +1,39 @@
+---
+import type { BriefEntry } from "../../brief/content";
+import { BRIEF_TOPICS, briefPath } from "../../brief/model";
+import { BASE } from "../../config.json";
+
+interface Props {
+	entry: BriefEntry;
+	featured?: boolean;
+}
+
+const { entry, featured = false } = Astro.props;
+const Heading = featured ? "h2" : "h3";
+const date = new Intl.DateTimeFormat("en-US", {
+	day: "numeric",
+	month: "long",
+	year: "numeric",
+	timeZone: "UTC",
+}).format(entry.data.pubDate);
+---
+
+<article class:list={["brief-entry", { "brief-entry-featured": featured }]}>
+  {featured && <p class="brief-eyebrow">Latest issue</p>}
+  <div class="brief-entry-meta">
+    {entry.data.issue !== undefined && <span>Issue {entry.data.issue}</span>}
+    <time datetime={entry.data.pubDate.toISOString()}>{date}</time>
+  </div>
+  <Heading class="brief-entry-title">
+    <a href={`${BASE}${briefPath(entry.data.slug)}`}>{entry.data.title}</a>
+  </Heading>
+  <p class="brief-entry-description">{entry.data.description}</p>
+  <ul class="brief-topic-list" aria-label="Topics in this issue">
+    {entry.data.topics.map((topic) => <li>{BRIEF_TOPICS[topic]}</li>)}
+  </ul>
+  {featured && (
+    <a class="brief-text-link" href={`${BASE}${briefPath(entry.data.slug)}`}>
+      Read this issue <span aria-hidden="true">↗</span>
+    </a>
+  )}
+</article>

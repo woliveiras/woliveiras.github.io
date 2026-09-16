@@ -1,0 +1,94 @@
+---
+import type { BriefEntry as Entry } from "../brief/content";
+import {
+	BRIEF_CADENCE,
+	BRIEF_DESCRIPTION,
+	BRIEF_TITLE,
+	briefArchivePath,
+	briefPath,
+} from "../brief/model";
+import BriefEntry from "$components/brief/BriefEntry.astro";
+import Footer from "$components/Footer.astro";
+import Header from "$components/Header.astro";
+import BaseLayout from "./BaseLayout.astro";
+import { BASE, NAME } from "../config.json";
+import "../styles/brief.css";
+
+interface Props {
+	entries: Entry[];
+	currentPage?: number;
+	totalPages?: number;
+	previews?: Entry[];
+}
+
+const { entries, currentPage = 1, totalPages = 1, previews = [] } = Astro.props;
+const latest = currentPage === 1 ? entries[0] : undefined;
+const history = latest ? entries.slice(1) : entries;
+const title = currentPage === 1 ? BRIEF_TITLE : `${BRIEF_TITLE} — archive, page ${currentPage}`;
+---
+
+<BaseLayout {title} description={BRIEF_DESCRIPTION} image="brief.png" lang="en">
+  <Fragment slot="head">
+    <link rel="alternate" type="application/rss+xml" title={`${BRIEF_TITLE} — RSS`} href={`${BASE}/brief/rss.xml`} />
+    {currentPage > 1 && <link rel="prev" href={`${BASE}${briefArchivePath(currentPage - 1)}`} />}
+    {currentPage < totalPages && <link rel="next" href={`${BASE}${briefArchivePath(currentPage + 1)}`} />}
+  </Fragment>
+
+  <a href="#brief-main" class="brief-skip-link">Skip to content</a>
+  <Header active="brief" />
+  <main id="brief-main" class="brief-page brief-archive" tabindex="-1" data-pagefind-ignore="all">
+    <header class="brief-masthead">
+      <p class="brief-eyebrow">Technical publication · by {NAME}</p>
+      <h1>{BRIEF_TITLE}</h1>
+      <p class="brief-position">{BRIEF_DESCRIPTION}</p>
+      <p class="brief-cadence">{BRIEF_CADENCE}</p>
+      <div class="brief-subscribe">
+        <a class="brief-rss-link" href={`${BASE}/brief/rss.xml`}>
+          <svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+            <circle cx="4" cy="16" r="1.1" fill="currentColor" stroke="none" />
+            <path d="M3 9a8 8 0 0 1 8 8M3 3a14 14 0 0 1 14 14" />
+          </svg>
+          Subscribe via RSS
+        </a>
+        <span>New issues in your feed reader.</span>
+      </div>
+    </header>
+
+    {latest && <BriefEntry entry={latest} featured />}
+
+    {history.length > 0 && (
+      <section class="brief-history" aria-labelledby="arquivo">
+        <h2 id="arquivo">{latest ? "Previous issues" : "Issue archive"}</h2>
+        <ol class="brief-edition-list">
+          {history.map((entry) => <li><BriefEntry {entry} /></li>)}
+        </ol>
+      </section>
+    )}
+
+    {entries.length === 0 && (
+      <section class="brief-empty" aria-labelledby="sem-edicoes">
+        <span class="brief-empty-rule" aria-hidden="true"></span>
+        <h2 id="sem-edicoes">The first issue is still to come.</h2>
+        <p>You'll find it here when it's published. You can already subscribe to the RSS feed to follow upcoming issues.</p>
+      </section>
+    )}
+
+    {totalPages > 1 && (
+      <nav class="brief-pagination" aria-label="Archive pages">
+        <div>{currentPage > 1 && <a rel="prev" href={`${BASE}${briefArchivePath(currentPage - 1)}`}>← Newer issues</a>}</div>
+        <span aria-current="page">Page {currentPage} of {totalPages}</span>
+        <div>{currentPage < totalPages && <a rel="next" href={`${BASE}${briefArchivePath(currentPage + 1)}`}>Older issues →</a>}</div>
+      </nav>
+    )}
+
+    {import.meta.env.DEV && currentPage === 1 && previews.length > 0 && (
+      <aside class="brief-preview-list" aria-labelledby="previas">
+        <p class="brief-eyebrow">Development environment only</p>
+        <h2 id="previas">Unpublished issue previews</h2>
+        <p>These links do not appear on the published site.</p>
+        <ul>{previews.map((entry) => <li><a href={`${BASE}${briefPath(entry.data.slug)}`}>{entry.data.title}</a></li>)}</ul>
+      </aside>
+    )}
+  </main>
+  <Footer />
+</BaseLayout>

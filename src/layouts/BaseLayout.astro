@@ -1,13 +1,19 @@
 ---
 import BaseHead from "../components/BaseHead.astro";
 
-const { title, description, image } = Astro.props;
+const {
+	title,
+	description,
+	image,
+	lang = "en",
+	ogType = "website",
+} = Astro.props;
 ---
 
 <!doctype html>
-<html lang="en" class="h-full antialiased">
+<html lang={lang} class="h-full antialiased">
   <head>
-    <BaseHead title={title} description={description} image={image} />
+    <BaseHead title={title} description={description} image={image} ogType={ogType} />
     <slot name="head" />
 
     <script is:inline>

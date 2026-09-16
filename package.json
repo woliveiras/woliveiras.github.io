@@ -9,6 +9,8 @@
 		"postbuild": "pagefind",
 		"preview": "astro preview",
 		"astro": "astro",
+		"test": "node --test tests/brief-model.test.ts",
+		"test:brief:build": "node --test tests/brief-build.test.mjs",
 		"lint": "biome lint --write .",
 		"lint:fix": "biome check --write ."
 	},

@@ -1,0 +1,29 @@
+---
+import { getPublicBriefs, type BriefEntry } from "../../../brief/content";
+import BriefArchive from "$layouts/BriefArchive.astro";
+import { POSTS_PER_PAGE } from "../../../config.json";
+
+export async function getStaticPaths() {
+	const entries = await getPublicBriefs();
+	const totalPages = Math.ceil(entries.length / POSTS_PER_PAGE);
+	return Array.from({ length: Math.max(0, totalPages - 1) }, (_, index) => {
+		const currentPage = index + 2;
+		return {
+			params: { page: String(currentPage) },
+			props: {
+				entries: entries.slice((currentPage - 1) * POSTS_PER_PAGE, currentPage * POSTS_PER_PAGE),
+				currentPage,
+				totalPages,
+			},
+		};
+	});
+}
+
+interface Props {
+	entries: BriefEntry[];
+	currentPage: number;
+	totalPages: number;
+}
+---
+
+<BriefArchive {...Astro.props} />

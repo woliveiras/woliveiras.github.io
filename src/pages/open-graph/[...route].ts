@@ -1,8 +1,23 @@
 import { OGImageRoute } from "astro-og-canvas";
 import { getBlogPosts } from "src/utils";
+import { getPublicBriefs } from "../../brief/content";
+import { BRIEF_DESCRIPTION, BRIEF_TITLE } from "../../brief/model";
 import { SITE_DESCRIPTION, SITE_TITLE } from "../../config.json";
 
 const posts = await getBlogPosts();
+const briefs = await getPublicBriefs();
+const briefPages = Object.fromEntries(
+	briefs.map(({ data }) => [
+		`brief/${data.slug}`,
+		{
+			title: data.issue
+				? `${BRIEF_TITLE} #${data.issue}: ${data.title}`
+				: `${BRIEF_TITLE}: ${data.title}`,
+			description: data.description,
+			useHero: false,
+		},
+	]),
+);
 
 // turn posts into an object with slugs as keys, and title and description as values
 // { slug: { title, description } }
@@ -40,6 +55,12 @@ export const { getStaticPaths, GET } = await OGImageRoute({
 			useHero: false,
 		},
 		...pages,
+		...briefPages,
+		brief: {
+			title: BRIEF_TITLE,
+			description: BRIEF_DESCRIPTION,
+			useHero: false,
+		},
 		baseline: {
 			title: "Baseline",
 			description:

@@ -34,6 +34,7 @@ This repo is an Astro blog. Detailed documentation lives in `docs/`. **Read the 
 | Architecture overview (directories, config, path aliases) | [docs/architecture.md](docs/architecture.md) |
 | Development workflow (commands, build, deployment) | [docs/development.md](docs/development.md) |
 | Content schema (collections, embeds, markdown processing, search) | [docs/content.md](docs/content.md) |
+| Monday Brief (issues, drafts, Lab, RSS, and publishing) | [docs/monday-brief.md](docs/monday-brief.md) |
 | Code quality (Biome, style guidelines, utilities) | [docs/code-quality.md](docs/code-quality.md) |
 
 ---

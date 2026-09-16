@@ -1,6 +1,27 @@
 import { defineCollection } from "astro:content";
 import { glob } from "astro/loaders";
 import { z } from "zod";
+import { briefSchema } from "./brief/schema";
+
+const briefFiles = glob({
+	pattern: "[^_]*.{md,mdx}",
+	base: "./src/content/brief/",
+	// Keep filenames distinct so duplicate editorial slugs cannot overwrite entries.
+	generateId: ({ entry }) => entry,
+});
+
+const brief = defineCollection({
+	loader: {
+		name: "brief-files",
+		async load(context) {
+			// Astro's glob loader returns early for an empty directory. Clear this
+			// collection first so deleting every edition also removes cached entries.
+			context.store.clear();
+			await briefFiles.load(context);
+		},
+	},
+	schema: briefSchema,
+});
 
 const blog = defineCollection({
 	loader: glob({ pattern: "**/[^_]*.{md,mdx}", base: "./src/content/blog/" }),
@@ -76,4 +97,10 @@ const observabilitySeries = defineCollection({
 	}),
 });
 
-export const collections = { blog, posts, codingAssistantsSeries, observabilitySeries };
+export const collections = {
+	blog,
+	brief,
+	posts,
+	codingAssistantsSeries,
+	observabilitySeries,
+};

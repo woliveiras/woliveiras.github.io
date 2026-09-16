@@ -1,0 +1,87 @@
+---
+title: "[Title: which technical decision does this issue help readers make?]"
+slug: "new-issue"
+description: "[Summarize the topics and situations where this issue helps. Do not copy the opening.]"
+pubDate: "2000-01-10"
+published: false
+# issue: 1 # Choose an unused number. Do not renumber existing issues.
+period:
+  start: "2000-01-03"
+  end: "2000-01-09"
+topics: ["local-ai"]
+---
+
+import BriefTopic from "$components/brief/BriefTopic.astro";
+import BriefLab from "$components/brief/BriefLab.astro";
+
+{/* Replace the bracketed placeholders and dates before publishing.
+    Usually cover the previous seven days. Monday is a planned cadence.
+    Select updates for their effect on implementation decisions, not popularity.
+    Prefer documentation, changelogs, repositories, papers, and reports from maintainers.
+    Do not cover coding agents, AI IDEs, code generation/review, or generic investment
+    news, company disputes, and predictions without concrete technical consequences.
+    Give each update one main topic. Use internal links for cross-references.
+    Keep topics aligned with the BriefTopic blocks actually present. */}
+
+[Editorial opening: what problem connects the selected topics? Use only context and positions you can support.]
+
+<BriefTopic topic="local-ai">
+
+### [The concrete change and its scope]
+
+**What changed.** [Describe the change. Distinguish its announcement date from when it happened or became available.]
+
+**Available evidence.** [Link to the primary source beside the claim, using descriptive link text. Identify vendor claims, independent results, and your own observations.]
+
+**Implementation impact.** [Explain which decision may change, for whom, and under what conditions. Label editorial interpretation.]
+
+**Limitations.** [Record incompatibilities, requirements, benchmark conditions, and what remains unverified. Do not attribute tests to the author unless they ran them.]
+
+{/* Sources: replace placeholders with real links before publishing.
+    Syntax example: [Descriptive documentation title](verified URL).
+    Add an H3 for another update on this topic. For another topic, add
+    a BriefTopic block and update topics. Remove sections without material. */}
+
+</BriefTopic>
+
+{/* The Lab is optional. Remove the block and import when there is no suitable material.
+    Use status="completed" only for an experiment that has actually been run.
+    Keep a proposal identified as a proposal, without simulated results. */}
+
+<BriefLab status="proposed">
+
+### Question and context
+
+[Which hypothesis will you investigate? Which decision depends on it?]
+
+### Environment
+
+| Item | Configuration to record |
+| --- | --- |
+| Hardware and system | [CPU, GPU/accelerator, RAM, operating system and version] |
+| Runtime and dependencies | [Exact versions and configuration] |
+| Model and inputs | [Revision, quantization, parameters, data, and license where relevant] |
+
+### Procedure
+
+1. [Setup and reproducible commands.]
+2. [Execution, warmup, repetitions, and controlled conditions.]
+3. [How to collect and compare measurements.]
+
+### Metrics and criteria
+
+[Define metrics that answer the question, their units, and comparison criteria before measuring. Record quality alongside latency, resource use, or cost when it affects the decision.]
+
+### Results
+
+The experiment has not been run. There are no measurements to report.
+
+### Limitations and interpretation
+
+[What can this procedure demonstrate? What falls outside the test? After running it, distinguish observed results from your interpretation.]
+
+### Artifacts
+
+[Verified links to code, commands, data, and other material when available. Remove this subsection if there are no artifacts. Images need alt text; charts need accessible descriptions and data.]
+
+</BriefLab>

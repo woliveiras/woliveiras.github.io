@@ -1,0 +1,192 @@
+---
+export type TimelineEvent = {
+	date: string;
+	title: string;
+	detail: string;
+	tone?: "default" | "warning" | "current";
+};
+
+type Props = {
+	id: string;
+	title: string;
+	description: string;
+	events: TimelineEvent[];
+	source: string;
+	note?: string;
+};
+
+const { id, title, description, events, source, note } = Astro.props;
+---
+
+<figure class="timeline-figure not-prose" aria-labelledby={`${id}-title`} aria-describedby={`${id}-description`}>
+	<figcaption>
+		<p class="timeline-kicker">TIMELINE</p>
+		<h3 id={`${id}-title`}>{title}</h3>
+		<p id={`${id}-description`} class="timeline-description">{description}</p>
+	</figcaption>
+
+	<ol class="timeline">
+		{
+			events.map((event) => (
+				<li data-tone={event.tone ?? "default"}>
+					<div class="timeline-marker" aria-hidden="true" />
+					<div class="timeline-content">
+						<time>{event.date}</time>
+						<strong>{event.title}</strong>
+						<p>{event.detail}</p>
+					</div>
+				</li>
+			))
+		}
+	</ol>
+
+	<div class="timeline-meta">
+		<p><strong>Source:</strong> {source}</p>
+		{note && <p><strong>Read with care:</strong> {note}</p>}
+	</div>
+</figure>
+
+<style>
+	.timeline-figure {
+		--timeline-border: #d6d3d1;
+		--timeline-muted: #57534e;
+		--timeline-panel: #fafaf9;
+		--timeline-line: #d6d3d1;
+		--timeline-marker: #78716c;
+		--timeline-accent: #7c3aed;
+		--timeline-warning: #d97706;
+		margin: 2rem 0;
+		padding: 1.25rem;
+		border: 1px solid var(--timeline-border);
+		border-radius: 1rem;
+		background: var(--timeline-panel);
+		color: #1c1917;
+	}
+
+	:global(html.dark) .timeline-figure {
+		--timeline-border: #44403c;
+		--timeline-muted: #a8a29e;
+		--timeline-panel: #1c1917;
+		--timeline-line: #57534e;
+		--timeline-marker: #a8a29e;
+		--timeline-accent: #a78bfa;
+		--timeline-warning: #fbbf24;
+		color: #fafaf9;
+	}
+
+	.timeline-kicker {
+		margin: 0 0 0.35rem;
+		color: var(--timeline-accent);
+		font-size: 0.7rem;
+		font-weight: 800;
+		letter-spacing: 0.14em;
+	}
+
+	h3 {
+		margin: 0;
+		font-size: 1.15rem;
+		line-height: 1.35;
+	}
+
+	.timeline-description,
+	.timeline-content p,
+	.timeline-meta p {
+		color: var(--timeline-muted);
+	}
+
+	.timeline-description {
+		margin: 0.45rem 0 0;
+		font-size: 0.9rem;
+		line-height: 1.55;
+	}
+
+	.timeline {
+		position: relative;
+		display: grid;
+		gap: 0;
+		margin: 1.5rem 0 0;
+		padding: 0;
+		list-style: none;
+	}
+
+	.timeline::before {
+		position: absolute;
+		top: 0.35rem;
+		bottom: 0.35rem;
+		left: 0.42rem;
+		width: 2px;
+		background: var(--timeline-line);
+		content: "";
+	}
+
+	.timeline li {
+		position: relative;
+		display: grid;
+		grid-template-columns: 0.9rem minmax(0, 1fr);
+		gap: 0.8rem;
+		padding-bottom: 1.15rem;
+	}
+
+	.timeline li:last-child {
+		padding-bottom: 0;
+	}
+
+	.timeline-marker {
+		z-index: 1;
+		width: 0.9rem;
+		height: 0.9rem;
+		margin-top: 0.23rem;
+		border: 3px solid var(--timeline-panel);
+		border-radius: 999px;
+		background: var(--timeline-marker);
+		box-shadow: 0 0 0 1px var(--timeline-marker);
+	}
+
+	.timeline li[data-tone="warning"] .timeline-marker {
+		background: var(--timeline-warning);
+		box-shadow: 0 0 0 1px var(--timeline-warning);
+	}
+
+	.timeline li[data-tone="current"] .timeline-marker {
+		background: var(--timeline-accent);
+		box-shadow: 0 0 0 2px var(--timeline-accent);
+	}
+
+	.timeline-content {
+		display: grid;
+		gap: 0.18rem;
+	}
+
+	time {
+		color: var(--timeline-accent);
+		font-size: 0.72rem;
+		font-weight: 750;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+	}
+
+	.timeline-content strong {
+		font-size: 0.88rem;
+		line-height: 1.35;
+	}
+
+	.timeline-content p {
+		margin: 0;
+		font-size: 0.76rem;
+		line-height: 1.45;
+	}
+
+	.timeline-meta {
+		display: grid;
+		gap: 0.25rem;
+		margin-top: 1.35rem;
+		padding-top: 0.85rem;
+		border-top: 1px solid var(--timeline-border);
+	}
+
+	.timeline-meta p {
+		margin: 0;
+		font-size: 0.72rem;
+		line-height: 1.45;
+	}
+</style>

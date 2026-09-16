@@ -1,0 +1,11 @@
+---
+import { getBriefEntries, getPublicBriefs } from "../../brief/content";
+import { isBriefPublic } from "../../brief/model";
+import BriefArchive from "$layouts/BriefArchive.astro";
+import { POSTS_PER_PAGE } from "../../config.json";
+
+const entries = await getPublicBriefs();
+const previews = import.meta.env.DEV ? (await getBriefEntries()).filter((entry) => !isBriefPublic(entry)) : [];
+---
+
+<BriefArchive entries={entries.slice(0, POSTS_PER_PAGE)} totalPages={Math.max(1, Math.ceil(entries.length / POSTS_PER_PAGE))} {previews} />

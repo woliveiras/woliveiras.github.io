@@ -100,7 +100,7 @@ const { class: className, ...props } = Astro.props;
 
     // Add click event to toggle button
     document
-      .querySelector("button[data-theme-toggle]")
-      ?.addEventListener("click", toggleTheme);
+      .querySelectorAll("button[data-theme-toggle]")
+      .forEach((button) => button.addEventListener("click", toggleTheme));
   })();
 </script>

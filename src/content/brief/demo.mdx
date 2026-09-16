@@ -1,0 +1,76 @@
+---
+title: "Demo: reading a Brief issue"
+slug: "demo"
+description: "Draft for checking topic navigation, code and table readability, and the Lab format. It contains no news or measurements."
+pubDate: "2000-01-10"
+published: false
+period:
+  start: "2000-01-03"
+  end: "2000-01-09"
+topics: ["local-ai", "reliability"]
+---
+
+import BriefTopic from "$components/brief/BriefTopic.astro";
+import BriefLab from "$components/brief/BriefLab.astro";
+
+This content demonstrates the editorial structure. The dates are illustrative and do not represent a real issue. No news has been selected and no experiment has been run.
+
+<BriefTopic topic="local-ai">
+
+### How to present a technical change
+
+**What changed.** In a real issue, this paragraph would describe a specific change and distinguish its announcement date from when the feature became available.
+
+**Available evidence.** Documentation or release notes would sit beside the claim they support. This demo reports no actual update, so it has no external source.
+
+**Implementation impact.** The analysis would explain which runtime, hardware, or configuration decisions may change and in which scenarios.
+
+**Limitations.** Vendor claims, independent results, and editorial interpretation need clear labels. A benchmark only supports comparison when its conditions are documented.
+
+</BriefTopic>
+
+<BriefTopic topic="reliability">
+
+### The limits of the evidence belong in the issue
+
+An issue can cover just one or two topics. The others do not need to appear. When an update touches more than one topic, an internal link can point to its [main section on Local AI](#local-ai).
+
+The archive summary should explain why the issue is worth reading. The body has room to explain the mechanism, its technical consequences, and what remains unverified.
+
+</BriefTopic>
+
+<BriefLab status="proposed">
+
+### Demo question
+
+How could two inference configurations be compared for latency on the same hardware? This is a proposal to demonstrate the Lab format.
+
+### Environment to record
+
+| Field | Required information | Status in this demo |
+| --- | --- | --- |
+| Hardware and system | CPU, accelerator, RAM, and operating system version | Not defined |
+| Runtime and model | Versions, revision, quantization, and parameters | Not defined |
+| Inputs | Task set and repetition conditions | Not defined |
+
+### Proposed procedure
+
+1. Record the configurations and use the same inputs for both.
+2. Define warmup, repetition count, and measurement collection.
+3. Compare latency alongside response quality before recommending a configuration.
+
+The following block demonstrates command formatting only:
+
+```sh title="Illustrative command"
+printf '%s\n' 'Code demo: this command does not run a benchmark or produce a latency measurement.'
+```
+
+### Metrics and results
+
+Metrics and comparison criteria still need to be defined. The experiment has not been run, and there are no observed results.
+
+### Limitations
+
+Without a defined environment or measurements, there is no basis for concluding which configuration performs better. A real issue would need commands, collected data, and comparison conditions.
+
+</BriefLab>

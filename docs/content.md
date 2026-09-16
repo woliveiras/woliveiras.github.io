@@ -16,6 +16,14 @@ Blog posts use Astro Content Collections with strict Zod schemas (see `src/conte
 
 **Publishing:** Only posts with `published: true` are included via `getBlogPosts()` in `src/utils.ts`.
 
+## Monday Brief
+
+The Brief uses a separate collection in `src/content/brief/`, with its own
+layout, archive, and RSS feed at `/brief/`. Its schema validates editorial
+metadata; helpers in `src/brief/` check for duplicates and exclude drafts and
+future issues from public output. Read the [editorial workflow](monday-brief.md)
+before creating or correcting an issue. The template is `templates/brief.mdx`.
+
 ## Dynamic Routing
 
 Use `getStaticPaths()` with `getBlogPosts()`:

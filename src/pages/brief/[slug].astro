@@ -1,0 +1,32 @@
+---
+import { render } from "astro:content";
+import type { BriefEntry } from "../../brief/content";
+import { getBriefRouteEntries, getPublicBriefs } from "../../brief/content";
+import { getBriefNeighbors, isBriefPublic } from "../../brief/model";
+import BriefEdition from "$layouts/BriefEdition.astro";
+
+export async function getStaticPaths() {
+	const entries = await getBriefRouteEntries();
+	const publicEntries = await getPublicBriefs();
+	return entries.map((entry) => ({
+		params: { slug: entry.data.slug },
+		props: {
+			entry,
+			...(isBriefPublic(entry) ? getBriefNeighbors(publicEntries, entry.data.slug) : {}),
+		},
+	}));
+}
+
+interface Props {
+	entry: BriefEntry;
+	previous?: BriefEntry;
+	next?: BriefEntry;
+}
+
+const { entry, previous, next } = Astro.props;
+const { Content } = await render(entry);
+---
+
+<BriefEdition {entry} {previous} {next}>
+  <Content />
+</BriefEdition>

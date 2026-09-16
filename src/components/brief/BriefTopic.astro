@@ -1,0 +1,17 @@
+---
+import { BRIEF_TOPICS, type BriefTopicId } from "../../brief/model";
+
+interface Props {
+	topic: BriefTopicId;
+}
+
+const { topic } = Astro.props;
+if (!Object.hasOwn(BRIEF_TOPICS, topic)) {
+	throw new Error(`Unknown Brief topic: ${topic}.`);
+}
+---
+
+<section class="brief-topic" aria-labelledby={topic}>
+  <h2 id={topic}>{BRIEF_TOPICS[topic]}</h2>
+  <slot />
+</section>

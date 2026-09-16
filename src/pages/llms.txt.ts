@@ -1,9 +1,24 @@
 import type { APIRoute } from "astro";
 import { getBlogPosts } from "src/utils";
-import { SERIES, SITE, SITE_DESCRIPTION, SITE_NAME } from "../config.json";
+import { getPublicBriefs } from "../brief/content";
+import { BRIEF_DESCRIPTION, briefPath } from "../brief/model";
+import {
+	BASE,
+	SERIES,
+	SITE,
+	SITE_DESCRIPTION,
+	SITE_NAME,
+} from "../config.json";
 
 export const GET: APIRoute = async () => {
 	const posts = await getBlogPosts();
+	const briefs = await getPublicBriefs();
+	const briefLines = briefs
+		.map(
+			({ data }) =>
+				`- [${data.title}](${new URL(`${BASE}${briefPath(data.slug)}`, SITE)}): ${data.description}`,
+		)
+		.join("\n");
 
 	const postLines = posts
 		.map(
@@ -32,6 +47,13 @@ ${postLines}
 ## Series
 
 ${seriesLines}
+
+## Monday Brief
+
+- [Monday Brief](${SITE}/brief/): ${BRIEF_DESCRIPTION}
+- [Brief RSS feed](${SITE}/brief/rss.xml)
+
+${briefLines}
 `;
 
 	return new Response(body, {

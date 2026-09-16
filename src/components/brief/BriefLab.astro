@@ -1,0 +1,23 @@
+---
+interface Props {
+	status: "proposed" | "completed";
+}
+
+const { status } = Astro.props;
+if (status !== "proposed" && status !== "completed") {
+	throw new Error("BriefLab requires status: proposed or completed.");
+}
+---
+
+<section class="brief-lab" aria-labelledby="laboratorio">
+  <div class="brief-lab-heading">
+    <h2 id="laboratorio">Lab</h2>
+    <p class="brief-lab-status">
+      {status === "completed" ? "Completed experiment" : "Proposed experiment"}
+    </p>
+  </div>
+  {status === "proposed" && (
+    <p class="brief-lab-notice">This experiment has not been run. No measurements to report.</p>
+  )}
+  <slot />
+</section>

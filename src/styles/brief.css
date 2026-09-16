@@ -1,0 +1,474 @@
+@reference "./global.css";
+
+.brief-page {
+	@apply text-base-900 dark:text-base-100;
+	width: min(100%, 48rem);
+	margin-inline: auto;
+	padding: 2.5rem 1.5rem 0;
+	overflow-wrap: anywhere;
+}
+
+.brief-page :is(a, button, [tabindex]):focus-visible,
+.brief-skip-link:focus-visible {
+	@apply outline-accent-700 dark:outline-accent-400;
+	outline-style: solid;
+	outline-width: 2px;
+	outline-offset: 5px;
+	border-radius: 2px;
+}
+
+.brief-page :is(h1, h2, h3, h4, [id]) {
+	scroll-margin-top: 6rem;
+}
+
+.brief-skip-link {
+	@apply bg-base-50 text-base-950 dark:bg-base-900 dark:text-base-50;
+	position: absolute;
+	top: 0.5rem;
+	left: 1rem;
+	z-index: 60;
+	padding: 0.75rem 1rem;
+	transform: translateY(-200%);
+}
+
+.brief-skip-link:focus {
+	transform: translateY(0);
+}
+
+.brief-eyebrow {
+	@apply text-accent-800 dark:text-accent-300;
+	margin: 0 0 1rem;
+	font-size: 0.75rem;
+	font-weight: 650;
+	letter-spacing: 0.07em;
+	line-height: 1.7;
+	text-transform: uppercase;
+}
+
+.brief-masthead {
+	@apply border-b border-base-200 dark:border-base-800;
+	padding-bottom: 2.75rem;
+	margin-bottom: 2.75rem;
+}
+
+.brief-masthead h1 {
+	font-size: clamp(2.9rem, 8vw, 4.4rem);
+	font-weight: 750;
+	line-height: 1.05;
+	letter-spacing: -0.055em;
+	margin-bottom: 1.5rem;
+}
+
+.brief-position {
+	max-width: 37rem;
+	font-size: clamp(1.2rem, 3vw, 1.45rem);
+	line-height: 1.55;
+	letter-spacing: -0.01em;
+}
+
+.brief-cadence {
+	@apply text-base-600 dark:text-base-400;
+	max-width: 37rem;
+	margin-top: 1.15rem;
+	font-size: 0.875rem;
+	line-height: 1.65;
+}
+
+.brief-subscribe {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.8rem 1rem;
+	margin-top: 1.65rem;
+}
+
+.brief-subscribe > span {
+	@apply text-base-600 dark:text-base-400;
+	font-size: 0.8125rem;
+}
+
+.brief-rss-link {
+	@apply bg-accent-800 text-white hover:bg-accent-900 dark:bg-accent-300 dark:text-base-950 dark:hover:bg-accent-200;
+	display: inline-flex;
+	align-items: center;
+	gap: 0.6rem;
+	border-radius: 0.5rem;
+	padding: 0.7rem 1rem;
+	font-size: 0.875rem;
+	font-weight: 600;
+}
+
+.brief-entry {
+	padding-block: 1.8rem;
+}
+
+.brief-entry-featured {
+	@apply border-l-2 border-accent-700 dark:border-accent-400;
+	padding: 0.25rem 0 0.25rem 1.5rem;
+	margin-bottom: 3.5rem;
+}
+
+.brief-entry-meta {
+	@apply text-base-600 dark:text-base-400;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.35rem 1rem;
+	font-size: 0.8rem;
+	line-height: 1.6;
+}
+
+.brief-entry-meta > span {
+	font-weight: 600;
+}
+
+.brief-entry-title {
+	font-size: 1.4rem;
+	font-weight: 650;
+	line-height: 1.35;
+	letter-spacing: -0.025em;
+	margin-top: 0.6rem;
+}
+
+.brief-entry-featured .brief-entry-title {
+	font-size: clamp(1.7rem, 4vw, 2.2rem);
+}
+
+.brief-entry-title a:hover,
+.brief-back-link:hover,
+.brief-eyebrow a:hover {
+	@apply text-accent-800 dark:text-accent-300;
+	text-decoration: underline;
+	text-underline-offset: 0.2em;
+}
+
+.brief-entry-description {
+	@apply text-base-700 dark:text-base-300;
+	margin-top: 0.7rem;
+	line-height: 1.75;
+}
+
+.brief-topic-list {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.45rem;
+	margin-top: 1rem;
+	padding: 0;
+	list-style: none;
+}
+
+.brief-topic-list li {
+	@apply bg-base-100 text-base-700 dark:bg-base-900 dark:text-base-300;
+	padding: 0.3rem 0.55rem;
+	border-radius: 0.25rem;
+	font-size: 0.75rem;
+	line-height: 1.5;
+}
+
+.brief-text-link {
+	@apply text-accent-800 dark:text-accent-300;
+	display: inline-block;
+	font-size: 0.875rem;
+	font-weight: 600;
+	text-decoration: underline;
+	text-underline-offset: 0.25em;
+}
+
+.brief-entry > .brief-text-link {
+	margin-top: 1.3rem;
+}
+
+.brief-history > h2,
+.brief-empty h2,
+.brief-preview-list h2 {
+	font-size: 1.3rem;
+	font-weight: 650;
+	line-height: 1.4;
+	letter-spacing: -0.025em;
+}
+
+.brief-edition-list {
+	list-style: none;
+	padding: 0;
+	margin-top: 0.5rem;
+}
+
+.brief-edition-list > li {
+	@apply border-b border-base-200 dark:border-base-800;
+}
+
+.brief-edition-list > li:last-child {
+	border-bottom: 0;
+}
+
+.brief-empty {
+	max-width: 36rem;
+	padding-block: 0.5rem 2rem;
+}
+
+.brief-empty-rule {
+	@apply bg-accent-700 dark:bg-accent-400;
+	display: block;
+	height: 2px;
+	width: 2rem;
+	margin-bottom: 1.2rem;
+}
+
+.brief-empty p {
+	@apply text-base-600 dark:text-base-400;
+	margin-top: 0.85rem;
+	line-height: 1.75;
+}
+
+.brief-pagination {
+	@apply border-t border-base-200 dark:border-base-800;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1rem;
+	padding-top: 1.5rem;
+	margin-top: 1.5rem;
+	font-size: 0.875rem;
+}
+
+.brief-pagination a,
+.brief-preview-list a {
+	@apply text-accent-800 dark:text-accent-300;
+	text-decoration: underline;
+	text-underline-offset: 0.2em;
+}
+
+.brief-pagination > span {
+	@apply text-base-600 dark:text-base-400;
+	text-align: center;
+}
+
+.brief-preview-list,
+.brief-draft-notice {
+	@apply border border-dashed border-base-400 bg-base-100 text-base-700 dark:border-base-600 dark:bg-base-900 dark:text-base-300;
+	padding: 1.25rem;
+	margin-top: 2.5rem;
+	border-radius: 0.5rem;
+	font-size: 0.875rem;
+	line-height: 1.7;
+}
+
+.brief-preview-list p,
+.brief-preview-list ul {
+	margin-top: 0.5rem;
+}
+
+.brief-preview-list ul {
+	list-style: disc;
+	padding-left: 1.2rem;
+}
+
+.brief-back-link {
+	@apply text-base-600 dark:text-base-400;
+	display: inline-block;
+	font-size: 0.875rem;
+	margin-bottom: 2.5rem;
+}
+
+.brief-draft-notice {
+	margin: 0 0 2rem;
+}
+
+.brief-edition-header h1 {
+	font-size: clamp(2rem, 5vw, 3rem);
+	line-height: 1.16;
+	font-weight: 750;
+	letter-spacing: -0.045em;
+}
+
+.brief-edition-description {
+	@apply text-base-700 dark:text-base-300;
+	font-size: 1.2rem;
+	line-height: 1.65;
+	margin-top: 1.4rem;
+}
+
+.brief-publication-dates {
+	@apply text-base-600 dark:text-base-400;
+	font-size: 0.8rem;
+	line-height: 1.8;
+	margin-top: 1.5rem;
+}
+
+.brief-publication-dates .brief-coverage {
+	@apply text-base-700 dark:text-base-300;
+	margin-top: 0.4rem;
+}
+
+.brief-contents {
+	@apply border-y border-base-200 dark:border-base-800;
+	margin: 2.2rem 0 2.75rem;
+	padding: 1.2rem 0;
+}
+
+.brief-contents h2 {
+	font-size: 0.8rem;
+	font-weight: 650;
+	margin-bottom: 0.7rem;
+}
+
+.brief-contents ul {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.6rem 1.3rem;
+	list-style: none;
+	padding: 0;
+}
+
+.brief-contents a {
+	@apply text-accent-800 dark:text-accent-300;
+	font-size: 0.875rem;
+	text-decoration: underline;
+	text-underline-offset: 0.2em;
+}
+
+.brief-content {
+	max-width: none;
+	min-width: 0;
+	line-height: 1.8;
+}
+
+.brief-content :is(pre, table) {
+	max-width: 100%;
+	/* biome-ignore lint/complexity/noImportantStyles: Overrides BaseLayout's important overflow-hidden rule so code is accessible. */
+	overflow-x: auto !important;
+	overscroll-behavior-x: contain;
+}
+
+.brief-content pre {
+	white-space: pre;
+}
+
+.brief-content :is(img, svg, video, iframe) {
+	max-width: 100%;
+}
+
+.brief-content .brief-topic:first-child > h2 {
+	margin-top: 0;
+}
+
+.brief-content .brief-topic + .brief-topic {
+	margin-top: 3rem;
+}
+
+.brief-content .brief-lab {
+	@apply bg-accent-50/60 border-accent-200 dark:bg-accent-950/20 dark:border-accent-900;
+	border-style: solid;
+	border-width: 1px 0;
+	margin-top: 3rem;
+	padding: 1.75rem 1.5rem;
+}
+
+.brief-content .brief-lab-heading h2 {
+	margin: 0;
+	font-size: 1.55rem;
+}
+
+.brief-content .brief-lab-status {
+	@apply text-accent-800 dark:text-accent-300;
+	font-size: 0.75rem;
+	font-weight: 600;
+	letter-spacing: 0.025em;
+	margin: 0.6rem 0 0;
+}
+
+.brief-content .brief-lab-notice {
+	@apply text-base-600 dark:text-base-400;
+	font-size: 0.875rem;
+	line-height: 1.7;
+}
+
+.brief-content .brief-lab > :last-child {
+	margin-bottom: 0;
+}
+
+.brief-neighbors {
+	@apply border-t border-base-200 dark:border-base-800;
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 2rem;
+	margin-top: 3rem;
+	padding-top: 1.75rem;
+}
+
+.brief-neighbors a {
+	display: block;
+}
+
+.brief-neighbors span {
+	@apply text-base-600 dark:text-base-400;
+	display: block;
+	font-size: 0.8rem;
+	margin-bottom: 0.5rem;
+}
+
+.brief-neighbors strong {
+	display: block;
+	font-size: 0.95rem;
+	font-weight: 600;
+	line-height: 1.5;
+}
+
+.brief-neighbors a:hover strong {
+	@apply text-accent-800 dark:text-accent-300;
+	text-decoration: underline;
+	text-underline-offset: 0.2em;
+}
+
+.brief-neighbor-next {
+	text-align: right;
+}
+
+.brief-edition-subscribe {
+	@apply border-t border-base-200 dark:border-base-800 text-base-600 dark:text-base-400;
+	margin-top: 2.5rem;
+	padding-top: 1.5rem;
+	font-size: 0.875rem;
+	line-height: 1.7;
+}
+
+.brief-edition-subscribe p {
+	margin-bottom: 0.5rem;
+}
+
+@media (max-width: 480px) {
+	.brief-page {
+		padding-top: 1.5rem;
+		padding-inline: 1.1rem;
+	}
+
+	.brief-entry-featured {
+		padding-left: 1rem;
+	}
+
+	.brief-pagination {
+		flex-wrap: wrap;
+		font-size: 0.8rem;
+	}
+
+	.brief-pagination > span {
+		order: -1;
+		width: 100%;
+	}
+
+	.brief-content .brief-lab {
+		padding-inline: 1rem;
+	}
+
+	.brief-neighbors {
+		grid-template-columns: 1fr;
+		gap: 1.5rem;
+	}
+
+	.brief-neighbor-next {
+		text-align: left;
+	}
+
+	.brief-neighbors > div:empty {
+		display: none;
+	}
+}
