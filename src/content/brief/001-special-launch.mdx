@@ -1,0 +1,195 @@
+---
+title: "Special launch issue: tools, evals, and local inference"
+slug: "001-special-launch"
+description: "MCP security advisories, agent evaluation pitfalls, and runtime changes in vLLM, Ollama, and Apple's on-device stack. Plus a proposed MLX memory experiment."
+pubDate: "2026-09-16"
+published: true
+issue: 1
+period:
+  start: "2026-09-09"
+  end: "2026-09-16"
+topics: ["security", "reliability", "agents", "local-ai", "mobile-ai"]
+---
+
+import BriefTopic from "$components/brief/BriefTopic.astro";
+import BriefLab from "$components/brief/BriefLab.astro";
+
+Monday Brief starts on a Wednesday. This is issue 1, a special launch edition for September 16, 2026.
+
+I'm starting this publication to connect changes in AI to decisions about building and operating systems: what gets permission to run, what an evaluation actually measures, and what happens when a runtime or an on-device model changes underneath an application. Mondays are the intended rhythm; I'll publish as time and material allow. You can follow the issues here or through the [Brief RSS feed](/brief/rss.xml).
+
+This edition covers September 9–16. The security items concern CVE records published this week for flaws disclosed earlier; their original dates appear below. Release notes and papers provide the evidence for the updates. The [Lab](#laboratorio) is a proposed experiment, with no measurements yet.
+
+<BriefTopic topic="security">
+
+Security material is for educational purposes only, only on systems you own or have permission to test.
+
+### Flowise: MCP configuration can become code execution
+
+[CVE-2026-91931 was published on September 15](https://raw.githubusercontent.com/CVEProject/cvelistV5/main/cves/2026/91xxx/CVE-2026-91931.json), but the [Flowise advisory dates to August 31](https://github.com/FlowiseAI/Flowise/security/advisories/GHSA-vcwp-f9rq-3887). An authenticated user able to configure a Custom MCP node can supply an attacker-controlled package name in `mcpServerConfig`. The server then runs that package through `npx`. Both `flowise` and `flowise-components` before 3.1.4 are affected; the advisory lists 3.1.4 as fixed.
+
+If you operate an affected installation, update and review who can create or change Custom MCP nodes. A field that accepts commands, packages, or arguments grants execution authority. Treating it like ordinary configuration misses the boundary being crossed.
+
+The flaw concerns Flowise's handling of that configuration. It does not establish that MCP itself permits arbitrary execution. Authentication is required, and the CVE publication date should not be mistaken for the date the fix became available.
+
+### FrontMCP: checking the hostname was not enough
+
+The [FrontMCP advisory](https://github.com/agentfront/frontmcp/security/advisories/GHSA-65h7-9wrw-629c) was originally published on June 22. Its [GitHub database entry](https://github.com/advisories/GHSA-65h7-9wrw-629c) arrived on September 11, followed by [CVE-2026-59973 on September 15](https://raw.githubusercontent.com/CVEProject/cvelistV5/main/cves/2026/59xxx/CVE-2026-59973.json). These are new catalogue entries for an older disclosure.
+
+The issue bypasses an earlier SSRF mitigation when external OpenAPI `$ref` references are resolved to generate tools. A textual hostname denylist can miss DNS names resolving to loopback, redirects, and IPv4-mapped IPv6 addresses. The listed fixes are `frontmcp` and `@frontmcp/adapters` 1.5.0, and `mcp-from-openapi` 2.5.0.
+
+For systems that import tool definitions, discovery already performs network activity. Apply network restrictions there, including resolution and redirect handling, before a model ever calls the resulting tool. Exploitability depends on an attacker being able to influence the imported specification or adapter configuration.
+
+</BriefTopic>
+
+<BriefTopic topic="reliability">
+
+### OpenObserve 1.0 brings agent evaluation into the observability backend
+
+[OpenObserve v1.0.0 reached GA on September 11](https://github.com/openobserve/openobserve/releases/tag/v1.0.0). Its AI Observability features include trace and session evaluations, an evaluation scheduler, annotation queues, datasets, Playground execution and scoring, and experiments. The release also includes SLO burn-rate alerts, composite alerts, and open-source Synthetic Monitoring.
+
+For an application team, the useful possibility is investigating an agent's behavior alongside the services it depends on. A failed task may involve a model decision, a slow database, or both. Putting the evidence in one backend can make that investigation easier.
+
+That is an architectural benefit to evaluate, not a demonstrated improvement in evaluator quality. The release combines open-source and enterprise work, so check which capabilities your intended deployment actually includes.
+
+### OpenLIT and Parseable describe the same correlation problem
+
+The September 11 [OpenLIT and Parseable architecture guide](https://www.openlit.io/blogs/parseable-openlit-agents-observability) connects OpenTelemetry instrumentation for agents with application and infrastructure logs, metrics, and traces. It is a publication by the vendors, rather than an independent comparison.
+
+The practical recommendation travels beyond that stack: carry trace context across model requests, tool calls, and ordinary application services. A successful model request does not establish that the surrounding task completed. Without that correlation, a tool retry or database timeout can disappear from the explanation of an agent failure. The guide provides an integration pattern, not evidence that this particular combination outperforms other OpenTelemetry setups.
+
+### A benchmark score needs a definition of what it measures
+
+On September 15, *Artificial Intelligence Review* published the accepted version of [Nageshwaran and colleagues' systematic survey of agent evaluation](https://link.springer.com/article/10.1007/s10462-026-11678-4). Accepted on August 10, it maps 259 primary studies alongside a living corpus of 294 records. Its central concern is validity: interpreting a score requires knowing the capability, scoring method, and environment behind it.
+
+The methodology has boundaries. Screening includes an audited automated pass; supplementary human double-screening reports agreement of κ = 0.65. Some distributions in the broader map are provisional heuristic estimates. This is a literature review, not a controlled comparison of production systems.
+
+Use it when designing an evaluation plan: task completion, safe tool use, memory behavior, and autonomy need their own definitions and evidence. One leaderboard position cannot tell you which of those properties will survive integration into your application.
+
+### Policy ambiguity can look like an agent regression
+
+Hongliu Cao's [*Policy Loopholes in Agent Evaluation*](https://arxiv.org/abs/2609.14400), submitted on September 13, audits two domains in τ²-bench. The arXiv record reports acceptance at REALM EMNLP 2026. The paper examines policies whose omissions, contradictions, or ambiguities leave room for several defensible actions while evaluation expects a narrower outcome.
+
+The effects differ by domain and model. In the reported audit, reduced scores appeared in airline tasks; tool constraints limited what agents could do in the other domain. The evidence comes from that benchmark and an AI-assisted, human-driven audit, without an independent reproduction reported here.
+
+Before treating a failed golden trajectory as a model regression, check whether the policy and tool contract determine the expected action. If two actions satisfy the written rules, fixing the evaluator may be more appropriate than tuning the agent toward one of them.
+
+### BenchShield checks whether the measurement itself was manipulated
+
+The September 10 [BenchShield preprint](https://arxiv.org/abs/2609.11028) combines static analysis of paths that can influence rewards with runtime evidence for detecting reward hacking. Its corpus contains 456 human-adjudicated trajectories drawn from more than 31,000 public runs across Terminal-Bench 3, SkillsBench, and ClawsBench.
+
+The authors report full-chain recall of 77–100%, against baseline ranges of 23–94%. Their 96% runtime accuracy applies to cases receiving a verdict: coverage was 87.5% across 144 runnable cells, with 18 abstentions. Those conditions matter when reading the headline number. The infrastructure also requires transformation into the paper's BenchFlow representation; it is not a detector that automatically covers arbitrary environments.
+
+The relevant lesson for tool-using systems is about evaluation integrity. When an agent can access files, a browser, or submitted artifacts, verify whether it completed the task or influenced the mechanism awarding credit. These are the authors' results, not independently reproduced measurements for your environment.
+
+### Five dimensions are more useful than calling a system “more agentic”
+
+Mia Lassiter and Brinnae Bent's September 10 [*Defining AI Agents* preprint](https://arxiv.org/abs/2609.11018) organizes criteria, metrics, and benchmarks around environment interaction, learning and adaptation, autonomy, goal-directed behavior, and temporal coherence. It also points to a public Agent Compendium.
+
+This is a conceptual survey, not a runtime improvement. Its value is making a claim testable: specify whether a change improves adaptation, persistence toward a goal, or another property, then choose an evaluation for that property. Calling the whole system “more agentic” leaves the implementation question unanswered.
+
+</BriefTopic>
+
+<BriefTopic topic="agents">
+
+### Shared memory becomes a service with its own policy boundary
+
+Ryan Lum and Yongfeng Zhang's September 9 [*Kernel-Managed Shared Memory for System-Wide Personalization*](https://arxiv.org/abs/2609.10144) moves retrieval, tagging, privacy controls, and context injection into an AIOS-managed layer shared by agents.
+
+Across 1,800 trials using GPT-4o, Llama-3.1:8B, and Qwen-2.5:7B, the authors compare it with Mem0, conventional RAG, and full-context concatenation. They report 15–61% lower end-to-end latency than full-context concatenation. GPT-4o improved on the task dimension, with no significant difference on profile or integration; Qwen showed no significant difference across those dimensions. Llama lost quality on task and integration.
+
+The test uses synthetic profiles and tasks, GPT-5.4 as its automated judge, and a small human-validation subset. Some latency savings also reflect shorter generated answers. These results do not establish the same benefit for longitudinal memory in production.
+
+The architectural proposal is worth examining separately: centralizing memory gives retention, access, and provenance policies one enforcement point. That also creates a shared dependency whose availability and tenant isolation need explicit design.
+
+### NemoClaw addresses recovery between runtime versions
+
+NVIDIA's [September 14 notes for NemoClaw 0.0.124](https://docs.nvidia.com/nemoclaw/user-guide/openclaw/release-notes/2026/9/14) update managed OpenShell to 0.0.116 and describe fixes around upgrades and recovery. Sandbox restoration waits for the replacement gateway to bind; incomplete backups are kept from appearing as valid recovery points; serving profiles survive rebuilds; portable recovery reconciles forwarding and saved state.
+
+If your agents retain state across sessions, those details belong in an upgrade test. Check gateway replacement, interrupted backups, and restoration of serving configuration as distinct failure paths. The release documents fixes, but supplies no measured reduction in failure rates. Version 0.0.124 remains an early runtime release.
+
+### Google's RL tuning preview gets a console workflow
+
+The [Gemini Enterprise Agent Platform notes for September 15](https://docs.cloud.google.com/gemini-enterprise-agent-platform/release-notes) add a Preview console workflow for creating, monitoring, and testing reinforcement-learning tuning jobs. Reward functions can use Python or a model; teams can test rewards against prompts, inspect training and evaluation metrics, and try checkpoints in Agent Studio.
+
+The console workflow is the new part. RL tuning was already available in Preview earlier in the year. For teams building that workflow themselves, this moves some operational work into a managed platform.
+
+It does not resolve the reward-design problem discussed in [the evaluation section](#reliability). A poorly specified reward still optimizes the wrong behavior. This release entry provides no comparative evidence of resulting quality, cost, or production stability.
+
+</BriefTopic>
+
+<BriefTopic topic="local-ai">
+
+### vLLM 0.29 changes the default execution path
+
+[vLLM v0.29.0, released on September 9](https://github.com/vllm-project/vllm/releases/tag/v0.29.0), makes Model Runner V2 the default. It adds CUDA graph memory profiling for KV-cache sizing, batch-sharded sampling that reduces per-step logits memory to roughly a `1/TP` fraction, and changes to speculative decoding and prefix caching. Some ROCm models and unsupported features still fall back to Model Runner V1, which is deprecated.
+
+The release also adds queue admission limits through `--max-num-queued-reqs` and `--max-num-queued-tokens`. Official artifacts cover CUDA 13.0 and 12.9, ROCm, CPU, and XPU.
+
+An upgrade now changes more than a collection of optional optimizations. Repeat throughput, time-to-first-token, p95/p99 latency, KV-cache use, and concurrency tests with your model and hardware before rollout. The changelog's kernel-level gains do not imply the same improvement in end-to-end task throughput. Check feature coverage before relying on the new default.
+
+### Ollama 0.34.1 changes model import and MLX memory handling
+
+[Ollama v0.34.1, released on September 14](https://github.com/ollama/ollama/releases/tag/v0.34.1), takes MLX safetensors support in `ollama create` out of experimental status. GGUF creation now requires llama.cpp tooling for safetensors conversion and quantization. Existing import automation needs review at that boundary.
+
+The release also reports improved MLX memory handling on Apple Silicon, adjusts runaway repetition detection, and stops accepting `typical_p` when creating new models; existing GGUF models retain support. The maintainers report a cold `/api/tags` request dropping from 3.1 seconds to 294 milliseconds with a large model library. That measures library listing, not inference speed, and is a project-reported result.
+
+The memory change motivates [this issue's Lab proposal](#laboratorio). The release note alone does not show whether a sustained workload on your Mac uses less memory without losing latency or output quality.
+
+</BriefTopic>
+
+<BriefTopic topic="mobile-ai">
+
+### Apple's submission window makes OS-dependent model changes a release concern
+
+On September 9, Apple [opened App Store submissions built with Xcode 27 RC and the latest SDKs](https://developer.apple.com/news/?id=k1mtkt1k). That is the distribution milestone this week. Foundation Models capabilities such as the shared `LanguageModel` interface for local and server models, multimodality, Dynamic Profiles, and Core AI integration were announced earlier, in June.
+
+Apple's [Foundation Models updates](https://developer.apple.com/documentation/Updates/FoundationModels) advise retesting prompts because `SystemLanguageModel` changes with OS updates. Instruments exposes information about latency, prompts, outputs, tools, and token usage.
+
+Treat an OS upgrade as part of the regression matrix for an on-device AI feature. Shipping the same application binary does not guarantee the same underlying system model behavior. Test supported OS versions and fallback behavior, including the offline paths your application promises. The submission announcement provides no new evidence about model quality or battery use.
+
+</BriefTopic>
+
+<BriefLab status="proposed">
+
+### Does Ollama 0.34.1 improve sustained MLX memory use?
+
+The question is whether 0.34.1 uses less memory than 0.34.0 during repeated inference on Apple Silicon without a meaningful loss in throughput or structured-output validity. The hypothesis is lower peak memory or slower memory growth under the same workload. It remains open: the release note is the reason to test, not the answer.
+
+### Environment to pin before running
+
+Use an Apple Silicon Mac with enough memory for the chosen MLX model, initially in the 7B–14B range. Run Ollama 0.34.0 and 0.34.1 separately on the same machine. Record the Mac model, chip, RAM, macOS version, exact runtime builds, model revision, weights checksum, quantization, and confirmed backend. Also record context length, sampling options, seed where supported, output limit, concurrency, and model residency settings.
+
+Keep a fixed prompt set, expected outputs where available, and a JSON Schema for the structured-output task. First confirm that both versions support the selected model and request options. An unsupported configuration is a compatibility result, not a quality score.
+
+### Proposed procedure
+
+1. Prepare a small HTTP load driver that saves each request, response, error, timestamp, and runtime-reported token count. Keep its revision and the input files with the results.
+2. Start each run from a comparable thermal and cache state. Record background activity and power settings. Alternate version order between repetitions to reduce order effects.
+3. Load the model and discard one warmup request. Measure cold loading separately if it matters to the application.
+4. Send 100 sequential requests using a fixed short-context workload. Keep prompts and output limits identical between versions.
+5. Run a second sequence of 30 requests with predefined, increasing context lengths. Keep the same context schedule in both versions.
+6. Repeat both workloads with the fixed structured-output task. Validate every response against the same JSON Schema; record errors and incomplete outputs separately.
+7. Sample process memory and system memory pressure at a fixed interval, such as one second. Identify the serving and runner processes, and record memory after a fixed idle period without changing model residency. Do not assume an available garbage-collection control.
+8. Repeat each condition at least three times per version. If concurrency matters to the application, add a separately reported condition with two simultaneous requests.
+
+### Metrics and comparison criteria
+
+| Question | What to record |
+| --- | --- |
+| Does memory use fall? | Peak process RSS, system memory pressure and swap, and memory after the same idle interval and request count. Report the measurements separately. |
+| Does the response slow down? | Time to first content token, complete-request latency with p50/p95, and generated tokens per second. Separate warm runs from cold loading. |
+| Does output remain usable? | JSON Schema validity rate, task-specific correctness where expected answers exist, incomplete responses, and errors or out-of-memory failures. |
+| Does behavior deteriorate over time? | Memory and latency over request order, compared across repeated runs. |
+
+Use 0.34.0 as the baseline. Set acceptable latency regression and output-validity thresholds before collecting data, based on the application's requirements. Schema validity alone does not establish semantic correctness. With these sample sizes, tail-latency estimates will be noisy; keep per-run results instead of hiding variation in one average.
+
+### Results and limits
+
+There are no observed results, load-driver implementation, or measurement artifacts yet. This is a test plan.
+
+Process RSS is not interchangeable with total unified-memory use, and shared allocations should not be counted twice. OS caches, model residency, other processes, and thermal throttling can distort the comparison. Version 0.34.1 updates both MLX and llama.cpp, so an observed difference would characterize the tested runtime stack; attributing it to one change would require further isolation.
+
+The starting references are the official [Ollama 0.34.0](https://github.com/ollama/ollama/releases/tag/v0.34.0) and [0.34.1](https://github.com/ollama/ollama/releases/tag/v0.34.1) releases. A result is useful only with the pinned environment, request data, and collection method attached.
+
+</BriefLab>
