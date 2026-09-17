@@ -1,0 +1,129 @@
+---
+import { SITE } from "../../config.json";
+import {
+	contact,
+	copy,
+	githubPrivacy,
+	googlePrivacy,
+	type Locale,
+	locales,
+	updated,
+} from "../../misturix/content";
+import "../../styles/misturix.css";
+
+export function getStaticPaths() {
+	return locales.flatMap((locale) =>
+		[false, true].map((privacy) => {
+			const path = privacy ? copy[locale].privacyPath : copy[locale].path;
+			return {
+				params: {
+					slug:
+						path.replace(/^\/misturix\//, "").replace(/\/$/, "") || undefined,
+				},
+				props: { locale, privacy },
+			};
+		}),
+	);
+}
+interface Props {
+	locale: Locale;
+	privacy: boolean;
+}
+const { locale, privacy } = Astro.props;
+const text = copy[locale];
+const pageTitle = privacy ? `${text.privacy.title} · Misturix` : text.title;
+const description = privacy ? text.privacy.description : text.description;
+const canonical = new URL(privacy ? text.privacyPath : text.path, SITE);
+const socialImage = new URL(
+	"/misturix/media/feature-graphic-1024x500.png",
+	SITE,
+);
+const screenshotFiles = [
+	"01-partida.png",
+	"02-mapa.png",
+	"03-receitas.png",
+	"04-resultados.png",
+];
+---
+<!doctype html>
+<html lang={locale}>
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>{pageTitle}</title>
+		<meta name="description" content={description} />
+		<meta name="theme-color" content="#fff7df" />
+		<link rel="icon" type="image/svg+xml" href="/misturix/media/selo-de-feira.svg" />
+		<link rel="canonical" href={canonical} />
+		<link rel="alternate" hreflang="x-default" href={new URL(privacy ? copy["pt-BR"].privacyPath : copy["pt-BR"].path, SITE)} />
+		{locales.map((language) => <link rel="alternate" hreflang={language} href={new URL(privacy ? copy[language].privacyPath : copy[language].path, SITE)} />)}
+		<link rel="preload" href="/misturix/fonts/MisturixFeira-Regular.woff2" as="font" type="font/woff2" crossorigin />
+		<meta property="og:type" content="website" />
+		<meta property="og:url" content={canonical} />
+		<meta property="og:title" content={pageTitle} />
+		<meta property="og:description" content={description} />
+		<meta property="og:locale" content={locale === "pt-BR" ? "pt_BR" : { en: "en_US", es: "es_ES", it: "it_IT" }[locale]} />
+		<meta property="og:image" content={socialImage} />
+		<meta property="og:image:width" content="1024" />
+		<meta property="og:image:height" content="500" />
+		<meta name="twitter:card" content="summary_large_image" />
+		<meta name="twitter:title" content={pageTitle} />
+		<meta name="twitter:description" content={description} />
+		<meta name="twitter:image" content={socialImage} />
+	</head>
+	<body class="misturix-page">
+		<a href="#main-content" class="skip-link">{text.skip}</a>
+		<header class="site-header page-width">
+			<a class="brand" href={text.path} aria-label="Misturix"><img src="/misturix/media/wordmark.svg" alt="Misturix" width="400" height="108" /></a>
+			<nav class="main-nav" aria-label={text.nav[0]}>{text.nav.map((label, index) => <a href={`${text.path}#${["jogo", "como-jogar", "capturas"][index]}`}>{label}</a>)}</nav>
+			<nav class="locale-nav" aria-label={text.languageLabel}>
+				{locales.map((language) => <a href={privacy ? copy[language].privacyPath : copy[language].path} lang={language} hreflang={language} aria-current={locale === language ? "page" : undefined}>{copy[language].name}</a>)}
+			</nav>
+		</header>
+		<main id="main-content" data-pagefind-body>
+			{privacy ? (
+				<article class="privacy-content page-width">
+					<a class="back-link" href={text.path}>← {text.back}</a>
+					<p class="eyebrow">Misturix</p>
+					<h1>{text.privacy.title}</h1>
+					<p class="updated"><time datetime={updated}>{text.privacy.date}</time></p>
+					<p>{text.privacy.intro}</p>
+					<p class="privacy-summary">{text.privacy.summary}</p>
+					{ text.privacy.sections.map((section) => <section><h2>{section.title}</h2>{section.paragraphs.map((paragraph) => <p>{paragraph}</p>)}</section>) }
+					<section class="privacy-contact"><h2>{text.privacy.contactTitle}</h2><p>{text.privacy.contactText}</p><a href={contact.href}>{contact.label}</a></section>
+					<section class="provider-links"><h2>{text.privacy.providers}</h2><a href={githubPrivacy}>{text.privacy.github} ↗</a><a href={googlePrivacy}>{text.privacy.google} ↗</a></section>
+				</article>
+			) : (<>
+				<section class="hero page-width" id="jogo">
+					<div class="hero-copy">
+						<p class="eyebrow">{text.eyebrow}</p>
+						<h1>{text.headline[0]}<br /><span class="headline-accent">{text.headline[1]}</span></h1>
+						<p class="hero-intro">{text.intro}</p>
+						<div class="hero-actions"><a class="button" href="#como-jogar">{text.cta} <span aria-hidden="true">↓</span></a><span class="store-status"><span aria-hidden="true"></span>{text.status}</span></div>
+					</div>
+					<figure class="table-art" aria-label={text.artAlt}>
+						<div class="tablecloth" aria-hidden="true"></div>
+						<img class="seal" src="/misturix/media/selo-de-feira.svg" alt="" width="96" height="96" />
+						<img class="dish dish-main" src="/misturix/media/feijoada.svg" alt="" width="128" height="128" fetchpriority="high" />
+						<img class="dish dish-pudding" src="/misturix/media/pudim.svg" alt="" width="128" height="128" />
+						<img class="dish dish-fritters" src="/misturix/media/bolinho-de-chuva.svg" alt="" width="128" height="128" />
+						<figcaption>{text.plateNote}</figcaption>
+					</figure>
+				</section>
+				<section class="story-wrap">
+					<div class="story page-width"><div><p class="eyebrow">{text.storyLabel}</p><h2>{text.storyTitle}</h2><span class="story-flower" aria-hidden="true">✳</span></div><div class="story-prose">{text.story.map((paragraph) => <p>{paragraph}</p>)}</div></div>
+				</section>
+				<section class="gameplay page-width" id="como-jogar">
+					<p class="eyebrow">{text.gameplayLabel}</p><h2>{text.gameplayTitle}</h2>
+					<div class="steps">{text.steps.map((step, index) => <article><span class="step-number" aria-hidden="true">0{index + 1}</span><h3>{step.title}</h3><p>{step.text}</p></article>)}</div>
+				</section>
+				<section class="gallery page-width" id="capturas">
+					<div class="gallery-heading"><h2>{text.galleryTitle}</h2><p>{text.galleryNote}</p></div>
+					<div class="screenshots">{text.screenshots.map((screenshot, index) => <figure><a class="screen-link" href={`/misturix/media/${screenshotFiles[index]}`} aria-label={screenshot.alt}><img src={`/misturix/media/${screenshotFiles[index]}`} alt={screenshot.alt} width="1080" height="2424" loading="lazy" decoding="async" /></a><figcaption><h3>{screenshot.title}</h3><p>{screenshot.text}</p></figcaption></figure>)}</div>
+				</section>
+				<section class="invitation page-width"><img src="/misturix/media/selo-de-feira.svg" alt="" width="96" height="96" loading="lazy" /><div><h2>{text.invitation}</h2><p>{text.invitationText}</p><a class="button" href={contact.href}>{text.contact} <span aria-hidden="true">↗</span></a></div></section>
+			</>)}
+		</main>
+		<footer class="site-footer page-width"><div><img src="/misturix/media/wordmark.svg" alt="Misturix" width="400" height="108" loading="lazy" /><p>{text.footer}</p></div><nav aria-label={text.privacy.title}><a href={text.privacyPath}>{text.privacy.title}</a><a href={contact.href}>{contact.label}</a><a href="/">William Oliveira ↗</a></nav><p class="language-note">{text.gameLanguage}</p></footer>
+	</body>
+</html>

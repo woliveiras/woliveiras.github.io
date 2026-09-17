@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="108" viewBox="0 0 400 108">
+<!-- Letreiro Misturix: curvas autorais, sem fonte externa nem texto rasterizado. -->
+<g fill="none" stroke="#F33B24" stroke-width="15" stroke-linecap="round" stroke-linejoin="round">
+<path d="M17 86L29 24Q31 15 37 22L46 62L72 21Q78 13 78 25L70 80Q69 92 82 88"/>
+<path d="M103 49L97 78Q96 90 108 86"/>
+<path d="M145 53C132 42 116 51 122 62C126 70 142 66 141 77C140 91 121 93 113 84"/>
+<path d="M171 30L161 77Q159 92 174 84M154 51L180 49"/>
+<path d="M197 50L190 74Q187 88 198 87Q211 86 218 66L222 49L215 78Q214 90 226 85"/>
+<path d="M243 50L235 86M241 66Q254 44 266 53"/>
+<path d="M285 50L278 78Q277 91 289 86"/>
+<path d="M310 53C323 50 322 67 332 80Q340 93 351 86M340 51L307 86"/>
+</g>
+<g fill="#F33B24"><ellipse cx="108" cy="29" rx="8" ry="8" transform="rotate(-12 108 29)"/><ellipse cx="290" cy="29" rx="8" ry="8" transform="rotate(-12 290 29)"/></g>
+<path d="M56 101Q182 93 322 98" fill="none" stroke="#FFCB16" stroke-width="5" stroke-linecap="round"/>
+</svg>
