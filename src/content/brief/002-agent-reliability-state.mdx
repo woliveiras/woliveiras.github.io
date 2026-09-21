@@ -1,0 +1,170 @@
+---
+title: "Agent reliability beyond the average"
+slug: "002-agent-reliability-state"
+description: "This week: agents that fail on repeat, Pydantic AI security fixes, and SGLang's new storage default. Plus runtime snapshots, reusable context, and audio models running on a phone's CPU."
+pubDate: "2026-09-21"
+published: false
+issue: 2
+period:
+  start: "2026-09-14"
+  end: "2026-09-21"
+topics: ["reliability", "security", "agents", "local-ai", "edge-ai", "mobile-ai"]
+---
+
+import BriefTopic from "$components/brief/BriefTopic.astro";
+import BriefLab from "$components/brief/BriefLab.astro";
+
+In an [IBM experiment on AppWorld](https://huggingface.co/blog/ibm-research/altk-evolve-consistency), a ReAct agent using GPT-4.1 passed 77.4% of runs.
+
+Getting the same job right again proved harder. That's this week's lead, with a [small experiment to try](#laboratorio) at the end. If you're here for the releases, check the [Pydantic AI security fixes](#security) and [SGLang's new storage default](#local-ai) before your next upgrade.
+
+This edition covers September 14–21. Older papers and benchmark specifications appear where they explain this week's updates.
+
+<BriefTopic topic="reliability">
+
+### IBM: count the tasks that pass every time
+
+Of the 168 tasks in that experiment, only 53% passed all five attempts. Some jobs the agent could finish successfully were still unreliable when repeated.
+
+IBM's [September 15 write-up](https://huggingface.co/blog/ibm-research/altk-evolve-consistency) gives that difference a name: the consistency gap. `Mean@5` counts success across all runs; `Pass^5` counts only tasks that pass every run. And watch the notation: `Pass@5`, with an @, asks whether *any* attempt succeeded. That's useful when you can verify and retry, but it won't tell you how often the first attempt will need rescuing.
+
+IBM also added consistency guidelines to ALTK-Evolve. It looks for decisions that vary between runs and turns them into guidance for later attempts. IBM reports a 16 percentage-point improvement in `Pass^5` on the same tasks and 13 points on similar ones.
+
+For your own agent, start with the measurement. Run existing regression tasks several times and keep the results per task. You may find that a handful of operations account for much of the inconsistency. If you write guidelines from those failures, test them on unseen variants before counting the improvement.
+
+### PACT: “make an exception” belongs in your evals
+
+A deadline, a manager's request, a shortcut that saves someone time. [PACT's September 16 preprint](https://arxiv.org/abs/2609.18605) puts assistants under these ordinary workplace pressures and checks whether their rules hold up. Across 22 models, even the strongest misapplied rules on roughly 6–10% of items in the authors' tests.
+
+Try adding that kind of request to your evaluation set, including cases where an exception is actually allowed. An assistant can fail by refusing a legitimate action too.
+
+The [code and dataset](https://github.com/trace-ai-labs/pact) are available. Treat the scores as a starting point: these are synthetic conversations, and the model reviewers used to build the cases agreed on only [66.9% of components](https://arxiv.org/html/2609.18605v1).
+
+### MLPerf follows the request through RAG
+
+The [September 16 MLPerf results](https://mlcommons.org/2026/09/mlperf-inference-v6-1-results/) add End-to-End RAG: building the vector database and answering questions through embedding, retrieval, reranking, and generation.
+
+If you've been trying to explain a slow answer using the LLM's token rate alone, this is the benchmark to look at. The [reference pipeline](https://mlcommons.org/2026/08/endtoend-inference/) gives you several stages to measure and optimize.
+
+It's an early round, with [one submitted system per new RAG workload](https://mlcommons.org/2026/09/chairs-mlperf-inference-v6-1/). Performance runs also replay fixed inputs between stages to reduce variation. Useful for studying the pipeline; too early for a broad comparison of competing stacks.
+
+</BriefTopic>
+
+<BriefTopic topic="security">
+
+### Running Pydantic AI? Pick up the security fixes
+
+[Pydantic AI 2.44.0](https://github.com/pydantic/pydantic-ai/releases/tag/v2.44.0), published September 17, fixes four issues. They're also patched in [1.107.6](https://github.com/pydantic/pydantic-ai/releases/tag/v1.107.6) for deployments on v1:
+
+- IPv6 zone identifiers could bypass network blocklists when local-network access was explicitly enabled. That option is off by default.
+- A crafted response could stall the event loop during `web_fetch` HTML conversion or charset decoding.
+- Alternate domain spellings could bypass text-based domain filtering.
+- Traces could carry exceptions, instructions, and other content even with `InstrumentationSettings(include_content=False)`.
+
+That last one deserves a check of what your telemetry exporter receives when a request fails. Test the error path as well as the ordinary prompt and response.
+
+### OpenClaw: the scanners don't agree
+
+Three security scanners disagreed on 23,702 of the 61,990 ClawHub listings they all checked. That's one finding from [After the Party](https://arxiv.org/abs/2609.17274), published on arXiv September 15 and revised September 16.
+
+For anyone installing agent skills, the practical consequence is to keep permissions on the host doing the work. Pin the skill version, record where it came from, and check the filesystem and network actions it actually performs.
+
+The study inspected skill contents and metadata, without systematically executing each skill. It shows the limits of relying on registry signals and scanner verdicts; it doesn't tell you that every flagged instruction became an action.
+
+### Context summaries can carry unwanted instructions forward
+
+Among [OpenAI's six disclosures on September 16](https://openai.com/index/model-misalignment-reporting-framework/) are models inserting instructions into compaction summaries, including directions to conceal mistakes. Other cases involved an exposed API key used without authorization and files uploaded publicly to finish a task.
+
+That gives you a concrete test for an agent that resumes from saved context: put a conflicting instruction in the summary and check which rules the next run follows. The same goes for tool permissions when the intended route to an answer fails. Finding a credential or an upload tool must not grant permission to use it.
+
+These events happened earlier in internal training or evaluation. The disclosures describe failure cases, not how often they occur in production.
+
+</BriefTopic>
+
+<BriefTopic topic="agents">
+
+### FinSkillOps lets a proposed skill fail review
+
+A rule meant to prevent table-reading mistakes also stopped valid calculations across rows. That rejected change is one of the useful examples in the [September 17 FinSkillOps preprint](https://arxiv.org/abs/2609.19680).
+
+The system learns from failures in financial question answering, but candidate skills must pass targeted tests, regression checks, and negative controls before serving users. Only six of 33 proposals made it through in the authors' 12-round study.
+
+If you're turning agent failures into new prompts or memory rules, borrow that separation between a candidate and a released version. Keep its scope narrow and a previous version available to restore. A fix that helps the task that inspired it can still break another one.
+
+### One MCP session for the whole run
+
+Pydantic AI's [2.45.0 release](https://github.com/pydantic/pydantic-ai/releases/tag/v2.45.0) keeps a single MCP session and resolves `DynamicToolset` once across a durable run. It previously did that work again inside each durable unit. Check this change if your tools carry session state through a workflow.
+
+[2.46.0](https://github.com/pydantic/pydantic-ai/releases/tag/v2.46.0) also makes realtime tool failures visible as failed results and includes realtime responses in cost accounting and limits. The two releases reached GitHub on September 18–19, a day after their respective release-title dates.
+
+### AgentCore V2 starts from a snapshot
+
+AWS's [September 18 AgentCore update](https://aws.amazon.com/blogs/machine-learning/the-new-agentcore-runtime-elastic-optimized-and-consistently-fast-starts/) prepares an agent's environment once and restores it for new instances. It also reclaims released or cold memory. Opt in with `platformVersion=V2`.
+
+AWS reports startup around two seconds at P75 across 200 MB–2 GB images, compared with up to nearly 30 seconds on the previous runtime. That's from 5,000 cold invocations per agent using empty echo agents, with a cross-region round trip included. Your model and tool calls come on top.
+
+The part to review before switching is startup code. [Static dependencies and configuration belong before the snapshot](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-v2-optimize.html); expiring credentials and request data belong in the handler. Initialization has a 120-second limit. Check connections and other saved objects for state that won't survive restoration.
+
+</BriefTopic>
+
+<BriefTopic topic="local-ai">
+
+### Check conversation continuations before upgrading SGLang
+
+[SGLang 0.5.20](https://github.com/sgl-project/sglang/releases/tag/v0.5.20), released September 18, makes Responses API storage opt-in. If your app uses `previous_response_id`, start the server with `--enable-response-store`. Without it, continuation, retrieval, and background requests return HTTP 400. Deployments with separate prefill and decode servers cannot enable the store in this version.
+
+There are packaging changes too: CUDA 12 builds end at 0.5.19, and ROCm 7 artifacts are retired. New images cover ROCm 10 and Strix Halo/Ryzen AI MAX+.
+
+For a cheaper scheduling experiment, the release includes a CPU-only simulator using the real scheduler and cache code. A latency predictor stands in for model execution, so you can explore a configuration before occupying a GPU. Confirm the promising results on your target hardware; the simulator depends on its calibration and workload.
+
+</BriefTopic>
+
+<BriefTopic topic="edge-ai">
+
+### ExecuTorch gets easier to embed in a native app
+
+The [ExecuTorch 1.5 wheel](https://github.com/pytorch/executorch/releases/tag/v1.5.0), released September 16, now carries a C++ SDK with linkable backend libraries, including Core ML, MLX, and Qualcomm. That can save some source-build work when integrating the runtime into an application.
+
+There are also changes to memory planning, batched LLM requests, cancellation, and KV-cache layouts, plus Android lifecycle and thread-safety fixes. Those are useful places to look if loading the model works but managing repeated requests is still awkward. You'll still need to validate operator coverage and memory use on the device you ship to.
+
+### NVIDIA reused 96% of the prompt tokens
+
+Across 1,007 turns in [NVIDIA's MLPerf edge submission](https://developer.nvidia.com/blog/tensorrt-edge-llm-completes-the-mlperf-edge-agentic-benchmark-6-4x-faster-on-jetson-agx-thor/), roughly 96% of prompt tokens came from the hot cache. Preserving KV-cache and recurrent state avoided processing most of the growing history again.
+
+The September 16 result used Qwen3.6-27B on a 128 GB Jetson AGX Thor in MAXN mode. NVIDIA reports finishing the workload 6.4× faster than the llama.cpp reference, but it also changed quantization and added multi-token prediction. That multiplier compares whole configurations.
+
+For a local assistant, measure how much history gets reused between turns. Keep the [benchmark's limits](https://mlcommons.org/2026/07/mlperf-inference-v61-edge-agentic/) in mind: one stream, a 32K served context, and reasoning off. Concurrent agents are a different workload.
+
+</BriefTopic>
+
+<BriefTopic topic="mobile-ai">
+
+### Audio models you can try on a phone's CPU
+
+[Samsone](https://arxiv.org/abs/2609.21666), posted September 18 and accepted at Interspeech, comes with [weights, training code, and an Android app](https://github.com/SamsungLabs/samsone). Its 99M–356M parameter models run through ExecuTorch and XNNPACK, without requiring a mobile GPU or NPU.
+
+On a Galaxy S25 Ultra CPU, the authors [measured 39–125 generated tokens/s](https://arxiv.org/html/2609.21666v1), depending on model size. Audio processing added roughly 0.7–1.1 seconds before query processing and generation. Don't read the token rate as the time to an answer.
+
+If you're building a short-audio feature, there's enough here to try it locally. The measurements cover just 15 audio-query pairs on one phone, so battery use and sustained performance remain questions. Also test ordinary conversation: audio-QA fine-tuning reduced the models' general language capability.
+
+</BriefTopic>
+
+<BriefLab status="proposed">
+
+### Try repeating 20 tasks
+
+Take the IBM question to your own agent: does it get the same job right five times? This is a proposed experiment, with no runs or results yet.
+
+A small Python harness, a frozen SQLite database, local documents, and an OpenAI-compatible endpoint are enough to start. Use either a local model or a hosted API, and limit tools to the test fixtures.
+
+1. Choose 20 tasks requiring three to five tool decisions. Write the expected answers and a binary success check first. Set aside unseen variants for later.
+2. Pin the model, prompt, tool schemas, data, runtime, and decoding settings. Record hardware, quantization where available, cache policy, concurrency, timeouts, and retries. Start every attempt with the same fixtures and empty task memory.
+3. Run each task five times. Save outcomes and full tool traces, including arguments, errors, tokens, and latency. Report infrastructure failures separately.
+4. Find the tasks that sometimes pass and sometimes fail. Look for the first decision where their traces diverge. Write a small guideline for that failure, or try the [ALTK-Evolve analyzer](https://github.com/AgentToolkit/altk-evolve), then freeze the guidelines.
+5. Compare the original agent with the revised one on both the original tasks and the unseen variants, keeping those results separate. Use five attempts per task for each version.
+
+For the original set, divide successful runs by 100 for `Mean@5`. Divide tasks with five successes by 20 for `Pass^5`. Their difference is the consistency gap. Keep per-task results, token use, and p50/p95 latency alongside those scores, and set acceptable cost and latency increases before testing.
+
+Look for better `Pass^5` on unseen tasks without an unacceptable loss in average success. A smaller gap alone can fool you if both scores fall. Twenty tasks won't establish general reliability, and strictly deterministic decoding may produce little variation. Either way, you'll have a clearer list of which operations deserve investigation next.
+
+</BriefLab>
