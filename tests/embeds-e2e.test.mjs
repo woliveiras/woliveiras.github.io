@@ -258,6 +258,11 @@ test("blog components render and work in the browser", {
 										.locator(".fixture-diagram svg")
 										.evaluate((el) => el.getBoundingClientRect().width > 0),
 								);
+								assert.ok(
+									(await page
+										.locator('svg[aria-roledescription="flowchart-v2"] .katex')
+										.count()) > 0,
+								);
 
 								if (viewport.width < 768) {
 									await page

@@ -2,8 +2,13 @@ allowBuilds:
   esbuild: true
   sharp: true
 overrides:
+  "@xmldom/xmldom@<0.9.12": "^0.9.12"
   devalue: ">=5.8.1"
+  "esbuild@<0.28.1": "^0.28.1"
+  # 0.18.11 was deprecated after an accidental release with breaking changes.
+  katex: "0.18.10"
   mermaid: ">=11.14.1"
+  "postcss-selector-parser@<7.1.6": "^7.1.6"
   yaml: ">=2.8.3"
 # Prevent installing new versions of packages for at least 72 hours (4320 minutes)
 # after the last release. This allows time for testing and feedback before new
