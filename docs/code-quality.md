@@ -5,6 +5,8 @@
 **Config notes:**
 - Uses tabs for indentation
 - Double quotes for JavaScript
+- Respects `.gitignore`, so generated output and caches stay outside lint checks
+- `pnpm lint` is read-only; use `pnpm lint:fix` to apply fixes
 - Special overrides for `.svelte`, `.astro`, `.vue` files disable `useConst`, `useImportType`, `noUnusedVariables`, `noUnusedImports`
 - `biome-ignore` comments required for legitimate `any` usage (see `utils.ts`, `add-mermaid-classname.ts`)
 

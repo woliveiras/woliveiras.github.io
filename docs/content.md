@@ -42,10 +42,12 @@ See `src/pages/posts/[...slug].astro` for reference.
 
 ## Custom Embeds
 
-Custom MDX directives powered by `astro-custom-embeds`.
+Custom MDX directives use the local `src/embeds/remark-embeds.ts` plugin,
+registered directly in `unified()`. The plugin adds imports only for components
+used by a document. It does not rely on Astro auto-import integrations.
 
 Each embed has three files in `src/embeds/<name>/`:
-1. `embed.ts` — Configuration (EmbedsOption with componentName, urlMatcher, directiveName)
+1. `embed.ts` — Configuration (EmbedOption with componentName, urlMatcher, directiveName)
 2. `matcher.ts` — URL matching logic
 3. `<Component>.astro` — Rendering component
 
@@ -54,11 +56,22 @@ Each embed has three files in `src/embeds/<name>/`:
 - `:link[url]` — Link preview cards
 - `:excalidraw[url]` — Excalidraw diagrams
 
-**To add new embeds:** Create the three files, export from `src/embeds/index.ts`, register in `astro.config.ts` embeds array.
+**To add new embeds:** Create the three files, export the component from
+`src/embeds/index.ts`, and register its configuration in the `remarkEmbeds`
+options in `astro.config.ts`. Registration order matters: YouTube must come
+before the generic link card matcher.
+
+Text, leaf, and container directives keep their attributes. A paragraph that
+contains only a matching URL becomes an embed. Named links, inline URLs, and
+code blocks stay as written. Explicit component imports also continue to work.
+Component embeds are available in MDX; plain Markdown does not import them.
+Unregistered colon sequences stay literal, so model names such as
+`gemma3:270m`, arXiv identifiers, and ratios such as `1:1` are not consumed as
+directives.
 
 ## Markdown Processing
 
-**Remark plugins:** `remarkMath`
+**Remark plugins:** `remarkMath`, `remarkDirective`, and `remarkEmbeds`
 
 **Rehype plugins:**
 - `addMermaidClass` (custom, see `add-mermaid-classname.ts`) — Adds class to mermaid diagrams

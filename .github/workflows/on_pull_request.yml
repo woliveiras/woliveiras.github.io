@@ -8,6 +8,34 @@ on:
       - synchronize
 
 jobs:
+  rendering:
+    name: rendering and browser tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    container:
+      image: mcr.microsoft.com/playwright:v1.64.1-noble
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install chromium
+      - name: Test models
+        run: pnpm test
+      - name: Test rendering and browser interactions
+        run: pnpm test:e2e
+      - name: Build site
+        run: pnpm build
+
   scan:
     name: pnpm audit
     runs-on: ubuntu-latest

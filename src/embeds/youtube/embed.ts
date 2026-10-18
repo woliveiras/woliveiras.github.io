@@ -1,7 +1,7 @@
-import type { EmbedsOption } from "astro-custom-embeds";
+import type { EmbedOption } from "../remark-embeds";
 import YoutubeMatcher from "./matcher";
 
-const YoutubeEmbed: EmbedsOption = {
+const YoutubeEmbed: EmbedOption = {
 	componentName: "YouTube",
 	urlArgument: "id",
 	urlMatcher: YoutubeMatcher,

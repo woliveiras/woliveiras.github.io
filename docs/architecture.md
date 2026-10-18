@@ -1,6 +1,14 @@
 # Architecture Overview
 
-Static site built with **Astro 5**, TypeScript, Svelte, and Tailwind CSS. Deployed to GitHub Pages.
+Static site built with **Astro 7**, TypeScript, Svelte, and Tailwind CSS. Deployed to GitHub Pages.
+
+Markdown and MDX use the `unified()` processor from `@astrojs/markdown-remark`
+to support the existing remark and rehype plugins. `compressHTML: true` keeps
+spaces between inline elements consistent with the previous Astro version.
+
+TypeScript stays on version 6 because `@astrojs/check` and `@astrojs/svelte`
+require its compiler API. TypeScript 7 does not yet provide a compatible API
+for these tools; see the [TypeScript 7 compatibility guidance](https://devblogs.microsoft.com/typescript/announcing-typescript-7-0/#typescript-and-embedded-languages).
 
 ## Key Directories
 

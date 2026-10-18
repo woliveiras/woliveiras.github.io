@@ -208,6 +208,27 @@ This text exists only to validate navigation anchors.
 </BriefTopic>
 
 ${
+	index === 7
+		? [
+				"$$",
+				"x^2 + y^2 = z^2",
+				"$$",
+				"",
+				"```mermaid",
+				"flowchart LR",
+				"  Input --> Output",
+				"```",
+				"",
+				":youtube[dQw4w9WgXcQ]",
+				"",
+				"https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+				"",
+				':excalidraw[/src/assets/excalidraw-demo.svg]{alt="Test diagram"}',
+			].join("\n")
+		: ""
+}
+
+${
 	lab
 		? `<BriefLab status="${lab}">
 
@@ -419,6 +440,20 @@ test("Monday Brief builds public routes, metadata and search from isolated fixtu
 				assert.doesNotMatch(
 					minimal(".brief-edition-header").text(),
 					/Issue \d|undefined/,
+				);
+			},
+		);
+
+		await t.test(
+			"MDX renders math, Mermaid, directives and automatic YouTube embeds",
+			async () => {
+				const $ = await parseHTML(dist, "brief/fixture-7");
+				assert.equal($("mjx-container svg").length, 1);
+				assert.equal($('svg[aria-roledescription="flowchart-v2"]').length, 1);
+				assert.equal($('lite-youtube[videoid="dQw4w9WgXcQ"]').length, 2);
+				assert.equal(
+					$('.excalidraw-svg[aria-label="Test diagram"] svg').length,
+					1,
 				);
 			},
 		);

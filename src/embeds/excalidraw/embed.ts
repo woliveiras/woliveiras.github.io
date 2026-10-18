@@ -1,7 +1,7 @@
-import type { EmbedsOption } from "astro-custom-embeds";
+import type { EmbedOption } from "../remark-embeds";
 import ExcalidrawMatcher from "./matcher";
 
-const ExcalidrawEmbed: EmbedsOption = {
+const ExcalidrawEmbed: EmbedOption = {
 	componentName: "Excalidraw",
 	urlArgument: "src",
 	urlMatcher: ExcalidrawMatcher,

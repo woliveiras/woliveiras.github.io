@@ -2,16 +2,15 @@
 	"extends": "astro/tsconfigs/strict",
 	"compilerOptions": {
 		"strictNullChecks": true,
-		"ignoreDeprecations": "6.0",
-		"baseUrl": ".",
 		"paths": {
-			"$lib/*": ["src/lib/*"],
-			"$components/*": ["src/components/*"],
-			"$layouts/*": ["src/layouts/*"],
-			"$pages/*": ["src/pages/*"],
-			"$styles/*": ["src/styles/*"],
-			"$assets/*": ["src/assets/*"],
-			"$examples/*": ["src/examples/*"]
+			"src/*": ["./src/*"],
+			"$lib/*": ["./src/lib/*"],
+			"$components/*": ["./src/components/*"],
+			"$layouts/*": ["./src/layouts/*"],
+			"$pages/*": ["./src/pages/*"],
+			"$styles/*": ["./src/styles/*"],
+			"$assets/*": ["./src/assets/*"],
+			"$examples/*": ["./src/examples/*"]
 		}
 	},
 	"exclude": ["public/pagefind", "dist"]

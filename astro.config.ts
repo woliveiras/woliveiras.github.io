@@ -5,22 +5,23 @@ import { unified } from "@astrojs/markdown-remark";
 import mdx from "@astrojs/mdx";
 import sitemap from "@astrojs/sitemap";
 import svelte from "@astrojs/svelte";
-import tailwindcss from "@tailwindcss/vite";
 import {
 	transformerMetaHighlight,
 	transformerNotationHighlight,
 } from "@shikijs/transformers";
+import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "astro/config";
-import customEmbeds from "astro-custom-embeds";
 import pagefind from "astro-pagefind";
 import rehypeMathjax from "rehype-mathjax";
 import rehypeMermaid from "rehype-mermaid";
+import remarkDirective from "remark-directive";
 import remarkMath from "remark-math";
 import addMermaidClass from "./add-mermaid-classname";
 import { transformerCodeMeta } from "./shiki-title-transformer";
 import { BASE, SITE } from "./src/config.json";
 import ExcalidrawEmbed from "./src/embeds/excalidraw/embed";
 import LinkCardEmbed from "./src/embeds/link-card/embed";
+import remarkEmbeds from "./src/embeds/remark-embeds";
 import YoutubeEmbed from "./src/embeds/youtube/embed";
 
 // https://astro.build/config
@@ -40,19 +41,12 @@ export default defineConfig({
 		},
 		plugins: [pagefind(), tailwindcss()],
 		build: {
-			rollupOptions: {
+			rolldownOptions: {
 				external: [`${BASE}/pagefind/pagefind.js`],
 			},
 		},
 	},
-	integrations: [
-		customEmbeds({
-			embeds: [ExcalidrawEmbed, YoutubeEmbed, LinkCardEmbed],
-		}),
-		mdx(),
-		sitemap(),
-		svelte(),
-	],
+	integrations: [mdx(), sitemap(), svelte()],
 	markdown: {
 		shikiConfig: {
 			// Choose from Shiki's built-in themes (or add your own)
@@ -72,7 +66,14 @@ export default defineConfig({
 			wrap: true,
 		},
 		processor: unified({
-			remarkPlugins: [remarkMath],
+			remarkPlugins: [
+				remarkMath,
+				remarkDirective,
+				[
+					remarkEmbeds,
+					{ embeds: [ExcalidrawEmbed, YoutubeEmbed, LinkCardEmbed] },
+				],
+			],
 			rehypePlugins: [addMermaidClass, rehypeMermaid, rehypeMathjax],
 		}),
 	},
@@ -81,5 +82,6 @@ export default defineConfig({
 	},
 	site: SITE,
 	base: BASE,
+	compressHTML: true,
 	output: "static",
 });

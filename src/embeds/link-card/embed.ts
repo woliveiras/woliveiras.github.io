@@ -1,7 +1,7 @@
-import type { EmbedsOption } from "astro-custom-embeds";
+import type { EmbedOption } from "../remark-embeds";
 import LinkMatcher from "./matcher";
 
-const LinkCardEmbed: EmbedsOption = {
+const LinkCardEmbed: EmbedOption = {
 	componentName: "LinkCard",
 	urlMatcher: LinkMatcher,
 	directiveName: "link",
