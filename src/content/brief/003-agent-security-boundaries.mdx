@@ -1,0 +1,139 @@
+---
+title: "Agent security lives beyond the tool schema"
+slug: "003-agent-security-boundaries"
+description: "LiteLLM and MCP show where infrastructure and tool permissions escape their intended boundaries. This issue also covers language-sensitive guards, reproducible RAG, mobile inference, and four runtime updates."
+pubDate: "2026-10-22"
+published: true
+issue: 3
+period:
+  start: "2026-10-12"
+  end: "2026-10-19"
+topics: ["security", "reliability", "mobile-ai", "edge-ai", "local-ai", "agents"]
+---
+
+import BriefTopic from "$components/brief/BriefTopic.astro";
+import BriefLab from "$components/brief/BriefLab.astro";
+
+A tool description tells the model what a tool claims to do. It does not constrain the permissions of the process behind it. That gap connects this issue's LiteLLM and MCP findings to a broader question: which parts of an AI system are we actually testing and trusting?
+
+The same question appears in guard evaluations and RAG reproducibility. On-device work brings a different constraint: representation and communication can dominate the cost of inference. This issue covers research and releases published October 12–19, with a [proposed memory evaluation](#laboratorio) at the end. The publication date of each source is not necessarily the date a vulnerability was first present or a feature first existed.
+
+<BriefTopic topic="security">
+
+Security material is for educational purposes only, only on systems you own or have permission to test.
+
+### LiteLLM: a model gateway is an infrastructure trust boundary
+
+In an [October 13 investigation](https://research.checkpoint.com/2026/when-llm-gateways-go-wrong-findings-from-litellm/), Check Point Research found that an authenticated, low-privilege LiteLLM user could update proxy configuration through a missing authorization check. In the researchers' tests against v1.77.7, that access could be chained into file reads, administrator takeover, and code execution through dynamically loaded modules. A separate SSRF issue in client-side credentials could redirect provider requests and expose keys. The researchers identify CVE-2026-35029 and CVE-2026-59823 and report the issues fixed as of v1.83.9.
+
+The gateway holds routing rules and provider credentials, so a configuration write is not ordinary application data. If you operate one, check the deployed version, who can reach management routes, and what filesystem, network, and secret access the proxy process has. This is a researcher demonstration under the stated access conditions, not evidence that every installation was compromised. It also concerns the gateway, rather than every use of the LiteLLM SDK.
+
+### MCP: declared tools and actual filesystem access can diverge
+
+The [MCP-FSD preprint, submitted October 15](https://arxiv.org/abs/2610.22301), catalogs 21,097 MCP servers from nine registries. Of **4,806 servers triaged**, 787 (16.4%) showed filesystem capabilities despite a non-filesystem classification. Dynamic validation confirmed 150 instances under the authors' tested policies; coordinated disclosure produced 13 advisories, including two CVEs in Anthropic's Git MCP Server.
+
+Those denominators matter. The 16.4% describes the triaged subset, and a category mismatch alone is not proof of exploitation: a non-filesystem tool may legitimately persist local data. The failure mode is a tool argument reaching files outside the operation and scope the client approved. Run a local server with the filesystem permissions it needs, test boundaries with out-of-scope fixtures, and inspect the effects of a call rather than trusting its name and schema as a sandbox.
+
+### A guard's decision can change when only the request language changes
+
+In [*Language Is a Security Surface for Agent Guards*, submitted October 15](https://arxiv.org/abs/2610.22244), researchers test whether guard decisions remain stable when a request changes language while the proposed tool action and expected authorization stay the same. They report differences across their tested models and languages and release LinguaGuardBench with roughly 489,000 collected decisions.
+
+For multilingual applications, add paired requests that vary language but preserve the authorized action. Measure both false approvals and false blocks. A language shift is an evaluation variable, not a reason by itself to reject a user request. The reported effects describe the study's models and scenarios; they do not establish that all small local guards fail equally.
+
+### A safety benchmark may reward the wrong signal
+
+The [October 15 *Shortcut Sensitivity* study](https://arxiv.org/abs/2610.22243) examines whether agent-safety evaluations leak their labels through tool names, markers, or dataset construction. In AgentDojo-Traj, a classifier using the exact tool identity reached F1 0.901 when domains were mixed, but 0.495 with domains held apart. In a separate analysis, changing a marker or replacing tool names with opaque aliases also changed one model's blocking decisions; the effects did not generalize identically across all models.
+
+Before choosing a guard on its headline score, split domains, balance interaction weights, and perturb irrelevant surface cues while holding the underlying action fixed. Some cues may carry legitimate security information. The test is whether a purported safety capability survives when an accidental shortcut disappears.
+
+</BriefTopic>
+
+<BriefTopic topic="reliability">
+
+### Temperature zero does not make a RAG pipeline reproducible
+
+In a [preprint submitted October 15](https://arxiv.org/abs/2610.21300), Ryosuke Suzuki repeated requests across 14 commercial deployments and observed response variation in all of them; 12 changed a final classification at least once. The author then controlled extraction, OCR, chunking, indexing, retrieval, and inference in a document-assessment pipeline. With Gemma 4 31B FP8 on vLLM configured for batch-invariant inference, two experimental runs produced 700 byte-identical responses. Disabling that mechanism under concurrent calls produced full-output differences for 58 of 70 prompts, including five classification changes. The controlled concurrent run took about 18% longer in that setup.
+
+If an audit requires replay, pin the runtime and execution settings as well as the prompt and model. Save hashes of intermediate extraction, retrieved passages, and final outputs so a mismatch has a first observable stage. The deterministic result belongs to the author's tested stack and workload. Reproducing a classification does not prove that it is correct.
+
+</BriefTopic>
+
+<BriefTopic topic="mobile-ai">
+
+### PocketTSLM spends fewer context tokens on physiological signals
+
+The [October 15 PocketTSLM preprint](https://arxiv.org/abs/2610.21308) replaces a text rendering of time-series samples with embeddings inserted into a Llama 3.2 1B input stream. The authors ported an encoder and projector through PyTorch, Python MLX, and MLX-Swift, then ran EEG sleep classification and ECG question answering on an iPhone Air. The [project code](https://github.com/SchmiedmayerLab/PocketTSLM) is public.
+
+Against the authors' textual representation, soft prompts used about 12 times fewer context tokens. For a 1,000-sample EEG input, reported time to first token fell from about 14.8 to 2.4 seconds. Their first 20 fixed Sleep-EDF samples had the same classifications, including the same three errors, across the three runtimes. That subset checks porting parity, not general accuracy. The physical evaluation used one phone and did not measure energy; heat and throttling may affect timing. This is a representation and deployment result, not a clinically validated system.
+
+</BriefTopic>
+
+<BriefTopic topic="edge-ai">
+
+### Fifteen Android TV boxes can host a 26B model, slowly
+
+In an [October 12 technical report](https://www.anthropic.com/research/self-replicating-ai), Anthropic partitioned Gemma4-26B-A4B by layer across 15 Android TV boxes with roughly 4 GB RAM each. The distributed run reached about 0.39 tokens per second. The researchers also tested whether models could set up inference on unfamiliar hardware and explored a simplified, isolated Android environment.
+
+The experiment demonstrates that aggregate memory can make a larger model runnable on cheap devices. At 0.39 tokens per second, it does not establish a practical interactive serving design. Nor does the isolated setup prove autonomous propagation on real networks: important compromise steps were simplified or omitted, and stronger models used in some evaluations ran outside the simulated devices. The interesting engineering trade-off is memory capacity against per-token coordination cost.
+
+</BriefTopic>
+
+<BriefTopic topic="local-ai">
+
+### SGLang 0.5.22: check Python and stateful decoding
+
+[SGLang v0.5.22, released October 19](https://github.com/sgl-project/sglang/releases/tag/v0.5.22), raises its Python floor to 3.11, introduces InstantTensor loading and improves disaggregated prefill/decode. The maintainers report up to 10× faster loading in selected tests. A correctness fix addresses Mamba state restoration in hybrid models under combinations of speculative decoding and structured output.
+
+If those paths are in use, test structured generation across resume boundaries alongside throughput. The speed claims come from project measurements, and a release of roughly 950 PRs merits workload-specific regression checks.
+
+### llama.cpp 0.7.0: MoE expert cache and a new server default port
+
+[llama.cpp v0.7.0, released October 15](https://github.com/ggml-org/llama.cpp/releases/tag/v0.7.0), adds an LRU cache for MoE experts held partly in host memory. The `--moe-cache-mib` setting reserves GPU memory for recently used experts; maintainers report decode gains up to about 2.2× in that partial-offload condition. Dense models and fully resident experts do not share that result.
+
+The server's default port changes from 8080 to 9931, while Docker images continue to use 8080 internally. Check clients, probes, and reverse proxies that relied on the old default.
+
+### Ollama 0.40.5 repairs a tool-call continuation path
+
+[Ollama v0.40.5, released October 14](https://github.com/ollama/ollama/releases/tag/v0.40.5), fixes continuation of conversations using custom tool calls through its OpenAI-compatible Responses API. For an agent using this interface, test the entire cycle: response, tool call, tool result, and continued response. Matching request shapes across providers does not guarantee the same stateful behavior. This is a compatibility fix, without a general performance claim.
+
+</BriefTopic>
+
+<BriefTopic topic="agents">
+
+### Pydantic AI 2.57 adds a reviewer before human tool approval
+
+[Pydantic AI v2.57.0, dated October 15](https://github.com/pydantic/pydantic-ai/releases/tag/v2.57.0), adds `ApprovalReviewer` so a model can approve tool calls classified as low risk before a person sees them. The release also improves MCP Apps result forwarding, skill invocability metadata, background tool-result provenance, and usage accounting by service tier.
+
+The application still has to define which operations qualify as low risk and keep that policy outside the reviewer's ability to change. The release supplies a mechanism, not a measured false-approval rate or an automatic prompt-injection defense.
+
+</BriefTopic>
+
+<BriefLab status="proposed">
+
+### Can a correct answer hide an incorrect memory?
+
+The [FEB-30 preprint](https://arxiv.org/abs/2610.22209), submitted October 15, separates the facts an agent stores from the answers it later gives. This proposed experiment applies that distinction to a small SQLite-backed memory. The hypothesis is that answer-only evaluation will miss some failed updates or replacements, including cases where the agent answers correctly using context despite storing a stale fact. There are no results from this lab yet.
+
+### Environment and dataset
+
+Use one pinned local language model, Python, and SQLite. Record model revision and quantization, runtime, prompt, decoding settings, retrieval configuration, and database schema. The evaluator's expected states must be written independently of the model.
+
+Prepare 12 synthetic fact trajectories, three each for creating, updating, replacing contradictory information, and reinforcing a fact without changing it. Each has three to five short documents. Define the expected memory **after every document** before generating the inputs. Give each expected fact an entity, value, source, timestamp, and validity state; include a late-arriving older document that must not overwrite a newer fact.
+
+### Proposed procedure
+
+1. Implement a baseline that extracts facts and decides whether to create, update, or reinforce SQLite records. Start each run with an empty database.
+2. After every document, export the stored facts and compare them with the predeclared state. Record missing, stale, duplicate, wrongly updated, and incorrectly sourced facts; separate extraction failures from update failures.
+3. Ask fixed questions, log the retrieved evidence and answers, and score them against independent ground truth. Record all four combinations of correct/incorrect memory and correct/incorrect answer.
+4. Add an explicit temporal update rule and provenance tracking. Repeat with the same documents, model, prompts, and retrieval strategy.
+5. Run each trajectory at least five times per condition, resetting the database between runs. Keep per-run outputs, seed where supported, tool traces, and environment metadata.
+
+### Metrics and interpretation
+
+For memory, report expected-fact coverage, fact correctness, update accuracy, false-update rate, and source accuracy. For answers, report QA accuracy, retrieval recall at a fixed `k`, evidence correctness, and the rate of correct answers with incorrect stored memory. Report the absolute gap between fact correctness and QA accuracy **alongside** the count of trajectories whose pass/fail judgments disagree; a single absolute gap can hide failures in opposite directions.
+
+Compare the temporal rule with the baseline only after holding model and inputs fixed. Synthetic entities reduce the chance that a model answers from memorized world knowledge. Twelve trajectories make this an exploratory test, and semantic equivalence in fact scoring needs a defined rubric. A correct answer does not repair the stored state; a correct memory does not guarantee correct retrieval or generation.
+
+The [FEB-30 benchmark, data, and scoring code](https://github.com/amazon-science/feb-30-benchmark) provide a reference for extending the experiment. This lab has not been implemented or run.
+
+</BriefLab>
