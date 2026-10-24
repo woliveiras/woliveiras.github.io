@@ -1,0 +1,187 @@
+---
+title: "Intention is All You Need"
+description: "I believe we can make good things with generative AI. Public attitudes, software growth, and concrete examples help explain that position — and where intention stops being enough."
+pubDate: "2026-10-24"
+published: true
+tags: ["ai-engineering", "llm", "engineering-practices", "software-engineering"]
+---
+
+import StaticBarChart from "$components/charts/StaticBarChart.astro";
+import StaticLineChart from "$components/charts/StaticLineChart.astro";
+
+Let's start from the beginning: I really detest shoddy AI work. I'm referring to the kind of work produced without any concern for quality or usefulness. The kind of work that's imposed on other people without the necessary effort to make it good. The kind of mediocre software and content that people have always produced, but which was much less common before generative AI made it easier to produce this kind of garbage.
+
+Content made solely for SEO, useless playlist videos to please the algorithm, software made without due care for information security... All of this existed before Generative AI. And guess what, the models were trained with this garbage too.
+
+I think some companies are adding conversational assistants to their products mainly so they can say they have AI features and now they are cool. The experience feels secondary to the announcement. Alongside the amount of disposable generated content on the internet, that gives people plenty of reasons to be suspicious of work made with AI.
+
+But I disagree with treating the presence of generative AI as enough information to dismiss the work. **I believe you can build something good with generative AI when you intend to do good work.** What matters to me is the intention behind using it: whether someone wants to solve a problem and is willing to work on the result, or whether producing something that looks finished is already enough.
+
+The title borrows from [*Attention Is All You Need*](https://arxiv.org/abs/1706.03762), the 2017 paper that introduced the Transformer architecture. It is a deliberate exaggeration. Intention cannot replace knowledge, time, resources, or a tool capable of the task. I'm just playing with the text, ok my friend? I want to emphasize that intention is a necessary condition for good work, even if it is not sufficient.
+
+This text is not a defense of generative AI. It is an argument for the people who use it well for doing something good. I want to explain why I think that intention matters, and how we can recognize it in practice before starting to judge the result.
+
+## The suspicion has evidence behind it
+
+In [Pew Research Center's 2026 survey](https://www.pewresearch.org/short-reads/2026/08/18/young-adults-in-the-us-are-increasingly-wary-of-ai-concerned-it-will-take-jobs/), 52% of US adults said they were more concerned than excited about the increasing use of AI in daily life. Only 9% were more excited than concerned. In 2022, those figures were 38% and 15%.
+
+<StaticLineChart
+  id="intention-public-attitudes"
+  title="How Americans feel about AI"
+  description="US adults, 2022–2026. Feelings about the increasing use of AI in daily life."
+  labels={["2022", "2023", "2024", "2025", "2026"]}
+  series={[
+    { label: "More concerned than excited", tableLabel: "More concern", values: [38, 52, 51, 50, 52], tone: "accent", labelPosition: "below" },
+    { label: "Equally concerned and excited", tableLabel: "Both equally", values: [46, 36, 38, 38, 37], tone: "blue", labelPosition: "above" },
+    { label: "More excited than concerned", tableLabel: "More excited", values: [15, 10, 11, 10, 9], tone: "teal", labelPosition: "above" },
+  ]}
+  min={0}
+  max={100}
+  valueSuffix="%"
+  source="Pew Research Center, August 2026. The 2026 sample included 3,488 US adults."
+  note="The published 2026 full-sample margin is ±1.8 percentage points (95%), not a response-specific interval. Percentages are not normalized. This measures attitudes toward AI generally, not their causes."
+  kicker="PUBLIC ATTITUDES"
+/>
+
+*Source: [Pew Research Center, 2026 report and historical responses](https://www.pewresearch.org/wp-content/uploads/sites/20/2026/08/SR_26.08.19_young-adults-ai_topline.pdf). The 2026 sample included 3,488 US adults. The question concerns AI generally, not specifically generative AI or the quality of AI-assisted work. Telephone participation was added after June 2024.*
+
+The line also prevents a convenient exaggeration: concern has stayed around half of respondents since 2023. It is not a story of uninterrupted deterioration. And a US survey cannot stand in for everybody on the internet, but it does show that a substantial share of people are wary of AI. For me, that is a reason to be careful about the work we produce with it.
+
+Different audiences give different answers. In the [2026 Stack Overflow Developer Survey](https://survey.stackoverflow.co/2026/ai/data/ai-sentiment), 62% of the 14,428 people answering the AI sentiment question were favorable. That was a voluntary developer survey, with a different question and population. Putting its percentage beside Pew's as if they measured opposing sides of the same vote would be misleading.
+
+These findings support a narrower claim: concern is substantial, and attitudes vary. They do not tell us how much of that concern comes from slop, employment, privacy, authorship, environmental issues, or something else.
+
+## More software is not a measurement of slop
+
+There is a tempting chain of assumptions: AI makes production easier, more software appears, therefore the additional software is AI slop.
+
+Apple's transparency reports show its reported App Store catalog growing from about 1.78 million apps in 2022 to 2.17 million in 2025. Submissions reviewed grew from 6.10 million to 9.10 million over the same period: increases of approximately 21.8% and 49.1%, respectively.
+
+<StaticBarChart
+  id="intention-app-store-catalog"
+  title="The App Store catalog grew"
+  description="Apps in the catalog, in millions. Calendar years 2022–2025; bar scale: 0–2.6 million."
+  min={0}
+  max={2.6}
+  data={[
+    { label: "2022", value: 1.783232, displayValue: "1.78M", detail: "1,783,232 apps" },
+    { label: "2023", value: 1.870119, displayValue: "1.87M", detail: "1,870,119 apps" },
+    { label: "2024", value: 1.961596, displayValue: "1.96M", detail: "1,961,596 apps" },
+    { label: "2025", value: 2.172472, displayValue: "2.17M", detail: "2,172,472 apps" },
+  ]}
+  source="Apple, App Store Transparency Reports 2022–2025."
+  note="Catalog size is a stock, not the number of apps launched that year. The reports do not identify AI authorship or measure software quality."
+  kicker="APP STORE · CATALOG"
+/>
+
+<StaticBarChart
+  id="intention-app-store-submissions"
+  title="App Store review volume also grew"
+  description="Submissions reviewed, in millions. Calendar years 2022–2025; separate bar scale: 0–10.5 million."
+  min={0}
+  max={10.5}
+  data={[
+    { label: "2022", value: 6.101913, displayValue: "6.10M", detail: "6,101,913 submissions", tone: "accent" },
+    { label: "2023", value: 6.892500, displayValue: "6.89M", detail: "6,892,500 submissions", tone: "accent" },
+    { label: "2024", value: 7.771599, displayValue: "7.77M", detail: "7,771,599 submissions", tone: "accent" },
+    { label: "2025", value: 9.100620, displayValue: "9.10M", detail: "9,100,620 submissions", tone: "accent" },
+  ]}
+  source="Apple, App Store Transparency Reports 2022–2025."
+  note="Submissions include updates and resubmissions. This is review activity, not a count of new apps or AI slop."
+  kicker="APP STORE · REVIEW ACTIVITY"
+/>
+
+*Source: Apple's App Store Transparency Reports, [2022](https://www.apple.com/legal/more-resources/docs/2022-App-Store-Transparency-Report.pdf), [2023](https://www.apple.com/legal/more-resources/docs/2023-App-Store-Transparency-Report.pdf), [2024](https://www.apple.com/legal/more-resources/docs/2024-App-Store-Transparency-Report.pdf), and [2025](https://www.apple.com/legal/app-store/transparency/2025/). Catalog size is a stock; submissions include updates and resubmissions. These are operator-reported aggregates.*
+
+The growth is real in those measures. But nine million submissions do not mean nine million new apps. The reports do not identify AI authorship, and a rejection is not automatically evidence of slop. They cannot establish how much of the growth came from AI, much less how much was bad software — not for now, of course.
+
+Steam offers a more direct signal of declared AI use, though with weaker measurement. An October 21, 2026 [GamesChart snapshot](https://gameschart.com/data/steam-ai-disclosure-count/), based on SteamDB, grouped games by release month. It found AI disclosures on 509 of 1,760 February releases, or 28.9%, and 1,319 of 2,877 September releases, or 45.8%.
+
+<StaticBarChart
+  id="intention-steam-disclosures"
+  title="AI disclosures among Steam releases"
+  description="February–September 2026 releases, inspected on October 21, 2026. Share with an AI disclosure; bar scale: 0–100%."
+  min={0}
+  max={100}
+  data={[
+    { label: "February", value: 509 / 1760 * 100, displayValue: "28.9%", detail: "509 of 1,760 games" },
+    { label: "March", value: 763 / 2422 * 100, displayValue: "31.5%", detail: "763 of 2,422 games" },
+    { label: "April", value: 710 / 2191 * 100, displayValue: "32.4%", detail: "710 of 2,191 games" },
+    { label: "May", value: 663 / 1891 * 100, displayValue: "35.1%", detail: "663 of 1,891 games" },
+    { label: "June", value: 792 / 2068 * 100, displayValue: "38.3%", detail: "792 of 2,068 games" },
+    { label: "July", value: 1064 / 2583 * 100, displayValue: "41.2%", detail: "1,064 of 2,583 games" },
+    { label: "August", value: 1160 / 2721 * 100, displayValue: "42.6%", detail: "1,160 of 2,721 games" },
+    { label: "September", value: 1319 / 2877 * 100, displayValue: "45.8%", detail: "1,319 of 2,877 games" },
+  ]}
+  source="Aashish Khakhar / GamesChart, based on SteamDB. October 21, 2026 snapshot. CC BY 4.0."
+  note="Disclosures can change after release. These monthly counts were not independently audited. A disclosure measures neither quality nor the amount of generated work; its absence does not prove no AI was used."
+  kicker="STEAM · DISCLOSED USE"
+/>
+
+*Data: Aashish Khakhar / [GamesChart](https://gameschart.com/data/steam-ai-disclosure-count/), based on SteamDB, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Redrawn from the October 21 snapshot. These are release cohorts examined later, not measurements taken in each release month. The monthly counts were not independently audited against a full list of games.*
+
+Declarations can change after release. Their absence does not prove that no AI was used. The chart starts after the January 2026 disclosure-form change; [Valve's current guidance](https://partner.steamgames.com/doc/gettingstarted/contentsurvey) focuses on content players consume rather than internal development tools. This is an exploratory view of disclosures, with no measurement of how much work was generated or whether that work was good.
+
+So I cannot honestly put a chart here titled “the amount of AI slop.” This research did not find a defensible count across app stores, software sites, and GitHub. Repository creation, app submissions, and disclosure labels measure different things. None supplies a quality judgment by itself.
+
+For this argument, I use *slop* to mean generated material with substantive problems like false claims, unusable behavior, or repetitive spam, pushed onto other people without the work needed to make it useful. That is a working definition, not a standardized category in these datasets. A serious count would have to assess those defects separately from evidence that AI was involved. I do not have that count, and I do not know of a reliable one.
+
+## The work can be good
+
+These examples come from very different fields and share the same pattern: someone started with something worth accomplishing and organized the work around that result. The models contributed inside a process where people defined the purpose, created ways to evaluate the output, involved the necessary experts, and changed course when the output was not good enough. That is what I mean by intention. It is not only a thought in someone's head. It becomes visible in the work people are willing to do after the model produces something.
+
+### Software that became safer
+
+Mozilla reports that Firefox 150 shipped fixes for **271 security bugs identified with Claude Mythos Preview**. Its [engineering account](https://hacks.mozilla.org/2026/05/behind-the-scenes-hardening-firefox/) describes models generating hypotheses and runnable test cases, with infrastructure for reproducing findings, removing duplicates, triaging bugs, and shipping fixes. More than 100 people contributed code to the broader effort.
+
+That is a concrete result users received: a safer Firefox release with 271 security bugs fixed. The model generated hypotheses and test cases inside a process built to turn useful findings into shipped fixes. Mozilla attributes the improvement to both stronger models and better techniques for using them. The intention was not simply to use AI. It was to make Firefox safer, and the complete process was organized around that goal.
+
+### Research designed to produce something verifiable
+
+[FunSearch, published in *Nature*](https://doi.org/10.1038/s41586-023-06924-6), used an LLM to generate programs and an automated evaluator to test them. Researchers supplied the problem, evaluation function, and program structure. The process produced improved mathematical constructions for the cap set problem and new heuristics for bin packing, which aims to fit items into as few fixed-capacity containers as possible.
+
+The good result came from making generation answer to evaluation. Every candidate could be tested, and the authors published [code, constructions, and evaluation material](https://github.com/google-deepmind/funsearch) so the result could be examined outside the system that generated it. The intention behind the work is visible in that design: producing something new was not enough; the discovery had to be verifiable.
+
+### A clinical result designed around care
+
+The [Therabot trial in *NEJM AI*](https://doi.org/10.1056/AIoa2400802) randomized 210 adults to access to a specialized generative chatbot or a waiting list. In the subgroup with depressive symptoms, the trial reported a larger reduction in symptom scores after four weeks than in the waiting-list group. That is an encouraging clinical result, and the intention behind it shaped the entire system. Mental-health specialists helped develop Therabot, the researchers defined what they wanted to measure, and responses were monitored after they were sent. [Dartmouth describes that development and supervision](https://home.dartmouth.edu/news/2025/03/first-therapy-chatbot-trial-yields-mental-health-benefits).
+
+The comparison with a waiting list defines what this result can support: an initial clinical benefit in that study. More importantly for my argument, the team did not treat a conversational interface as the finished idea. They gave it a specific purpose and built specialist involvement, measurement, and supervision around it. This complicates my opening criticism in the best possible way: a conversational interface can be part of useful work **when people care enough about the result** to design for it.
+
+### Art shaped through deliberate choices
+
+Refik Anadol's [*Unsupervised* at MoMA](https://www.moma.org/calendar/exhibitions/5535) used generative models to produce changing imagery, with custom software and input from the surrounding environment. The [studio's account](https://refikanadol.com/works/unsupervised/) documents model development, data preparation, and artistic decisions.
+
+For me, this is a serious example of creative work with generative AI because the model was part of an artistic process, not a substitute for having one. The result came from decisions about the model, the data, the space, the environmental input, and what the audience would experience. [R. H. Lossin's criticism in *e-flux*](https://www.e-flux.com/criticism/527236/refik-anadol-s-unsupervised) disputes both its aesthetic value and its relationship to corporate technology, keeping the debate about the work open. The intention remains visible in the choices behind it. Anadol and the studio remained responsible for shaping the result instead of treating generation as the end of the creative process.
+
+### A game that chose quality over generated output
+
+*ARC Raiders* combined actors' recordings with synthesized speech, as its creative director explained in a [launch interview](https://www.gamesradar.com/games/third-person-shooter/arc-raiders-devs-dont-use-generative-ai-cco-says-ai-text-to-speech-is-used-to-help-make-rich-worlds-while-keeping-the-studio-small-but-theres-no-end-goal-in-replacing-any-actors/). It also received a [9/10 review from Push Square](https://www.pushsquare.com/reviews/ps5/arc-raiders) and [7.3 in users score on metacritic](https://www.metacritic.com/game/arc-raiders/) (not bad, for me). I believe that it's a good example of the complete game being received as good work.
+
+The detail that says more about intention came later. In March 2026, [PC Gamer reported Embark's account](https://www.pcgamer.com/games/third-person-shooter/embark-ceo-says-a-real-professional-actor-is-better-than-ai-after-the-studio-re-records-some-arc-raiders-dialog-with-real-humans/) of re-recording some dialogue with actors because of the quality difference, while retaining synthesis for experimentation during production.
+
+That decision is intention made visible. The team did not protect the generated output just because it was faster or already existed. They protected the quality of the game. Sometimes doing good work with AI means recognizing where it helped, recognizing where it did not, and discarding what the model produced.
+
+## Intention has to survive the result
+
+There is a trap in my own argument. If every good result proves good intention and every bad result proves its absence, intention becomes an explanation that can never be tested. It also becomes a way to blame people who cared but lacked the **time, skill, resources, or suitable tools** to succeed.
+
+Even experienced developers can get disappointing results. In [METR's randomized study of early-2025 tools](https://metr.org/blog/2025-07-10-early-2025-ai-experienced-os-dev-study/), 16 developers working on 246 tasks in familiar repositories took 19% longer when AI was allowed. Its [February 2026 update](https://metr.org/blog/2026-02-24-uplift-update/) reported estimates pointing toward faster work with later tools, but the researchers considered that newer signal unreliable because of selection effects. Neither result measures the participants' intentions, and the older result should not be presented as a verdict on today's tools.
+
+The same caution applies to bad output. In January 2026, curl maintainer Daniel Stenberg [announced the end of its bug bounty](https://daniel.haxx.se/blog/2026/01/26/the-end-of-the-curl-bug-bounty/) after describing a flood of poor reports. By [October 22](https://daniel.haxx.se/blog/2026/10/22/ignore-the-slop/), he said the fabricated reports had practically disappeared since spring, and the difficulty was now the volume of useful findings. Those are his observations, not an independent audit or an experiment separating incentives from model improvements. But leaving out the update would turn a real criticism into a misleading permanent story.
+
+For me, intention becomes useful as a standard for decisions. If you want to ship an assistant, you need a specific task it helps someone complete and a way to discover when it makes that task worse. If you generate code, you still need to understand enough of it to assess and maintain it. I explored that gap in [*Your Code Looks Professional. Can You Explain It?*](/posts/your-code-looks-professional-can-you-explain-it/).
+
+The acceptance criterion needs to exist outside the model's confidence. In Firefox, a suspected bug had to survive reproduction and triage. In FunSearch, a program had to pass an evaluator. In a clinical trial, an apparent benefit had to be compared with a defined control. Creative work has less mechanical criteria, but someone still has to decide what deserves to remain and what needs replacing.
+
+I still believe we can make good things with these tools, and that the intention behind the work deserves more attention. My opinion is that we should judge that intention through the choices people make when the output disappoints them.
+
+“I wanted to make something good” cannot excuse a bad result. It should be the reason to keep checking, revise it, or decide that this particular task is better done another way.
+
+## References
+
+- [Vaswani et al., *Attention Is All You Need* (2017)](https://arxiv.org/abs/1706.03762): the title reference.
+- [Pew survey topline (2026)](https://www.pewresearch.org/wp-content/uploads/sites/20/2026/08/SR_26.08.19_young-adults-ai_topline.pdf): question wording, historical percentages, and survey details.
+- [Apple App Store Transparency Report (2025)](https://www.apple.com/legal/app-store/transparency/2025/): catalog and review counts; earlier reports are linked under the chart.
+- [GamesChart's Steam disclosure counts](https://gameschart.com/data/steam-ai-disclosure-count/) and [Valve's content survey guidance](https://partner.steamgames.com/doc/gettingstarted/contentsurvey): the Steam chart's data and disclosure scope.
+- [FunSearch, full paper supplied by the authors](https://storage.googleapis.com/deepmind-media/DeepMind.com/Blog/funsearch-making-new-discoveries-in-mathematical-sciences-using-large-language-models/Mathematical-discoveries-from-program-search-with-large-language-models.pdf) and [Therabot, full paper in an identified mirror](https://gwern.net/doc/psychiatry/depression/2025-heinz.pdf): accessible versions used where publisher access was restricted.

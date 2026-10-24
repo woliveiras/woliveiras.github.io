@@ -1,0 +1,361 @@
+---
+export type LineSeries = {
+	label: string;
+	tableLabel?: string;
+	values: number[];
+	tone?: "accent" | "blue" | "teal";
+	labelPosition?: "above" | "below";
+};
+
+type Props = {
+	id: string;
+	title: string;
+	description: string;
+	labels: string[];
+	series: LineSeries[];
+	min?: number;
+	max?: number;
+	valueSuffix?: string;
+	source: string;
+	note?: string;
+	kicker?: string;
+};
+
+const {
+	id,
+	title,
+	description,
+	labels,
+	series,
+	min = 0,
+	max = 100,
+	valueSuffix = "%",
+	source,
+	note,
+	kicker = "DATA",
+} = Astro.props;
+
+function invalid(message: string): never {
+	throw new Error(`StaticLineChart (${id}): ${message}`);
+}
+
+if (!id?.trim()) invalid("Provide a nonempty id.");
+if (!Number.isFinite(min) || !Number.isFinite(max) || min >= max) {
+	invalid("The scale must have finite bounds with min less than max.");
+}
+if (labels.length < 2 || labels.some((label) => !label.trim())) {
+	invalid("Provide at least two nonempty period labels.");
+}
+if (series.length === 0) invalid("Provide at least one series.");
+for (const item of series) {
+	if (!item.label.trim()) invalid("Every series needs a label.");
+	if (item.values.length !== labels.length) {
+		invalid(`Series "${item.label}" must have one value per period.`);
+	}
+	if (
+		item.values.some(
+			(value) => !Number.isFinite(value) || value < min || value > max,
+		)
+	) {
+		invalid(
+			`Series "${item.label}" contains a nonfinite or out-of-range value.`,
+		);
+	}
+}
+
+const width = 520;
+const height = 480;
+const inset = { left: 54, right: 28, top: 32, bottom: 48 };
+const plotWidth = width - inset.left - inset.right;
+const plotHeight = height - inset.top - inset.bottom;
+const x = (index: number) =>
+	inset.left + (index / (labels.length - 1)) * plotWidth;
+const y = (value: number) =>
+	inset.top + ((max - value) / (max - min)) * plotHeight;
+const format = (value: number) => `${value}${valueSuffix}`;
+const ticks = Array.from({ length: 6 }, (_, index) =>
+	Number((min + ((max - min) * index) / 5).toPrecision(12)),
+);
+const tones = ["accent", "blue", "teal"] as const;
+const patterns = [undefined, "8 4", "2 5"];
+const lines = series.map((item, index) => ({
+	...item,
+	tone: item.tone ?? tones[index % tones.length],
+	dash: patterns[index % patterns.length],
+	marker: index % 3,
+	points: item.values.map((value, index) => ({
+		x: x(index),
+		y: y(value),
+		value,
+	})),
+}));
+
+function markerPath(x: number, y: number, marker: number) {
+	if (marker === 1) return `M ${x - 4} ${y - 4} h 8 v 8 h -8 Z`;
+	if (marker === 2)
+		return `M ${x} ${y - 5} L ${x + 5} ${y + 4} L ${x - 5} ${y + 4} Z`;
+	return `M ${x - 4} ${y} a 4 4 0 1 0 8 0 a 4 4 0 1 0 -8 0 Z`;
+}
+---
+
+<figure class="chart-figure not-prose" aria-labelledby={`${id}-title`} aria-describedby={`${id}-description`}>
+	<figcaption>
+		<p class="chart-kicker">{kicker}</p>
+		<h3 id={`${id}-title`}>{title}</h3>
+		<p id={`${id}-description`} class="chart-description">{description}</p>
+	</figcaption>
+
+	<ul class="chart-legend" aria-label="Series">
+		{lines.map((line) => (
+			<li class="chart-series" data-tone={line.tone}>
+				<svg viewBox="0 0 40 14" width="40" height="14" aria-hidden="true" focusable="false">
+					<line x1="0" y1="7" x2="40" y2="7" stroke="currentColor" stroke-width="2" stroke-dasharray={line.dash} />
+					<path d={markerPath(20, 7, line.marker)} fill="currentColor" />
+				</svg>
+				<span>{line.label}</span>
+			</li>
+		))}
+	</ul>
+
+	<p class="chart-scroll-hint">Scroll sideways if the chart does not fit. Every value is also available in the table below.</p>
+	<div class="chart-scroll" tabindex="0" role="region" aria-label={`${title}: scrollable chart`}>
+		<svg class="chart-plot" viewBox={`0 0 ${width} ${height}`} aria-hidden="true" focusable="false">
+			{ticks.map((tick) => (
+				<g class="chart-axis">
+					<line x1={inset.left} y1={y(tick)} x2={width - inset.right} y2={y(tick)} />
+					<text x={inset.left - 10} y={y(tick)} text-anchor="end" dominant-baseline="middle">{format(tick)}</text>
+				</g>
+			))}
+			{labels.map((label, index) => (
+				<text class="chart-period" x={x(index)} y={height - inset.bottom + 38} text-anchor="middle">{label}</text>
+			))}
+			{lines.map((line) => (
+				<g class="chart-series" data-tone={line.tone}>
+					<polyline
+						points={line.points.map((point) => `${point.x},${point.y}`).join(" ")}
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2.5"
+						stroke-dasharray={line.dash}
+					/>
+					{line.points.map((point, index) => (
+						<g>
+							<path d={markerPath(point.x, point.y, line.marker)} fill="currentColor" />
+							<text class="chart-value" x={point.x} y={point.y + (line.labelPosition === "below" ? 18 : -10)} text-anchor={index === 0 ? "start" : index === labels.length - 1 ? "end" : "middle"}>{format(point.value)}</text>
+						</g>
+					))}
+				</g>
+			))}
+		</svg>
+	</div>
+
+	<details class="chart-data">
+		<summary>View data table</summary>
+		<table>
+			<caption>{title}</caption>
+			<thead>
+				<tr>
+					<th scope="col">Period</th>
+					{series.map((item) => <th scope="col" aria-label={item.label}>{item.tableLabel ?? item.label}</th>)}
+				</tr>
+			</thead>
+			<tbody>
+				{labels.map((label, index) => (
+					<tr>
+						<th scope="row">{label}</th>
+						{series.map((item) => <td>{format(item.values[index])}</td>)}
+					</tr>
+				))}
+			</tbody>
+		</table>
+	</details>
+
+	<div class="chart-meta">
+		<p><strong>Source:</strong> {source}</p>
+		{note && <p><strong>Read with care:</strong> {note}</p>}
+	</div>
+</figure>
+
+<style>
+	.chart-figure {
+		--chart-border: #d6d3d1;
+		--chart-muted: #57534e;
+		--chart-panel: #fafaf9;
+		--chart-accent: #7c3aed;
+		--chart-blue: #0369a1;
+		--chart-teal: #0f766e;
+		min-width: 0;
+		margin: 2rem 0;
+		padding: 1.25rem;
+		border: 1px solid var(--chart-border);
+		border-radius: 1rem;
+		background: var(--chart-panel);
+		color: #1c1917;
+	}
+
+	:global(html.dark) .chart-figure {
+		--chart-border: #44403c;
+		--chart-muted: #a8a29e;
+		--chart-panel: #1c1917;
+		--chart-accent: #a78bfa;
+		--chart-blue: #7dd3fc;
+		--chart-teal: #5eead4;
+		color: #fafaf9;
+	}
+
+	.chart-kicker {
+		margin: 0 0 0.35rem;
+		color: var(--chart-accent);
+		font-size: 0.7rem;
+		font-weight: 800;
+		letter-spacing: 0.14em;
+	}
+
+	h3 {
+		margin: 0;
+		font-size: 1.15rem;
+		line-height: 1.35;
+	}
+
+	.chart-description {
+		margin: 0.45rem 0 0;
+		color: var(--chart-muted);
+		font-size: 0.9rem;
+		line-height: 1.55;
+	}
+
+	.chart-legend {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.6rem 1.25rem;
+		margin: 1.4rem 0 0.75rem;
+		padding: 0;
+		list-style: none;
+		font-size: 0.85rem;
+	}
+
+	.chart-legend li {
+		display: flex;
+		align-items: center;
+		gap: 0.45rem;
+	}
+
+	.chart-legend svg {
+		flex-shrink: 0;
+	}
+
+	.chart-legend span {
+		color: var(--chart-muted);
+	}
+
+	.chart-series[data-tone="accent"] { color: var(--chart-accent); }
+	.chart-series[data-tone="blue"] { color: var(--chart-blue); }
+	.chart-series[data-tone="teal"] { color: var(--chart-teal); }
+
+	.chart-scroll {
+		max-width: 100%;
+		overflow-x: auto;
+		border-radius: 0.25rem;
+		overscroll-behavior-x: contain;
+	}
+
+	.chart-scroll:focus-visible,
+	summary:focus-visible {
+		outline: 2px solid var(--chart-accent);
+		outline-offset: 3px;
+	}
+
+	.chart-plot {
+		display: block;
+		width: 100%;
+		min-width: 460px;
+		height: auto;
+		font-size: 14px;
+		font-variant-numeric: tabular-nums;
+	}
+
+	.chart-axis line {
+		stroke: var(--chart-border);
+		stroke-width: 1;
+	}
+
+	.chart-axis text,
+	.chart-period {
+		fill: var(--chart-muted);
+	}
+
+	.chart-value {
+		fill: currentColor;
+		font-weight: 700;
+	}
+
+	.chart-scroll-hint {
+		display: none;
+		margin: 0.5rem 0;
+		color: var(--chart-muted);
+		font-size: 0.8rem;
+		line-height: 1.5;
+	}
+
+	.chart-data {
+		margin-top: 0.5rem;
+		font-size: 0.85rem;
+	}
+
+	summary {
+		width: fit-content;
+		max-width: 100%;
+		color: var(--chart-accent);
+		font-weight: 650;
+		cursor: pointer;
+	}
+
+	.chart-data table {
+		display: table;
+		width: 100%;
+		max-width: 100%;
+		margin-top: 1rem;
+		overflow: visible;
+		border-collapse: collapse;
+		table-layout: fixed;
+		font-variant-numeric: tabular-nums;
+	}
+
+	caption {
+		padding-bottom: 0.75rem;
+		color: var(--chart-muted);
+		text-align: left;
+	}
+
+	.chart-data th,
+	.chart-data td {
+		padding: 0.6rem 0.35rem;
+		border-bottom: 1px solid var(--chart-border);
+		white-space: normal;
+		overflow-wrap: anywhere;
+		text-align: right;
+		vertical-align: top;
+	}
+
+	th:first-child { text-align: left; }
+
+	.chart-meta {
+		display: grid;
+		gap: 0.25rem;
+		margin-top: 1.35rem;
+		padding-top: 0.85rem;
+		border-top: 1px solid var(--chart-border);
+	}
+
+	.chart-meta p {
+		margin: 0;
+		color: var(--chart-muted);
+		font-size: 0.75rem;
+		line-height: 1.5;
+	}
+
+	@media (max-width: 640px) {
+		.chart-figure { padding: 1rem; }
+		.chart-scroll-hint { display: block; }
+	}
+</style>

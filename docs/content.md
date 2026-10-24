@@ -69,6 +69,32 @@ Unregistered colon sequences stay literal, so model names such as
 `gemma3:270m`, arXiv identifiers, and ratios such as `1:1` are not consumed as
 directives.
 
+## Native Data Charts
+
+MDX posts can import charts from `$components/charts/`. `StaticBarChart.astro`
+renders horizontal bars; `StaticLineChart.astro` renders multiple series as SVG.
+Both render at build time, follow the site's light and dark themes, and include
+data tables for assistive technology. The line chart also exposes its table
+through a keyboard-accessible disclosure.
+
+Give each chart a unique `id`, `title`, `description`, and `source`. Keep source
+links in the adjacent caption, and put measurement limits in `note`. Bar charts
+accept `data` entries with `label`, `value`, and `displayValue`; optional `detail`
+can retain exact counts alongside rounded labels.
+
+Line charts accept `labels` and `series`, where each series has a `label` and a
+`values` array with one finite number per period. Optional `tone` and
+`labelPosition` control presentation; `tableLabel` provides a shorter visible
+column heading while retaining the full accessible label. Set `min`, `max`, and `valueSuffix` to match
+the measure; the defaults are 0, 100, and `%`. Labels are equally spaced, so use
+regular periods. Missing observations must not be replaced with zero. The line
+chart rejects incomplete series or values outside the chosen scale during the
+build. On narrow screens its plot scrolls locally to keep labels readable.
+
+Keep quantities with different units or meanings in separate charts, and state
+their scales. Inline data props also remain available in the raw Markdown
+endpoint, which does not render MDX components.
+
 ## Markdown Processing
 
 **Remark plugins:** `remarkMath`, `remarkDirective`, and `remarkEmbeds`
