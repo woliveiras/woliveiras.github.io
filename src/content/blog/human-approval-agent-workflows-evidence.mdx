@@ -1,0 +1,174 @@
+---
+title: "Human Approval in Agent Workflows: What the Evidence Shows"
+description: "A continuation of the conversation about code review with AI agents: what studies say about frequent approvals, exception-based oversight, and where developer intervention can make a difference."
+pubDate: "2026-10-22"
+published: true
+tags: ["ai-agents", "engineering-practices", "software-engineering", "code-review"]
+---
+
+import StaticBarChart from "../../components/charts/StaticBarChart.astro";
+
+When I wrote [Code Review in the AI Era: We Need to Change](/posts/code-review-in-the-ai-era-we-need-to-change/), what was bothering me was the code review part. The number of pull requests, the number of lines, the high volume that I, as a human, could no longer handle. I was already using agents to write code, review it, and monitor the system in production. Risk-based reviews, which I mentioned before, along with specifications and architecture documentation, helped me think through the problem and keep the environment more controlled, but none of those things seemed sufficient on its own.
+
+The question kept growing as I imagined workflows in which agents implement changes, review what they have done, prepare releases, monitor behavior, and propose fixes. Where does my responsibility as a developer fit in? When does my participation improve the outcome, and when am I interrupting the work just to confirm a decision I barely examined?
+
+I no longer assume that someone needs to inspect every line of code. I never believed that. I want to understand where my attention can make a real difference and whether there is evidence that could guide that choice.
+
+I really like following research on software engineering and AI. You can tell from the references I include in my posts. So I kept looking for evidence that could help me answer these questions. Of course, the studies I found offer useful results, but not a general recipe for organizing software development with agents. That kind of recipe will always depend on how each organization works.
+
+I want to share what the latest studies show, what their limits are, and how they are influencing the way I think about human approval in agent workflows. I hope this helps you reflect on your own workflow, even if we still do not find a definitive answer.
+
+## A completed workflow still leaves open questions
+
+Imagine a hypothetical bug: customers are being charged twice. An agent changes the implementation, writes tests, passes continuous integration (CI), and receives approval from another agent. The change is ready to be released, right? But that sequence, by itself, does not tell us whether the potential fix is actually safe.
+
+We can inspect the diff, but we also need to ask what the evidence demonstrates. Does the test reproduce the situation that caused the duplicate charge? Does the fix handle two requests arriving at the same time? Did the implementation change a business rule just to make the test pass? Was the expected behavior clear when we delegated the task to an agent?
+
+The answers may point to different moments when a person needs to intervene. If the expected behavior was not clear, the problem begins **before implementation**. If the unit, integration, end-to-end, or other tests do not cover simultaneous requests, we need to examine the **test and the evidence**. If the fix is correct but a failure would affect many people, the decision may be about a **gradual rollout**. Reading the code can help, but it is only **one** way to investigate the risk.
+
+This distinction started to guide my search: a workflow can finish without giving us enough reason to trust the outcome. An approval button records a decision; by itself, it does not say what the person checked or what evidence supported that decision.
+
+## What the studies actually compared
+
+To understand when a person's participation can make a difference, researchers usually separate two ways of involving them. With **approval for every action**, the agent stops and waits for a decision before every action covered by the policy. With **risk-based escalation**, the agent can continue within defined boundaries, and a mechanism must call in a person when it identifies a higher-risk or out-of-scope action. This mechanism is an important part of the workflow: if it misses an action, no one will be asked for approval; if it flags almost everything, the person will keep being interrupted all the time.
+
+It is also important not to confuse this escalation with a permission policy. A policy can allow an action, block it, or ask for confirmation, but that alone does not explain how the system decides which actions require approval. Another possibility is to approve a plan before the agent starts: instead of confirming every action, the person reviews the proposed sequence in advance.
+
+Context matters when comparing the results. We will look at two studies involving navigation and actions in digital services; another analyzes pull requests produced by different programming tools. We cannot treat these results as equivalent, and none of them directly tests every kind of approval workflow used in software development.
+
+### Approval for every action did not perform better in this experiment
+
+In [Comparing Human Oversight Strategies for Computer-Use Agents](https://arxiv.org/html/2604.04918v2), Chen and colleagues studied 48 participants. Each person experienced four oversight strategies in navigation tasks, using websites created by the researchers with problems inserted into the workflow. One of the comparisons was between approval for every action and risk-based escalation.
+
+In that comparison, both strategies had the same observed rate of uncorrected failures: 64.6%. This is a result from this experiment, not proof that the strategies are equivalent in general. It also does not show that frequent approvals never help; it shows that, under the conditions of this study, approval for every action did not reduce that rate.
+
+Fewer problematic actions appeared under the conditions that involved planning. But the approved plan also became part of the agent's instructions. That changes both the person's participation and the agent's behavior, so we cannot attribute the difference only to closer human oversight.
+
+The experiment also did not include a fully autonomous condition. Because of this, it does not tell us the absolute benefit of adding oversight compared with having no human oversight at all. And because the tasks involved computer use rather than software development, we should not assume that the same result would apply to coding agents.
+
+Across the four strategies, participants blocked 29 of the 138 problematic actions that reached execution. Here, the unit is the action, not the session used in the rate above. This number summarizes actions from all conditions; it is not a comparison between strategies.
+
+<StaticBarChart
+  id="computer-use-problematic-actions"
+  title="Problematic actions blocked during execution"
+  description="Problematic actions that reached execution across the study's 192 sessions, grouped by what happened when participants could intervene."
+  max={138}
+  data={[
+    { label: "Blocked", value: 29, displayValue: "29 actions", detail: "21% of problematic actions" },
+    { label: "Not blocked", value: 109, displayValue: "109 actions", detail: "79% of problematic actions" },
+  ]}
+  source="Chen et al., Comparing Human Oversight Strategies for Computer-Use Agents, 2026."
+  note="The numbers combine all four strategies. Actions that were not blocked do not necessarily mean final failures; the chart does not measure the later outcome of each action."
+  kicker="STUDY DATA"
+  sourceLabel="Source:"
+  noteLabel="Important:"
+/>
+
+### Fewer requests did not prove there was less work or more protection
+
+In [Do User-Authored Permission Policies Improve Protection Against AI Agent Overreach?](https://arxiv.org/html/2608.27443v1), Ting Yan compared three permission models: approval for every action, automated routing, and rules defined by the users themselves. The study involved 113 participants with no professional software experience, supervising a simulated day of personal tasks.
+
+The rules defined by users reduced the average number of approval requests from 18 to 10.9. This did not translate into a reliable reduction in total intervention time when the time spent configuring the rules was included. In this condition, 20.1 percentage points fewer out-of-scope actions were also blocked than with approval for every action; the reported 95% confidence interval for the difference was −32.1 to −8.1 percentage points.
+
+In 81.4% of the rules, participants chose the “ask” option, which suggests that many people still preferred to be consulted instead of delegating the decision to a rule. Automated routing was configured before the sessions and escalated all seven out-of-scope actions to a person. It was not a real-time detector that could fail to recognize an out-of-scope action.
+
+These results describe those specific models, those broad rules, and those simulated tasks. They do not prove that exception-based oversight is generally worse. But they show why fewer requests, by itself, is not enough to claim that a policy reduces work or protects people better.
+
+### More approvals and fewer comments do not prove a lack of attention
+
+The study by Yu and colleagues, [Habituation at the Gate](https://arxiv.org/html/2606.22721v1), is closer to software development: it analyzes 11,429 reviews of pull requests made by agents, conducted repeatedly by 400 reviewers.
+
+The authors observed that the approval rate increased and comment volume decreased as reviewers gained experience. They interpret this pattern as consistent with **habituation**: repeated exposure to a process can lead people to pay less attention to each individual decision.
+
+The study does not directly measure how long reviewers examined each change or how code quality changed over time. Fewer comments may come with less attention, but comment count alone does not prove that people were paying less attention. The code itself may also have changed in a way that affected how much there was to comment on.
+
+The two measures below show changes observed in the study. The approval rate compares the initial and final review periods; the comment count compares the first and tenth deciles of experience.
+
+<StaticBarChart
+  id="agent-review-approval-rate"
+  title="Approval rate by review period"
+  description="Aggregate approval rates in the initial and final parts of the same 400 reviewers' reviews."
+  max={50}
+  data={[
+    { label: "Initial period", value: 30.1, displayValue: "30.1%" },
+    { label: "Final period", value: 36.8, displayValue: "36.8%" },
+  ]}
+  source="Yu et al., Habituation at the Gate: Rising Approval and Declining Scrutiny in Human Review of AI Agent Code, 2026."
+  note="Aggregate rates by review. The observed increase does not, by itself, demonstrate less attention or explain its cause."
+  kicker="STUDY DATA"
+  sourceLabel="Source:"
+  noteLabel="Important:"
+/>
+
+This is a reason to investigate how review behavior changes with repeated use. The study does not compare frequent approvals with risk-based escalation, nor does it show that removing reviewers would improve outcomes.
+
+## What I take from this
+
+Together, these studies make me cautious about choosing an oversight strategy by counting how many times it calls in a person. **The number of requests shows how many times the system asks; it does not say whether the person can identify a problem, make a relevant decision, or change what happens next**.
+
+I also did not find evidence here that risk-based escalation solves the problem. Its effectiveness depends on an earlier decision: what identifies an exception? If the mechanism does not notice a change in scope or a risky action, no one may call in a person. If it flags almost every action, we are back to frequent interruptions.
+
+There is also industry evidence about automated review. [OpenAI's internal automated review evaluation](https://alignment.openai.com/auto-review/) examines a model that decides when to escalate actions. It provides evidence about a specific control, evaluated in tests selected by the company itself, not about the quality of the software that ultimately gets delivered. [Telemetry published by Anthropic](https://www.anthropic.com/research/measuring-agent-autonomy) associates more experience using agents with both more automatic approvals and more interruptions. That association does not tell us which policy leads to better outcomes.
+
+This distinction matters when a team chooses a workflow. Adopting a configuration because it seems reasonable is an engineering decision; saying it has been validated is a claim about the evidence. The studies above do not justify treating those two things as if they were the same.
+
+## Where developers can intervene
+
+This is where I really feel I can contribute to the software creation workflow. The study by Park and colleagues, [The Work Behind Delegation](https://arxiv.org/html/2609.24234v1), describes activities involved in delegating work to coding agents, such as planning, monitoring, reviewing, manually correcting code, and updating the resources used by agents. This helps make the work that exists **around delegation** visible.
+
+I find it useful to connect these activities to the decisions developers may need to make:
+
+| Point in the workflow | What developers can examine or decide |
+| --- | --- |
+| Before implementation | The problem, the success criteria, and the limits of autonomy—the well-known requirements analysis |
+| During the work | The plan, the architecture, changes in scope, and decisions that are difficult to reverse; planning the system architecture and thinking about risks to the system that an agent would not be able to create |
+| Before integration | The code, the tests, the evidence that it is correct, and the risks that still remain |
+| Before release | The release conditions, the scope of a gradual rollout, rollback, and the ability to detect failures |
+| After release | Actual behavior, incidents, and whether the agents' autonomy needs to be adjusted |
+
+In the duplicate charge example, a conversation before implementation could clarify what should happen when requests arrive at the same time. Before release, someone could assess how far to expose the change and how the team would detect new duplicate charges. If the system still behaves unexpectedly, the next useful step may be to investigate the code more deeply.
+
+In another task, tests, permissions, or team practices may already cover some of these decisions. Reopening the entire discussion every time an agent runs would add work without necessarily increasing oversight. The harder question is whether those earlier decisions still hold: has the task changed? Has the agent gained new access? Has a risk appeared that was not part of the initial assessment?
+
+## Execution, authority, and accountability
+
+I find it useful to separate three things that often get mixed together when we talk about responsibility:
+
+- **Execution:** who performs the task.
+- **Authority:** who can decide, approve, interrupt, or change the boundaries.
+- **Accountability:** who explains the decisions and answers for their consequences within the organization.
+
+An agent can implement a fix while the team defines the conditions for releasing it. A person can approve a change but lack the authority to reduce its scope or delay delivery. Both workflows include human approval, but they give the person different information and power to influence the outcome.
+
+In my view, to talk about the developer's role, we need to make this distribution explicit. Assigning responsibility to someone without considering what that person knows, how much time they have, or which decisions they can change leaves out an important part of the problem.
+
+## What seems reasonable to consider today
+
+In the previous article, I described how I use architecture documentation and specifications to maintain an understanding of what I am developing. The studies discussed here do not validate these practices. But they help me ask better questions about them: what decision does a specification help someone make? What risk does the documentation help that person notice?
+
+For now, my proposal is to start with the decision that needs to be made. “Review this change” is too broad for the duplicate charge bug. “Check whether two simultaneous requests can still produce two charges” names the behavior we care about. From there, we can ask what evidence would be convincing: a test with simultaneous requests, a code inspection, or observing the system. The right evidence depends on the claim we need to verify.
+
+It may also help to define in advance what should interrupt the agent: a change in scope, access to data that is not part of the task, a request for additional permission, or the inability to verify an important condition. I am proposing these criteria so that a team can evaluate them, not presenting a checklist whose effectiveness has been demonstrated by these studies.
+
+That evaluation needs to consider the full cost. Configuring permissions, reviewing plans, investigating failures, and recovering the system all take work. Fewer requests do not necessarily mean less work; the effort may stay the same or simply move to after release, when a failure is harder to contain.
+
+To compare approaches within a team, I would look at people's active work time, the errors that go unnoticed, rework, and the team's ability to recover. Approved pull requests or time to integration, by themselves, would not answer the questions about quality and effort.
+
+## What I still do not know
+
+This search did not give me a direct comparison between approval for every action and risk-based escalation in real software development tasks. That does not mean this kind of evidence does not exist. It means I still do not have evidence here to support a general recommendation.
+
+There are still other questions about continued use. Does repeated experience change how carefully people review? Which decisions can be reused without losing the context that made them useful? How can a team discover that its escalation mechanism is missing exactly the cases it should identify? And what forms of participation help developers continue learning how the system works?
+
+I do not want to keep a human step just because it has always been there. But an agent's ability to perform that step is not enough reason to remove it either. Before keeping or removing it, I want to be able to say what outcome we expect, how we will verify whether that step helps, and what we will do when it fails.
+
+This is how I intend to keep investigating my place in the workflow: by evaluating specific decisions instead of assuming I need to follow every line produced by an agent.
+
+## References
+
+- Chen et al. [Comparing Human Oversight Strategies for Computer-Use Agents](https://arxiv.org/html/2604.04918v2), 2026, version 2.
+- Ting Yan. [Do User-Authored Permission Policies Improve Protection Against AI Agent Overreach?](https://arxiv.org/html/2608.27443v1), 2026, version 1.
+- Yu et al. [Habituation at the Gate: Rising Approval and Declining Scrutiny in Human Review of AI Agent Code](https://arxiv.org/html/2606.22721v1), 2026, version 1.
+- Park et al. [The Work Behind Delegation: A Framework for Supervising AI Coding Agents](https://arxiv.org/html/2609.24234v1), 2026, version 1.
+- Anthropic. [Measuring AI agent autonomy in practice](https://www.anthropic.com/research/measuring-agent-autonomy), 2026.
+- OpenAI. [Auto-review of agent actions without synchronous human oversight](https://alignment.openai.com/auto-review/), 2026.

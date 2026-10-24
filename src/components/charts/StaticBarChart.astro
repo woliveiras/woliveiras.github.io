@@ -16,9 +16,24 @@ type Props = {
 	max?: number;
 	source: string;
 	note?: string;
+	kicker?: string;
+	sourceLabel?: string;
+	noteLabel?: string;
 };
 
-const { id, title, description, data, min, max, source, note } = Astro.props;
+const {
+	id,
+	title,
+	description,
+	data,
+	min,
+	max,
+	source,
+	note,
+	kicker = "DATA",
+	sourceLabel = "Source:",
+	noteLabel = "Read with care:",
+} = Astro.props;
 const values = data.map(({ value }) => value);
 const scaleMin = min ?? Math.min(0, ...values);
 const scaleMax = max ?? Math.max(0, ...values);
@@ -35,7 +50,7 @@ const rows = data.map((datum) => {
 
 <figure class="chart-figure not-prose" aria-labelledby={`${id}-title`} aria-describedby={`${id}-description`}>
 	<figcaption>
-		<p class="chart-kicker">DATA</p>
+		<p class="chart-kicker">{kicker}</p>
 		<h3 id={`${id}-title`}>{title}</h3>
 		<p id={`${id}-description`} class="chart-description">{description}</p>
 	</figcaption>
@@ -85,8 +100,8 @@ const rows = data.map((datum) => {
 	</table>
 
 	<div class="chart-meta">
-		<p><strong>Source:</strong> {source}</p>
-		{note && <p><strong>Read with care:</strong> {note}</p>}
+		<p><strong>{sourceLabel}</strong> {source}</p>
+		{note && <p><strong>{noteLabel}</strong> {note}</p>}
 	</div>
 </figure>
 
