@@ -81,6 +81,49 @@ necessary consequence, action, or remaining boundary.
 - **Embeds:** `:youtube[id]`, `:link[url]`, `:excalidraw[url]`
 - Cross-link: posts → `/posts/<slug>/`, tags → `/tags/<tag>/`
 
+### References and source status
+
+When a post relies on external evidence:
+
+- Link the source near the claim it supports and include it again under
+  `## References`.
+- Prefer primary sources, official documentation, original research, and
+  first-party publications.
+- Each reference must identify, when available:
+  - the author, first author, or responsible organization;
+  - the complete title;
+  - the publication venue or publisher;
+  - the publication or submission date;
+  - the document type and editorial status;
+  - the version, report number, DOI, or other stable identifier.
+- For arXiv papers, link to `https://arxiv.org/abs/<id>` instead of the PDF or
+  HTML view. Include the arXiv identifier, version, submission or revision date,
+  and any venue or review status declared on the arXiv record.
+- Distinguish clearly between:
+  - peer-reviewed or formally published work;
+  - work accepted at a conference or workshop;
+  - work under review;
+  - preprints with no publication venue listed;
+  - company or industry research publications.
+- Do not describe a preprint as published or peer-reviewed unless a primary
+  source confirms that status. “Accepted at,” “under review,” and “published
+  in” are not interchangeable.
+- For long author lists, name the first author followed by `et al.`. For
+  organization-authored material, use the organization or the authors provided
+  by its official citation.
+- Add a short description of what the source supports only when that connection
+  is not already clear in the body. Do not duplicate a summary that the post
+  already provides.
+- Verify titles, authors, dates, versions, and publication status against the
+  source before writing the reference. If a field cannot be verified, omit it
+  or state that it is not listed instead of inferring it.
+
+Use this shape:
+
+- First Author et al. [Complete title](canonical-url). Publication venue or
+  document type, identifier and version, publication/submission date, and
+  verified editorial status.
+
 ### Tags (use existing first)
 
 Common existing tags (not exhaustive):
