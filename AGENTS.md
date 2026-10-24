@@ -1,6 +1,9 @@
 # AI Agent Instructions for William Oliveira's Blog
 
-This repo is an Astro blog. Detailed documentation lives in `docs/`. **Read the relevant doc before working on a topic.**
+This repo is an Astro blog. Detailed documentation lives in `docs/`. **Read the
+relevant document before working on a topic.** Keep this file focused on rules
+that must apply across tasks; use the linked documentation for implementation
+details and examples.
 
 ## Writing voice
 
@@ -18,7 +21,7 @@ This repo is an Astro blog. Detailed documentation lives in `docs/`. **Read the 
 ## Confidence and verification rules
 
 - Do not present uncertain assumptions as facts. Say when something is inferred, unverified, or needs confirmation.
-- Before modifying code, first inspect the relevant files and explain the intended change.
+- Before modifying any file, first inspect the relevant files and explain the intended change.
 - Before the first write operation, run one of these verification steps:
   - use a subagent/reviewer for non-trivial changes, or
   - perform a deeper self-review that checks assumptions, affected files, tests, and risks.
@@ -37,51 +40,30 @@ This repo is an Astro blog. Detailed documentation lives in `docs/`. **Read the 
 | Monday Brief (issues, drafts, Lab, RSS, and publishing) | [docs/monday-brief.md](docs/monday-brief.md) |
 | Code quality (Biome, style guidelines, utilities) | [docs/code-quality.md](docs/code-quality.md) |
 
----
-
-### Creating a Post
+## Blog posts
 
 - **Location:** new `*.mdx` file under `src/content/blog/`
 - **Filename/slug:** `kebab-case` (lowercase + hyphens); keep readable, avoid filler words
 - **No duplicate H1:** the layout renders the title from frontmatter; do not add `# Title` in the body
-
-### Frontmatter (required)
-
-```yaml
----
-title: "Clear, descriptive title"
-description: "1–2 sentences: what the reader will learn and why it matters."
-pubDate: "2025-12-18"
-published: true
-tags: ["tag-one", "tag-two", "tag-three"]
----
-```
-
-- `pubDate`: always use ISO `YYYY-MM-DD`
+- Frontmatter must match the schema in `src/content.config.ts`; see
+  [docs/blog-post-authoring.md](docs/blog-post-authoring.md) for the supported
+  fields and conventions.
+- `published` is required. Use `false` for a new draft unless the user
+  explicitly asks to publish it. Do not change an existing publication state
+  without authorization. An example containing `published: true` in another
+  document is not publication authorization.
+- `pubDate`: use ISO `YYYY-MM-DD`
 - `tags`: required by convention (3–7 items); **use existing tags first** before creating new ones
 - `heroImage`: if used, must start with `/src/assets/` and point to a real file
-
-### Post Shapes
-
-| Shape | When to use |
-|---|---|
-| **How-to / tutorial** | Hands-on work: problem → necessary requirements → executable steps → relevant failures and boundaries |
-| **Understanding X / conceptual** | Mental model: engineering problem → mechanism → concrete example → relevant trade-offs |
-| **Short note / opinion** | Supplied personal context → clear position → evidence or limits → current recommendation |
-
-These shapes are guides, not required outlines. Do not add a section, table,
-list, or conclusion only to complete a template. End when the reader has the
-necessary consequence, action, or remaining boundary.
-
-### Markdown/MDX
-
-- Use `##` for main sections, `###` for subsections
 - Always set language on code fences (`sh`, `typescript`, `python`, etc.)
-- Use Mermaid for flows/architecture; tables for comparisons
 - **Embeds:** `:youtube[id]`, `:link[url]`, `:excalidraw[url]`
 - Cross-link: posts → `/posts/<slug>/`, tags → `/tags/<tag>/`
+- Use Mermaid or a table only when it makes an important relationship easier
+  to understand.
+- Post shapes are guides, not required outlines. Do not add a section, table,
+  list, or conclusion only to complete a template.
 
-### References and source status
+## References and source status
 
 When a post relies on external evidence:
 
@@ -120,21 +102,15 @@ When a post relies on external evidence:
 
 Use this shape:
 
-- First Author et al. [Complete title](canonical-url). Publication venue or
+- Author or Organization. [Complete title](canonical-url). Publication venue or
   document type, identifier and version, publication/submission date, and
   verified editorial status.
 
-### Tags (use existing first)
+## Safety for security and hacking posts
 
-Common existing tags (not exhaustive):
+If a post covers cracking, exploitation, or offensive security, add this
+disclaimer near the top: "For educational purposes only. Test only systems you
+own or have explicit permission to assess."
 
-- **AI/LLMs:** `llm`, `ai-engineering`, `ai-agents`, `ollama`, `langchain`, `langgraph`, `machine-learning`, `rag`
-- **Web/Frontend:** `javascript`, `typescript`, `react`, `nextjs`, `frontend`, `architecture`, `performance`, `web`
-- **Backend/Python:** `python`, `fastapi`, `uvicorn`, `asgi`, `backend`
-- **Tooling/DevOps:** `github-actions`, `devops`, `docker`, `monorepos`, `pnpm`, `automation`
-- **Hardware/Security:** `raspberry-pi`, `hardware`, `security`, `hacking`, `self-hosting`
-- **Career:** `engineering-practices`, `collaboration`, `pair-programming`, `productivity`
-
-### Safety (security/hacking posts)
-
-Add a disclaimer near the top: "educational purposes only, only on systems you own or have permission to test."
+Keep the post defensively framed and do not include details that meaningfully
+increase real-world harm beyond the authorized educational purpose.
