@@ -13,7 +13,7 @@ cp templates/brief.mdx src/content/brief/my-issue.mdx
 pnpm dev
 ```
 
-Fill in the frontmatter and open `/brief/<slug>/` on the local server. The `/brief/` archive also lists previews during development. Use the `demo.mdx` draft at `/brief/demo/` to inspect the layout; keep it set to `published: false`.
+Fill in the frontmatter and open `/brief/<slug>/` on the local server. The `/brief/` archive also lists previews during development. The [November 16 edition](../src/content/brief/004-when-the-queue-keeps-growing.mdx) is an example of the newsletter format.
 
 | Field | Rule |
 | --- | --- |
@@ -29,9 +29,15 @@ Fill in the frontmatter and open `/brief/<slug>/` on the local server. The `/bri
 
 You can rename a file without changing its URL: the address comes from `slug`. After publishing, preserve the slug and issue number so links and references keep working. Reserved slugs and duplicate slugs or issue numbers fail the build, including those in drafts.
 
-## Write the updates
+## Write the issue
 
 Use the previous seven days as the usual coverage window. Distinguish the source's publication date from the date the change happened. Prefer documentation, changelogs, repositories, papers, and technical reports from the people responsible. Select updates for their effect on implementation decisions; popularity alone is not a reason to include one.
+
+Open with the most consequential story. Start with a concrete finding or change, then give it enough room to explain the result and its significance. Follow it with short notes. A paragraph is usually enough for a note that explains what was found or announced, why it matters, and what limits the claim. Attribute benchmarks and distinguish vendor claims, independent results, and editorial interpretation.
+
+End each summary with descriptive links to the full primary sources. Link text such as “Full ToolTurns study” or “ExecuTorch 1.6.0 release notes” tells readers what the link opens. List the same sources under `## References` with the details required by the [reference guidelines](../AGENTS.md#references-and-source-status).
+
+Omit the Lab section from new issues.
 
 | Identifier | Topic |
 | --- | --- |
@@ -43,23 +49,15 @@ Use the previous seven days as the usual coverage window. Distinguish the source
 | `reliability` | Reliability, evaluation, and observability |
 | `efficiency` | Hybrid architectures, efficiency, and operating cost |
 
-Each `<BriefTopic topic="local-ai">` generates an H2 and a stable anchor such as `#local-ai`. Use H3 for individual updates and keep `topics` aligned with the blocks in the body. Give each update one main topic and use internal links when it touches another. The issue's navigation links come from these topics.
-
-The template suggests four paragraphs: what changed, available evidence, implementation impact, and limitations. Adjust the form to the material. Put sources with descriptive link text next to the claims they support. Distinguish vendor claims, independent results, and editorial interpretation; state benchmark conditions and what remains unverified.
+Each `<BriefTopic topic="local-ai">` generates an H2 and a stable anchor such as `#local-ai`. Use H3 for individual updates. Give each update one main topic and use internal links when it touches another. List `topics` in the same order as the corresponding blocks so the issue's navigation follows the reading order.
 
 Voice, vision, and multimodal systems fit within the existing topics. Coding assistants, AI IDEs, coding agents, code generation and review, and comparisons of programming tools are outside the scope. The architecture of agents used in products remains in scope. Exclude generic investment news, company disputes, and predictions without concrete technical consequences.
 
-## Prepare the Lab
-
-The `<BriefLab status="proposed">` component identifies an experiment that has not been run. Use `status="completed"` only when the experiment has been run and the text reports observed results. Never present expected values as measurements.
-
-Record the question, context, environment, reproducible procedure, metrics, comparison criteria, results, limitations, and interpretation. Link to code, commands, and data when available. The template includes these fields; remove the block and its import when there is no suitable material.
-
-The body supports the blog's MDX features: code fences with language labels, tables, images, Mermaid, and existing chart components. Add alt text to images and provide accessible descriptions and data for charts. For complex tables, prefer HTML with a `caption` and identified headers. Do not attribute tests run by others to the author.
+When an issue uses figures, give images alt text and provide accessible descriptions and data for charts. Use a caption and identified headers for complex HTML tables. Label code fences with the language.
 
 ## Publish and correct an issue
 
-1. Review the bracketed placeholders, sources, dates, topics, and Lab status. Remove empty sections.
+1. Replace all placeholders and example URLs. Confirm that every summary links to its full source and that the dates, topics, and references match the issue.
 2. Choose an unused number if you want to number the issue. Adding drafts does not change existing numbers.
 3. Change `published` to `true` and confirm `pubDate`.
 4. Run the checks and inspect the local output:

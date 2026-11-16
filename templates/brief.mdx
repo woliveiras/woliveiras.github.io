@@ -1,5 +1,5 @@
 ---
-title: "[Title: which technical decision does this issue help readers make?]"
+title: "[Title drawn from the lead story]"
 slug: "new-issue"
 description: "[Summarize the topics and situations where this issue helps. Do not copy the opening.]"
 pubDate: "2000-01-10"
@@ -8,80 +8,34 @@ published: false
 period:
   start: "2000-01-03"
   end: "2000-01-09"
-topics: ["local-ai"]
+topics: ["efficiency", "local-ai"]
 ---
 
 import BriefTopic from "$components/brief/BriefTopic.astro";
-import BriefLab from "$components/brief/BriefLab.astro";
 
-{/* Replace the bracketed placeholders and dates before publishing.
-    Usually cover the previous seven days. Monday is a planned cadence.
-    Select updates for their effect on implementation decisions, not popularity.
-    Prefer documentation, changelogs, repositories, papers, and reports from maintainers.
-    Do not cover coding agents, AI IDEs, code generation/review, or generic investment
-    news, company disputes, and predictions without concrete technical consequences.
-    Give each update one main topic. Use internal links for cross-references.
-    Keep topics aligned with the BriefTopic blocks actually present. */}
+{/* Replace the bracketed text, dates, and example URLs. See docs/monday-brief.md
+    for editorial scope and publication checks. Add notes as the material
+    warrants and list the topics in the order they appear in the body. */}
 
-[Editorial opening: what problem connects the selected topics? Use only context and positions you can support.]
+[Open with a concrete finding or change from the lead story. Give the reader enough context to understand what makes it worth covering.]
 
-<BriefTopic topic="local-ai">
+<BriefTopic topic="efficiency">
 
-### [The concrete change and its scope]
+### [Lead story headline]
 
-**What changed.** [Describe the change. Distinguish its announcement date from when it happened or became available.]
-
-**Available evidence.** [Link to the primary source beside the claim, using descriptive link text. Identify vendor claims, independent results, and your own observations.]
-
-**Implementation impact.** [Explain which decision may change, for whom, and under what conditions. Label editorial interpretation.]
-
-**Limitations.** [Record incompatibilities, requirements, benchmark conditions, and what remains unverified. Do not attribute tests to the author unless they ran them.]
-
-{/* Sources: replace placeholders with real links before publishing.
-    Syntax example: [Descriptive documentation title](verified URL).
-    Add an H3 for another update on this topic. For another topic, add
-    a BriefTopic block and update topics. Remove sections without material. */}
+[Summarize what the source found or announced and why it matters. Include the conditions or limits that affect how the finding should be read.] [Full study or technical report](https://example.com/lead-source)
 
 </BriefTopic>
 
-{/* The Lab is optional. Remove the block and import when there is no suitable material.
-    Use status="completed" only for an experiment that has actually been run.
-    Keep a proposal identified as a proposal, without simulated results. */}
+<BriefTopic topic="local-ai">
 
-<BriefLab status="proposed">
+### [Short note headline]
 
-### Question and context
+[In a short paragraph, explain what changed and what it affects for the reader.] [Full release notes or announcement](https://example.com/note-source)
 
-[Which hypothesis will you investigate? Which decision depends on it?]
+</BriefTopic>
 
-### Environment
+## References
 
-| Item | Configuration to record |
-| --- | --- |
-| Hardware and system | [CPU, GPU/accelerator, RAM, operating system and version] |
-| Runtime and dependencies | [Exact versions and configuration] |
-| Model and inputs | [Revision, quantization, parameters, data, and license where relevant] |
-
-### Procedure
-
-1. [Setup and reproducible commands.]
-2. [Execution, warmup, repetitions, and controlled conditions.]
-3. [How to collect and compare measurements.]
-
-### Metrics and criteria
-
-[Define metrics that answer the question, their units, and comparison criteria before measuring. Record quality alongside latency, resource use, or cost when it affects the decision.]
-
-### Results
-
-The experiment has not been run. There are no measurements to report.
-
-### Limitations and interpretation
-
-[What can this procedure demonstrate? What falls outside the test? After running it, distinguish observed results from your interpretation.]
-
-### Artifacts
-
-[Verified links to code, commands, data, and other material when available. Remove this subsection if there are no artifacts. Images need alt text; charts need accessible descriptions and data.]
-
-</BriefLab>
+- [Author or organization]. [Complete title of the lead source](https://example.com/lead-source). [Venue or document type, date, identifier or version, and verified editorial status where available.]
+- [Author or organization]. [Complete title of the note source](https://example.com/note-source). [Venue or document type, date, identifier or version, and verified editorial status where available.]
