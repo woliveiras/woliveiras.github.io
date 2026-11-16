@@ -1,0 +1,70 @@
+---
+title: "When the queue keeps growing after the traffic spike"
+slug: "004-when-the-queue-keeps-growing"
+description: "Why vLLM can stay slow after a traffic spike, plus llama.cpp and ggml 1.0, multi-turn tool evaluations, model weight integrity, and ExecuTorch on Snapdragon."
+pubDate: "2026-11-16"
+published: true
+issue: 4
+period:
+  start: "2026-11-09"
+  end: "2026-11-16"
+topics: ["efficiency", "local-ai", "reliability", "security", "mobile-ai"]
+---
+
+import BriefTopic from "$components/brief/BriefTopic.astro";
+
+A five-minute traffic spike left a vLLM server with a growing backlog for another 70 minutes. The paired run kept up with the same base traffic. Wen Huang and Jack Liu observed this pattern in nine of twelve pairs.
+
+<BriefTopic topic="efficiency">
+
+### Why the vLLM server stayed slow
+
+For an agent that sends the conversation back on every turn, a cache hit saves the server from processing the same context again. When a burst pushes those cached prefixes out, recomputing them slows each turn. More sessions remain unfinished and compete for the same cache, so the slowdown can sustain itself. In the main experiment, with Qwen3-8B on an AMD MI300X and synthetic sessions, degraded runs reused about 10% of prompt tokens across completed turns and finished about half as many turns per second.
+
+In a separate recovery experiment, limiting new sessions restored one of seven matched degraded runs. Pausing some sessions between turns to keep their demand within the cache budget restored all seven within minutes. The authors observed persistent degradation with SGLang too, under a different load. [Full study by Wen Huang and Jack Liu](https://arxiv.org/abs/2611.13412)
+
+</BriefTopic>
+
+<BriefTopic topic="local-ai">
+
+### llama.cpp and ggml 1.0 change what bindings can rely on
+
+An app that embeds llama.cpp depends on both the headers its bindings build against and the library it loads at runtime. With the November 13 release of llama.cpp and ggml 1.0, the maintainers committed to signaling incompatible changes to their public C interfaces with a major version bump. The move to 1.0 itself removes deprecated functions, including `llama_set_warmup`, and ggml’s new RPC protocol rejects incompatible peers. [Maintainers’ announcement](https://huggingface.co/blog/ggml-org/llama-cpp-v1), [llama.cpp 1.0 release notes](https://github.com/ggml-org/llama.cpp/releases/tag/v1.0.0), [ggml 1.0 release notes](https://github.com/ggml-org/ggml/releases/tag/v1.0.0)
+
+</BriefTopic>
+
+<BriefTopic topic="reliability">
+
+### ToolTurns scores the whole conversation
+
+The best agent in ToolTurns resolved **69.6% of individual requests** and completed **39.8% of full conversations**. The benchmark starts each dialogue with a request that leaves out some information, then adds two follow-ups that depend on what happened earlier. All nine models scored lower on both follow-ups than on the opening request, exposing failures that a first-turn evaluation would miss. The study used simulated users and cached or simulated tool responses. [Full ToolTurns study](https://arxiv.org/abs/2611.14925)
+
+</BriefTopic>
+
+<BriefTopic topic="security">
+
+### Lazarus puts weight integrity on the deployment checklist
+
+For educational purposes only. Test only systems you own or have explicit permission to assess.
+
+An agent can keep the same access to files and tools after a model update. In the Lazarus study, an agent with altered model weights behaved normally on the benign inputs the researchers evaluated and could still act unsafely under specific conditions. The finding makes the origin and integrity of the checkpoint part of the security review for agents with tool access. Microsoft’s write-up describes how it traces open-weight models to their publishers during onboarding. [Microsoft Research write-up](https://www.microsoft.com/en-us/research/blog/lazare-veni-foras-reprogramming-dormant-neurons-to-backdoor-ai-agents/), [Full Lazarus preprint](https://arxiv.org/abs/2611.15118)
+
+</BriefTopic>
+
+<BriefTopic topic="mobile-ai">
+
+### ExecuTorch 1.6 exports one artifact for multiple Snapdragon chips
+
+An Android app that ships a different model export for each Snapdragon chip may now need fewer artifacts. ExecuTorch 1.6 adds Qualcomm’s Flexible Context Binary export, which lets one artifact target multiple compatible chips. The November 12 release also drops Python 3.10, so a CI pipeline that builds those artifacts on 3.10 needs a Python update before moving to 1.6. [Full ExecuTorch 1.6.0 release notes](https://github.com/pytorch/executorch/releases/tag/v1.6.0)
+
+</BriefTopic>
+
+## References
+
+- Wen Huang and Jack Liu. [Bursts That Outlast Themselves: Persistent Degradation in Prefix-Cached Agent Serving](https://arxiv.org/abs/2611.13412). arXiv preprint 2611.13412, v1, submitted November 10, 2026. Publication venue unlisted.
+- Daniel Bevenius, Georgi Gerganov, and Merve Noyan. [llama.cpp v1.0.0: A stronger foundation for the local AI ecosystem](https://huggingface.co/blog/ggml-org/llama-cpp-v1). ggml-org team announcement on Hugging Face, November 13, 2026.
+- ggml-org. [llama.cpp v1.0.0](https://github.com/ggml-org/llama.cpp/releases/tag/v1.0.0) and [ggml v1.0.0](https://github.com/ggml-org/ggml/releases/tag/v1.0.0). GitHub release notes, November 13, 2026.
+- Milad Gholami, Brendan King, and Jeffrey Flanigan. [ToolTurns: Benchmarking LLM Agents in Multi-Turn Dialogue](https://arxiv.org/abs/2611.14925). arXiv preprint 2611.14925, v1, submitted November 11, 2026. Publication venue unlisted.
+- Dimitris Papailiopoulos. [Lazare, veni foras: Reprogramming Dormant Neurons to Backdoor AI Agents](https://www.microsoft.com/en-us/research/blog/lazare-veni-foras-reprogramming-dormant-neurons-to-backdoor-ai-agents/). Microsoft Research Blog, research announcement, November 10, 2026.
+- Yuchen Zeng et al. [Lazare, veni foras: Reprogramming Dormant Neurons to Backdoor AI Agents](https://arxiv.org/abs/2611.15118). arXiv preprint 2611.15118, v1, submitted November 11, 2026. Publication venue unlisted.
+- PyTorch. [ExecuTorch v1.6.0](https://github.com/pytorch/executorch/releases/tag/v1.6.0). GitHub release notes, November 12, 2026.
