@@ -21,7 +21,7 @@
 		"@astrojs/mdx": "^8.0.3",
 		"@astrojs/rss": "^4.0.19",
 		"@astrojs/sitemap": "^3.7.4",
-		"@astrojs/svelte": "^9.0.1",
+		"@astrojs/svelte": "^9.1.2",
 		"@shikijs/transformers": "^4.5.0",
 		"@tailwindcss/forms": "^0.5.11",
 		"@tailwindcss/vite": "^4.3.3",
