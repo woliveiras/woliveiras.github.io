@@ -40,6 +40,10 @@ number), and `order` (its position in reading order). Normal chapters use
 or appendix. `pageSlug` overrides a chapter or appendix slug when needed.
 Define part titles and descriptions in the book's `parts` array.
 
+In *Hands-on Coding Assistants*, collect source links under a final
+`## References` heading in each chapter or appendix. Keep download links and
+links that guide readers through exercises in the body.
+
 ### Customize a book
 
 - Set **colors** in `theme.light` and `theme.dark`. Use `paper` for the background,

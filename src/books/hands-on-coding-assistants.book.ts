@@ -9,12 +9,12 @@ export const book = {
 		"A developer's workflow for AI-assisted engineering, from writing the first spec to shipping a feature with review, security checks, and a way to measure the result.",
 	published: true,
 	parts: [
-		{ number: 0, title: "Foundations & Philosophy", description: "Core concepts, the spec-first workflow, setup, and the harness overview." },
-		{ number: 1, title: "Agent Customization", description: "Custom agents, AGENTS.md, repository instructions, and agent skills." },
+		{ number: 0, title: "Foundations & Philosophy", description: "Set up OpenCode, explore the Task API, and take a registration change from spec to tested diff." },
+		{ number: 1, title: "Agent Customization", description: "Add a reviewer, project instructions, commands, and a skill to the same repository." },
 		{ number: 2, title: "AI in the Daily Development Cycle", description: "Test generation, code review, debugging, refactoring, and documentation." },
-		{ number: 3, title: "Extensibility & Integrations", description: "MCP (Model Context Protocol), hooks, validation, and agent automation." },
+		{ number: 3, title: "Extensibility & Integrations", description: "Connect a local MCP server and run repeatable checks with Git and OpenCode." },
 		{ number: 4, title: "Security, Governance & Impact Measurement", description: "AI-first security, governance, IP policy, impact metrics, and continuous improvement." },
-		{ number: 5, title: "Full Cycle", description: "End-to-end final project applying the complete spec-first workflow on a real codebase." },
+		{ number: 5, title: "Full Cycle", description: "Add searchable task labels and review the change against the feature contract." },
 	],
 	license: {
 		name: "Creative Commons Attribution 4.0 International",

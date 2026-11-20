@@ -1,0 +1,86 @@
+---
+title: "Model Setup and Troubleshooting"
+description: "Choose a local or free hosted model for OpenCode and check the behavior the exercises need."
+module: 0
+order: 98
+kind: appendix
+---
+
+## Pick a model for the exercise
+
+The lab needs a model that can read files, edit one route, and run a test command. Use the [setup exercise](/books/hands-on-coding-assistants/chapters/setup-and-practical-integration/#check-file-and-shell-tools) to check those abilities. A model that answers questions may still struggle to call a tool repeatedly.
+
+The registration pilot used OpenCode **2.3.2**. The local run used Ollama **0.40.16** and `ollama/qwen3.5:9b`. The hosted run used `opencode/deepseek-v4.1-flash-free`. Keep the exact model ID when recording results. The hosted model was listed as free during the November 2026 pilot. Availability and terms can change.
+
+## Check whether a model fits your machine
+
+Start with the memory available while your editor, browser, and usual tools are open. For GPU inference, compare the model's working memory with the GPU's free VRAM. On Apple silicon, the GPU, CPU, and your apps share the same pool of unified memory. Also check system RAM for CPU inference and free disk space for the download.
+
+### Check your hardware
+
+- **Windows.** Open Task Manager, select **Performance → GPU**, and check **Dedicated GPU memory**. The **Memory** view shows system RAM.
+- **NVIDIA on Linux or Windows.** If your driver provides `nvidia-smi`, run `nvidia-smi --query-gpu=name,memory.total,memory.free --format=csv` to see total and free VRAM for each GPU.
+- **Apple silicon.** Open **Apple menu → System Settings → General → About** and check **Memory** for total unified memory. Check Activity Monitor's **Memory Pressure** while testing the model.
+
+### Estimate memory before downloading
+
+For a rough estimate of the raw weights in decimal GB, multiply the parameter count in billions by the bits per weight and divide by eight. At four bits per weight, an 8B model starts at roughly `8 × 4 ÷ 8 = 4 GB` of raw weights. Quantized formats can mix precisions and store extra data. Ollama lists the Q4_K_M variant of `qwen3:8b` at 5.2 GB on disk. Look up the size of the exact tag you plan to use.
+
+At runtime, budget for the weights, the runner's working memory, and the KV cache, which holds information about tokens the model has already processed. A longer context can increase how much memory the cache needs. The headroom needed depends on the model architecture, quantization, and configured context length. Estimate for the context you'll use in OpenCode.
+
+Use a checker to narrow down the candidates. **Can I Run AI?** takes hardware specs in the browser. `llmfit` detects hardware from the terminal and estimates memory fit and speed. Use those estimates to pick a smaller variant when memory is tight, then measure on your machine.
+
+### Verify with Ollama
+
+After downloading a candidate, send a request to it so Ollama loads it. Run `ollama ps` while the model is still loaded. The `PROCESSOR` column shows whether the model is fully on the GPU, split between CPU and GPU, or running entirely on the CPU. A split can let a model run when VRAM is tight, with a possible slowdown.
+
+Use the [context settings below](#local-context-and-discovery), then repeat the check while running the [file and shell tools exercise](/books/hands-on-coding-assistants/chapters/setup-and-practical-integration/#check-file-and-shell-tools). Compare memory use and response time during the exercise. If performance is too slow or memory is tight, try a smaller model that supports tool calls or use the hosted path.
+
+## Local context and discovery
+
+Ollama's integration guide calls for a context window of at least 64k tokens with OpenCode. Model context capacity and the context allocated by your runner are separate. A model tag can advertise a large maximum while Ollama allocates a smaller window by default. Use the Ollama app's context setting or start the server with `OLLAMA_CONTEXT_LENGTH=65536` in its environment. In a POSIX shell, the CLI form is:
+
+```sh
+OLLAMA_CONTEXT_LENGTH=65536 ollama serve
+```
+
+Set that variable before the server starts. Stop an existing instance if it already owns the port. After the first request, `ollama ps` shows the loaded runner and allocated context. Larger context uses more memory. The local pilot ran on an Apple Silicon Mac. Check speed and memory on your own machine before moving on to longer exercises.
+
+On the default listener, OpenCode 2 discovers eligible models automatically. If you configured a different listener, merge provider settings into your project or personal OpenCode config:
+
+```jsonc
+{
+  "providers": {
+    "ollama": {
+      "settings": { "baseURL": "http://127.0.0.1:11439/v1" }
+    }
+  }
+}
+```
+
+Use the port on which your instance listens. Run `opencode models` to confirm the exact ID before using it. If discovery is still in progress, wait briefly and check again. On the local path, select a downloaded model tag. Ollama also offers cloud tags, which use a remote provider.
+
+## Free hosted options
+
+Open `/models` to select a currently available free OpenCode model. A catalog entry can be visible before an underlying provider accepts your requests. If the first request is rejected because of availability or a quota, check the catalog and select another free entry.
+
+OpenRouter is another option. Use `/connect`, select OpenRouter, and use your own OpenRouter API key. In `/models`, select an explicit free variant with tool-calling support. Free requests have rate limits and can fail when a provider is at capacity. Use the sample project with either hosted option. Its data is fictional.
+
+| Symptom | Check |
+| --- | --- |
+| The model is missing | Verify that the local server is listening, the model is installed, and `opencode models` shows the expected ID. On a hosted path, check the provider's current list and account requirements. |
+| Chat works, but the session skips tool calls | Inspect permissions and repeat the setup check with the same prompt. If the model still skips tools, try another one. |
+| The local session is slow or loses track of files | Check the allocated context and use the small lab in a fresh session. Keep optional MCP tools out of the first exercise. |
+| The hosted route hits a limit | Follow the provider's quota guidance or switch to another free entry. Keep the same spec and tests. |
+
+## References
+
+- OpenCode maintainers. [Providers](https://opencode.ai/docs/providers/), [Models](https://opencode.ai/docs/models/), and [Console models](https://opencode.ai/docs/console/models/#free-models). Official OpenCode 2 documentation and maintained model catalog. [Ollama model discovery](https://opencode.ai/docs/providers/#ollama).
+- Ollama maintainers. [OpenCode](https://docs.ollama.com/integrations/opencode) and [Context length](https://docs.ollama.com/context-length). Official integration and runtime documentation.
+- OpenRouter. [Free AI Models](https://openrouter.ai/collections/free-models/) and [Limits](https://openrouter.ai/docs/api_reference/limits). Provider catalog and API documentation.
+- Ollama maintainers. [Local FAQ](https://docs.ollama.com/faq) and [qwen3:8b](https://ollama.com/library/qwen3:8b). Model catalog entry and [GPU placement guide](https://docs.ollama.com/faq#how-can-i-tell-if-my-model-was-loaded-onto-the-gpu).
+- Apple. [View About settings on Mac](https://support.apple.com/guide/mac-help/mchlea7173f3/mac), [View memory usage in Activity Monitor](https://support.apple.com/en-au/guide/activity-monitor/-actmntr1004/mac), and [Get started with MLX for Apple silicon](https://developer.apple.com/videos/play/wwdc2025/315/). Support guides and WWDC25 session. [Unified memory segment](https://developer.apple.com/videos/play/wwdc2025/315/?time=261).
+- Microsoft. [GPU process memory counters report incorrect values](https://learn.microsoft.com/en-us/troubleshoot/windows-client/performance/gpu-process-memory-counters-report-wrong-value). Windows client documentation, KB 4490156.
+- NVIDIA. [NVIDIA System Management Interface](https://docs.nvidia.com/deploy/nvidia-smi/index.html). Command-line reference.
+- Can I Run AI? [Hardware and model compatibility checker](https://canirun.ai/). Browser tool.
+- AlexsJones and contributors. [llmfit](https://github.com/AlexsJones/llmfit). Project documentation and hardware estimator.
