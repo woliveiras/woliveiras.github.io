@@ -1,19 +1,34 @@
 ---
-title: "Test Generation & Improvement with AI"
-description: "Generate tests that check the public behavior of the Task API and catch regressions."
-module: 2
-order: 11
+title: "Focused Tests and Coverage Gates"
+description: "Prove a focused test catches a bug and make coverage regressions fail a check."
+module: 3
+order: 12
 ---
 
-## Start with the behavior
+The registration bug took two requests to see. One request returned the expected 400. The next one exposed the consumed ID. You need an HTTP test for that sequence. A pure validator gives you a cheaper way to test how the application handles types, whitespace, and boundary lengths.
 
-The starter already tests a blank title. It doesn't test the upper bound for a task title. Before asking the assistant for coverage, decide what the caller should see. A title with 120 characters is valid. One with 121 returns a 400 and leaves the stored list unchanged.
+Start from `lab-registration`, the known-good reference for the registration change. Bring the regression test you wrote during debugging, or read the reference in `lab-coverage`.
 
-Ask **Plan** to read `src/app.ts` and `test/app.test.ts`. Have it identify the existing cases and propose checks for both sides of the boundary. Then ask **Build** to add those tests in `test/app.test.ts`. Keep the application and the contract files out of this change.
+```sh
+git switch -c coverage-exercise lab-registration
+npm test
+npm run test:registration
+git show lab-coverage:test/registration-regression.test.ts
+```
 
-## Read the assertions
+## Give each test one job
 
-A test that checks only for HTTP 400 leaves an important question unanswered. The server could store the task and still return an error. Check the state through the API.
+Ask **Plan** to read the registration spec, `src/app.ts`, and the HTTP tests. Give it the failure you reproduced. Then ask **Build** to extract a pure `normalizeRegistration(input: unknown)` function into `src/registration.ts` and test that function in `test/registration.test.ts`. Keep the response mapping and ID allocation in the route.
+
+```text
+Extract the registration input validation without changing the HTTP API.
+Add focused tests for a valid name and email that need normalization, a
+non-string name, and a name at the 100-character limit. Keep the HTTP
+contract unchanged. Use the HTTP helper to check that a rejected request
+leaves ID 1 available on a fresh server.
+```
+
+Check a separate pair of HTTP tests around the task title limit in `test/app.test.ts`. A title with 120 characters is valid. A title with 121 returns 400 and leaves the list unchanged. Assert the full result and compare state where it matters.
 
 ```typescript title="test/app.test.ts"
 test("a title over the limit leaves tasks unchanged", async t => {
@@ -28,18 +43,42 @@ test("a title over the limit leaves tasks unchanged", async t => {
 });
 ```
 
-Ask for a separate success case at exactly 120 characters. The two cases catch both directions of an off-by-one mistake. Use the real HTTP helper. Mocking the validation function would skip the response mapping and the state change, which are the behaviors you want to know about.
+With the new tests in place, temporarily change the title check from `> 120` to `>= 120` in your exercise branch. `npm test` should fail on the exact-limit case with an observed 400 where it expected 201. Undo that edit and rerun both suites. If the test stays green with the fault in place, find out which input it sends and which code it reaches before accepting it.
 
-## Check that a new test catches a regression
+## Read the failure from the coverage command
 
-Run `npm test`. If the new tests pass, try them against a temporary local change from `title.length > 120` to `title.length >= 120`. The exact-limit case should fail. Undo only that deliberate change and run the suite again. Start with a clean branch or save your own edits before trying this, so you can see exactly what you have restored.
+Run this command in a separate worktree at `lab-start`, using Node 24.22.3, the version in `.nvmrc`. Check `node --version` and select that release before measuring. Its three tests can all pass while the command exits unsuccessfully because it also requires 90% line coverage of `src/app.ts`.
 
-For a failure in the registration exercise, use `npm run test:registration` alongside the starter suite. That contract is supplied with the book. The tests you're writing here cover a different route and belong in the regular suite.
+```sh
+git worktree add --detach ../task-api-coverage-probe lab-start
+cd ../task-api-coverage-probe
+node --test --experimental-test-coverage --test-coverage-lines=90 \
+  --test-coverage-include=src/app.ts test/*.test.ts
+```
 
-## Decide what layer to test
+Read the uncovered lines in the report. Find a case you would want to protect anyway, such as a body that's too large to parse. Send the request and assert the response and untouched state. Repeat the report on the same Node version and file selection. A different runtime or selection can change the number you are comparing.
 
-A pure label-normalization helper is cheap to cover with a unit test if you extract one in the final project. An HTTP test is more useful for status, payload, and persistence within one request sequence. The lab's built-in Node.js test runner supports both. Pick the layer where a failure answers the question you have.
+## Enforce the versioned policy
+
+From the probe worktree, use `lab-coverage` to create a separate checkpoint for the rest of the exercise. It includes the focused unit and HTTP cases, `coverage-policy.json`, and `tools/coverage.mjs`.
+
+```sh
+git worktree add -b coverage-policy-exercise ../task-api-coverage-policy lab-coverage
+cd ../task-api-coverage-policy
+npm run coverage
+npm run verify
+node tools/coverage.mjs --base "$(git rev-parse lab-coverage)"
+```
+
+Open the policy and compare the report with its file list and the covered and total counts for each minimum. On Node 24.22.3, the checkpoint measures 81 of 83 lines, 43 of 46 branches, and all five functions across the included files. `npm run coverage` gives you the measurement. `npm run verify` checks it against the policy.
+
+Temporarily remove the test named “an unknown path returns the not_found response” from `test/app.test.ts` in this clean exercise branch. `npm test` still passes. `npm run verify` fails on coverage. Read the new line and branch ratios before restoring that test from `HEAD`. This shows why you need the gate even after the test runner reports green.
+
+The base comparison also checks the proposed policy against the starting revision. Try lowering the line minimum's covered count in `coverage-policy.json`. Run the base check again and read the rejection. Restore the policy from `HEAD`. Policy changes need someone to review why the measurement or minimum is changing. When you accept a higher measured coverage ratio, raise the corresponding minimum so the next change preserves the improvement.
+
+Keep the command and the failing check alongside your exercise diff. The next chapter gives that command its own checkout and a place in the merge rules.
 
 ## References
 
+- Node.js contributors. [Collecting code coverage in Node.js](https://nodejs.org/learn/test-runner/collecting-code-coverage). Official Node.js guide.
 - Node.js contributors. [Test runner](https://nodejs.org/api/test.html). Node.js API reference.

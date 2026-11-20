@@ -1,54 +1,72 @@
 ---
 title: "End-to-End Final Project"
-description: "Implement, test, and review the task-label feature using the full spec-first workflow."
-module: 5
-order: 19
+description: "Use the complete harness to ship and verify searchable labels on the Task API."
+module: 4
+order: 25
 ---
 
 ## The scenario
 
-A user of your task API wants to mark a task as urgent and find it again from the list. You have task creation and listing. The new feature needs a way to replace a task's labels, clear them, and filter the list by one label.
+A user wants to mark a task as urgent and find it again from the list. Ship searchable labels on the existing in-memory Task API. The larger change in your RFC and ADR covers what happens when the service needs durable storage. Here the work is to deliver and verify the first feature under the agreed API contract.
 
-Start from the lab's original commit on a fresh branch. If you kept the registration work, keep that branch available for comparison. The labels exercise stands on its own.
+Read the decisions you made before you open a new coding session.
 
 ```sh
-npm test
+git show design-task-labels:docs/rfcs/0001-task-labels.md
+git show design-task-labels:docs/decisions/0001-task-label-storage.md
+```
+
+Use your design branch name if it differs. Start from the harness checkpoint. Keep `capstone-base` as a reference so you can review the exact feature diff.
+
+```sh
+git switch -c capstone-base lab-harness
+git switch -c task-labels
+npm run verify
 npm run test:labels
 ```
 
-The starter tests pass and the labels contract fails. Open `specs/task-labels.md` and compare its expected behavior with `contracts/labels.test.ts` before opening an agent.
+The existing verification passes on the reference. The label contract fails before the implementation exists. Read `specs/task-labels.md`, then open `contracts/labels.test.ts` and match each behavior with its assertion. Bring the decisions from your RFC and ADR into the PR description so a reviewer can see where the feature ends.
 
 ## Plan the change
 
-Select **Plan** and ask the agent to read the spec, contract, and `src/app.ts`. Look for a plan that answers these questions:
+Select **Plan** and give the agent the input and output you need.
 
-- How do new and existing tasks get an empty labels array?
-- Where does validation finish before assigning labels to a task?
-- How does filtering apply the same normalization as storing a label?
-- Which existing tests need an updated response shape while keeping their behavior checks?
+```text
+Read specs/task-labels.md, contracts/labels.test.ts, src/app.ts, and
+test/app.test.ts. Plan the in-memory labels feature. Show where
+normalization, deduplication, validation, and mutation happen in src/app.ts.
+Specify what a request sees when it clears labels, when the target
+is missing, and when the input is invalid. Explain which existing
+responses acquire a labels field. Keep files unchanged.
+```
 
-Pay particular attention to the distinction between invalid input and a valid empty array. The first must preserve the stored labels. The second means clear them. Also check the order of normalization and deduplication. A stored list containing both `Urgent` and `urgent` would change what readers see even if the filter still returned the right task.
+Compare the plan with the contract. Ten distinct labels are allowed after normalization. A request with eleven copies of the same label can still be valid. A valid empty list clears the labels. An invalid input preserves them. Check the order of validation and lookup too. An invalid payload for an unknown task is still invalid.
 
-## Implement in small steps
+The specification adds `labels` to existing responses and retains `id` and `title`. Check those fields and run a consumer check before proposing rollout. For an example strict consumer, save a list response from the running service and try asserting that each object has exactly the two old keys. It will reject the expanded shape. Record that fact against the adoption decision in the RFC.
 
-Switch to **Build**. Ask for the data shape and response changes first. Then add the update route and filtering. If the model tries to change the acceptance contract, bring it back to the constraint in the spec.
+## Implement and check the behavior
 
-Run the checks yourself:
+Switch to **Build** with the approved plan. Ask for small steps that first add the data and response shape, then implement updates and filtering, then verify edge cases. Read the changes to the original task tests. The response objects now include `labels`, and the assertions about title normalization and rejected input still apply.
+
+After the contract passes on its own, add `test/labels.test.ts` to include it in ordinary verification.
+
+```typescript title="test/labels.test.ts"
+import "../contracts/labels.test.ts";
+```
+
+Add a focused case in a separate test for ten distinct labels and a request whose raw array is longer but collapses to one. Leave the supplied contract intact. Verify the new module and review the full diff against the reference.
 
 ```sh
 npm test
 npm run test:labels
+npm run verify
 git diff --check
-git diff -- src/app.ts test/app.test.ts
+git diff capstone-base -- src test contracts
 ```
 
-The existing test assertions should still cover title normalization and invalid title behavior. Their expected response objects now include `labels`. The separate acceptance suite checks case normalization, duplicates, clearing, filtering, an unknown task, and preservation of state after invalid input.
+If the coverage gate fails, read the changed branch or line in the report. Cover behavior that matters to the contract. Ask a maintainer to review any change in coverage policy independently.
 
-## Review the feature like a maintainer
-
-Use the reviewer from [Custom Agents & Sub-Agents](/books/hands-on-coding-assistants/chapters/custom-agents-and-sub-agents/) or start a fresh Plan session. Ask it to focus on backwards compatibility of `id` and `title`, state after rejection, and filter behavior. For each finding, ask for a concrete request you can reproduce. Apply a correction only after you can explain the failure.
-
-Try the route yourself in the running lab:
+Run `npm start` in a second terminal. From the first, try a state change and read it back.
 
 ```sh
 curl -i -X PATCH http://127.0.0.1:3000/tasks/1/labels \
@@ -57,12 +75,40 @@ curl -i -X PATCH http://127.0.0.1:3000/tasks/1/labels \
 curl -i 'http://127.0.0.1:3000/tasks?label=urgent'
 ```
 
-Run `npm start` in a separate terminal before these requests. The update should return 200 with `["urgent","bug"]` in the task's `labels` array. The list should contain that task. Stop the server when you're finished.
+Expect a 200 update with `["urgent","bug"]` and a list containing that task. Next send an invalid labels payload and repeat the list request. Confirm it still contains the same labels. Stop the service when you finish.
 
-## Leave a record someone else can use
+## Review and verify the result
 
-Write a short change summary with the agreed behavior, the files you changed, your verification commands and results, and any follow-up deliberately left out. If you compared models, record where each needed help. Keep the final diff and tests with the spec. They give the next reviewer a starting point even when the assistant's session is gone.
+Commit the feature on `task-labels`. Use the reviewer defined in [Custom Agents & Sub-Agents](/books/hands-on-coding-assistants/chapters/custom-agents-and-sub-agents/), or recreate its definition for this exercise. Its read rules cover `specs/`, `contracts/`, `src/`, `test/`, and `notes/review.patch`. Update those paths if you limited the earlier reviewer to specific registration files.
+
+```sh
+mkdir -p notes
+git diff capstone-base HEAD > notes/review.patch
+```
+
+In a new review session, name the current files.
+
+```text
+Read specs/task-labels.md, contracts/labels.test.ts and notes/review.patch.
+Check the normalized limit, how a rejected update affects stored labels,
+and the shape of the existing responses. Read the focused tests affected
+by the diff. Give a concrete request that would verify each finding.
+```
+
+Ask for one finding you can check in the running service. For every finding, record the input, expected result, observed result, and what you changed after reproducing it.
+
+Push `capstone-base` and `task-labels` to your fork. Target `capstone-base` with your ruleset and open a PR from `task-labels` to that branch. Verify that **verify (Node 24)** ran on the revision under review, which includes the activated labels contract. If your check fails after a locally green run, compare the checked revision, Node version, and report before asking for a patch.
+
+With the feature checked out, bring up the live stack from [Instrument the Service and Verify the Alert](/books/hands-on-coding-assistants/chapters/instrument-the-service-and-verify-the-alert/). Replay the PATCH and the filtered GET against the gateway on port 3400. Check that the filtered response still contains task 1 and that the live logs and traces include `/tasks/:id/labels` and `/tasks` with 2xx outcomes. Compare them with the gateway count by status class. The route template and metric labels omit the raw task ID and filter value. Stop the stack after recording the signal.
+
+Keep the spec, design links, verified finding, tests, CI result, and runtime evidence with the PR. Review the record for sensitive values before sharing it.
 
 <span id="series-recap-what-you-learned"></span>
 
-The workflow transfers to your own repo when you can take the same evidence with you. Start with a real change that has one owner, a clear acceptance test, and a diff your team can review.
+The artifact you want to carry into another project is the evidence behind your merge decision. Give the next task a clear result and a way for someone else to reproduce it.
+
+## References
+
+- Node.js contributors. [Test runner](https://nodejs.org/api/test.html). Node.js API reference.
+- GitHub. [Status checks](https://docs.github.com/en/pull-requests/reference/status-checks). GitHub Docs.
+- OpenCode maintainers. [Agents](https://opencode.ai/docs/agents/). Official OpenCode 2 documentation.

@@ -1,25 +1,24 @@
 ---
 title: "MCP (Model Context Protocol)"
-description: "Connect a local, read-only MCP server and distinguish discovery from a successful tool call."
+description: "Connect a read-only tool and verify server startup, discovery, and a model's actual call."
 module: 3
-order: 15
+order: 22
 ---
 
-## Give the agent a tool with a narrow job
+You can explain the Task API's validation convention by reading its tests. Suppose the same convention came from a shared service outside the repository. The agent would need a way to find and call that service. The Model Context Protocol, or MCP, lets OpenCode discover tools supplied by a server and invoke them with structured input.
 
-MCP, the Model Context Protocol, lets a client discover tools supplied by a server and call them with structured input. The lab includes `tools/project-context.mjs`, a small local stdio server. It exposes one tool that returns the Task API's validation conventions. Its result is fixed. It needs no network service or API key.
-
-Run the server's protocol test before asking the model to use it:
+Start a new exercise branch at `lab-start`. The lab includes `tools/project-context.mjs`, a small local server started over standard input and output. Its one tool returns a fixed sentence about validation. It needs no network service or key.
 
 ```sh
+git switch -c context-tool lab-start
 npm run test:mcp
 ```
 
-The test starts the server, checks the initialization exchange, lists its tool, and calls it. If this fails, fix the process or protocol before changing the prompt.
+The smoke test starts the process and checks its sample replies. Use that result to diagnose process failures before you bring in the model. The MCP specification describes a client that negotiates initialization before normal operation. You can verify a real client connection separately.
 
 ## Connect the server in OpenCode
 
-Add this top-level `mcp` section to the lab's existing `opencode.jsonc`. Keep its `permissions` field. The example turns off Code Mode so you can see the individual tool call.
+Merge this top-level `mcp` block into the existing `opencode.jsonc`. Preserve the existing permissions. Disabling Code Mode for this server makes the individual tool call visible.
 
 ```jsonc
 {
@@ -35,33 +34,29 @@ Add this top-level `mcp` section to the lab's existing `opencode.jsonc`. Keep it
 }
 ```
 
-Start a new session from the lab directory, or use:
-
-```sh
-opencode mcp list
-```
-
-Look for `project_context` with a connected status. A successful connection means the harness started and initialized the server. The next check is whether the selected model calls the tool.
-
-OpenCode 2.3.2 can report an empty registry on the first request in a new directory. If you see `No MCP servers configured`, confirm you're in the lab, run `npm run test:mcp`, and retry `opencode mcp list` with the normal background service. Its `--standalone` list command has a separate discovery issue.
+From the repository root, run `opencode mcp list` and check for `project_context` with a connected status. If OpenCode 2.3.2 reports `No MCP servers configured` on the first request, check your working directory and the smoke test, then retry in the same background service. That version has a cold registry issue. Use the normal service for this exercise to give discovery time to finish.
 
 ## Ask the model to call it
 
-In **Plan**, send:
+Start a fresh Plan session.
 
 ```text
-Call project_context_get_task_conventions. Report its response and explain
-which test in test/app.test.ts checks the state-change convention.
+Call project_context_get_task_conventions. Report its response and show
+which test in test/app.test.ts checks that convention.
 ```
 
-Look for the tool call in the session. Its response should describe the 400 status and the unchanged task list. If the model repeats the convention without calling the tool, you have verified that it can answer the question. Ask again or change models to verify the integration. Match the tool name to the one shown by OpenCode.
+Look for a completed tool call and compare its response with the source. It should mention returning HTTP 400 and preserving the task list. The model can give you those facts by reading the repository. Look at the call itself to distinguish that answer from an integration that worked.
 
-## Decide what the connection is worth
+For one comparison, append a denial to `permissions`.
 
-A server is useful when the information lives outside the files the agent already reads or when it needs a controlled lookup. In this exercise the server makes the protocol observable. In a real repo, use the simplest source that keeps the information current. Each tool you expose has a description the model has to consider and permissions you have to maintain.
+```jsonc
+{ "action": "project_context_get_task_conventions", "resource": "*", "effect": "deny" }
+```
+
+In a new session the tool should be unavailable or blocked even if the server is listed as connected. Undo the rule and verify a successful call again. Record the process, discovery, and call results separately. Add a production MCP connection when its controlled lookup makes the workflow easier to verify.
 
 ## References
 
-- Model Context Protocol maintainers. [Architecture overview](https://modelcontextprotocol.io/docs/learn/architecture). Official MCP documentation.
-- OpenCode maintainers. [MCP servers](https://opencode.ai/docs/mcp-servers/). Official OpenCode 2 guide to local and remote servers.
-- OpenCode issue tracker. [MCP HTTP handlers read an empty registry on cold locations](https://github.com/anomalyco/opencode/issues/54192) and [MCP list in standalone mode](https://github.com/anomalyco/opencode/issues/63723). OpenCode 2 bug reports.
+- Model Context Protocol maintainers. [Lifecycle](https://modelcontextprotocol.io/specification/2025-11-25/basic/lifecycle) and [Transports](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports). Protocol specification, revision 2025-11-25.
+- OpenCode maintainers. [MCP servers](https://opencode.ai/docs/mcp-servers/) and [Permissions](https://opencode.ai/docs/permissions/). Official OpenCode 2 documentation.
+- OpenCode issue tracker. [MCP HTTP handlers read an empty registry on cold locations](https://github.com/anomalyco/opencode/issues/54192). OpenCode 2 bug report.

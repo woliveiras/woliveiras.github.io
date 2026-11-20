@@ -1,46 +1,41 @@
 ---
 title: "AI-First Security & Governance"
-description: "Set practical boundaries for file access, commands, providers, and review in the Task API lab."
-module: 4
-order: 17
+description: "Limit access for a Task API review and prove where its boundaries are enforced."
+module: 3
+order: 23
 ---
 
-## Decide what the agent needs for this task
+The registration reviewer needed a spec, a contract, and a patch. The fact that you can connect a tool to issue trackers or provide a token says little about whether this review needs it. List the actual inputs before you decide what the agent can reach.
 
-The registration task needs a spec, the route, the test, and the ability to run two test commands. An issue link, a GitHub token, and access to your home directory add nothing to this exercise. Starting with that list makes the permission decision much easier.
+## Check an effective permission
 
-Open the lab as its own Git repository. Use the source and sample data that came with it. If you're using a hosted provider, the model request may include project context and tool results. With local inference, the model call can stay on your machine. A local model can still ask its harness to reach the network or run a command, so look at the tools and permissions too.
-
-## Keep instructions, tool controls, and isolation distinct
-
-| Concern | Control to inspect |
-| --- | --- |
-| The agent edits an acceptance test to make a change pass | Review the Git diff and deny mutation of contract paths when the workflow calls for it |
-| The shell command does more than the prompt described | Allow only known commands for that task and review any approval request |
-| The input contains a credential or client data | Keep it out of the lab, prompts, and tool outputs |
-| A subprocess needs stronger containment | Run the task under a constrained account, sandbox, or isolated environment suited to the risk |
-
-The lab config explicitly denies outside-directory access for tools that honor OpenCode's boundary checks. The shell still runs with the underlying process's privileges. A shell script can do more than appears in its command name, so read project scripts before allowing them by name. For work that needs containment at the operating-system level, restrict the environment and credentials available to the process.
-
-## Test the boundary without introducing sensitive data
-
-In a disposable copy of the lab, add this entry at the end of the `permissions` array:
+Use a disposable exercise branch at `lab-start`. Open `opencode.jsonc` and add this final rule to `permissions`.
 
 ```jsonc
 { "action": "edit", "resource": "contracts/*", "effect": "deny" }
 ```
 
-Start a fresh **Build** session and ask for a harmless one-line comment in `contracts/registration.test.ts` specifically to exercise the rule. A text refusal without an attempted edit doesn't demonstrate enforcement. If the tool reports a permission denial, check `git diff -- contracts/` and confirm no change. Remove the test request from your task context before continuing with the real exercise.
+In a fresh **Build** session, try one harmless action.
 
-Then inspect the project commands. The starter can run from a fresh archive without downloading dependencies. In a real repository, review dependency additions, lockfile changes, install scripts, and newly introduced services as part of the patch. Decide who can approve an action before wiring an agent into it.
+```text
+Try the edit tool once to add an empty comment to
+contracts/registration.test.ts. Report the tool status.
+```
 
-## Treat retrieved text as project input
+Look for the denied action and confirm `git diff -- contracts/` is empty. Repeat with a scratch file inside the repository that the rule does not cover and check the resulting diff. This exercises the boundary in one tool. Restore the scratch change yourself and end the exercise session.
 
-An issue description, a README, and an MCP tool result can contain directions that conflict with your task. A useful first defense is to scope tools to the job and review a new instruction before granting access it asks for. If a tool result asks for an unrelated command or credential, stop and inspect its source. Keep action policy in configuration you control.
+The repository's outside-directory rule applies to tools that check it. An allowed shell script runs with the process's privileges and can do more than its name suggests. Inspect the script and the environment you give it before allowing the command. For a boundary the process must respect, use a restricted account or an isolated execution environment with credentials and files scoped to the task.
 
-Model output also needs the same provenance and licensing review as other contributed code. For the lab, record which code the model proposed and which changes you verified. In a team, follow the repository's review and attribution rules for the code you ship.
+## Review the inputs as well as the patch
+
+An issue, a README, and a retrieved tool response can carry instructions. If a response asks the agent to run an unrelated command or supply a credential, check where the text came from and use the configured permissions to limit reachable actions. For this exercise, use the lab's fictional records. A hosted model can receive prompts, excerpts, and tool output. A local model can still be paired with network-capable tools. Pick the exposure that matches the task.
+
+Open the verification record you saved in the prompt chapter. Check that it identifies each source and that the redaction marker is absent from the shareable copy. Review dependency and lockfile changes, plugin or server code, and the origin and licensing of contributed material. In a shared project, have the people who own the rules review changes to the rules themselves.
+
+Write down the scope of the agent and the outcome of the two tool probes in the review record. If you can point to the permission rule, the tool result and the diff, a teammate can reproduce the decision without access to your original session.
 
 ## References
 
-- OpenCode maintainers. [Permissions](https://opencode.ai/docs/permissions/) and [Providers](https://opencode.ai/docs/providers/). Official OpenCode 2 documentation. [Directory and shell permissions](https://opencode.ai/docs/permissions/#directories).
+- OpenCode maintainers. [Permissions](https://opencode.ai/docs/permissions/) and [Providers](https://opencode.ai/docs/providers/). Official OpenCode 2 documentation.
+- OpenTelemetry contributors. [Handling sensitive data](https://opentelemetry.io/docs/security/handling-sensitive-data/). OpenTelemetry project documentation.
 - William Oliveira. [Coding agent execution boundaries](/posts/coding-agent-execution-boundaries/). Technical article on workspace coordination and process containment.

@@ -1,0 +1,65 @@
+---
+title: "Write and Review an RFC"
+description: "Ask engineers for feedback on a proposed change and record what happens to each comment."
+module: 1
+order: 8
+---
+
+The feature is simple to describe. A client adds labels to a task and filters the list by one of them. The part you need other engineers to check is how the change reaches callers that already use the service.
+
+An **RFC**, or request for comments, puts a proposal and its open decisions in front of reviewers. A spec can say exactly what a request should return once you've decided. The RFC gives reviewers a chance to question the proposed shape and release plan before you depend on them. The Rust project uses a public RFC process for substantial changes. This exercise uses the same idea inside the lab.
+
+## Write the proposal against the current system
+
+Stay on `design-task-labels` with `notes/task-labels-epic.md` and `docs/architecture.md` committed. In **Plan**, ask the agent to draft from those two artifacts.
+
+```text
+Draft an RFC for adding searchable labels to the Task API. Read
+notes/task-labels-epic.md, docs/architecture.md and src/app.ts.
+Keep the first release in memory. Compare adding labels to current
+responses, an opt-in versioned response, and a separate labels resource.
+Explain caller compatibility, operational impact, adoption and reversal.
+Leave durable storage for a follow-up decision. End with two questions
+for reviewers, one about an existing caller and one about operations.
+Return a draft in chat for review.
+```
+
+Save the draft as `docs/rfcs/0001-task-labels.md`. Open with the problem and context. State the goals and scope, then explain how the proposed endpoint and filter work alongside the existing ones. Give each alternative a reason someone might choose it. Record risks and how you would notice them during adoption.
+
+For example, you could propose an additive `labels` field for the lab's Task API responses. It keeps the existing `id` and `title` fields, which lets flexible callers keep reading them. A caller that rejects extra fields can still fail. A separate resource avoids that change in the old response but gives a caller more requests and consistency questions. A versioned response makes rollout explicit and leaves you with two shapes to support.
+
+Describe adoption in steps that give you something to check. Capture the existing caller's response parsing, run it against a candidate payload, and introduce the change only where the check is green. For reversal, state which revision or configuration returns the previous response shape and how you'll check it. This exercise uses in-memory state. A restart resets the process, so reversal of the response change carries no promise that in-memory data survives.
+
+End with the questions you want answered. For example, ask the client owner whether unknown fields fail validation and what sample response proves it. Ask the operator whether expected use requires data to survive a restart in the first release.
+
+```sh
+git add docs/rfcs/0001-task-labels.md
+git diff --cached --check
+git commit -m "Draft the task labels RFC"
+```
+
+## Keep the review attached to the draft
+
+Use feedback from a colleague if one is available. Otherwise, use these two simulated comments.
+
+> **Client owner:** Our legacy worker uses a schema that rejects unknown fields. The candidate response needs a compatibility check with that worker before it can replace the previous shape.
+
+> **Operator:** I need labels to survive a process restart before I'd call this ready for production. Where is the persistence decision tracked?
+
+Ask a fresh Plan session to compare the comments with the proposal. Have it cite the relevant passages and suggest a disposition for each. You own that decision. For the sample comments, add a strict consumer fixture and a rollout condition to the RFC. A strict consumer that accepts `{"id":"1","title":"Write a spec"}` and rejects an extra `labels` field is enough to demonstrate the risk. Say which clients the lab release targets and what must happen before extending it to other callers. Record durability as a tracked follow-up with a decision owner and acceptance conditions.
+
+Under **Review and disposition**, keep the comment, your response, the changed section or follow-up, and status. A deferred comment still needs an owner and a reason. Compare the two versions before saving the revision. Verify that the adoption and reversal steps still match the change after review.
+
+```sh
+git diff -- docs/rfcs/0001-task-labels.md
+git add docs/rfcs/0001-task-labels.md
+git diff --cached --check
+git commit -m "Address task labels RFC review"
+```
+
+Carry the result of the durability discussion into the [architecture decision](/books/hands-on-coding-assistants/chapters/record-the-architecture-decision/). Keep the comments in the RFC where a later reader can see what changed.
+
+## References
+
+- The Rust Project. [0002-rfc-process](https://rust-lang.github.io/rfcs/0002-rfc-process.html). The Rust RFC Book, RFC 0002, started March 11, 2014.
+- The Rust Project. [RFC template](https://github.com/rust-lang/rfcs/blob/main/0000-template.md). First-party repository template.

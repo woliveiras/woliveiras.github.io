@@ -10,7 +10,7 @@ kind: appendix
 
 The lab needs a model that can read files, edit one route, and run a test command. Use the [setup exercise](/books/hands-on-coding-assistants/chapters/setup-and-practical-integration/#check-file-and-shell-tools) to check those abilities. A model that answers questions may still struggle to call a tool repeatedly.
 
-The registration pilot used OpenCode **2.3.2**. The local run used Ollama **0.40.16** and `ollama/qwen3.5:9b`. The hosted run used `opencode/deepseek-v4.1-flash-free`. Keep the exact model ID when recording results. The hosted model was listed as free during the November 2026 pilot. Availability and terms can change.
+Keep the exact OpenCode version, model ID and result when you run the exercise. If you use Ollama, record its version and the context allocated to the model. If you change model or provider later, repeat the three checks with the new configuration.
 
 ## Check whether a model fits your machine
 
@@ -44,7 +44,7 @@ Ollama's integration guide calls for a context window of at least 64k tokens wit
 OLLAMA_CONTEXT_LENGTH=65536 ollama serve
 ```
 
-Set that variable before the server starts. Stop an existing instance if it already owns the port. After the first request, `ollama ps` shows the loaded runner and allocated context. Larger context uses more memory. The local pilot ran on an Apple Silicon Mac. Check speed and memory on your own machine before moving on to longer exercises.
+Set that variable before the server starts. Stop an existing instance if it already owns the port. After the first request, `ollama ps` shows the loaded runner and allocated context. Larger context uses more memory. Check speed and memory on your own machine before moving on to longer exercises.
 
 On the default listener, OpenCode 2 discovers eligible models automatically. If you configured a different listener, merge provider settings into your project or personal OpenCode config:
 
@@ -64,7 +64,7 @@ Use the port on which your instance listens. Run `opencode models` to confirm th
 
 Open `/models` to select a currently available free OpenCode model. A catalog entry can be visible before an underlying provider accepts your requests. If the first request is rejected because of availability or a quota, check the catalog and select another free entry.
 
-OpenRouter is another option. Use `/connect`, select OpenRouter, and use your own OpenRouter API key. In `/models`, select an explicit free variant with tool-calling support. Free requests have rate limits and can fail when a provider is at capacity. Use the sample project with either hosted option. Its data is fictional.
+OpenRouter is another option. Use `/connect`, select OpenRouter, and enter your own OpenRouter API key there. In `/models`, select an explicit free variant with tool-calling support. As of November 20, 2026, the catalog lists `nvidia/nemotron-3.5-lightning:free` with tools. Check the current entry, account requirements and rate limits before using it. Repeat the setup exercise with the exact ID selected in OpenCode. Use the sample project with either hosted option. Its data is fictional.
 
 | Symptom | Check |
 | --- | --- |
@@ -77,7 +77,7 @@ OpenRouter is another option. Use `/connect`, select OpenRouter, and use your ow
 
 - OpenCode maintainers. [Providers](https://opencode.ai/docs/providers/), [Models](https://opencode.ai/docs/models/), and [Console models](https://opencode.ai/docs/console/models/#free-models). Official OpenCode 2 documentation and maintained model catalog. [Ollama model discovery](https://opencode.ai/docs/providers/#ollama).
 - Ollama maintainers. [OpenCode](https://docs.ollama.com/integrations/opencode) and [Context length](https://docs.ollama.com/context-length). Official integration and runtime documentation.
-- OpenRouter. [Free AI Models](https://openrouter.ai/collections/free-models/) and [Limits](https://openrouter.ai/docs/api_reference/limits). Provider catalog and API documentation.
+- OpenRouter. [Free AI Models](https://openrouter.ai/collections/free-models/) and [Limits](https://openrouter.ai/docs/api_reference/limits). Provider catalog and API documentation. [Nemotron 3.5 Lightning free](https://openrouter.ai/nvidia/nemotron-3.5-lightning:free).
 - Ollama maintainers. [Local FAQ](https://docs.ollama.com/faq) and [qwen3:8b](https://ollama.com/library/qwen3:8b). Model catalog entry and [GPU placement guide](https://docs.ollama.com/faq#how-can-i-tell-if-my-model-was-loaded-onto-the-gpu).
 - Apple. [View About settings on Mac](https://support.apple.com/guide/mac-help/mchlea7173f3/mac), [View memory usage in Activity Monitor](https://support.apple.com/en-au/guide/activity-monitor/-actmntr1004/mac), and [Get started with MLX for Apple silicon](https://developer.apple.com/videos/play/wwdc2025/315/). Support guides and WWDC25 session. [Unified memory segment](https://developer.apple.com/videos/play/wwdc2025/315/?time=261).
 - Microsoft. [GPU process memory counters report incorrect values](https://learn.microsoft.com/en-us/troubleshoot/windows-client/performance/gpu-process-memory-counters-report-wrong-value). Windows client documentation, KB 4490156.

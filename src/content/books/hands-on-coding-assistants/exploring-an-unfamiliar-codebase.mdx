@@ -1,63 +1,114 @@
 ---
 title: "Exploring an Unfamiliar Codebase"
-description: "Use OpenCode to map the Task API, trace a request, and check the answers against the code and tests."
+description: "Map the Task API from its entry points and check the map against running requests and tests."
 module: 0
 order: 3
 ---
 
 ## Start with a question about the application
 
-Where does a task live between `POST /tasks` and `GET /tasks`? The answer tells you where to look when a write appears to succeed, which code a change might affect, and whether the data will still be there after a restart.
+Where does a task live between `POST /tasks` and `GET /tasks`? The answer tells you where to look when a write appears to succeed and whether the task will still be there after a restart.
 
-Open the starter in OpenCode using the model you selected in [the setup chapter](/books/hands-on-coding-assistants/chapters/setup-and-practical-integration/). Choose **Plan** for this session. OpenCode's Plan agent can inspect the project and blocks edits to ordinary project files by default. Shell commands still follow the configured permissions. Run `git status --short` in your terminal before and after the exercise so you can check the workspace yourself.
+In your [fork](/books/hands-on-coding-assistants/introduction/#get-the-lab), with a clean working tree, create a branch and open OpenCode.
+
+```sh
+git switch -c read-task-api lab-start
+git status --short
+opencode
+```
+
+Choose **Plan** and the model from [setup](/books/hands-on-coding-assistants/chapters/setup-and-practical-integration/). Use the assistant to find evidence. Save your own notes once you have checked it. Plan can inspect the repository and can write designated plan files. Its shell calls still follow the tool permission rules.
 
 ## Sketch the architecture from entry points
 
-Give the agent a small investigation with a defined scope:
+On the Plan interface, give this request.
 
 ```text
-Read AGENTS.md and package.json. Use file reads and search to find what
-npm start and npm test load. Follow both paths to the HTTP application.
-Show where a task is stored. Cite a file and symbol for each finding,
-label any inference, and leave the workspace unchanged.
+Read AGENTS.md and package.json. Find the runtime dependencies and the
+entry points of npm start and npm test. Follow both to the HTTP server.
+Find the listen address, default port and configuration override.
+Explain where a task is stored. Cite a path and symbol for each finding.
+Label any inference. Return your notes in chat.
 ```
 
-Open the files it cites. You should be able to follow these two paths to the same application factory:
+Open the files it cites. You should find the following paths.
 
-| Path | Follow it in the code |
+| Path | Evidence to follow |
 | --- | --- |
-| `npm start` | `package.json` starts `src/server.ts`. That entry point calls `createApp()` and listens on `127.0.0.1`. |
-| `npm test` | `test/app.test.ts` uses `startApp()` in `test/client.ts`. The helper calls the same factory and lets the OS choose a port. |
+| Runtime | `package.json` has no runtime dependencies. `src/app.ts` imports `node:http`. |
+| `npm start` | `package.json` starts `src/server.ts`, which calls `createApp()` and listens on `127.0.0.1`. `PORT` defaults to 3000. |
+| `npm test` | `test/app.test.ts` uses `startApp()` in `test/client.ts`. That helper starts the same factory on port 0, so the operating system chooses a free port. |
+| State | `createApp()` allocates arrays inside the factory. Each fresh instance starts with one task and no registrations. |
 
-In `src/app.ts`, `createApp()` creates a `tasks` array and returns the HTTP server that reads and writes it. Starting a new instance of the lab creates a fresh array with the starter task. If the agent mentions a database or tells you every test starts the command-line server, ask it to show the call in the code. Then check the factory and the test helper yourself.
+Try the port override from your own terminal. Leave the server running for the next two sections.
+
+```sh
+PORT=3100 npm start
+```
+
+In another terminal, check both initialization and the running API.
+
+```sh
+curl -sSi http://127.0.0.1:3100/health
+curl -sSi http://127.0.0.1:3100/tasks
+```
+
+Expect `200` with `{"status":"ok"}`, then `200` with `[{"id":"1","title":"Write a spec"}]`. If an answer names a database, ask for the connection call and open the factory yourself. The arrays explain why restarting the service resets the lab.
 
 ## Trace a request from input to response
 
-Keep the same session and narrow the question:
+On the Plan interface, give this request.
 
 ```text
-Trace POST /tasks with the JSON body {"title":" "}. Find where the
-request body is read, where the title is normalized, and where the route
-returns. Does it reach the line that adds the task? Name a test that
-checks both the response and the stored state. Leave files unchanged.
+Trace POST /tasks with the JSON body {"title":" "}. Find where the body
+is read, where the title is normalized, and where the route returns.
+Does execution reach the array push? Name a test that checks both the
+response and the stored state. Return the evidence in chat.
 ```
 
-Follow `readObject()` to the route's `trim()` call. The empty result triggers HTTP 400 with `{"error":"invalid_task"}`. That branch returns before `tasks.push(task)`. In `test/app.test.ts`, the blank-title test checks the error and then sends `GET /tasks` to verify the list still contains only the starter task.
-
-Run the test yourself from the lab directory. One test should pass:
+Follow `readObject()` to the route's `trim()` call. The empty title gets `400` and `{"error":"invalid_task"}`. The branch returns before `tasks.push(task)`. Check both observations in a live request and in the relevant automated test.
 
 ```sh
+curl -sSi http://127.0.0.1:3100/tasks \
+  -H 'Content-Type: application/json' -d '{"title":" "}'
+curl -sS http://127.0.0.1:3100/tasks
 node --test --test-name-pattern='a blank task title' test/app.test.ts
 ```
 
-The source establishes the path through the handler. The test exercises one input and its observable effects. Keep those two pieces of evidence attached to the explanation when you ask a follow-up.
+Expect the original one-item list and one passing test. The source establishes the path through the handler. The test exercises a particular input and its observable effects.
 
 ## Ask the question that leads to the spec
 
-Compare the task route with `POST /registrations`. Ask which parts of the flow they share and what happens when the registration name is a number. Have the agent point to the line that handles the value and the line that changes state. Keep the question about the starter's current behavior.
+Again, on the Plan interface, give this request.
 
-Your notes should be enough for another developer to reproduce what you saw. Record the entry point, the relevant handler, the state change, and the test or source that supports each claim. Write down the decision that still needs a spec. In this lab, that decision is which registration inputs deserve a 400 and what must happen to the next ID. Carry it into [The Spec-First Workflow](/books/hands-on-coding-assistants/chapters/the-spec-first-workflow/).
+```text
+Compare POST /registrations and POST /tasks on the starter. What does
+POST /registrations do when name is a number? Cite the conversion and
+the state change. Leave the desired behavior open for the next task.
+```
+
+```sh
+curl -sSi http://127.0.0.1:3100/registrations \
+  -H 'Content-Type: application/json' \
+  -d '{"name":42,"email":"ada@example.test"}'
+```
+
+On the fresh service, you should see `201` with `{"id":"1","name":"42","email":"ada@example.test"}`. Stop the server with Ctrl+C. Write `notes/repo-map.md` with the checkout, the entry point and dependency map, the task request trace, and the commands and observed responses. Separate what you read in the factory from what you saw over HTTP. Inspect the diff and commit just the map.
+
+```sh
+git add notes/repo-map.md
+git diff --cached --check
+git diff --cached --stat
+git commit -m "Map the Task API starter"
+```
+
+## Conclusion
+
+After the exercises, you should be able to answer the original question. A task lives in memory between `POST /tasks` and `GET /tasks`. The starter's factory allocates an array for tasks. Each request handler reads or writes that array. The array is lost when the service stops.
+
+This is what we can do using the coding assistants to explore an unfamiliar codebase. Now we can continue to the next chapter, [The Spec-First Workflow](/books/hands-on-coding-assistants/chapters/the-spec-first-workflow/), where we will learn how to write a spec for a new feature and use it to guide our development.
 
 ## References
 
-- OpenCode maintainers. [Agents](https://opencode.ai/docs/agents/) and [Permissions](https://opencode.ai/docs/permissions/). Official OpenCode 2 documentation for Plan and tool permissions.
+- OpenCode maintainers. [Agents](https://opencode.ai/docs/agents/) and [Permissions](https://opencode.ai/docs/permissions/). OpenCode 2 documentation.
+- Node.js contributors. [HTTP](https://nodejs.org/api/http.html) and [Test runner](https://nodejs.org/api/test.html). Node.js API reference.

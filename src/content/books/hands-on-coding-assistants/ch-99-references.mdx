@@ -1,30 +1,46 @@
 ---
 title: "References"
 description: "Official documentation and research cited throughout the book."
-module: 5
-order: 20
+module: 4
+order: 99
 kind: appendix
 pageSlug: references
 ---
 
-## OpenCode and model setup
+## References
 
-- OpenCode maintainers. [OpenCode](https://github.com/anomalyco/opencode). Source repository and MIT license.
-- OpenCode maintainers. [CLI intro](https://opencode.ai/docs/cli/) and [CLI commands](https://opencode.ai/docs/cli/commands/). Official OpenCode 2 installation and terminal documentation.
-- OpenCode maintainers. [Providers](https://opencode.ai/docs/providers/) and [Models](https://opencode.ai/docs/models/). OpenCode 2 configuration documentation.
-- OpenCode maintainers. [Console models](https://opencode.ai/docs/console/models/#free-models). Maintained catalog of hosted models and terms.
-- Ollama maintainers. [OpenCode](https://docs.ollama.com/integrations/opencode), [Context length](https://docs.ollama.com/context-length), and [Qwen3.5](https://ollama.com/library/qwen3.5). Official integration documentation and model catalog.
+### OpenCode and model setup
+
+- OpenCode maintainers. [OpenCode](https://github.com/anomalyco/opencode) and [OpenCode v2.3.2](https://github.com/anomalyco/opencode/releases/tag/v2.3.2). Source repository and release.
+- OpenCode maintainers. [CLI commands](https://opencode.ai/docs/cli/commands/), [Providers](https://opencode.ai/docs/providers/), and [Models](https://opencode.ai/docs/models/). Official OpenCode 2 documentation.
+- OpenCode maintainers. [Console models](https://opencode.ai/docs/console/models/#free-models). Maintained provider catalog.
+- Ollama maintainers. [OpenCode](https://docs.ollama.com/integrations/opencode), [Context length](https://docs.ollama.com/context-length), and [Qwen3.5 9B](https://ollama.com/library/qwen3.5:9b). Official integration documentation and model catalog.
 - OpenRouter. [Free AI Models](https://openrouter.ai/collections/free-models/) and [Limits](https://openrouter.ai/docs/api_reference/limits). Provider catalog and API documentation.
 
-## Instructions, tools, and verification
+### Engineering exercises
 
-- OpenCode maintainers. [Agents](https://opencode.ai/docs/agents/), [Instructions](https://opencode.ai/docs/instructions/), [Commands](https://opencode.ai/docs/commands/), and [Skills](https://opencode.ai/docs/skills/). Official OpenCode 2 documentation.
-- OpenCode maintainers. [Permissions](https://opencode.ai/docs/permissions/), [MCP servers](https://opencode.ai/docs/mcp-servers/), and [Server plugins](https://opencode.ai/docs/build/plugins/server/). Official OpenCode 2 documentation.
-- Model Context Protocol maintainers. [Architecture overview](https://modelcontextprotocol.io/docs/learn/architecture). Official protocol documentation.
-- Node.js contributors. [Modules: TypeScript](https://nodejs.org/api/typescript.html) and [Test runner](https://nodejs.org/api/test.html). Node.js API reference.
-- Git maintainers. [githooks](https://git-scm.com/docs/githooks). Git reference manual.
-- William Oliveira. [Introducing Geremmyas](/posts/introducing-geremmyas-spec-driven-development-ai-assistants/) and [Coding agent execution boundaries](/posts/coding-agent-execution-boundaries/). Technical articles on spec-first tooling and process boundaries.
+- Atlassian. [Estimate a work item](https://support.atlassian.com/jira-software-cloud/docs/estimate-an-issue) and [Link work items](https://support.atlassian.com/jira-software-cloud/docs/link-issues/). Jira Cloud documentation.
+- Simon Brown. [System context diagram](https://c4model.com/diagrams/system-context) and [Container diagram](https://c4model.com/diagrams/container). C4 model documentation.
+- Mermaid maintainers. [C4 Diagrams](https://mermaid.js.org/syntax/c4.html). Mermaid syntax documentation.
+- Rust project. [RFC 0002, RFC process](https://rust-lang.github.io/rfcs/0002-rfc-process.html). *The Rust RFC Book*, started 11 March 2014.
+- MADR contributors. [Full ADR template](https://github.com/adr/madr/blob/4.0.0/template/adr-template.md). Markdown Architectural Decision Records version 4.0.0, released 17 September 2024.
+- John Lunney and Sue Lueder. [Postmortem Culture: Learning from Failure](https://sre.google/sre-book/postmortem-culture/). *Site Reliability Engineering*, Google and O'Reilly Media, 2016.
 
-## Research
+### Instructions, tools, and verification
 
-- Becker et al. [Measuring the Impact of Early-2025 AI on Experienced Open-Source Developer Productivity](https://arxiv.org/abs/2507.09089). arXiv:2507.09089, July 2025, randomized study and preprint. [METR research summary](https://metr.org/blog/2025-07-10-early-2025-ai-experienced-os-dev-study/).
+- OpenCode maintainers. [Agents](https://opencode.ai/docs/agents/), [Instructions](https://opencode.ai/docs/instructions/), [Commands](https://opencode.ai/docs/commands/), [Skills](https://opencode.ai/docs/skills/), and [Permissions](https://opencode.ai/docs/permissions/). Official OpenCode 2 documentation.
+- OpenCode maintainers. [MCP servers](https://opencode.ai/docs/mcp-servers/) and [Server](https://opencode.ai/docs/build/plugins/server/). Official OpenCode 2 documentation.
+- Model Context Protocol maintainers. [Lifecycle](https://modelcontextprotocol.io/specification/2025-11-25/basic/lifecycle) and [Transports](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports). Protocol specification, revision 2025-11-25.
+- Node.js contributors. [Modules: TypeScript](https://nodejs.org/api/typescript.html), [Test runner](https://nodejs.org/api/test.html), and [Collecting code coverage in Node.js](https://nodejs.org/learn/test-runner/collecting-code-coverage). Node.js project documentation.
+- Git maintainers. [githooks](https://git-scm.com/docs/githooks) and [git-diff](https://git-scm.com/docs/git-diff). Git reference manual.
+- GitHub. [Status checks](https://docs.github.com/en/pull-requests/reference/status-checks), [Available rules for rulesets](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets), and [About code owners](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners). GitHub Docs.
+- Grafana Labs. [Query tracing data](https://grafana.com/docs/grafana/latest/datasources/tempo/query-editor/) and [Configure Grafana-managed alert rules](https://grafana.com/docs/grafana/latest/alerting/alerting-rules/create-grafana-managed-rule/). Grafana documentation.
+- OpenTelemetry contributors. [Semantic conventions for HTTP metrics](https://opentelemetry.io/docs/specs/semconv/http/http-metrics/) and [Handling sensitive data](https://opentelemetry.io/docs/security/handling-sensitive-data/). OpenTelemetry project documentation.
+- William Oliveira. [Introducing Geremmyas](/posts/introducing-geremmyas-spec-driven-development-ai-assistants/) and [Coding agent execution boundaries](/posts/coding-agent-execution-boundaries/). Technical articles.
+
+### Research
+
+- Joel Becker et al. [Measuring the Impact of Early-2025 AI on Experienced Open-Source Developer Productivity](https://arxiv.org/abs/2507.09089). arXiv preprint 2507.09089v2, submitted 12 July 2025 and revised 25 July 2025. DOI 10.48550/arXiv.2507.09089. The arXiv record lists no publication venue.
+- International Energy Agency. [Key Questions on Energy and AI](https://www.iea.org/reports/key-questions-on-energy-and-ai). IEA report, 16 April 2026.
+- Arman Shehabi et al. [2024 United States Data Center Energy Usage Report](https://eta.lbl.gov/publications/2024-lbnl-data-center-energy-usage-report). Lawrence Berkeley National Laboratory technical report LBNL-2001637, 19 December 2024. DOI 10.71468/P1WC7Q.
+- Joint Legislative Audit and Review Commission. [Data Centers in Virginia](https://jlarc.virginia.gov/pdfs/reports/Rpt598.pdf). Report 598 to the Governor and General Assembly of Virginia, 9 December 2024.

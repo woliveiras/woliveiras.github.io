@@ -1,67 +1,114 @@
 ---
 title: "Setup & Practical Integration"
-description: "Set up OpenCode 2 with Ollama or a free hosted model and verify that it can work with the lab."
+description: "Install OpenCode, choose local or free hosted inference, and verify the tools you'll use in the lab."
 module: 0
 order: 2
 ---
 
 ## Start with a known project
 
-Run `npm test` in the [Task API lab](/books/hands-on-coding-assistants/lab.tar.gz) and check `opencode --version`. These examples use the OpenCode 2 CLI. The lab already includes `opencode.jsonc` with permission rules. It leaves model selection to you.
+From the root of your [Task API fork](https://github.com/woliveiras/hands-on-coding-assistants-lab), check Git and Node, then install the CLI used in the exercises.
+
+```sh
+git --version
+node --version
+npm install -g @opencode/cli@2.3.2
+opencode --version
+npm test
+```
+
+Expect Node 24 or later, OpenCode `v2.3.2`, and three passing tests. If your shell finds OpenCode 1, use the installation instructions for your platform and check which binary your shell is running before continuing. The two releases share the command name.
 
 ## Choose between a local and a hosted model
 
-When OpenCode reads `src/app.ts` to answer a question, the text it reads becomes part of the model's context. The model processes that context to generate an answer. Where that processing happens is the difference between the two paths in this chapter.
-
-- **Local.** Ollama runs a downloaded model on your machine. Model requests stay on that machine. You need disk space for the download and enough memory to run the model with the context your task needs.
-- **Hosted.** A provider runs the model on its servers. OpenCode sends the prompt and relevant context over the network, which can include code excerpts and tool output. The provider supplies the computing power, and its terms govern usage and data retention. A free option may have quotas or limited availability.
-
-Use Ollama if you want model requests to stay on your machine and the model fits your hardware. Try a free hosted model if the download or memory requirements get in the way. Both paths use the same lab. Whichever you pick, check that the model can read a file and run a test through OpenCode.
+When OpenCode reads a file, it can send the contents and tool output with its next model request. Ollama can serve downloaded weights on your machine. A hosted provider does the processing remotely. Use the lab's fictional data on the hosted path and check the provider's terms and limits. Pick one path and verify it with the same exercise below.
 
 ## Run a local model with Ollama
 
-Before downloading a model, [check whether it fits your machine](/books/hands-on-coding-assistants/appendices/model-setup/#check-whether-a-model-fits-your-machine). Use the exact model variant and leave room for the context OpenCode will send.
+Install Ollama for your operating system. The examples use Ollama **0.40.16**. The `qwen3.5:9b` catalog entry lists tool support. Check the exact download size for your variant and [whether it fits your machine](/books/hands-on-coding-assistants/appendices/model-setup/#check-whether-a-model-fits-your-machine) first. Running the model also needs memory for its working state and context.
 
-Install Ollama for your operating system. Start its app or run `ollama serve` if your installation uses the command line. In a second terminal, download a local model:
+Set the context to __65536__ in the Ollama app, or start the CLI server with that setting. The environment variable must be present **when the server starts**. If Ollama already owns the port, use its app settings or restart that server before starting another one. Ollama's integration guide recommends __64k__ or more for local models in OpenCode.
+
+The following command starts the Ollama server with a context length of 65536. Run it in a terminal separate from the lab.
+
+```sh
+OLLAMA_CONTEXT_LENGTH=65536 ollama serve
+```
+
+In a second terminal, download the model we'll use for the exercises, confirm it is installed, then start OpenCode from the lab folder.
 
 ```sh
 ollama pull qwen3.5:9b
 ollama list
+opencode
 ```
 
-Start `opencode` from the lab and open `/models`. OpenCode 2 discovers completion models on the default Ollama listener at `127.0.0.1:11434`. Select `ollama/qwen3.5:9b`. The [model setup appendix](/books/hands-on-coding-assistants/appendices/model-setup/) covers context, missing models, and non-default ports.
-
-Ollama also documents `ollama launch opencode` as an entry point. Confirm the selected local tag in either workflow. Expect memory and speed to vary with the model, quantization, context length, and hardware.
+On the OpenCode interface, open the models selection by running the command `/models` and select `ollama/qwen3.5:9b`. OpenCode discovers models at Ollama's default local address. If the model is missing, check `ollama list` and the port before changing the prompt. After the first model request, run `ollama ps` in your terminal to inspect the allocated context and where the model is running. If it is slow or the machine runs out of memory, choose a smaller tool-capable model and run the same checks, or continue with the hosted option. We'll talk about the hosted model following.
 
 ## Run a free hosted model
 
-Open `/models` and look for a current free entry in the OpenCode catalog. Select its explicit model ID so you can record what the experiment used. If the entry is unavailable, the appendix gives another provider option. Free offerings can change or enforce usage limits. Work with the sample project and its fictional data when sending context to a remote service.
+Run `opencode` in the lab, open `/models` and select a free, tool-capable model from the catalog. As of November 20, 2026, the free list includes `opencode/deepseek-v4.1-flash-free`, which is an excellent choice. The free Console entries work through OpenCode. Availability and quotas can change. If the model is missing or the first call is rejected, check the Console model catalog for another free entry. The [model appendix](/books/hands-on-coding-assistants/appendices/model-setup/#free-hosted-options) gives a separate provider option that requires its own key.
 
-You can also list models from the terminal:
-
-```sh
-opencode models
-```
+You can also check model IDs from a shell with `opencode models`. Record the ID you actually select.
 
 ## Check file and shell tools
 
-In the lab folder, run `opencode`, select **Build** and ask OpenCode to do a read-only check:
+Now we can start the lab exercises. The first exercise checks that the model can read a file and run a shell command. It also verifies that the model is using the same tool version as your own terminal. The exercise uses the `package.json` file and the `npm test` command.
+
+In the lab folder, open `opencode` and run the command `/agents`. Select **Plan**, and give it this request.
 
 ```text
-Read package.json. Report the test script exactly as written, then run
-npm test and report the observed exit status. Leave all files unchanged.
+Read package.json and report the test script exactly as written.
+Run npm test as a single shell command. Read the tool result and report
+the number of passing tests and the exit status. Leave files unchanged.
 ```
 
-Open the tool output. Confirm that the assistant actually read `package.json` and ran the test command. Run `git status --short` yourself. It should be empty if you committed the starter and changed no config. If the model describes the steps but skips a tool, switch to another model before moving on.
+Look for a completed read of `package.json` and a completed shell call for `npm test`. The starter's script is `node --test test/*.test.ts`. Expect three passing tests and exit zero. Run `git status --short` in your own terminal and check that the tree is clean.
+
+If the model only describes the command, the shell check is still open. If it appends a command such as `echo $?`, retry with the exact allowlisted command. A permission denial and a failing test leave different tool events. If the model repeatedly skips a tool after a clean retry, verify another model before continuing.
+
+## Check an edit in a separate worktree
+
+From the root of the lab, start a disposable checkout of `lab-start`.
+
+```sh
+git worktree add --detach ../task-api-setup-check lab-start
+cd ../task-api-setup-check
+opencode
+```
+
+Select the same model and switch to **Build**.
+
+```text
+Append one line containing "Setup edit check." to README.md.
+Use the file editing tool. Leave the other files alone.
+```
+
+Exit the session. Inspect the actual diff and restore the known scratch change.
+
+```sh
+git status --short
+git diff -- README.md
+git restore -- README.md
+git status --short
+cd -
+git worktree remove ../task-api-setup-check
+```
+
+Run the restore and worktree removal only after checking the diff. The exercise should add one line to `README.md` and touch no other tracked file. Record the model, version and three observations. You'll use the same working model to the chapter [explore the application](/books/hands-on-coding-assistants/chapters/exploring-an-unfamiliar-codebase/).
 
 ## Read the permission prompts
 
-The starter allows the exact test commands and asks about other shell commands. Use the prompt to inspect the command and its working directory. You can approve one command to try it or revise the plan if it would do more than the spec calls for. The [automation chapter](/books/hands-on-coding-assistants/chapters/hooks-validation-and-agent-automation/) shows where to put a check you want to run every time.
+The starter allows exact test commands and asks about other shell commands. Review the command and its working directory when OpenCode asks. You can check unfamiliar commands yourself from a separate terminal.
 
-Once the model can read a file and run a check, [use it to explore the application](/books/hands-on-coding-assistants/chapters/exploring-an-unfamiliar-codebase/).
+With all the checks complete, you can continue to the next chapter. The exercises will use the same model and tool versions you just verified.
 
 ## References
 
-- OpenCode maintainers. [Providers](https://opencode.ai/docs/providers/), [CLI commands](https://opencode.ai/docs/cli/commands/), and [Permissions](https://opencode.ai/docs/permissions/). Official OpenCode 2 documentation.
-- OpenCode maintainers. [Console models](https://opencode.ai/docs/console/models/#free-models). Maintained provider catalog.
-- Ollama maintainers. [OpenCode](https://docs.ollama.com/integrations/opencode), [Local FAQ](https://docs.ollama.com/faq), and [Context length](https://docs.ollama.com/context-length). Official integration and runtime documentation.
+- OpenCode maintainers. [OpenCode v2.3.2](https://github.com/anomalyco/opencode/releases/tag/v2.3.2). CLI release.
+- OpenCode maintainers. [Migrate from V1](https://opencode.ai/docs/migrate-v1/#install-v2), [Providers](https://opencode.ai/docs/providers/), [TUI](https://opencode.ai/docs/cli/tui/) and [Permissions](https://opencode.ai/docs/permissions/). OpenCode 2 documentation.
+- OpenCode maintainers. [Ollama model discovery](https://opencode.ai/docs/providers/#ollama). OpenCode 2 provider documentation.
+- OpenCode maintainers. [Console models](https://opencode.ai/docs/console/models/#free-models). Maintained hosted model catalog.
+- Ollama maintainers. [Download Ollama](https://ollama.com/download). Installation downloads.
+- Ollama maintainers. [OpenCode](https://docs.ollama.com/integrations/opencode), [Context length](https://docs.ollama.com/context-length) and [Qwen3.5 9B](https://ollama.com/library/qwen3.5:9b). Runtime documentation and model catalog.
+- Git maintainers. [git-worktree](https://git-scm.com/docs/git-worktree). Git reference manual.

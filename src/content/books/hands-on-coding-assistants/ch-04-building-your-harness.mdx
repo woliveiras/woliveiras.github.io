@@ -1,45 +1,48 @@
 ---
 title: "Building Your Harness: A Strategic Overview"
-description: "Build a small harness around the repository, the agent, and the checks you control."
-module: 0
-order: 5
+description: "Turn the failures you investigated into checks you can run again."
+module: 3
+order: 11
 ---
 
-## The recurring problem
+The registration route could return 400 and still consume an ID. You caught that in a later request. In the outage exercise, a single trace helped explain a timeout, and the request counter showed how often callers saw it. Both exercises gave you something you could check yourself.
 
-Two sessions can start with the same prompt and end up changing different files. One reads the test and follows the route. The other assumes the project uses a framework it has seen before. The fix starts with the context and checks both sessions should have.
+OpenCode already connects the model to files, commands, and permissions. You can put additional controls around that work. Start with a test that reproduces a costly failure. Decide who owns the control and how a second person can tell it ran.
 
-A harness is what connects a model to the workspace and gives it tools. In the lab, OpenCode handles that connection. You shape its behavior with the files you version, the commands you permit, and the decisions you keep for yourself.
+## Put the check where it can see the failure
 
-## The three layers
-
-| Layer | In the Task API | Add to it when |
+| Evidence from the exercises | Control to add | How you can tell it works |
 | --- | --- | --- |
-| Project context | `AGENTS.md`, `specs/`, and the code | The model keeps inferring a convention you can state once |
-| Tool selection and permissions | OpenCode, its agents, and `opencode.jsonc` | A task needs a distinct role or a different set of permissions |
-| Verification | `npm test`, feature contracts, and `git diff` | An important requirement has no observable check |
+| After a rejected registration, the next ID changed | A focused test and an HTTP regression test | The test fails on the defective snapshot and passes on the fix |
+| A plan sounded complete while a requirement was still missing | A versioned spec, a review prompt, and a second review session | A finding names a criterion, the affected line, and a reproducible input |
+| You had to correlate a deployment with errors by hand | Request telemetry and an alert with a runbook | A synthetic failure reaches the local notification receiver and links to evidence |
+| A different checkout changed what the reviewer saw | A named base and head, plus CI on a fresh checkout | The change under review and its required check identify the same revision |
 
-The registration spec belongs to the task. The rule about leaving acceptance tests in place belongs to the repo. The shell approval belongs to the harness. When you put a rule in the wrong layer, it can look present while failing to affect the outcome. A line asking the assistant to avoid editing files can guide it. A denied edit permission is checked by the harness.
+A requirement belongs in the spec. A test expresses the part you can observe automatically. A permission decides whether the agent can reach a tool or resource. Each layer gives you a different kind of evidence. Put repository guidance in versioned files and review tool access separately.
 
-## Follow one request through the harness
+## Choose one change to make repeatable
 
-Take the registration exercise and write down the path it follows:
+Stay on `incident-postmortem`, where you saved `notes/postmortem.md`. Bring the fix note from the earlier branch into this working tree.
 
-1. You select **Plan** and point it to the spec and the current route.
-2. The model requests a file read. OpenCode supplies the tool and returns the result.
-3. You review the plan and select **Build**. OpenCode can now apply edits under that agent's permissions.
-4. The model asks to run a test command. OpenCode checks the command against the project rules.
-5. You run the checks yourself and read the diff.
+```sh
+git show debug-registration:notes/registration-fix.md > notes/registration-fix.md
+```
 
-The point where work fails tells you what to change. If a model lacks a project convention, fix the instruction. If it proposes the right behavior and submits a wrong patch, bring it back to the failing assertion. If a correct patch cannot be verified from a fresh checkout, fix the test setup.
+If you called your fix branch something else, use that name in the command. Read both notes and start a Plan session.
 
-## Add one layer at a time
+```text
+Read notes/registration-fix.md and notes/postmortem.md.
+Suggest one check for each failure the notes confirm. Name the existing
+file or signal it could use, give a negative case that would prove the
+check works, and tell me who would act on the result. Keep the files
+unchanged.
+```
 
-Start with the lab's root instructions and one contract. Reuse those for a few changes before adding a separate reviewer, a skill, or a tool server. That gives you a baseline. When you add a component, check whether a session now finds the right context sooner or needs fewer corrections.
+Keep the answers you can trace to the source. Save any notes you want to carry forward on their own branch or outside the working tree so you can start each later exercise from a clean checkpoint. A suggestion to count failed registrations is plausible, but it will miss the original bug if the status is already 400. Test the state after the rejected request. If the agent suggests an alert on one slow span, check your postmortem for the signal you used to measure impact.
 
-For a larger harness, I wrote about how Geremmyas keeps specs, checks, and review records around the tools a developer already uses. The Task API gives you the same decision at a smaller scale. Decide what needs to persist between sessions, and put that information in a file that the next session can read.
+Save the approved rows in `notes/harness.md` or keep them in your exercise notes. Use them to decide which changes to take forward. The next chapter starts with the regression you can reproduce on demand.
 
 ## References
 
 - OpenCode maintainers. [Instructions](https://opencode.ai/docs/instructions/) and [Permissions](https://opencode.ai/docs/permissions/). Official OpenCode 2 documentation.
-- William Oliveira. [Introducing Geremmyas](/posts/introducing-geremmyas-spec-driven-development-ai-assistants/). Author's account of the project and its workflow.
+- William Oliveira. [Introducing Geremmyas](/posts/introducing-geremmyas-spec-driven-development-ai-assistants/). Technical article on keeping task specifications and verification with a change.

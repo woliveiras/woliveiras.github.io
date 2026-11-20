@@ -1,6 +1,6 @@
 ---
 title: "Introduction"
-description: "What you need to run the book exercises with OpenCode, using a local or free hosted model."
+description: "Fork the Task API and get the tools you need to follow the exercises."
 module: 0
 order: 0
 kind: introduction
@@ -10,57 +10,47 @@ kind: introduction
 
 ## Who this book is for
 
-You already write software. You can open a terminal, read a diff, and run a test suite. You'll use those skills in every chapter. The work starts with a task you can explain and ends with a change you can defend.
+This book is designed for developers who already have experience in software development and want to learn how to use coding assistants effectively. It assumes you are comfortable with Git, some programming knowledge, and basic command-line operations. The exercises will help you understand how to evaluate and integrate coding assistant suggestions into your workflow.
 
-The exercises use OpenCode, an open-source coding harness that runs in your terminal—_Don't worry if you're not familiar with harness or any other specific term used here. We'll define them as we go_. Bring the editor you already use. You can run a model on your machine with Ollama or choose a free hosted model. Either way, you'll work against the same spec and check the result with the same tests.
+The exercises use a small Task API. You'll read the code, refine a request, diagnose a bug, plan a larger change, document the system, and investigate a simulated outage. You'll use what you find to decide which checks belong in the repository. Bring the editor and terminal you already use.
 
 ## What to install
 
-- **Git** to record the starter state and review changes with `git diff`.
-- **Node.js 24 or later** and npm to run the TypeScript lab and its tests. The lab uses the Node.js standard library and requires no application package install.
-- **OpenCode 2.x** to follow the terminal examples.
-- **Ollama** if you want local inference. Follow [the setup chapter](/books/hands-on-coding-assistants/chapters/setup-and-practical-integration/) for the model setup.
+- **Git** to clone your fork, start exercises from known revisions, and review a diff.
+- **Node.js 24 or later** and npm to run the TypeScript service and its tests. The starter uses the standard library.
+- **OpenCode 2.3.2** for the terminal exercises. Follow the [setup chapter](/books/hands-on-coding-assistants/chapters/setup-and-practical-integration/) to install it and verify one model.
+- **Docker with Compose** for the postmortem and alerting chapters. You can install it when you reach the incident.
 
-The shell examples use POSIX syntax. On Windows, use Git Bash for those commands or adapt them to PowerShell.
-
-Check the local commands before opening the agent:
-
-```sh
-git --version
-node --version
-npm --version
-opencode --version
-```
+The examples use a POSIX shell. On Windows, use Git Bash for commands like `PORT=3100 npm start`. The lab runs on your machine. The hosted model option needs network access.
 
 ## Get the lab
 
-[Download the Task API starter](/books/hands-on-coding-assistants/lab.tar.gz), extract it to a fresh directory, and open a terminal in the directory containing `package.json`. You can use your archive tool or extract it with `tar`:
+[Fork the Task API on GitHub](https://github.com/woliveiras/hands-on-coding-assistants-lab), then clone **your fork**. Replace `YOUR_LOGIN` in the URL.
 
 ```sh
-mkdir task-api-lab
-tar -xzf lab.tar.gz -C task-api-lab
-cd task-api-lab
-git init
-git add .
-git commit -m "Start the Task API lab"
+git clone https://github.com/YOUR_LOGIN/hands-on-coding-assistants-lab.git
+cd hands-on-coding-assistants-lab
+git fetch https://github.com/woliveiras/hands-on-coding-assistants-lab.git --tags
+git rev-parse --verify lab-start
+git status --short
 npm test
 ```
 
-If Git asks for an author, set `user.name` and `user.email` in this repository and retry the commit. Three starter tests should pass. The archive also includes acceptance tests for two features you'll implement later. Those tests have separate commands so the starter remains green.
+The fetch gives you the exercise tags even if your fork copied only the default branch. Expect a revision hash, an empty status, and three passing tests.
+
+You can [download the starter source](/books/hands-on-coding-assistants/lab.tar.gz) to inspect it offline. Use the fork for the exercises that name a Git tag or use GitHub Actions.
 
 <span id="knowledge-this-series-assumes"></span>
 
 ## What you need to know
 
-The lab is a small HTTP service. It stores tasks and fictional registrations in memory and listens on the loopback interface. You can run it with `npm start`. Open `http://127.0.0.1:3000/health` to see `{"status":"ok"}`, then stop the server with Ctrl+C. The tests start their own server and use a free port.
+The service uses fictional data and keeps it in memory. Start it with `npm start` and open `http://127.0.0.1:3000/health`. Expect `{"status":"ok"}`. Stop it with Ctrl+C. Each test starts its own server on a free port.
 
-You can do the exercises in separate Git branches off your starter commit. The registration exercise and the final task-label exercise are independent. If a model goes in the wrong direction, you can inspect the changes and start again from a known state.
-
-Keep the [model setup appendix](/books/hands-on-coding-assistants/appendices/model-setup/) handy. It records the model choices separately from the exercises, so a provider change leaves the rest of the workflow usable.
+A chapter may give you a start tag such as `lab-start` or `lab-debugging`. Check `git status --short` before switching. Commit the work you want to keep or start a separate worktree. A tag gives you the same starting code even if your previous exercise took a different route.
 
 ## References
 
-- OpenCode maintainers. [OpenCode](https://github.com/anomalyco/opencode). Source repository and MIT license.
-- OpenCode maintainers. [CLI intro](https://opencode.ai/docs/cli/). Official CLI documentation for OpenCode 2.
+- GitHub. [Fork a repository](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/fork-a-repo). GitHub documentation.
+- Git maintainers. [git-worktree](https://git-scm.com/docs/git-worktree). Git reference manual.
 - Node.js contributors. [Modules: TypeScript](https://nodejs.org/api/typescript.html). Node.js API reference.
-- Ollama maintainers. [OpenCode](https://docs.ollama.com/integrations/opencode). Official integration guide.
+- OpenCode maintainers. [Migrate from V1](https://opencode.ai/docs/migrate-v1/#install-v2). OpenCode 2 installation documentation.

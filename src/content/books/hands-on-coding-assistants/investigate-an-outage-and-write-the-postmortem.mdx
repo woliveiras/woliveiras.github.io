@@ -1,0 +1,94 @@
+---
+title: "Investigate an Outage and Write the Postmortem"
+description: "Reconstruct a simulated Task API outage from traces, logs, and metrics in Grafana."
+module: 2
+order: 10
+---
+
+A gateway starts returning HTTP 504 for `POST /tasks` after a release. Someone rolls back, and the errors stop. You have enough to start an investigation. To write the postmortem, you still need to establish how many requests failed, what the gateway was waiting for, and which parts of that explanation the evidence supports.
+
+## Open the incident
+
+Start from the incident checkpoint with a clean working tree. You need Docker with Compose. The lab generates fictional traffic, releases, and trace IDs, with the same intervals shifted to the current time. You can investigate the outage without access to a production system.
+
+```sh
+git switch -c incident-postmortem lab-observability
+docker compose -f observability/compose.yml up -d
+docker compose -f observability/compose.yml exec -T simulator node incident.mjs
+```
+
+Save the UTC window (`from` and `to`) and trace IDs printed by the seed command. Open [Task API Incident Replay](http://127.0.0.1:3300/d/task-api-incident/task-api-incident-replay) and set the time picker to an absolute range using the printed window and UTC. The lab gives you a Viewer session. The fixture allows temporary Explore queries while dashboard saves require a different role. Give OpenCode the queries and evidence you collect.
+
+## Follow a failed request
+
+A trace connects the spans for one request. A span represents an operation such as the gateway handling the request or waiting for the upstream API. In **Explore**, select **Tempo** and enter this TraceQL query in the code editor.
+
+```text title="TraceQL"
+{ resource.service.name = "task-gateway" && span.http.route = "/tasks" && span.http.response.status_code = 504 }
+```
+
+Open a result. Record its trace ID, start time, the gateway result, and the duration of the API span. In the sampled failing requests, the gateway returns `504` at its 750 ms deadline and the API span reports `201` after 1,100 ms. Remove the status predicate and compare a successful request outside the failing window. If you get an empty result, try the printed range again and check whether Tempo has finished indexing. An empty result under the wrong time filter tells you about the query.
+
+Select **Loki** in Explore. Use the same window and substitute the trace ID from the span.
+
+```text title="LogQL"
+{service_name="task-gateway",exercise="incident"} | json | trace_id="<TRACE_ID>"
+```
+
+One failed trace has no matching log. Try the printed IDs and record which trace you could corroborate and which has a gap. Then query release events in the same stream.
+
+```text title="LogQL"
+{service_name="task-gateway",exercise="incident"} | json | event="release"
+```
+
+Change the filter to `event="page"` to find the simulated page. Put the deploy, first affected bucket, page, rollback, and recovery on a UTC timeline. The release, timeout spans, and recovery after rollback establish sequence. Verify any proposed contributing factor against an actual span or log before describing it as confirmed. The `201` span also leaves a question about retries and duplicates. The fixture contains no evidence to settle it.
+
+## Calculate impact from the request counts
+
+In **Prometheus**, use a range query over the same window. These fixture metrics record a request count for each minute and outcome. Use the sample points in the incident window, including the successful requests in the denominator.
+
+```text title="PromQL"
+lab_incident_requests{outcome="timeout"}
+```
+
+```text title="PromQL"
+sum(lab_incident_requests)
+```
+
+The three affected minutes contain 20, 30, and 10 timed-out requests out of 100 each. Use an instant query to check the total with an exact range. Replace `LAST_AFFECTED_UNIX_SECONDS` with the value of `lastAffectedUnixSeconds` from the seed.
+
+```text title="PromQL"
+sum(sum_over_time(lab_incident_requests{outcome="timeout"}[3m] @ LAST_AFFECTED_UNIX_SECONDS))
+sum(sum_over_time(lab_incident_requests[3m] @ LAST_AFFECTED_UNIX_SECONDS))
+```
+
+Run these as separate queries. Expect 60 of 300 requests, or 20% of observed requests in those buckets. The trace sample helps explain an individual request. The series gives you the denominator. The fixture has no client identity, so the number of affected clients is unknown. Check for a clean bucket at comparable traffic after rollback before marking recovery.
+
+## Turn the evidence into a postmortem
+
+Create `notes/postmortem.md`. Start with an evidence table with time, source, query or trace ID, observation, and status. Mark each item as confirmed, a hypothesis, or a gap. Then use OpenCode in **Plan** with the evidence you saved.
+
+```text
+Read notes/postmortem.md. Draft the summary, impact, detection,
+UTC timeline, response, recovery, contributing factors, and actions.
+Point to an evidence row for each factual claim. Flag missing
+timestamps, different clocks, and any leap from requests to clients.
+For each action propose a role and a check that proves it is done.
+Return the draft for review and leave the files unchanged.
+```
+
+Check the draft by reopening a trace and a log and doing the impact arithmetic yourself. Keep the page timestamp separate from the first failed request and preserve the distinction between the request sample and the aggregate impact. Review the draft for identifiers, credentials, and raw payloads before sharing it.
+
+One action can be assigned to the service owner. Add a gateway timeout alert with a runbook and demonstrate receipt and resolution in a test destination. The next part uses that action to decide what to build and how to check it.
+
+Save and commit the reviewed postmortem on your branch, then remove this Compose stack and its temporary volumes.
+
+```sh
+docker compose -f observability/compose.yml down -v
+```
+
+## References
+
+- John Lunney and Sue Lueder. [Postmortem Culture: Learning from Failure](https://sre.google/sre-book/postmortem-culture/). Google, *Site Reliability Engineering*, chapter 15.
+- Grafana Labs. [Query tracing data](https://grafana.com/docs/grafana/latest/datasources/tempo/query-editor/) and [Construct a TraceQL query](https://grafana.com/docs/tempo/latest/traceql/construct-traceql-queries/). Grafana and Tempo documentation.
+- Grafana Labs. [Configure trace to logs correlation](https://grafana.com/docs/grafana/latest/datasources/tempo/configure-tempo-data-source/configure-trace-to-logs/) and [Roles and permissions](https://grafana.com/docs/grafana/latest/administration/roles-and-permissions/#organization-roles). Grafana documentation.

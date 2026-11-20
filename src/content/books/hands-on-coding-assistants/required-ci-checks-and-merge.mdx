@@ -1,0 +1,63 @@
+---
+title: "Required CI Checks and Merge"
+description: "Run the coverage gate in a clean checkout and make GitHub require the result before merge."
+module: 3
+order: 13
+---
+
+A local check runs on the files in front of you. You can make a test pass with an edit still in your working tree and never put that edit in the commit. A required CI check helps the reviewer see the result for the change GitHub is evaluating.
+
+Do this exercise in your public fork of the [Task API lab](https://github.com/woliveiras/hands-on-coding-assistants-lab). Use a fork you can administer and open your pull requests against its `harness` branch. GitHub provides a status check for Actions jobs. A repository ruleset can require that check before merge.
+
+## Give the lab its own workflow
+
+Start the `harness` branch at `lab-coverage` and read the reference workflow.
+
+```sh
+git switch -c harness lab-coverage
+git show lab-harness:.github/workflows/ci.yml
+```
+
+Ask the agent to explain how the workflow chooses the Node version, the revision under test, and the base policy.
+
+```text
+Read package.json, coverage-policy.json and tools/coverage.mjs. I will
+provide the CI workflow. Point out the exact Node version, what tree is
+checked out, and how the coverage command gets the base SHA. Trace the
+failure if a PR lowers a floor but the tests still pass. Keep files unchanged.
+```
+
+Use the reference workflow at `.github/workflows/ci.yml`. It runs on pull requests without a base-branch or path filter, uses a read-only repository token, sets up Node 24.22.3 from `.nvmrc`, and checks the policy against the base SHA. Keep its job name, `verify (Node 24)`, stable so it matches the rule you create. Before committing, review the workflow and run the check locally.
+
+```sh
+git restore --source lab-harness --worktree -- .github/workflows/ci.yml
+npm run verify
+git add .github/workflows/ci.yml
+git commit -m "Run Task API verification in CI"
+git push -u origin harness
+```
+
+If you already have a `harness` branch in your fork, check its workflow and base before continuing. You can use `lab-harness` as a complete reference with the same checks. Enable Actions in your fork before opening the PR. If the check is missing, check that the fork's default branch still has the starter workflow and reopen the exercise PR after enabling Actions.
+
+## Make the job a merge requirement
+
+Create a small documentation-only branch from `harness` and push it. Open a PR from that branch to `harness` within your fork. Wait for the **verify (Node 24)** check to pass so the repository has received it. Open its log and match the check to the commit GitHub tested.
+
+In **Settings → Rules → Rulesets**, create an active branch ruleset targeting `harness`. Require a pull request and the `verify (Node 24)` status check from GitHub Actions. Leave the bypass list empty for this exercise. In the PR, verify GitHub is consulting the required check before it offers merge. Use the exact check name. If you have two workflows with the same job name, give each a distinct name. Also inspect when the job runs. GitHub labels skipped jobs successful, so a required job should run the verification for every applicable PR.
+
+Now make a second PR from a fresh branch at `harness`. In that branch, recreate the title regression from the previous chapter by changing `> 120` to `>= 120`. Commit and push. Open the failing check log and find the assertion for the exact-limit request. The PR should show the failed required check and block merge. Undo the change in a new commit and inspect the check for that revision. If another requirement blocks merge, record it separately from the CI result.
+
+## Give a reviewer ownership of the controls
+
+A PR can change the code, the tests, and the measurement. Review changes to `.github/workflows/`, `.nvmrc`, `.npmrc`, `package.json`, `tools/coverage.mjs`, `coverage-policy.json`, `contracts/`, and the tests that enforce behavior. Check edited source files for inline coverage directives. A changed exclusion, a renamed required job, or an inline coverage ignore can alter what the check proves.
+
+On a shared fork, add a `.github/CODEOWNERS` file on the base branch and require code owner review. Read the example with `git show lab-harness:.github/CODEOWNERS` and replace its owners with the appropriate accounts for your fork. Assign these paths and the CODEOWNERS file itself to a collaborator with write access who can review other people's changes. A solo fork can show the required check exercise and inspect the controls manually. To observe a separate owner approval, invite a collaborator and confirm independently that a PR touching the controls requests their review.
+
+Keep the passing and blocked PR URLs and the commits you checked. Compare your results with the two example PRs listed in References. In the second PR, the remaining tests pass and the coverage gate fails.
+
+## References
+
+- GitHub. [Available rules for rulesets](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets). GitHub Docs.
+- GitHub. [Events that trigger workflows](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#pull_request). GitHub Actions reference.
+- GitHub. [Status checks](https://docs.github.com/en/pull-requests/reference/status-checks) and [About code owners](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners). GitHub Docs.
+- Hands-on Coding Assistants lab. [Show a passing CI check](https://github.com/woliveiras/hands-on-coding-assistants-lab/pull/1) and [Show a coverage regression blocking verification](https://github.com/woliveiras/hands-on-coding-assistants-lab/pull/2). Example pull requests.

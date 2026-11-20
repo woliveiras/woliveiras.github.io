@@ -1,161 +1,148 @@
 ---
 title: "The Spec-First Workflow"
-description: "Specify a task lookup route and implement it with OpenCode, then use the same workflow to validate registrations."
+description: "Learn what a spec is, write one by hand, and use it to review, plan, implement, and test a change."
 module: 0
 order: 4
 ---
 
+<span id="pillar-1-spec-driven-development"></span>
+
 ## The spec-first workflow
 
-In [the exploration chapter](/books/hands-on-coding-assistants/chapters/exploring-an-unfamiliar-codebase/), you traced what happens when `POST /registrations` receives a number as the name. The starter turns the number into a string and assigns the registration an ID. Before changing the route, decide what the caller should receive and what should happen to that ID.
+In the [previous chapter](/books/hands-on-coding-assistants/chapters/exploring-an-unfamiliar-codebase/), you sent `42` as the name in a registration request. The service returned `201`, turned the number into the string `"42"`, and stored it. Your repository map records what the code does today. Now you have a request to change that behavior. “Fix registration validation” leaves you with decisions about which inputs the endpoint should accept, what it should return when it rejects one, and what a rejection should do to the next registration.
 
-A **spec**, short for *specification*, describes the behavior you want to add or change and why it matters. Its *acceptance criteria* say what you need to observe before accepting the change. For this API, that includes the HTTP status, the response body, and the state you can observe on a later request.
+A **spec**, short for *specification*, records the outcome you want from a change. It gives a reader the reason for the change, the behavior they can expect, and the limits of the work. Its **acceptance criteria** are conditions you can check before accepting the change. For an HTTP endpoint, a useful criterion tells you the starting state, which request to send, what response to expect, and what should happen to stored data.
 
-In **spec-driven development**, you write down those decisions before planning the implementation, then use the same criteria to review the plan, the patch, and the tests. If the plan exposes a decision you missed, settle it in the spec before asking for code.
-
-Start with a smaller change in the same lab. A task detail view needs to fetch one task by ID. You'll write the spec and have OpenCode implement it, then carry the same questions about responses and state into registration.
-
-## Write a spec for a new feature
-
-Read `GET /tasks` and the fallback response in `src/app.ts`. The list already exposes each task with an `id` and a `title`, and the fallback returns HTTP 404 with `{"error":"not_found"}`. Use those conventions to decide what the new route should return.
-
-1. **Goal.** Describe what the client needs to do. The detail view needs to load a task when someone opens its URL.
-2. **Acceptance criteria.** Write down the status and response body for a known ID and an unknown one. Include what a lookup should do to the stored tasks.
-3. **Scope.** Name the route you’re adding and any existing behavior your change must preserve.
-4. **Verification.** Name the tests you would add and the command you would run. Use the existing HTTP tests as a starting point.
-
-Draft your version under those four headings, then compare it with the worked spec.
+Take the blank task title from the exploration chapter. “Validate task titles” leaves several decisions open. The one below is precise enough to run and check. It uses a behavior that already exists in the lab so you can compare each sentence with an actual request or test.
 
 ```markdown
-# Fetch a task by ID
+# Reject a blank task title
 
 ## Goal
 
-Let the task detail view fetch a single task when it opens from a URL.
-
-## Acceptance criteria
-
-- When a task has the requested ID, return HTTP 200 with its `id` and
-  `title`. With the starter's seed data, `GET /tasks/1` returns
-  `{"id":"1","title":"Write a spec"}`. Tasks created through
-  `POST /tasks` can also be fetched by their IDs.
-- When no task has the requested ID, as with `GET /tasks/999` on a fresh
-  instance, return HTTP 404 and `{"error":"not_found"}`.
-- The task list is identical before and after each lookup.
+Keep tasks with blank titles out of the task list.
 
 ## Scope
 
-Add `GET /tasks/:id` using the existing in-memory task store. Preserve the
-behavior of `GET /tasks` and `POST /tasks`.
+Use the existing POST /tasks endpoint and its error response format.
+
+## Acceptance criteria
+
+- On a fresh server, sending POST /tasks with {"title":" "} returns
+  HTTP 400 and {"error":"invalid_task"}.
+- A subsequent GET /tasks still returns only the seeded task.
 
 ## Verification
 
-In `test/app.test.ts`, check the seeded task, a newly created task, and an
-unknown ID. Compare the task list before and after each lookup. Run `npm test`.
+Run `node --test --test-name-pattern='a blank task title' test/app.test.ts`.
+The test checks the error response and the list returned after the request.
 ```
 
-Before handing the spec to OpenCode, try to write the assertions in your head. A test that fetches only task `1` could pass with a hard-coded response. Fetching a task created during the test checks that the route reads from the same store as `POST /tasks`.
+The second criterion matters because the first one only checks the response. A handler could return `400` after adding the task. Reading the list gives you a way to catch that mistake from outside the handler.
 
-## Implement the task lookup with OpenCode
-
-Open a terminal in the Task API lab folder containing `package.json`. From the clean starter checkout, create the lookup branch and run the baseline tests. All three should pass.
-
-```sh
-git switch -c task-lookup
-npm test
-```
-
-Save the worked spec as `specs/task-lookup.md` and run `opencode` from the lab folder. Use `/models` to select the model you verified in [Setup & Practical Integration](/books/hands-on-coding-assistants/chapters/setup-and-practical-integration/#check-file-and-shell-tools). Open `/agents`, select **Plan**, and send this prompt.
-
-```text
-Read specs/task-lookup.md, src/app.ts, and test/app.test.ts.
-Plan the new GET /tasks/:id route. Explain how it will find tasks in the
-existing store and how the tests will check each acceptance criterion.
-Flag any open decisions and wait for my review before editing.
-```
-
-Read the plan against the spec. Look for both kinds of successful lookup, the established 404 response, and a check of the task list after a read. If the plan exposes an open decision about the API, update the spec and have OpenCode read it again.
-
-Once you approve the plan, use `/agents` to choose **Build** in the same session. Send this prompt.
-
-```text
-Implement specs/task-lookup.md using the plan we just reviewed.
-Update src/app.ts and add the lookup cases to test/app.test.ts. Preserve the
-existing tests and leave contracts/ unchanged. Run npm test and report the
-result, including which cases you added.
-```
-
-Check the output of `npm test` in the session, then review the patch from your terminal.
-
-```sh
-git status --short
-git diff --check
-git diff -- src/app.ts test/app.test.ts
-npm test
-```
-
-Check what each assertion proves. The tests should verify the exact responses and compare the list before and after each lookup. During the registration exercise, you'll use the next assigned ID as evidence about state in the same way you used the task list here.
-
-Once the diff matches the spec and the tests pass, close the lookup session. Save the work on its own branch, then return to the starter branch for the next exercise.
-
-```sh
-git add specs/task-lookup.md src/app.ts test/app.test.ts
-git commit -m "Add task lookup by ID"
-git switch -
-```
+**Spec-driven development** means writing and reviewing the intended behavior before implementation, then using that spec to guide the work. The spec tells you what result to check. The plan comes next and explains how to get there in this codebase. During implementation, the acceptance criteria tell you what to verify in the tests and the diff. If a review exposes a missing decision, settle it in the spec while the work is still small enough to change.
 
 ## Prepare the registration exercise
 
-The lookup exercise started with the baseline and added tests from the spec. For registration, the lab already provides an acceptance suite. Create a new branch from the starter and run both suites to see which behavior still needs to change.
+You need the [OpenCode setup](/books/hands-on-coding-assistants/chapters/setup-and-practical-integration/) and the repository map from the previous chapter. Start with a clean working tree in your lab fork. Bring the map over from `read-task-api`, or use the name you gave that branch.
 
 ```sh
-git switch -c registration-validation
+git switch -c validate-registrations lab-start
+mkdir -p notes
+git show read-task-api:notes/repo-map.md > notes/repo-map.md
+npm test
+```
+
+The three starter tests should pass. Read your map and the `POST /registrations` handler in `src/app.ts`. The starter requires a JSON object, converts the supplied fields to strings, and adds a registration to its in-memory list before responding. Use that description as the starting point for this request from the team that owns the signup form.
+
+> Accept a name and email as text. Trim surrounding whitespace, store the email in lowercase, and reject blank, missing, or malformed fields. Cap names at 100 characters. Keep the current success response and the service's error format. The check should cover a simple email address shape. Email delivery, domain verification, and authentication are outside this change.
+
+The form's request tells you what the team wants. Your spec turns that request into something another engineer can implement and check.
+
+<span id="write-a-spec-for-a-new-feature"></span>
+
+## Write the first draft by hand
+
+Open your editor and write `notes/registration-spec.md` yourself. Use your map, the handler, and the request above. OpenCode comes in once you have a draft for it to review. Leave the lab's reference spec and contract tests for the comparison after review.
+
+Give the document a title and use the four headings from the task-title example. Work through them in order.
+
+1. **Goal.** Write one or two sentences about what a caller should gain. Start with the number that became `"42"` in the starter and explain why the signup form needs a clear rejection.
+2. **Scope.** Name the route and the fields it accepts. Record what callers can continue to rely on, including the `id`, `name`, and `email` keys in the success response. State the boundaries from the request.
+3. **Acceptance criteria.** Start with a valid request containing spaces and uppercase letters in the email. Write the response you expect after normalizing it. Then write criteria for a numeric name, a missing field, a blank name, a name at the length limit, and an email with the wrong shape. For each, give a concrete input, the HTTP status, and enough of the response or resulting state to check the outcome.
+4. **Verification.** Name the checks you would run. Use the HTTP tests in `test/app.test.ts` as a model for how to send a request and assert the result. Record which criteria you can verify with one request and which need a follow-up.
+
+To start one criterion, write down the exact request you already know. Sending `{"name":42,"email":"ada@example.test"}` to `POST /registrations` should return `400` with `{"error":"invalid_registration"}`. For the success case, try `{"name":"  Ada Example  ","email":" Ada@Dev.Example.test "}` and work out what each field in the response should contain. If you need to interpret a phrase such as “simple email address shape,” write down your interpretation and an example. Keep questions you still need to settle in a short **Open questions** section.
+
+Commit the draft while it still reflects your own decisions. The next commit will show what changed after review.
+
+```sh
+git add notes/repo-map.md notes/registration-spec.md
+git diff --cached --check
+git diff --cached --stat
+git commit -m "Draft the registration spec"
+```
+
+## Review the spec before planning
+
+Run `opencode` from the root of your lab fork. Start a fresh session with `/new` if one is already open, then select **Plan** with `/agents`. Give the agent your saved draft and the current handler.
+
+```text
+Read only notes/registration-spec.md and src/app.ts for this review.
+Compare my draft with the POST /registrations handler. For each finding,
+quote the criterion and give a request or request sequence that exposes
+the gap. Point out any decision I still need to make. Return the review
+in chat and leave the files as they are.
+```
+
+Read the findings against the request from the team. For example, a reviewer might point out that a handler could allocate an ID before rejecting a numeric name. A test that checks only for `400` would pass. You can close the gap with a criterion that a caller can verify on one fresh server.
+
+> Send a registration with a numeric name, then send a valid registration. The first request returns `400` with `{"error":"invalid_registration"}`. The second returns `201` with ID `"1"`.
+
+If your draft already covers that sequence, look for a different gap. Check whether it says when the name length is measured and whether it gives examples on both sides of the limit. Use the review to improve your file by hand. For every suggested change you keep, make sure you can name the request that demonstrates it.
+
+Now open `specs/registration-validation.md` and `contracts/registration.test.ts`. These are the lab's reference behavior and acceptance tests. Compare the decisions in your draft with the agreed rules. Check the name length after trimming, the email shape and normalization, both response shapes, and the effect of a rejected request on the next ID. Bring your spec into agreement with the reference and resolve the open questions that affect implementation.
+
+```sh
+git diff -- notes/registration-spec.md
+git add notes/registration-spec.md
+git diff --cached --check
+git commit -m "Refine registration criteria after review"
+```
+
+Run both checks against the starter. The baseline should pass, and the two registration acceptance tests should fail. The first still gets the original spaces and email case. The second sees a blank name accepted with `201`, so it stops before reaching the ID assertion. These failures give you two concrete results to compare after the change.
+
+```sh
 npm test
 npm run test:registration
 ```
 
-The baseline passes. The acceptance suite fails on normalization and invalid input. Keep those failures in mind as you write the criteria.
-
-You can also delegate the setup to OpenCode. If you try that from the starter, choose **Build** and ask it to run the three commands in order and report the actual results. I prefer to run small commands like these myself to save tokens, context, and time. In [Chapter 18](/books/hands-on-coding-assistants/chapters/impact-measurement-and-continuous-improvement/#compare-manual-and-delegated-setup), you'll compare both approaches and look at the environmental and community impacts of running models.
-
-## Write down the observable behavior
-
-Return to the question from the beginning of the chapter. Use the four headings from the lookup spec to draft the rules for `POST /registrations`. The goal is to validate the name and email before storing a registration. Give one example of what should be stored and returned for valid input with surrounding whitespace. Then give an example of a rejected request and describe what the next valid request should show.
-
-Compare your draft with `specs/registration-validation.md` and `contracts/registration.test.ts`. Check where the reference spec draws the line on name length and what it considers a valid email. Then find the assertion that corresponds to each result below.
-
-| Input or event | What you should observe |
-| --- | --- |
-| Valid name and email with surrounding whitespace | HTTP 201 with `id`, a trimmed `name`, and a trimmed, lowercase `email` |
-| Missing, mistyped, or malformed fields | HTTP 400 and `{"error":"invalid_registration"}` |
-| The first valid request on a fresh server after several rejections | HTTP 201 with `id` equal to `"1"` |
-
-The last check catches a patch that returns the right error after consuming an ID. Include that behavior when you review the plan. Use the supplied spec as the input to OpenCode so that the plan and the acceptance tests are working from the same rules.
-
 ## Read the plan before requesting a patch
 
-Run `opencode` from the registration branch and start a fresh session with `/new`. Use the same model you used for the lookup, select **Plan**, and give it the existing contract along with the spec.
+Use **Plan** again with the revised spec. Have it explain how the requirements map to the handler and the existing checks.
 
 ```text
-Read specs/registration-validation.md, contracts/registration.test.ts,
-and src/app.ts. Plan the changes to POST /registrations. Explain where
-you will check types, normalize the fields, validate the result, and
-assign an ID. Map the steps to the acceptance tests and wait for review.
+Read the latest notes/registration-spec.md, contracts/registration.test.ts,
+and src/app.ts. Propose a plan for POST /registrations. Map the acceptance
+criteria to the checks that cover them. Show where you would validate and
+normalize input, where an invalid request returns, and when a valid
+request gets its ID. Return the plan for review.
 ```
 
-Check that the plan rejects non-string values before trying to normalize them. The name length and email shape checks should use the normalized values, and the error path should return before the code assigns an ID or stores the registration. The spec calls for a change in `src/app.ts` and sets the existing tests as the acceptance contract.
+Check the proposed order. The handler should check the types before calling string operations and apply the length and address rules to the normalized values. Rejections should return before the route assigns an ID or stores a registration. If the plan gives a different answer from your spec, resolve the difference before switching to Build.
 
 ## Implement and review
 
-When the plan matches those criteria, switch to **Build** in the same session and send this prompt.
+Switch to **Build** in the same session so it has the plan you reviewed.
 
 ```text
-Implement specs/registration-validation.md using the reviewed plan.
-Edit src/app.ts and leave the acceptance tests unchanged. Run npm test
-and npm run test:registration and report the observed results.
+Implement the reviewed plan using notes/registration-spec.md. Change
+src/app.ts and leave the supplied acceptance tests unchanged. Run
+npm test and npm run test:registration as separate shell commands.
+Report the observed result of each run.
 ```
 
-Inspect the patch and repeat the checks from your terminal.
+Check the tool results and run the same commands yourself. Then inspect the patch.
 
 ```sh
 git status --short
@@ -165,17 +152,29 @@ npm test
 npm run test:registration
 ```
 
-Both suites should now pass, and `git status --short` should list only `src/app.ts`. In the diff, follow a rejected request to its return before the ID is assigned. Then trace the normalized values into the stored registration and the HTTP 201 response.
+Expect both suites to pass, with three starter tests and two registration tests. Review the rejection path and the success path against your spec. Follow an invalid request to its return and check whether it can reach ID allocation. Follow the normalized values into the stored registration and the returned JSON. If a test fails, use its input and expected response to narrow the review to the relevant criterion.
 
-If you're comparing models, repeat registration from the same starter commit in another branch or copy of the lab. Keep the prompts, spec, and tests the same. Record the model ID, the commands it actually ran, their results, and any corrections you had to request.
+When the patch matches the spec and only the intended file changed, commit it. The branch now contains the first draft, the revision after review, and the implementation you checked against it.
+
+```sh
+git add src/app.ts
+git commit -m "Validate registrations before changing state"
+```
+
+## Implement the task lookup with OpenCode
+
+For a second exercise, start a separate branch from `lab-start`. A client needs to fetch a single task using `GET /tasks/:id`. Write the first spec in `notes/task-lookup.md` and ask Plan to review it. If your only success example fetches the seeded task at `/tasks/1`, a hard-coded response could satisfy it. Add a case that creates a task, takes the ID from the response, and fetches that task. Specify `404` with `{"error":"not_found"}` for an unknown ID and check that the list stays the same after each lookup. Keep the scope to literal IDs used by the service.
+
+Review the revised spec, ask Plan how to implement it, then use Build and run `npm test`. Save your work on that branch so the next exercise can start from its named tag.
 
 <span id="setting-up-for-the-rest-of-the-series"></span>
 
 ## Carry the workflow forward
 
-Keep the registration branch with its diff available. In [AI-Assisted Code Review](/books/hands-on-coding-assistants/chapters/ai-assisted-code-review/), you'll give a reviewer that patch and the same spec, then check whether its findings point to a reproducible problem.
+In the [next chapter](/books/hands-on-coding-assistants/chapters/debugging-refactoring-and-iteration/), a regression breaks the ID criterion even though both requests return the expected status. You'll use a separate fixture to reproduce that gap and turn the same two requests into a focused regression test.
 
 ## References
 
 - GitHub. [Spec-Driven Development Quickstart](https://github.github.com/spec-kit/quickstart.html). Official Spec Kit documentation.
-- OpenCode maintainers. [Agents](https://opencode.ai/docs/agents/) and [TUI](https://opencode.ai/docs/cli/tui/). Official OpenCode 2 documentation for Plan, Build, and the terminal interface.
+- OpenCode maintainers. [Agents](https://opencode.ai/docs/agents/) and [TUI](https://opencode.ai/docs/cli/tui/). OpenCode 2 documentation.
+- Node.js contributors. [Test runner](https://nodejs.org/api/test.html). Node.js API reference.

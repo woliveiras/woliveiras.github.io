@@ -1,95 +1,70 @@
 ---
 title: "Impact Measurement & Continuous Improvement"
-description: "Measure the work it takes to get a verified change and use the result to improve the harness."
+description: "Measure the time and interventions it takes to get a verified result."
 module: 4
-order: 18
+order: 24
 ---
 
 ## Count the whole change
 
-A model can generate a patch quickly and consume the time you saved during review. Measure from the first read of the task to the point where you have a change you'd accept. Include the time spent clarifying the plan, rerunning a test, and investigating an unexpected edit.
-
-A randomized study of experienced open-source developers on familiar codebases found that the AI-enabled condition took longer in that setting. Use it as a reason to measure your own workflow, where the model, task, and review burden will differ.
+A suggestion arrives in seconds. Now count the time it takes to inspect the diff, supply a missing constraint, rerun the checks, and accept the patch. A randomized study of experienced open-source developers using early-2025 models found that developers took longer in the AI-enabled condition in that study. Measure your own task, model, and review effort.
 
 ## Compare manual and delegated setup
 
-Return to the [registration exercise](/books/hands-on-coding-assistants/chapters/the-spec-first-workflow/#the-spec-first-workflow). Creating the branch and checking the starting tests is a complete task on its own. You already know the commands and what they should show. That makes it a good place to see what delegating adds.
-
-Use two clean copies of the lab at the same starter commit. Set up OpenCode and the model before timing, and note the model ID. In the first copy, run these commands yourself:
+Create two clean worktrees at `lab-start` and confirm they have the same commit.
 
 ```sh
-git switch -c registration-validation
+git worktree add --detach ../task-api-manual lab-start
+git worktree add --detach ../task-api-delegated lab-start
+git -C ../task-api-manual rev-parse HEAD
+git -C ../task-api-delegated rev-parse HEAD
+```
+
+In the first, time yourself running the two commands from the registration exercise.
+
+```sh
 npm test
 npm run test:registration
 ```
 
-In the second copy, open a fresh **Build** session and give the agent the same job. If OpenCode asks to run `git switch`, review the command and approve it once for this exercise.
+The base tests should pass and the contract should fail. In the second worktree, select your model in a fresh **Plan** session and record its ID. Take the same measurements.
 
 ```text
-Use the shell tool to run these commands separately, in order, from
-the current checkout. The last test command is expected to fail on
-the starter. Report what each command actually did and its exit
-status. Leave the source and tests unchanged.
-
-git switch -c registration-validation
-npm test
-npm run test:registration
+Run npm test and npm run test:registration as separate shell calls.
+Use the exact commands. Report each observed result and leave the
+repository unchanged.
 ```
 
-In both runs, verify that the branch is `registration-validation` and that `git status --short` is empty. Check the exit statuses yourself or in the session's tool output. The branch command and `npm test` should succeed. The registration contract should fail because the starter has yet to implement validation.
+Include the time you spend checking what ran. If a provider quota, missing tool support, or denied command interrupts the task, record the point where it stopped. Preserve any outcomes you can confirm from individual events. A run that ends before verification has a different outcome from a verified run.
 
-| Record | How to measure it |
+| Record | Where to check it |
 | --- | --- |
-| Elapsed time | Start before typing the first command or putting the prompt into OpenCode. Stop after verifying the branch, test results, and working tree. Include approvals, waiting, and any follow-up. |
-| Calls and retries | Count shell attempts and visible model steps separately. Record denied commands, retries, and any extra requests. Use provider usage records if you need the actual number of billed requests. |
-| Tokens and spend | Record reported token categories and any charge you can verify. Use zero model calls and tokens for the manual run. Mark unavailable data as unknown. |
-| Review and intervention | Note what you checked yourself, what you had to correct, and whether the agent found anything that changed your next step. |
+| Elapsed time | Time from starting the task through the last verification or recorded interruption |
+| Actions and retry count | Visible tool activity and human intervention in the session |
+| Tokens or charges | Reported token categories and the provider's usage or billing record, when available |
+| Verification | Command, exit status, and working-tree status |
+| Rework | Spec clarifications, changes to the patch, reruns, and approvals you performed |
 
-For the delegated run, list your sessions and export the matching one after timing. Replace `YOUR_SESSION_ID` with the ID of the run you just checked. The exported session's `info.tokens` contains the observed token totals when usage is available. Keep input, output, reasoning, and cache fields separate. A billing record is the source for what the provider actually charged.
+An export can supply token counts when the client receives them. Use the session ID from `opencode session list`. Keep cache, input, output, and reasoning counts separate. Store observed commands and results in your own reviewed record.
 
-```sh
-opencode session list
-opencode session export YOUR_SESSION_ID --sanitize > ../agent-setup-session.json
-```
+## Change one thing
 
-In a check of this exercise, OpenCode ran the requested commands, and the hosted model hit a free usage limit before it could summarize them. The shell output still showed the baseline passing and the contract failing. If that happens to you, record where the run stopped and which results you could verify.
+Try the registration implementation on two clean copies of the same base. Give one session a prompt with the spec path. Give the other the same prompt and the path to the acceptance test. Use the same spec, model, runtime, and verification procedure. A completed result passes both suites and has a diff a person can accept against the spec. Time the work through that review.
+
+Record whether identifying the contract reduced the number of missed criteria or corrections. Repeat before treating a difference as stable. If you repeat across models, record the exact IDs and alternate run order. Quotas, hardware and context settings can change the result.
 
 ## Account for energy, water, and local impacts
 
-A free quota tells you what the provider charges for access. The agent's model calls still use computing resources. Electricity use for a task varies with the workload and the infrastructure that runs it. On your own machine, a plug-in power meter can give you watt-hours for the whole machine during the run. Measure a separate idle interval of the same duration if you want to estimate the extra electricity above baseline. For a hosted run, use provider measurements with a comparable scope if available. Keep energy use unknown when your evidence is limited to tokens and call counts.
+A free quota sets the price you see. For a local run, a wall meter can give you energy for the whole machine. Measure an idle interval of the same length if you want to estimate the extra use above baseline. For a hosted run, use provider measurements with comparable scope where available. Tokens and call counts alone leave energy use unknown.
 
-Electricity is one part of the environmental picture. The Berkeley Lab report separates water used at a data center, mainly for cooling, from water used to produce its electricity. The emissions and water impacts associated with that electricity depend on the local generation mix. Estimating those impacts for a specific run calls for information about where it ran, its electricity use, and the cooling it relied on.
+The Berkeley Lab report distinguishes water used directly at a data center from water associated with its electricity supply. What those impacts mean for a specific run depends on its infrastructure and location. A Virginia legislative review also describes construction-driven economic benefits, local tax revenue, and reported effects of persistent noise at some sites. Keep these observations tied to the places and scopes the reports studied.
 
-There is also a question of who experiences the effects. Virginia's legislative review documents impacts that vary by site, including some nearby residents reporting that persistent data center noise affects their well-being. It also identifies local tax revenue and economic benefits concentrated in construction. Those findings describe the places the commission studied. Look for local evidence when assessing who benefits and who bears costs near a particular facility.
-
-Use the comparison to decide where a model call earns its place in your workflow. A known test command is easy to run directly. An unfamiliar failure may warrant an agent that can connect the output to the code. Record what its work helped you decide alongside the time and usage it took to get there.
-
-## Compare the same task
-
-For the full registration change, compare implementation runs across models.
-
-Use a clean copy of the registration starter for each run. Keep the spec, prompt, and acceptance tests the same. Decide in advance what counts as completion. For this exercise, both test commands passing and a reviewed diff limited to the route meet that bar.
-
-| Record | How to observe it |
-| --- | --- |
-| Setup and task time | Record model download or provider setup separately from time spent on the change |
-| Scope | Record the edited files and any proposed work outside the spec |
-| Correctness | Record the actual exit status of the baseline and feature tests |
-| Interventions | Record when you correct a plan, redirect a tool call, or repair a patch |
-| Review effort | Record the time and checks required to accept the diff |
-
-Note the OpenCode version, model ID, context settings, starting commit, and platform with each run. Hosted limits and a cold local model can both affect elapsed time. If you run both models yourself, alternate the order on repeated attempts. The first attempt teaches you about the exercise and can make later attempts easier.
-
-## Change one part of the harness
-
-If an agent repeatedly guesses the test command, make it easier to find. If the same requirement goes missing from otherwise good plans, improve the spec or add a test. If extra tools take up context without helping, remove one and repeat the task.
-
-Write down the change and the result. For example, you could add the path to the registration contract to the prompt, then see if the next run catches the distinction between rejecting input and avoiding the state change. A single exercise gives you a case you can inspect. Repeat on different tasks before treating it as a finding about the whole team.
+Keep the measurement with the task and the control you changed. In the final project you can use it to explain where a second session helped and where a direct check was quicker.
 
 ## References
 
-- Becker et al. [Measuring the Impact of Early-2025 AI on Experienced Open-Source Developer Productivity](https://arxiv.org/abs/2507.09089). arXiv:2507.09089, July 2025. Randomized study. [METR research summary](https://metr.org/blog/2025-07-10-early-2025-ai-experienced-os-dev-study/).
-- OpenCode maintainers. [CLI commands](https://opencode.ai/docs/cli/commands/). Official OpenCode 2 documentation for [listing and exporting sessions](https://opencode.ai/docs/cli/commands/#session).
-- International Energy Agency. [Key Questions on Energy and AI](https://www.iea.org/reports/key-questions-on-energy-and-ai). IEA report, 16 April 2026. [Executive summary](https://www.iea.org/reports/key-questions-on-energy-and-ai/executive-summary).
-- Shehabi et al. [2024 United States Data Center Energy Usage Report](https://eta.lbl.gov/publications/2024-lbnl-data-center-energy-usage-report). Lawrence Berkeley National Laboratory technical report LBNL-2001637, 19 December 2024. DOI 10.71468/P1WC7Q.
-- Joint Legislative Audit and Review Commission. [Data Centers in Virginia](https://jlarc.virginia.gov/pdfs/reports/Rpt598.pdf). Report 598 to the Governor and General Assembly of Virginia, 9 December 2024. [Summary of findings](https://jlarc.virginia.gov/landing-2024-data-centers-in-virginia.asp).
+- Joel Becker et al. [Measuring the Impact of Early-2025 AI on Experienced Open-Source Developer Productivity](https://arxiv.org/abs/2507.09089). arXiv preprint 2507.09089v2, submitted 12 July 2025 and revised 25 July 2025. DOI 10.48550/arXiv.2507.09089. The arXiv record lists no publication venue.
+- OpenCode maintainers. [CLI commands](https://opencode.ai/docs/cli/commands/) and [Session commands](https://opencode.ai/docs/cli/commands/#session). Official OpenCode 2 documentation.
+- International Energy Agency. [Key Questions on Energy and AI](https://www.iea.org/reports/key-questions-on-energy-and-ai). IEA report, 16 April 2026.
+- Arman Shehabi et al. [2024 United States Data Center Energy Usage Report](https://eta.lbl.gov/publications/2024-lbnl-data-center-energy-usage-report). Lawrence Berkeley National Laboratory technical report LBNL-2001637, 19 December 2024. DOI 10.71468/P1WC7Q.
+- Joint Legislative Audit and Review Commission. [Data Centers in Virginia](https://jlarc.virginia.gov/pdfs/reports/Rpt598.pdf). Report 598 to the Governor and General Assembly of Virginia, 9 December 2024. [Study summary](https://jlarc.virginia.gov/landing-2024-data-centers-in-virginia.asp).

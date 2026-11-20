@@ -1,57 +1,76 @@
 ---
 title: "Custom Agents & Sub-Agents"
-description: "Define a read-only reviewer in OpenCode and decide when a second agent earns its place."
-module: 1
-order: 7
+description: "Define a reviewer with explicit tool permissions and verify its work in a separate session."
+module: 3
+order: 16
 ---
+
+The implementation session has already spent time defending a patch. A new review session starts with the criterion and the changed line. Give it the spec, the tests, and a diff with a known base.
+
+## Give the reviewer a copy of the diff
+
+Use a clean working tree and start from the review checkpoint.
+
+```sh
+git switch -c reviewer-exercise lab-review
+mkdir -p .opencode/agents notes
+git diff lab-registration lab-review -- src/app.ts > notes/review.patch
+```
+
+Read `notes/review.patch` yourself. The two refs put the intended change in the file even when the working tree is clean. Keep the patch with the base and head SHAs when you pass it to someone else.
 
 ## Give the reviewer a different job
 
-The Build agent has already made choices about the implementation. A reviewer can work from the spec and the diff and look for behavior that those choices missed. Give it a narrow question, limited tools, and an answer you can check.
-
-Create `.opencode/agents/reviewer.md` inside the lab. OpenCode 2 loads Markdown agent definitions from that directory. Use `mode: all` so you can select the reviewer directly or call it from another agent. A subagent without a model in its definition inherits the parent session's selection.
+Create `.opencode/agents/reviewer.md`. OpenCode loads the Markdown body as the agent's instructions. `mode: all` makes the agent available directly and as a child. The child can inherit your selected model and uses its own permission rules.
 
 ```md title=".opencode/agents/reviewer.md"
 ---
-description: Reviews the Task API diff against the feature spec and tests
+description: Reviews a known Task API diff against its spec and contract
 mode: all
 permissions:
-  - action: edit
+  - action: "*"
     resource: "*"
     effect: deny
-  - action: shell
-    resource: "*"
-    effect: deny
-  - action: shell
-    resource: git diff
+  - action: read
+    resource: "specs/*"
     effect: allow
-  - action: subagent
-    resource: "*"
-    effect: deny
+  - action: read
+    resource: "contracts/*"
+    effect: allow
+  - action: read
+    resource: "src/*"
+    effect: allow
+  - action: read
+    resource: "test/*"
+    effect: allow
+  - action: read
+    resource: "notes/review.patch"
+    effect: allow
 ---
 
-Read the named spec, the affected code, and the relevant acceptance test.
-Use git diff for unstaged changes. Report each finding with its file and
-line, an input that demonstrates the problem, and the expected result.
-State which checks you relied on. Leave the files unchanged.
+Read the named spec, the relevant contract, and notes/review.patch.
+Cite the changed file and line for each finding. Give a request that
+would demonstrate it, the expected result, and the result implied by
+the code. Say which checks still need a human to run them.
 ```
+
+The broad denial comes first. The later read rules grant the inputs this review needs. Run and inspect the shell checks yourself. The same repository can give Build more tools for a later task.
 
 ## Run an independent pass
 
-With the registration diff still unstaged, start a fresh session. Select **reviewer**, or pass the ID at the command line:
+Open OpenCode from the repository root, choose **reviewer** with `/agents`, and send this request.
 
-```sh
-opencode run --agent reviewer "Review the unstaged diff against specs/registration-validation.md."
+```text
+Read specs/registration-validation.md, contracts/registration.test.ts,
+and notes/review.patch. Identify a request where this patch diverges
+from the spec. Tell me how I can reproduce it using a fresh server.
 ```
 
-Select a suitable model in OpenCode or add `--model provider/model` using the ID from [the setup chapter](/books/hands-on-coding-assistants/chapters/setup-and-practical-integration/). Verify that the reviewer read the acceptance test and the diff. The reviewer has permission to read the changes. You'll run any commands needed to reproduce its findings.
+Watch for actual reads of the requested files. In a separate session, ask the reviewer to try the shell tool with the exact command `git status --short` to exercise the boundary. The tool should be unavailable or the request should be denied. A prose refusal alone gives you weaker evidence. The setup files and patch are expected in the working tree. Confirm that the reviewer itself added no changes.
 
-A second option is to ask **Build** to launch the `reviewer` subagent with the same spec and diff. Watch for a separate child session. In OpenCode 2, subagents run in their own context and report back to the parent. Their permissions come from their own definitions. Review those permissions as you would the main agent's.
-
-## Decide if delegation helps
-
-On a single-route exercise, a fresh reviewer session may be enough. Try splitting the work when two questions have clean boundaries. One reviewer can check response compatibility while you check the mutation order and tests. Compare the findings with what you'd find from a normal diff review. A second agent earns its place when it uncovers something you can reproduce.
+You can also open a fresh **Build** session and ask it to call `reviewer` with the same input. Check that the parent started a child and got a report. Build controls which children it can launch. Give the child the paths and task explicitly, since it starts with its own context. Keep one of the review findings and test it in the next chapter.
 
 ## References
 
-- OpenCode maintainers. [Agents](https://opencode.ai/docs/agents/) and [Permissions](https://opencode.ai/docs/permissions/). Official OpenCode 2 documentation. [Agent modes](https://opencode.ai/docs/agents/#modes).
+- OpenCode maintainers. [Agents](https://opencode.ai/docs/agents/) and [Permissions](https://opencode.ai/docs/permissions/), including [agent permissions](https://opencode.ai/docs/permissions/#agents). Official OpenCode 2 documentation.
+- Git maintainers. [git-diff](https://git-scm.com/docs/git-diff). Git reference manual.

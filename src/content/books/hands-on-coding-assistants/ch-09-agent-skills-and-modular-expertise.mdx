@@ -1,53 +1,53 @@
 ---
 title: "Agent Skills & Modular Expertise"
-description: "Create a spec-writing skill and check that the model actually loads and applies it."
-module: 1
-order: 10
+description: "Teach a spec-writing procedure to OpenCode and verify when it loads."
+module: 3
+order: 20
 ---
 
-## Make the procedure reusable
+A command works when you already know which prompt to run. A skill makes a procedure available for the agent to load when the task calls for it. In this exercise the procedure is to turn a feature request into a spec without quietly filling in product decisions.
 
-The `/check-spec` command starts a prompt at your request. A skill carries a procedure the agent can load when it recognizes a task. Use a skill when the work needs several steps or a supporting reference. In the lab, drafting a spec fits because the agent needs to turn a feature note into observable behavior and expose open decisions.
+Start a fresh branch from `lab-start`. In a Plan session, ask for a draft for this request.
 
-Create `.opencode/skills/spec-writer/SKILL.md`:
+```text
+A user wants to download their tasks to open in a spreadsheet.
+Draft a Task API feature spec. Identify what still needs a decision.
+```
+
+Save the answer in your exercise notes. There is no checked-in spec for that feature. File format, columns, and records included in the export are still choices the owner needs to make.
+
+## Add the procedure
+
+Create `.opencode/skills/spec-writer/SKILL.md`. The name and description advertise it to the model. The body is loaded when the skill is selected.
 
 ```md title=".opencode/skills/spec-writer/SKILL.md"
 ---
 name: spec-writer
-description: Draft a Task API feature spec with verifiable criteria and explicit open questions.
+description: Draft a Task API feature spec with observable criteria and explicit open decisions.
 ---
 
 Read the feature request and the relevant route in src/app.ts.
-Look at specs/registration-validation.md for the shape of a lab spec.
-
 Return a draft with Goal, Acceptance criteria, Verification, and
-Open questions. Give each criterion an input and observable outcome.
-Cover the success path and what should happen to state on rejection.
-
-Keep unresolved product choices in Open questions. Leave files unchanged
-unless the caller asks you to save the draft.
+Open questions. Under Verification, give a concrete input and
+expected outcome for each decided criterion. Ask about the visible
+effect of rejection wherever the feature can change stored state.
+Leave unanswered product decisions in Open questions.
 ```
 
-OpenCode discovers project skills by path and makes the description visible to the model. It loads the instructions when the skill is selected. The skill ID here is `spec-writer`, taken from the directory.
+Start a new Plan session with the same model. Submit the same task with `Use @spec-writer.` at the beginning. Inspect the tool activity for a completed skill call with ID `spec-writer`. Compare the two drafts. Is the new one clear about what a caller can observe? Did it decide on CSV without being asked? The activity tells you whether OpenCode loaded the skill. The answer tells you whether the loaded procedure was useful.
 
-## Test it with an underspecified request
+## Check the permission boundary
 
-Open a fresh Plan session and ask:
+Add this last rule to the `permissions` array for one test session.
 
-```text
-Use @spec-writer to draft a spec for adding task labels. The caller
-wants to find urgent tasks and remove labels they no longer need.
-Surface the decisions that still need an answer.
+```jsonc
+{ "action": "skill", "resource": "spec-writer", "effect": "deny" }
 ```
 
-Check the session activity for skill loading. Then review the open questions. The request leaves several decisions open: how to handle duplicate labels, whether case matters for filtering, and whether an empty list clears labels. Compare the draft with the agreed behavior in `specs/task-labels.md`.
+Open a fresh session and try the skill again. The skill should be unavailable to that agent or the attempt should be denied. It can still answer from the prompt and files it sees. Look for a successful load before crediting the skill with the result. Remove the denial when you finish and confirm the skill loads again.
 
-If the agent invents requirements and presents them as settled, amend the skill with a concrete instruction about those choices. Try the prompt again in a fresh session. Use the same prompt with another model to see whether the description is enough for discovery and whether each model follows the procedure.
-
-## Decide where the skill should live
-
-Keep this one in the lab while its procedure depends on the lab's spec shape and paths. A team can share the same skill once the workflow is useful across projects. Review the instructions and any supporting scripts before adopting a skill from another repository. Its contents enter the agent's context and may influence what tools the agent asks to use.
+Review the text and any scripts or resources a skill would ask the agent to use before sharing it. Keep the skill in this repository while its procedure depends on the Task API.
 
 ## References
 
-- OpenCode maintainers. [Skills](https://opencode.ai/docs/skills/). Official OpenCode 2 documentation for discovery, loading, and skill permissions. [Skill sources](https://opencode.ai/docs/skills/#sources).
+- OpenCode maintainers. [Skills](https://opencode.ai/docs/skills/), including [loading](https://opencode.ai/docs/skills/#loading). Official OpenCode 2 documentation for skill discovery, loading, and permission checks.

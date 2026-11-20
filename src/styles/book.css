@@ -197,6 +197,7 @@
 	max-inline-size: none;
 	margin: 0 auto;
 }
+.task-api-c4 .book-diagram { background: #f3f8f2; }
 
 .book-annotated { margin-block: 1.15em; }
 .book-prose .book-annotated p { margin: 0; }

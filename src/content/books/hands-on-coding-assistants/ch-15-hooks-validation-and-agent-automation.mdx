@@ -1,49 +1,35 @@
 ---
 title: "Hooks, Validation & Agent Automation"
-description: "Make test and diff checks repeatable with a Git hook, and understand where OpenCode hooks fit."
+description: "Make a local check run at commit time and observe a shell call using an OpenCode plugin."
 module: 3
-order: 16
+order: 21
 ---
+
+CI gives the reviewer a result on a clean checkout. You can shorten your own feedback loop by running a check before creating a commit. You can also record that an assistant called a tool. Those are different events, and the distinction matters when you investigate a failure.
 
 ## Put the check where it will run
 
-The assistant can run `npm test` and still describe a change you haven't reviewed. A deterministic hook gives you a separate checkpoint. The lab combines a staged diff check with the baseline tests. The feature's contract remains an explicit command for the branch you're working on.
-
-From the lab's Git root, create `.githooks/pre-commit`:
+From a clean checkout, start a branch at `lab-coverage`. Record the existing value of `git config --local --get core.hooksPath` before changing it. Create `.githooks/pre-commit` in the repository root.
 
 ```sh title=".githooks/pre-commit"
 #!/bin/sh
 set -eu
 git diff --cached --check
-npm test
+npm run verify
 ```
-
-Enable it for this repository:
 
 ```sh
 chmod +x .githooks/pre-commit
 git config --local core.hooksPath .githooks
 ```
 
-Use Git Bash for these shell examples if you work on Windows. Git runs the pre-commit hook before creating a commit and stops if it exits unsuccessfully. `npm test` runs against the working tree, so review unstaged changes alongside the staged diff. A clean checkout in CI is the place to verify exactly what was committed.
+Add a line with trailing whitespace to `README.md`, stage the file, and try to commit. `git diff --cached --check` should stop the commit and identify the line. Remove the trailing whitespace, stage the fix, and try again. This time the hook should reach `npm run verify`. Watch for its result before Git reports the commit.
 
-## Watch a failing check stop a commit
-
-Use a disposable branch with the starter committed. Add a blank line containing spaces to the end of `README.md`, stage that file, and try to commit it. The whitespace check should fail. Inspect the staged diff, remove the spaces, stage the fix, and retry. The hook should now reach the tests.
-
-On a feature branch run the feature contract before asking for review:
-
-```sh
-npm run test:registration
-```
-
-If you're working on task labels, use `npm run test:labels` instead. Those commands fail on the starter by design. Once a feature lands, a maintainer can move its assertions into the regular test suite so every subsequent change runs them.
+The diff check reads the index. The tests and coverage run on the working tree. Inspect `git status --short` while reproducing the check and use CI to verify the committed revision. Return `core.hooksPath` to its previous value when you finish, or use `git config --local --unset core.hooksPath` if it was absent.
 
 ## Where an OpenCode hook fits
 
-A Git hook sees a repository event. An OpenCode plugin can observe a tool event inside the harness, for example `execute.after` to record the outcome of a tool call. That can help explain which check the agent attempted. Keep the actual pass or fail decision in the check that you and CI can both run. OpenCode 2's plugin API has a different shape from v1, so use the API reference for the version you're running.
-
-To see the difference, create `.opencode/plugins/lab-check-marker.js` in the lab. This small plugin attaches a marker to a completed shell tool call. The tool's response and exit information stay available for inspection.
+A server plugin observes events inside OpenCode. This exercise attaches a marker to a completed shell call. The plugin runs in the server process, so review its code before loading it. Put this file in the repository at `.opencode/plugins/lab-check-marker.js`.
 
 ```javascript title=".opencode/plugins/lab-check-marker.js"
 export default {
@@ -61,15 +47,19 @@ export default {
 };
 ```
 
-Run a new session and ask the agent to execute the exact test command:
+Use a fresh OpenCode invocation. If the CLI has no selected model, add `--model provider/model` with the ID from setup. The exact `npm test` command matches the lab's permission rule.
 
 ```sh
-opencode run --format json "Use the shell tool to run npm test in this project. Report the exit status."
+opencode run --standalone --agent plan --format json \
+  "Execute only npm test using the shell tool. Report the observed result." \
+  > ../hook-enabled.jsonl
 ```
 
-Find `labCheckObserved` in the shell tool's output event. Use the event's test output to determine whether the command passed. A completed call is one the harness handled, and the command itself can still return a failing exit status. The Git hook reads that status directly.
+Find the completed shell event. In the OpenCode 2.3.2 JSON stream, look for the metadata object under `part.state.metadata.metadata`. It should contain `labCheckObserved: true` and the command exit status. A completed tool call can carry a failing command result. Check both values.
+
+Move the plugin file outside `.opencode/plugins/` and repeat in another fresh process with the same model and prompt. Look for the completed shell event again. The marker should disappear while the command result remains. If the agent skips the shell tool, repeat the request before drawing a conclusion about the plugin. Save only the reviewed evidence you need from the two runs. The merge requirement still comes from the CI check.
 
 ## References
 
 - Git maintainers. [githooks](https://git-scm.com/docs/githooks). Git reference manual.
-- OpenCode maintainers. [Server plugins](https://opencode.ai/docs/build/plugins/server/), [Plugins](https://opencode.ai/docs/plugins/), [CLI commands](https://opencode.ai/docs/cli/commands/), and [Migrate from V1](https://opencode.ai/docs/migrate-v1/). Official OpenCode 2 documentation. [Server hooks](https://opencode.ai/docs/build/plugins/server/#hooks).
+- OpenCode maintainers. [Server](https://opencode.ai/docs/build/plugins/server/), [server hooks](https://opencode.ai/docs/build/plugins/server/#hooks), [Plugins](https://opencode.ai/docs/plugins/), and [CLI commands](https://opencode.ai/docs/cli/commands/). Official OpenCode 2 documentation.

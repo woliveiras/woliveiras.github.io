@@ -1,52 +1,55 @@
 ---
 title: "AI-Assisted Code Review"
-description: "Use an independent OpenCode review to check a diff against the feature spec."
-module: 2
-order: 12
+description: "Verify a reviewer finding against the feature specification, the diff, and a running service."
+module: 3
+order: 17
 ---
 
 ## Bring the evidence to the reviewer
 
-A passing test suite is one part of a review. On the registration branch, the diff also needs to leave unrelated routes intact and validate before assigning an ID. Review those properties against the original spec.
-
-Run these commands in the lab before asking for a review:
+The registration contract can pass while a name at the exact length limit is rejected. You have the `lab-review` branch and the patch from [Custom Agents & Sub-Agents](/books/hands-on-coding-assistants/chapters/custom-agents-and-sub-agents/). Check the contract yourself before opening the review.
 
 ```sh
-git status --short
-git diff --check
-git diff -- src/app.ts
+git log -1 --oneline
 npm test
 npm run test:registration
+git diff lab-registration lab-review -- src/app.ts
 ```
 
-If you've already staged the change, inspect `git diff --cached` too. The reviewer in [Custom Agents & Sub-Agents](/books/hands-on-coding-assistants/chapters/custom-agents-and-sub-agents/) is configured for the unstaged diff. Give it a diff you can both refer to.
-
-## Ask for findings you can reproduce
-
-Start the read-only reviewer in a fresh session with this request:
+Both suites should pass. The test data covers a short name and a name of 101 characters. The spec also accepts 100. Ask your reviewer for a request that follows the spec and behaves differently at the changed line.
 
 ```text
-Review the registration change against specs/registration-validation.md.
-Check that invalid requests leave the next ID available, valid responses
-return the normalized fields, and no unrelated response changed.
-For each issue, give the changed line, an example input, and the expected
-versus observed behavior. Label anything you inferred from reading.
+Read specs/registration-validation.md, contracts/registration.test.ts,
+and notes/review.patch. Find a criterion the existing tests could miss.
+For each finding, give the changed file and line, a concrete input,
+the expected result, and what the code implies will happen. Identify
+the checks you actually ran.
 ```
-
-When the reviewer calls something “insecure” or “incorrect,” ask which observable behavior is wrong. A proposal to require email verification would add a new product requirement. A rejected request that advances the ID would violate the existing one. The spec gives you a way to decide which comment belongs in this change.
 
 ## Verify a finding before asking for a fix
 
-Reproduce the input locally or add a focused regression test when there is a missing case. If you confirm the issue, carry that evidence into Build. Ask for a correction limited to what the finding demonstrates. Run the same suite and read the new diff.
+Start `npm start` in one terminal. From a second terminal, submit names of three lengths to the local service. The Node script builds the JSON bodies so you can see exactly which input produced each status.
 
-In the local registration pilot, the first implementation passed the initial tests. The diff checked for a literal space and looked for a dot anywhere in the email. That let a tab slip through, and it could count a dot before the `@` toward the domain rule. The expanded contract includes both cases. A green run only covers the cases it exercised. Reading the diff against the spec exposed the gap.
+```sh
+node --input-type=module - <<'JS'
+for (const length of [99, 100, 101]) {
+  const response = await fetch("http://127.0.0.1:3000/registrations", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ name: "x".repeat(length), email: "sam@example.test" }),
+  });
+  console.log(length, response.status);
+}
+JS
+```
 
-If a reviewer finds nothing, compare the scope it actually inspected with your checklist. A missing read tool call or an empty diff explains some quiet reviews. Treat the review summary as a record of what was checked and make the merge decision yourself.
+On `lab-review`, the statuses are 201, 400 and 400. The middle case should return 201. A model that reports this as an observed result without running the request has given you a hypothesis. Preserve the distinction in your notes.
 
-## Review the model as well as the patch
+Turn the 100-character case into an HTTP regression test in `test/app.test.ts` and run `npm test` to see it fail. Then ask Build for the smallest change that makes the test pass without rejecting a different set of inputs. Review the new diff and run both suites. The direct requests should now return 201, 201 and 400. Stop the service and keep the base, head, verified finding and resolution together in your review note.
 
-Try the same request with the local and hosted paths on one diff. Note which comments you could verify, which repeated the spec, and which would have sent the implementation away from it. This is more useful than comparing comment counts. It tells you which kind of review the setup can help you with.
+If the review returns no findings, check whether the session opened the spec and the materialized diff. Repeat with the criterion and input specified. The decision to accept the patch stays with the person who can reproduce the behavior.
 
 ## References
 
-- [Pilot configuration and tested models](/books/hands-on-coding-assistants/appendices/model-setup/). Appendix to this book.
+- OpenCode maintainers. [Agents](https://opencode.ai/docs/agents/). Official OpenCode 2 documentation for separate review sessions.
+- Node.js contributors. [Test runner](https://nodejs.org/api/test.html). Node.js API reference.

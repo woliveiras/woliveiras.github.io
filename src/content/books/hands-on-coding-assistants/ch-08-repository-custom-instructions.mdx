@@ -1,48 +1,58 @@
 ---
 title: "Repository Custom Instructions"
-description: "Keep project guidance, repeatable prompts, and execution rules in their appropriate files."
-module: 1
-order: 9
+description: "Share existing repository guidance, add a reusable command, and test an executable permission."
+module: 3
+order: 19
 ---
 
-## What belongs where
+You can answer a question about a spec in three places. The spec supplies the behavior. A command supplies the prompt you want to use each time. The permission rules decide whether that session can edit the spec or its contract.
 
-Once you have both a root `AGENTS.md` and `opencode.jsonc`, decide which layer owns each new rule. The distinction pays off when a second person opens the repo, or when the same instructions are used with a different harness.
+Continue from the project-instructions exercise or start a new branch at `lab-start`. Create a short file at `docs/review-guide.md`.
 
-| Need | Where it belongs in the lab |
-| --- | --- |
-| Explain why an invalid request leaves state unchanged | `AGENTS.md` |
-| Describe this feature's exact payload and response | `specs/task-labels.md` |
-| Carry a review prompt you run on demand | `.opencode/commands/` |
-| Control which shell commands an agent may run | `opencode.jsonc` |
+```md title="docs/review-guide.md"
+In a contract review, include a row for state after rejection.
+Name the assertion that observes it, or mark that row as unchecked.
+```
 
-OpenCode also accepts an `instructions` array in its config. Use it when an existing repository document already holds the rules you need. Point to that document and keep its instructions in one place. OpenCode adds those sources alongside discovered `AGENTS.md` files.
+Add `"instructions": ["docs/review-guide.md"]` as a top-level entry in `opencode.jsonc`. Keep the other entries. The configured file comes after the initial `AGENTS.md` sources. If the same convention exists twice, edit the files so the directions agree. The model receives combined text and still has to act on it.
 
 ## Add a command that starts from a spec
 
-Create `.opencode/commands/check-spec.md`. The file becomes the `/check-spec` prompt in OpenCode. The template substitutes the argument you pass.
+Save this template as `.opencode/commands/check-spec.md`. OpenCode expands `$ARGUMENTS` when you run the command. The frontmatter selects Plan.
 
 ```md title=".opencode/commands/check-spec.md"
+---
+description: Match a Task API spec to its contract checks
+agent: plan
+---
+
 Read the spec at $ARGUMENTS and the related acceptance test.
-Return a table with one row per criterion. For each row, name a
-check and the expected result. Flag criteria with no check.
-Leave files unchanged.
+Return a row for each criterion with a check and expected result.
+Flag any criterion without a check. Leave files unchanged.
 ```
 
-Select **Plan**, then run:
+In a fresh session, run the command.
 
 ```text
 /check-spec specs/registration-validation.md
 ```
 
-Compare the result with `contracts/registration.test.ts`. A good answer identifies the valid request, the failing input classes, and the ID check. It also notices if a spec criterion lacks a test. You can verify the result without asking the assistant to change the test suite.
+Look for reads of both the spec and `contracts/registration.test.ts`. Check the description of the next-ID assertion and its relationship to state after rejection. If the answer invents a test for the exact 100-character limit, look for that input in the file and correct the report.
 
 ## Keep permissions in the config
 
-Read the starter's `opencode.jsonc`. The broad shell rule asks for approval. The rules below it allow the specific test commands. OpenCode evaluates matching rules in order, with the last matching rule winning in that sequence. Geography matters too. The starter denies access outside the project boundary through the dedicated directory action.
+The project configuration asks approval for shell commands and allows specific test commands. OpenCode checks matching permission rules in order and uses the last match. Agent-specific rules come after shared rules. Keep the broad rule above its narrow exceptions.
 
-When a reader follows the command in **Build**, “leave files unchanged” is part of the prompt. For a session that must enforce read-only behavior, select **Plan** or use the reviewer definition from [Custom Agents & Sub-Agents](/books/hands-on-coding-assistants/chapters/custom-agents-and-sub-agents/). Keep that choice visible when you document the workflow.
+In your exercise branch, append this object to the project `permissions` array.
+
+```jsonc
+{ "action": "edit", "resource": "contracts/*", "effect": "deny" }
+```
+
+Open a fresh **Build** session and ask it to attempt to add a harmless comment to `contracts/registration.test.ts` using the edit tool. The edit should be blocked. Inspect the tool event and run `git diff -- contracts/` yourself. A prose refusal gives you no evidence that the permission was checked. Use the tool status and the diff together. End the test session before giving the agent a real implementation task.
+
+Keep `/check-spec` and the review guidance together if you want to reuse them. The exercise edit rule is an independent choice about what role can reach contract files.
 
 ## References
 
-- OpenCode maintainers. [Instructions](https://opencode.ai/docs/instructions/), [Commands](https://opencode.ai/docs/commands/), and [Permissions](https://opencode.ai/docs/permissions/). Official OpenCode 2 documentation. [Instruction configuration](https://opencode.ai/docs/instructions/#configuration).
+- OpenCode maintainers. [Instructions](https://opencode.ai/docs/instructions/), [instruction configuration](https://opencode.ai/docs/instructions/#configuration), [Commands](https://opencode.ai/docs/commands/), [Permissions](https://opencode.ai/docs/permissions/), and [permission rules](https://opencode.ai/docs/permissions/#rules). Official OpenCode 2 documentation.

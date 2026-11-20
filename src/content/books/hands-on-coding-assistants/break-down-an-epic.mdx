@@ -1,0 +1,89 @@
+---
+title: "Break Down an Epic"
+description: "Turn a request for searchable task labels into a backlog with dependencies, assumptions, and a delivery range."
+module: 1
+order: 6
+---
+
+Someone asks you about a new feature: “Let people mark tasks as urgent and find them again.” That's enough to start a conversation. But it leaves open what a client sends, whether existing clients accept a new response field, and what happens to labels on a restart.
+
+An **epic** groups work that takes several deliverable changes. Start with a small release you can explain to a reviewer. Use the current Task API, the map from [Exploring an Unfamiliar Codebase](/books/hands-on-coding-assistants/chapters/exploring-an-unfamiliar-codebase/) and the verified fix from [Debugging](/books/hands-on-coding-assistants/chapters/debugging-refactoring-and-iteration/). Keep these design artifacts on one branch.
+
+```sh
+git status --short
+git switch -c design-task-labels debug-registration
+git show read-task-api:notes/repo-map.md > notes/repo-map.md
+opencode
+```
+
+## Separate work you can start from decisions you need
+
+Use **Plan**. Give it a brief with enough friction to reveal the dependencies.
+
+```text
+A Task API consumer needs to replace the labels on a task, clear them,
+and find tasks by one label. The first release runs in the lab and keeps
+the in-memory store. One existing consumer may validate task responses
+strictly. A later release will need to keep labels across restarts.
+
+Read notes/repo-map.md and src/app.ts. Identify open decisions and
+propose a backlog for the first release. Each item needs a title,
+description, acceptance checks, dependencies, complexity and a range
+in engineering hours. Mark assumptions, and keep the durable storage
+decision visible as follow-up work. Return the draft in chat.
+```
+
+Check the dependency direction. Two changes can start after a shared contract is agreed, but they both need to be ready before the end-to-end check. If the agent puts compatibility at the end without asking about strict clients, move the contract investigation earlier. A quick sample decode can change the API plan.
+
+## Write tickets someone else can pick up
+
+Save `notes/task-labels-epic.md` with the feature goal, open decisions and tickets. Use a stable local ID for each ticket so you can record which one blocks another. Jira accepts time estimates and linked work items. You can do this exercise entirely in the repository.
+
+One ticket can read like this.
+
+```markdown
+### LABEL-2 — Replace labels on a task
+
+Add PATCH /tasks/:id/labels to replace the list. Apply the agreed
+normalization before storing it. Keep storage inside the Task API.
+
+Acceptance checks
+- Replacing labels returns the resulting list in first-seen order.
+- An empty array clears the list.
+- A rejected payload keeps the previous list available on the next read.
+
+Depends on LABEL-1 for response shape, normalization and error rules.
+Complexity M. Estimate 8–12 engineering hours. The range includes HTTP
+tests and review. The lower end assumes the existing client accepts the
+agreed response shape.
+```
+
+Review the other tickets for the same level of detail. For example, arrange the work around these finish conditions.
+
+| ID | Work and acceptance check | Depends on | Complexity | Engineering hours |
+| --- | --- | --- | --- | --- |
+| LABEL-1 | Decide and test the response shape against a representative existing client. Write down the normalization and error rules. | — | S | 4 |
+| LABEL-2 | Replace and clear labels. Rejection preserves state. | LABEL-1 | M | 8–12 |
+| LABEL-3 | List tasks filtered by one normalized label. Test an omitted filter and a filter that matches nothing. | LABEL-1 | M | 8–12 |
+| LABEL-4 | Exercise update and filter together. Record the rollout and reversal checks. | LABEL-2, LABEL-3 | S | 4 |
+
+Complexity describes how hard the work is to reason about. Hours estimate effort under the assumptions you wrote down. Treat the compatibility investigation as a decision point. If it reveals a breaking change, revise the tickets and the forecast before treating the proposal as ready.
+
+## Change a constraint and recalculate
+
+There are 24–32 engineering hours in this example. With two people who each have four focused hours a day, assign LABEL-2 and LABEL-3 to separate people after LABEL-1. The longest required chain is LABEL-1, the longer of the two middle items, then LABEL-4. The range is four to five workdays. With one person at the same daily capacity, the work takes six to eight days. If an external compatibility decision adds up to two days of waiting on that chain, the two-person forecast becomes four to seven days. These are example ranges under stated assumptions. The GAO calls the longest chain that governs the finish date the critical path.
+
+Ask the agent to recompute the schedule for one person and one external wait. Check the sums yourself and record which constraint moved the finish date. Commit the backlog after checking for work with missing prerequisites.
+
+```sh
+git add notes/repo-map.md notes/task-labels-epic.md
+git diff --cached --check
+git commit -m "Plan the task labels epic"
+```
+
+Keep the compatibility and durability questions open for the [RFC](/books/hands-on-coding-assistants/chapters/write-and-review-an-rfc/). First, document the system you'll ask its reviewers to change.
+
+## References
+
+- Atlassian. [Estimate a work item](https://support.atlassian.com/jira-software-cloud/docs/estimate-an-issue/) and [Link work items](https://support.atlassian.com/jira-software-cloud/docs/link-issues/). Jira Cloud documentation.
+- U.S. Government Accountability Office. [GAO Schedule Assessment Guide: Best Practices for Project Schedules](https://www.gao.gov/products/gao-16-89g). Official guide GAO-16-89G, December 22, 2015.

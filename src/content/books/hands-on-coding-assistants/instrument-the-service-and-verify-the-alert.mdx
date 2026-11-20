@@ -1,0 +1,88 @@
+---
+title: "Instrument the Service and Verify the Alert"
+description: "Follow a request from a gateway metric through an alert and a local notification."
+module: 3
+order: 14
+---
+
+In the postmortem, a slow span helped you understand a 504. The request counter gave you impact across the incident window. To detect the next incident, add a check you can drive from a request all the way to a message that tells someone what to do.
+
+## Start the live lab
+
+From a clean checkout of your fork, switch to the instrumented reference. Use Docker Compose in the repository root. If the postmortem stack is still up, run its teardown first so the operator account starts from a clean Grafana container.
+
+```sh
+git switch -c instrument-alerts lab-harness
+docker compose -f observability/compose.yml -f observability/compose.alerts.yml up -d
+```
+
+Open [Grafana at port 3300](http://127.0.0.1:3300) and sign in as `lab-operator` with the password `lab-operator`. These credentials are for this loopback lab. Here the live gateway listens at `http://127.0.0.1:3400` and forwards requests to the Task API. Open [Task API Live Telemetry](http://127.0.0.1:3300/d/task-api-live/task-api-live-telemetry).
+
+Open `observability/simulator.mjs` and `observability/telemetry.mjs` in the checkout. Ask Plan to trace the instrumentation.
+
+```text
+Read observability/simulator.mjs, observability/telemetry.mjs and
+observability/grafana-alerting/task-gateway.yml. Trace a request
+through the gateway. Name where the result is counted, which fields
+go to the log and span, and what makes the alert pending. Point out
+any field that could include request data. Keep files unchanged.
+```
+
+The gateway counts results by status class and keeps a duration histogram. Its log and spans carry a stable route such as `/tasks`. Keep correlation IDs there too. Putting them in metric labels would create a new time series per request. The experiment uses a small collection of fields you can inspect at the exporter and in Grafana.
+
+Add one log field that helps you separate gateway responses from responses forwarded by the API. In the `log` object in `simulator.mjs`, include the upstream status only when it exists.
+
+```javascript
+...(upstreamStatus === undefined ? {} : { upstream_status: upstreamStatus }),
+```
+
+A healthy forwarded request should show an upstream status of 201. The deliberately injected timeout should have gateway status 504, with no upstream status. A request marker in a fictional title should be absent from the outgoing log and span fields. Check this in the live run below and keep the patch focused on the log.
+
+## Exercise the threshold
+
+The rule uses the ratio of gateway 5xx responses to total requests over the same 30-second window. Open the provisioning file and compare it with the rule in Grafana.
+
+```text title="PromQL"
+sum(rate(lab_task_gateway_requests_total{status_class="5xx"}[30s]))
+/
+clamp_min(sum(rate(lab_task_gateway_requests_total[30s])), 0.000001)
+```
+
+The lab evaluates the rule every ten seconds and waits for the ratio to stay above 20% for ten seconds. Read the notification routing and the local webhook destination before trying it. The receiver records messages in the local gateway. Ask someone responding to the alert to first check the rate and window, then open a matching trace and compare the gateway and service timing. Put that instruction in the rule description in `task-gateway.yml`. Restart both edited services and check that Grafana shows the new description. Provisioning reads the rule on startup.
+
+```sh
+docker compose -f observability/compose.yml -f observability/compose.alerts.yml restart grafana simulator
+```
+
+Generate healthy, degraded, and healthy traffic, in that order. Each command runs a batch of fictional requests for about 45 seconds. Watch the live dashboard and rule while it runs.
+
+```sh
+node observability/traffic.mjs healthy
+node observability/traffic.mjs degraded
+curl -fsS http://127.0.0.1:3400/notifications
+node observability/traffic.mjs healthy
+curl -fsS http://127.0.0.1:3400/notifications
+```
+
+Check that the ratio rises and the rule goes through pending to firing. Match the rule name `Task gateway error ratio` and its status in the webhook payload. After the last batch, the error samples should age out of the query window and a resolved notification should reach the receiver. Use timestamps from the dashboard and delivery record so you can tell a late notification from an evaluation that never fired.
+
+If the threshold is crossed and the receiver stays empty, inspect pending time and routing before editing the query. If the query returns no series, check the scrape target and send traffic again. Treat missing data as a case to diagnose rather than as evidence of recovery.
+
+Search Tempo for `{ resource.service.name = "task-gateway" && span.http.response.status_code = 504 }` over the last five minutes. Copy a trace ID and use it to find the entry in the Loki stream with `exercise="live"`. Compare the gateway status with the presence of the upstream field you added. For the data check, wait for the traffic script to finish, note the current time, and make one request with a fictional marker. Find the latest request at that time and inspect its raw log and span attributes.
+
+```sh
+curl -sS http://127.0.0.1:3400/tasks \
+  -H 'Content-Type: application/json' \
+  -d '{"title":"TELEMETRY_EXERCISE_MARKER"}'
+```
+
+Record the query output, a trace and its matching log, and the firing and resolved deliveries in your exercise notes. Check a 400 by sending a blank title too. A validation rejection can explain a sudden rise in rejected inputs, but it stays out of this 5xx page. The metrics indicate what callers saw. The trace and log help you decide where to look.
+
+```sh
+docker compose -f observability/compose.yml -f observability/compose.alerts.yml down -v
+```
+
+## References
+
+- OpenTelemetry contributors. [Semantic conventions for HTTP metrics](https://opentelemetry.io/docs/specs/semconv/http/http-metrics/) and [Handling sensitive data](https://opentelemetry.io/docs/security/handling-sensitive-data/). OpenTelemetry project documentation.
+- Grafana Labs. [Configure Grafana-managed alert rules](https://grafana.com/docs/grafana/latest/alerting/alerting-rules/create-grafana-managed-rule/) and [Manage contact points](https://grafana.com/docs/grafana/latest/alerting/configure-notifications/manage-contact-points/). Grafana Alerting documentation.

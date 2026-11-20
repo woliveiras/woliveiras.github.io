@@ -1,35 +1,45 @@
 ---
 title: "AGENTS.md & Project Context"
-description: "Teach OpenCode the lasting facts about a repository and verify which instructions matter."
-module: 1
-order: 8
+description: "Give a new session repository guidance and see what changes when it discovers a nested file."
+module: 3
+order: 18
 ---
 
-## Give the next session a reliable start
+In the exploration exercise you found the test command in `package.json`. You can save the next session that search by putting stable conventions in the repository. The agent can still open the file when it needs the details.
 
-An assistant can see the route in the lab and still guess the test command. This is what `AGENTS.md` is for. Write the facts a new contributor needs before working on a task. Leave one-off decisions in the feature spec.
+## Check the instructions the workspace starts with
 
-The starter already has a root `AGENTS.md`. Compare it with `package.json` and `src/app.ts`. The file names the test command, explains where routing lives, and tells the agent to treat `contracts/` as acceptance criteria. Each instruction has a consequence you can observe in a session.
+From a clean checkout, start an exercise branch at `lab-start`.
 
-## Keep instructions close to the work
+```sh
+git switch -c project-instructions lab-start
+```
 
-OpenCode reads project guidance from `AGENTS.md`. It can discover nested files during work in their directories. Start with the root. Add narrower guidance when a directory has a real difference, such as a contract suite with different rules for modifying tests. OpenCode combines instruction sources, so check for contradictory rules before adding another file.
+Open `AGENTS.md` yourself. Compare its directions about the test command and route with `package.json` and `src/app.ts`. Then open a fresh Plan session from the root.
 
-A line like “follow our testing conventions” requires the assistant to infer those conventions. “Use the helpers in `test/client.ts` so each test gets a fresh server” gives it a file, a behavior, and a reason. Check that the instruction still makes sense when you read it six months later.
+```text
+Using the guidance available at the start of this session, which
+command checks the base repository after a change? Say which
+instruction supports your answer. Leave files unchanged.
+```
 
-## Test what the assistant learned
+Look for `npm test`. The root file applies to work throughout the repository. In OpenCode 2, global and upward-discovered guidance are loaded at session startup. A personal global file may explain a difference between your results and a teammate's.
 
-1. Start a fresh Plan session in the lab.
-2. Ask where you'd add a test for a blank task title and which command you'd run.
-3. Check whether it points to `test/app.test.ts`, uses the HTTP helper in `test/client.ts`, and identifies `npm test`.
-4. Ask how the registration contract differs from the starter suite. It should find `npm run test:registration` as the opt-in command.
+## See what changes when the agent enters a directory
 
-If the assistant misses the distinction, open the files yourself and improve one instruction. Repeat with a new session and the same model. That controls for context left over from the first run.
+Create `contracts/AGENTS.md` with this exercise rule.
 
-## Keep guidance and enforcement visible
+```md title="contracts/AGENTS.md"
+When reporting on the registration contract, append a line beginning
+with "Contract check" and include the command from package.json.
+```
 
-“Leave the acceptance tests unchanged” is a useful rule for the agent and for a human reviewer. Check the diff to enforce it for this task. When the rule is a repository invariant, you can also enforce it with a test, a review requirement, or a tool permission. Match the enforcement to the consequence of breaking the rule.
+In a new Plan session, ask the same opening question. Then ask it to read `contracts/registration.test.ts` and explain which request checks preservation of the next ID. Inspect the read event. The directory guidance becomes available when a file there is read. The answer should now include the extra line and `npm run test:registration`.
+
+Change the marker in the nested file and repeat in another fresh session. OpenCode can keep previously discovered nested guidance in a session's history. A fresh session lets you test the current file. If the model omits the marker, check which path it read, and compare the text it received with your rule.
+
+Review scope as well as wording. If a root rule seems to require `npm test` alone while a narrower file requires the feature contract too, specify that the contract is an additional check for its route. OpenCode combines guidance sources. You resolve conflicting instructions in the files. Keep the command from this exercise and the observed read in your notes. You'll reuse the same distinction with configured instructions and tool permissions.
 
 ## References
 
-- OpenCode maintainers. [Instructions](https://opencode.ai/docs/instructions/) and [Permissions](https://opencode.ai/docs/permissions/). Official OpenCode 2 documentation.
+- OpenCode maintainers. [Instructions](https://opencode.ai/docs/instructions/), including [scope](https://opencode.ai/docs/instructions/#scope) and [discovery](https://opencode.ai/docs/instructions/#discovery). Official OpenCode 2 documentation.

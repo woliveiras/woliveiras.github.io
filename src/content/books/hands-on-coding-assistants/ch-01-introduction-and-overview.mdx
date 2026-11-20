@@ -1,6 +1,6 @@
 ---
 title: "Introduction & Overview"
-description: "What the harness controls, what the model contributes, and what you can verify for yourself."
+description: "Follow the Task API from your first repository investigation through design, an incident, and a feature verified in CI."
 module: 0
 order: 1
 ---
@@ -9,35 +9,37 @@ order: 1
 
 ## What this book covers
 
-If an assistant says it fixed an endpoint, you still need to know which files changed, whether invalid input reaches storage, and which tests it ran. A confident summary leaves all three questions open.
+Someone asks you to fix registration in a service you've never run. Before you change the handler, you need to know how to start the service, how it handles invalid input, and what callers expect. In this book you'll work on a small TypeScript service called the Task API. You'll use OpenCode to trace a request through the code, then run the service to check what happens.
 
-Those questions are the reason for this book. You'll give an assistant a bounded task, watch how it works, and decide whether the resulting change belongs in the codebase. The model is interchangeable. The spec, the tests, and the diff are what you carry from one tool to another.
+The request you traced gives you a concrete example for the spec. Later, that spec helps you catch a patch that returns the right error and still changes state. The exercises stay with the Task API so you can carry work forward. Your fork is where you'll keep the documents, tests and patches you produce.
+
+## How the book is organized
+
+**Start from a Repository** begins with getting OpenCode running with a local model or a free hosted model. You'll map the Task API from its entry points and tests, turn a vague request about registration into acceptance criteria, and review a plan before asking OpenCode to implement it. The debugging exercise gives you a related failure. A rejected registration consumes an ID, so you have to send a second request to see what went wrong. You'll reproduce that sequence and save it as a regression test.
+
+In **Shape and Document a Change**, you'll plan a larger feature that lets people label tasks and find them again. You'll break the work into tickets, work out which tasks can run in parallel, and document the current service with C4 diagrams in Mermaid. That picture of the existing system gives reviewers a common starting point for your proposal, which you'll write as a request for comments (RFC). You'll revise it after review and record the decision about durable storage in an architecture decision record (ADR).
+
+In **Investigate a Production Incident**, the Task API's simulated gateway starts returning HTTP `504` when callers try to create tasks. You'll use the Docker Compose lab to compare traces, logs and request counts in Grafana. From those records you'll work out when the failures began, which requests were affected and whether service recovered after the rollback. The postmortem records what the evidence supports and gives you a reason to improve monitoring later in the book.
+
+**Build the Harness** returns to the earlier exercises and makes some of their checks repeatable. You'll put tests and coverage in CI, require a passing check before merge, and see an alert fire and resolve in the lab. You'll also configure how OpenCode works in the repository. The chapters cover versioned prompts and project instructions, a reviewer with limited permissions, and ways to extend the assistant with skills, plugins and MCP.
+
+**Prove It on a Change** looks at the time it takes to complete and review a change with an assistant, including the time you spend checking its work. Then you'll implement searchable task labels with the existing in-memory store. You'll use the spec, tests, review and CI together on the feature, and check what the running service reports when you exercise the new route.
 
 ## Model, harness, and workspace
 
-| Layer | In this book | What you can inspect |
-| --- | --- | --- |
-| Model | A locally served or free hosted model | The selected model, its output, and whether it calls tools correctly |
-| Harness | OpenCode in the terminal | Files it reads, edits it proposes, commands it runs, and permission prompts |
-| Workspace | The Task API lab and your Git branch | The source, instructions, tests, and final diff |
-
-A model proposes the next action. The harness supplies tools and can execute a permitted action. OpenCode's Build and Plan agents have different default permissions, which matters when a request moves from exploration to implementation.
-
-The difference becomes visible once you change models. One model might read the right file and run the tests. Another might describe the test it wants to run and stop. Open the session's tool activity and compare both outcomes with the command you run yourself.
-
-## Start with a result you can check
-
-Run `npm test` in the lab to establish the baseline. After [setting up OpenCode](/books/hands-on-coding-assistants/chapters/setup-and-practical-integration/), use that baseline to [check what the agent tells you about the code](/books/hands-on-coding-assistants/chapters/exploring-an-unfamiliar-codebase/). Give it a question about one request and compare its answer with the handler and the test.
+When you ask OpenCode to run `npm test`, the model can propose the command. OpenCode is the **harness** that connects the model to tools, checks permissions and runs the allowed command in your **workspace**, the checkout you opened. In the exercises, you'll inspect the output from the tool call and compare it with the assistant's summary. You'll use the Plan agent to investigate and review an approach, then switch to Build when you're ready to apply a change.
 
 <span id="setting-expectations-for-this-series"></span>
+<span id="start-with-a-result-you-can-check"></span>
+<span id="when-the-work-gets-harder"></span>
 
-## When the work gets harder
+## Working through the exercises
 
-A fluent explanation can hide a missing tool call, an out-of-date assumption, or a test that checks the wrong behavior. Read the relevant code yourself before reviewing a change in an unfamiliar area. An experiment with experienced open-source developers also illustrates why it pays to measure review and correction time. In that study, participants took longer in the AI-enabled condition even though they expected a speedup. That result describes the study's tasks and setting.
+Follow the chapters in order on your first pass. Each exercise tells you which revision to open or which branch to continue from. Keep the work you want to reuse, and start from the named checkpoint when a chapter needs a known failure. The examples give you requests to send, tests to run and results to compare, even when your model takes a different route through the task.
 
-In [The Spec-First Workflow](/books/hands-on-coding-assistants/chapters/the-spec-first-workflow/), you'll give two models the same implementation task and check them against the same acceptance tests. Your first comparison can be as simple as whether the change passed and how many times you had to intervene.
+When your fork is ready, [set up OpenCode and run the first tool checks](/books/hands-on-coding-assistants/chapters/setup-and-practical-integration/) against the starter. You'll use that same setup to investigate the repository in the following chapter.
 
 ## References
 
-- OpenCode maintainers. [Agents](https://opencode.ai/docs/agents/) and [Permissions](https://opencode.ai/docs/permissions/). Official OpenCode 2 documentation.
-- Becker et al. [Measuring the Impact of Early-2025 AI on Experienced Open-Source Developer Productivity](https://arxiv.org/abs/2507.09089). arXiv:2507.09089, July 2025. Randomized study. [METR research summary](https://metr.org/blog/2025-07-10-early-2025-ai-experienced-os-dev-study/).
+- OpenCode maintainers. [Agents](https://opencode.ai/docs/agents/) and [Permissions](https://opencode.ai/docs/permissions/). OpenCode 2 documentation.
+- Node.js contributors. [Test runner](https://nodejs.org/api/test.html). Node.js API reference.

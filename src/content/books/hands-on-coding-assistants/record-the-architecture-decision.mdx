@@ -1,0 +1,97 @@
+---
+title: "Record the Architecture Decision"
+description: "Use MADR to record a storage decision and link it to the reviewed RFC and the implementation spec."
+module: 1
+order: 9
+---
+
+The reviewed RFC keeps the first labels exercise in memory. Before extending it to a service that must survive a restart, you need to decide where tasks and labels live and what it takes to recover them.
+
+An **architecture decision record**, or **ADR**, saves a decision and the reasoning that made it fit. Markdown Architectural Decision Records (**MADR**) gives that reasoning a place in the repository. You'll use its 4.0.0 template.
+
+## Start from what the discussion settled
+
+Stay on `design-task-labels` and open the revised `docs/rfcs/0001-task-labels.md`. Use the following constraints for the next stage of the hypothetical service. It runs on one host. Tasks and labels must survive a process restart. The operator can back up and restore a local data file. Several writable instances are a possibility to revisit later.
+
+Ask **Plan** to use those constraints and the RFC.
+
+```text
+Read docs/rfcs/0001-task-labels.md, docs/architecture.md and
+specs/task-labels.md. Draft a MADR 4.0.0 record for the durable follow-up.
+Compare keeping the in-memory store, a local SQLite database and a
+shared PostgreSQL service. Use the single-host, restart and restore
+requirements I supplied. Call out the decision that would need to change
+if multiple writable instances are required. Give me a draft to review.
+```
+
+Check the options against the drivers. In memory is easy to run, but restart clears it. SQLite can satisfy a local durable store with one process responsible for writes. It adds schema changes, file permissions and backup verification. Shared PostgreSQL can support a deployment where several instances need shared state. It adds a managed dependency or an operational burden. You can choose SQLite for the single-host follow-up if those assumptions hold. You still need to confirm restart, migration and restore behavior as part of implementation.
+
+## Write the record and choose its status
+
+Save the file as `docs/decisions/0001-task-label-storage.md`. Use the actual decision date and record your role in the exercise.
+
+```markdown
+---
+status: proposed
+---
+
+# Store durable task labels in SQLite
+
+## Context and Problem Statement
+
+When tasks and labels need to survive restart, which store fits a
+single-host Task API that an operator can back up and restore?
+
+## Decision Drivers
+
+- Tasks and their labels survive a process restart.
+- One host operates the API for this release.
+- Backup and restore can be exercised on that host.
+
+## Considered Options
+
+- Keep the in-memory store.
+- Use a local SQLite database.
+- Use a shared PostgreSQL service.
+
+## Decision Outcome
+
+Choose SQLite for a single-host durable release. Record the operational
+and compatibility consequences and the conditions that would make the
+team revisit the choice.
+
+### Consequences
+
+Describe ownership of schema changes and backup and restore verification.
+
+### Confirmation
+
+Run a later implementation through restart and restore checks. If
+multiple writable instances become a requirement, revisit this record.
+
+## Pros and Cons of the Options
+
+Compare restart behavior, write coordination, deployment and recovery.
+
+## More Information
+
+- [Task labels RFC](../rfcs/0001-task-labels.md)
+- [In-memory labels spec](../../specs/task-labels.md)
+```
+
+Use `proposed` while the choice is open. For the exercise, change it to `accepted` when you've reviewed the sample decision and can explain its consequences. If you choose a different option, name the driver that changed and update the RFC review record to match. An accepted ADR records a choice. The code and confirmation checks still need their own work.
+
+## Keep the three records linked
+
+The RFC carries the proposal, feedback and disposition. This ADR carries the choice about storage for the durable follow-up. The implementation spec gives the first labels exercise observable criteria, such as what clearing a list returns and what a rejected request preserves. Read it alongside the ADR and check the scope in both. The [final project](/books/hands-on-coding-assistants/chapters/end-to-end-final-project/) uses the in-memory behavior from the spec.
+
+```sh
+git add docs/decisions/0001-task-label-storage.md
+git diff --cached --check
+git diff --cached --stat
+git commit -m "Record the durable task labels storage decision"
+```
+
+## References
+
+- MADR contributors. [Markdown Architectural Decision Records](https://adr.github.io/madr/) and [Full ADR template](https://github.com/adr/madr/blob/4.0.0/template/adr-template.md). MADR 4.0.0, released September 17, 2024.
