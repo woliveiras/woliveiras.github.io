@@ -1,0 +1,21 @@
+---
+interface Props {
+	destination: string;
+}
+
+const { destination } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<title>Book moved</title>
+		<link rel="canonical" href={new URL(destination, Astro.site ?? Astro.url)} />
+		<script is:inline define:vars={{ destination }}>
+			window.location.replace(destination + window.location.search + window.location.hash);
+		</script>
+		<noscript><meta http-equiv="refresh" content={`0;url=${destination}`} /></noscript>
+	</head>
+	<body><a href={destination}>Continue to the book</a></body>
+</html>

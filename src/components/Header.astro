@@ -1,9 +1,10 @@
 ---
+import { books } from "../books/catalog";
+import { isBookAvailable } from "../books/design";
 import {
 	BASE,
 	MANUAL_DARK_MODE,
 	SEARCH_ENABLED,
-	SERIES,
 	SITE_NAME,
 } from "../config.json";
 import CodeCopyButton from "./CodeCopyButton.astro";
@@ -14,6 +15,9 @@ import Search from "./search/Search.svelte";
 import ThemeToggle from "./ThemeToggle.astro";
 
 const { active } = Astro.props;
+const bookLinks = books
+  .filter(({ book }) => isBookAvailable(book, import.meta.env.MODE))
+  .map(({ book }) => ({ name: book.title, href: BASE + book.path }));
 ---
 
 <header>
@@ -76,9 +80,9 @@ const { active } = Astro.props;
         class="text-sm font-semibold leading-6">Projects</HeaderLink
       >
       <HeaderDropdown
-        label="Series"
-        items={SERIES.map((s: { name: string; href: string }) => ({ name: s.name, href: BASE + s.href }))}
-        active={active === "series"}
+        label="Books"
+        items={bookLinks}
+        active={active === "books"}
       />
 
       {MANUAL_DARK_MODE ? <ThemeToggle /> : null}
@@ -171,31 +175,31 @@ const { active } = Astro.props;
         ]}
       >Log</a>
 
-      <!-- Series collapsible section -->
+      <!-- Books collapsible section -->
       <div class="border-b border-base-200 dark:border-base-800">
         <button
           type="button"
           class:list={[
             "flex w-full items-center justify-between text-lg font-semibold py-3",
-            active === "series"
+            active === "books"
               ? "text-accent-700 dark:text-accent-500"
               : "text-base-900 dark:text-base-50",
           ]}
           aria-expanded="false"
-          data-mobile-series-toggle
+          data-mobile-books-toggle
         >
-          Series
-          <svg class="h-5 w-5 transition-transform duration-200" data-mobile-series-chevron fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+          Books
+          <svg class="h-5 w-5 transition-transform duration-200" data-mobile-books-chevron fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
           </svg>
         </button>
-        <div class="hidden pb-3 pl-4 space-y-1" data-mobile-series-list>
-          {SERIES.map((s: { name: string; href: string }) => (
+        <div class="hidden pb-3 pl-4 space-y-1" data-mobile-books-list>
+          {bookLinks.map((book) => (
             <a
-              href={BASE + s.href}
+              href={book.href}
               class="block py-2 text-base text-base-600 dark:text-base-300 hover:text-accent-700 dark:hover:text-accent-400"
             >
-              {s.name}
+              {book.name}
             </a>
           ))}
         </div>
@@ -250,18 +254,18 @@ const { active } = Astro.props;
       }
     });
 
-    // Series accordion inside overlay
-    const seriesToggle = document.querySelector("[data-mobile-series-toggle]");
-    const seriesList = document.querySelector("[data-mobile-series-list]");
-    if (seriesToggle && seriesList) {
-      const newSeriesToggle = seriesToggle.cloneNode(true) as HTMLElement;
-      seriesToggle.parentNode?.replaceChild(newSeriesToggle, seriesToggle);
-      const newChevron = newSeriesToggle.querySelector("[data-mobile-series-chevron]");
+    // Books accordion inside overlay
+    const booksToggle = document.querySelector("[data-mobile-books-toggle]");
+    const booksList = document.querySelector("[data-mobile-books-list]");
+    if (booksToggle && booksList) {
+      const newBooksToggle = booksToggle.cloneNode(true) as HTMLElement;
+      booksToggle.parentNode?.replaceChild(newBooksToggle, booksToggle);
+      const newChevron = newBooksToggle.querySelector("[data-mobile-books-chevron]");
 
-      newSeriesToggle.addEventListener("click", () => {
-        const expanded = newSeriesToggle.getAttribute("aria-expanded") === "true";
-        newSeriesToggle.setAttribute("aria-expanded", String(!expanded));
-        seriesList.classList.toggle("hidden");
+      newBooksToggle.addEventListener("click", () => {
+        const expanded = newBooksToggle.getAttribute("aria-expanded") === "true";
+        newBooksToggle.setAttribute("aria-expanded", String(!expanded));
+        booksList.classList.toggle("hidden");
         if (newChevron) {
           (newChevron as HTMLElement).style.transform = expanded ? "" : "rotate(180deg)";
         }

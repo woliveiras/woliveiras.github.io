@@ -1,0 +1,39 @@
+<div class="terminal-art" aria-hidden="true">
+	<div class="terminal-prompt">
+		<span>&gt;</span>
+		<span class="terminal-cursor"></span>
+	</div>
+</div>
+
+<style>
+	.terminal-art {
+		display: grid;
+		aspect-ratio: 1.4;
+		min-width: 0;
+		padding: 12%;
+		background:
+			radial-gradient(ellipse at 20% 16%, #3c7051 0%, transparent 60%),
+			linear-gradient(145deg, #223e2b 12%, #101f18 82%);
+	}
+
+	.terminal-prompt {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.2em;
+		color: #c2f2ca;
+		background: repeating-linear-gradient(90deg, #b5e5bd20 0 1px, transparent 1px 20%);
+		font: 500 clamp(3.25rem, 8vw, 6.5rem) / 1 ui-monospace, Menlo, Consolas, monospace;
+	}
+
+	.terminal-cursor {
+		width: 0.46em;
+		height: 0.68em;
+		background: linear-gradient(145deg, #b5edbf, #72bf88);
+		box-shadow: 0 0 1.4rem #91e5a235;
+	}
+
+	@media (min-width: 52rem) {
+		.terminal-art { aspect-ratio: 0.9; }
+	}
+</style>

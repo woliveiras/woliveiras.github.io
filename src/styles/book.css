@@ -138,6 +138,7 @@
 
 .book-contents-groups section { border-block-start: 1px solid var(--book-rule); padding-block-start: 1rem; }
 .book-contents-groups h2 { color: var(--book-muted); font-size: 0.875rem; font-weight: 650; }
+.book-contents-groups p { margin-block-start: 0.4rem; color: var(--book-muted); font-size: 0.875rem; }
 .book-contents-groups ul { margin-block-start: 0.5rem; }
 .book-contents-groups a {
 	display: flex;
@@ -211,7 +212,7 @@
 .book-margin-note a { display: inline-flex; align-items: center; min-height: 44px; }
 .book-glossary dt { margin-block-start: 1.25em; font-weight: 700; }
 .book-prose .book-glossary-table { display: table; width: 100%; table-layout: fixed; }
-.book-glossary-table :is(td, th) { white-space: normal; overflow-wrap: anywhere; }
+.book-prose .book-glossary-table :is(td, th) { white-space: normal; overflow-wrap: anywhere; }
 .book-glossary-table :is(td, th):first-child { width: 30%; }
 .book-glossary-table [id] { scroll-margin-block-start: 1.5rem; }
 .book-glossary-table :target { color: var(--book-accent); font-weight: 700; }
@@ -256,8 +257,8 @@
 }
 
 @media (min-width: 80rem) {
-	.book-with-notes { --book-note-width: 13rem; --book-note-gap: 2rem; max-width: 59rem; }
-	.book-with-notes .book-prose { padding-inline-end: calc(var(--book-note-width) + var(--book-note-gap)); }
+	.book-reading:has(.book-annotated) { --book-note-width: 13rem; --book-note-gap: 2rem; max-width: 59rem; }
+	.book-prose:has(.book-annotated) { padding-inline-end: calc(var(--book-note-width) + var(--book-note-gap)); }
 	.book-annotated {
 		display: grid;
 		grid-template-columns: minmax(0, 1fr) var(--book-note-width);

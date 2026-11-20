@@ -25,6 +25,8 @@ export type BookDefinition = {
 	path: `/books/${string}/`;
 	description: string;
 	published?: boolean;
+	parts?: readonly { number: number; title: string; description: string }[];
+	license?: { name: string; href: string };
 	theme?: BookTheme;
 	cover?: BookCover;
 	share?: {

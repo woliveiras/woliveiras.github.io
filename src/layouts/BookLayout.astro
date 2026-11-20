@@ -1,4 +1,5 @@
 ---
+import CodeCopyButton from "$components/CodeCopyButton.astro";
 import ThemeToggle from "$components/ThemeToggle.astro";
 import BaseLayout from "$layouts/BaseLayout.astro";
 import { type BookDefinition, bookShareImagePath } from "../books/design";
@@ -49,8 +50,10 @@ if (book.theme?.fontFamily) themeStyles["--book-font-family"] = book.theme.fontF
 				<ThemeToggle aria-label="Toggle color theme" type="button" />
 			</nav>
 		</header>
-		<main id="book-main" tabindex="-1">
+		<main id="book-main" tabindex="-1" data-pagefind-body={book.published && !isContents ? "" : undefined}>
 			<slot />
 		</main>
 	</div>
 </BaseLayout>
+
+<CodeCopyButton />

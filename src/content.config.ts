@@ -71,29 +71,18 @@ const blog = defineCollection({
 
 const posts = defineCollection({});
 
-const codingAssistantsSeries = defineCollection({
+const bookChapters = defineCollection({
 	loader: glob({
 		pattern: "**/[^_]*.{md,mdx}",
-		base: "./src/content/hands-on-coding-assistants/",
+		base: "./src/content/books/",
 	}),
 	schema: z.object({
 		title: z.string(),
 		description: z.string(),
 		module: z.number(),
 		order: z.number(),
-	}),
-});
-
-const observabilitySeries = defineCollection({
-	loader: glob({
-		pattern: "**/[^_]*.{md,mdx}",
-		base: "./src/content/observability-ai-agents/",
-	}),
-	schema: z.object({
-		title: z.string(),
-		description: z.string(),
-		module: z.number(),
-		order: z.number(),
+		kind: z.enum(["dedication", "introduction", "chapter", "glossary", "appendix"]).default("chapter"),
+		pageSlug: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).optional(),
 	}),
 });
 
@@ -101,6 +90,5 @@ export const collections = {
 	blog,
 	brief,
 	posts,
-	codingAssistantsSeries,
-	observabilitySeries,
+	bookChapters,
 };

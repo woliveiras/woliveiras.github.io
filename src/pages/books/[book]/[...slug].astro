@@ -1,0 +1,133 @@
+---
+import { render } from "astro:content";
+import { jsx } from "astro/jsx-runtime";
+import type { HTMLAttributes } from "astro/types";
+import BookCover from "$components/books/BookCover.astro";
+import ChapterContents from "$components/books/ChapterContents.astro";
+import BookLayout from "$layouts/BookLayout.astro";
+import ProseWrapper from "$layouts/ProseWrapper.astro";
+import { books } from "../../../books/catalog";
+import { type BookDefinition, isBookAvailable } from "../../../books/design";
+import { getBookReadingOrder } from "../../../books/reading";
+
+interface Props {
+	book: BookDefinition;
+	readingOrder: Awaited<ReturnType<typeof getBookReadingOrder>>;
+}
+
+export async function getStaticPaths() {
+	const paths = await Promise.all(books.filter(({ book }) => isBookAvailable(book, import.meta.env.MODE)).map(async ({ book, slug }) => {
+		const readingOrder = await getBookReadingOrder(book);
+		if (!readingOrder.length) return [];
+		return [undefined, "contents", ...readingOrder.map(({ slug }) => slug)].map((page) => ({
+			params: { book: slug, slug: page },
+			props: { book, readingOrder },
+		}));
+	}));
+	return paths.flat();
+}
+
+const { book, readingOrder } = Astro.props;
+const { slug } = Astro.params;
+const isCover = slug === undefined;
+const isContents = slug === "contents";
+const pageIndex = readingOrder.findIndex((page) => page.slug === slug);
+const page = readingOrder[pageIndex];
+const previous = readingOrder[pageIndex - 1];
+const next = page && readingOrder[pageIndex + 1];
+const start = readingOrder.find(({ entry }) => entry.data.kind === "introduction") ?? readingOrder[0];
+const href = (page: string) => `${book.path}${page}/`;
+
+const entry = page?.entry;
+const rendered = entry ? await render(entry) : undefined;
+const Content = rendered?.Content;
+const headings = rendered?.headings.filter(({ depth }) => depth === 2 || depth === 3) ?? [];
+const indexLabel = page?.chapterNumber ? "In this chapter" : "On this page";
+const title = isContents ? "Table of contents" : (entry?.data.title ?? book.title);
+const description = entry?.data.description ?? book.description;
+const sections = [...new Set(readingOrder.map(({ section }) => section))];
+const omitSourceTitle = () => null;
+
+const bookGlossaryTable = (attributes: HTMLAttributes<"table">) => jsx("table", {
+	...attributes,
+	class: "book-glossary-table",
+});
+---
+
+<BookLayout book={book} title={title} description={description} isCover={isCover} isContents={isContents} contentsHref={href("contents")}>
+	{isCover ? (
+		<BookCover book={book} startHref={href(start.slug)} contentsHref={href("contents")} />
+	) : isContents ? (
+		<section class="book-contents" aria-labelledby="contents-title">
+			<h1 id="contents-title">{title}</h1>
+			<div class="book-contents-groups">
+				{sections.map((section) => {
+					const pages = readingOrder.filter((item) => item.section === section);
+					return (
+						<section>
+							<h2>{section}</h2>
+							{pages[0]?.sectionDescription && <p>{pages[0].sectionDescription}</p>}
+							<ul>
+								{pages.map(({ chapterNumber, entry, slug }) => (
+									<li><a href={href(slug)}>{chapterNumber && <span class="book-chapter-number" aria-label={`Chapter ${chapterNumber}`}>{chapterNumber}</span>}{entry.data.title}</a></li>
+								))}
+							</ul>
+						</section>
+					);
+				})}
+			</div>
+			{book.license && <p class="book-license">This book is licensed under <a href={book.license.href}>{book.license.name}</a>.</p>}
+		</section>
+	) : (
+		<div class:list={["book-reading-grid", { "book-with-index": headings.length > 0 }]}>
+			{headings.length > 0 && (
+				<div class="book-index-desktop">
+					<p>{indexLabel}</p>
+					<ChapterContents headings={headings} label={indexLabel} />
+				</div>
+			)}
+			<article class="book-reading" aria-labelledby="book-page-title">
+				<header class="book-reading-title">
+					{page?.chapterNumber && <p>{page.section} <span aria-hidden="true">/</span> Chapter {page.chapterNumber}</p>}
+					<h1 id="book-page-title">{title}</h1>
+				</header>
+				{headings.length > 0 && (
+					<details class="book-index-compact">
+						<summary>{indexLabel}</summary>
+						<ChapterContents headings={headings} label={indexLabel} />
+					</details>
+				)}
+				<ProseWrapper class="book-prose">
+					{Content && <Content components={{
+						h1: omitSourceTitle,
+						...(entry?.data.kind === "glossary" ? { table: bookGlossaryTable } : {}),
+					}} />}
+				</ProseWrapper>
+				<nav class="book-pagination" aria-label="Reading order">
+					{previous && (
+						<a class="book-previous" rel="prev" href={href(previous.slug)}>
+							<span>← Previous</span>
+							{previous.entry.data.title}
+						</a>
+					)}
+					{next && (
+						<a class="book-next" rel="next" href={href(next.slug)}>
+							<span>Next →</span>
+							{next.entry.data.title}
+						</a>
+					)}
+				</nav>
+			</article>
+		</div>
+	)}
+</BookLayout>
+
+<script>
+	for (const menu of document.querySelectorAll<HTMLDetailsElement>(".book-index-compact")) {
+		menu.addEventListener("click", (event) => {
+			if (event.target instanceof Element && event.target.closest("a")) {
+				menu.open = false;
+			}
+		});
+	}
+</script>

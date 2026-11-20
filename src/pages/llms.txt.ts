@@ -1,10 +1,10 @@
 import type { APIRoute } from "astro";
 import { getBlogPosts } from "src/utils";
+import { books } from "../books/catalog";
 import { getPublicBriefs } from "../brief/content";
 import { BRIEF_DESCRIPTION, briefPath } from "../brief/model";
 import {
 	BASE,
-	SERIES,
 	SITE,
 	SITE_DESCRIPTION,
 	SITE_NAME,
@@ -28,9 +28,10 @@ export const GET: APIRoute = async () => {
 		)
 		.join("\n");
 
-	const seriesLines = SERIES.map(
-		(series) => `- [${series.name}](${SITE}${series.href})`,
-	).join("\n");
+	const bookLines = books
+		.filter(({ book }) => book.published)
+		.map(({ book }) => `- [${book.title}](${new URL(`${BASE}${book.path}`, SITE)}): ${book.description}`)
+		.join("\n");
 
 	const body = `# ${SITE_NAME}
 
@@ -44,9 +45,9 @@ export const GET: APIRoute = async () => {
 
 ${postLines}
 
-## Series
+## Books
 
-${seriesLines}
+${bookLines}
 
 ## Monday Brief
 

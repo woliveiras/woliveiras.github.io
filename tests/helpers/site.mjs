@@ -104,8 +104,7 @@ export async function fixtureSite() {
 			[
 				"brief",
 				"blog",
-				"hands-on-coding-assistants",
-				"observability-ai-agents",
+				"books",
 			].map((name) =>
 				mkdir(join(workspace, "src/content", name), { recursive: true }),
 			),

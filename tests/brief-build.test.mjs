@@ -146,8 +146,7 @@ async function prepareWorkspace() {
 			[
 				"brief",
 				"blog",
-				"hands-on-coding-assistants",
-				"observability-ai-agents",
+				"books",
 			].map((collection) =>
 				mkdir(join(workspace, "src/content", collection), { recursive: true }),
 			),

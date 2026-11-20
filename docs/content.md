@@ -24,15 +24,23 @@ metadata; helpers in `src/brief/` check for duplicates and exclude drafts and
 future issues from public output. Read the [editorial workflow](monday-brief.md)
 before creating or correcting an issue. The template is `templates/brief.mdx`.
 
-## Customize a book
+## Books
 
 Export `book` from a `src/books/<name>.book.ts` file using
 [`BookDefinition`](../src/books/design.ts), with a unique path such as
-`/books/your-book/`. The catalog discovers these files automatically. Pass the
-same definition to `BookLayout` on each page and to `BookCover` on the landing
-page. Use `isBookAvailable` in the book's routes so the pages and sharing card
-follow the same publication setting. Drafts appear in preview mode. Set
-`published: true` when the book is ready to go live.
+`/books/your-book/`. Put the book's Markdown or MDX files in
+`src/content/books/<slug>/`, using the same slug as `path`. The shared routes
+build the cover, table of contents, and reading pages from the definition and
+files. Drafts appear in preview mode. Set `published: true` when the book is
+ready to go live.
+
+Each file supplies `title`, `description`, `module` (the zero-based part
+number), and `order` (its position in reading order). Normal chapters use
+`kind: chapter` by default. Set `kind` for a dedication, introduction, glossary,
+or appendix. `pageSlug` overrides a chapter or appendix slug when needed.
+Define part titles and descriptions in the book's `parts` array.
+
+### Customize a book
 
 - Set **colors** in `theme.light` and `theme.dark`. Use `paper` for the background,
   `ink` for body text, `muted` for secondary text, `accent` for links and the

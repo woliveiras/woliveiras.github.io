@@ -1,0 +1,20 @@
+---
+title: "Appendix A — Where Telemetry Belongs"
+description: "A checklist for placing service identity, operation context, and aggregate measurements in telemetry."
+module: 99
+order: 100
+kind: appendix
+---
+
+Use this checklist when you add a field to telemetry or review an instrumentation change.
+
+<dl className="book-glossary">
+  <dt>Service identity</dt>
+  <dd>Put <code>service.name</code> and the deployment environment on the resource.</dd>
+  <dt>Operation context</dt>
+  <dd>Record the model name and other operation-specific fields on the span. Use a span event for an occurrence within the operation.</dd>
+  <dt>Aggregate measurements</dt>
+  <dd>Use histograms for latency and token counts. Keep identifiers such as trace IDs out of metric dimensions.</dd>
+</dl>
+
+Adapted from [The Telemetry Data Model](/books/observability-for-ai-agents/chapters/the-telemetry-data-model/#a-modeling-checklist).

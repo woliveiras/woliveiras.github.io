@@ -18,6 +18,7 @@ import remarkDirective from "remark-directive";
 import remarkMath from "remark-math";
 import addMermaidClass from "./add-mermaid-classname";
 import { transformerCodeMeta } from "./shiki-title-transformer";
+import { legacyBookPaths } from "./src/books/legacy-paths";
 import { BASE, SITE } from "./src/config.json";
 import ExcalidrawEmbed from "./src/embeds/excalidraw/embed";
 import LinkCardEmbed from "./src/embeds/link-card/embed";
@@ -46,7 +47,11 @@ export default defineConfig({
 			},
 		},
 	},
-	integrations: [mdx(), sitemap(), svelte()],
+	integrations: [
+		mdx(),
+		sitemap({ filter: (page) => !legacyBookPaths.some((path) => new URL(page).pathname.startsWith(path)) }),
+		svelte(),
+	],
 	markdown: {
 		shikiConfig: {
 			// Choose from Shiki's built-in themes (or add your own)
