@@ -5,6 +5,22 @@ module: 0
 order: 2
 ---
 
+import BookDiagram from "../../components/books/BookDiagram.astro";
+
+export function TracePassage({ children, book }) {
+  if (!book) return children;
+
+  return (
+    <div className="book-annotated">
+      <div>{children}</div>
+      <aside className="book-margin-note" aria-label="Margin note">
+        <p>If an agent asks for an order number and checks the order on the next turn, the two executions can have separate trace IDs and share the same conversation ID.</p>
+        <a href={`${book.glossary}#trace`}>Glossary entry for trace</a>
+      </aside>
+    </div>
+  );
+}
+
 # The Telemetry Data Model
 
 Most telemetry problems begin as modeling problems. If a conversation is represented as a parent span, a durable task as an HTTP request, or a quality score as a metric without its evaluation context, the resulting data may look valid while describing the system incorrectly.
@@ -46,7 +62,13 @@ Model name, conversation ID, tenant ID, prompt version, and tool name do not bel
 
 ## Trace and span
 
+<TracePassage book={props.book}>
+
 A trace represents one logical execution. A span represents one timed operation within it. Parent-child edges express causal nesting, not grouping convenience.
+
+</TracePassage>
+
+<BookDiagram inBook={Boolean(props.book)} label="Parent and child spans in a support workflow">
 
 ```mermaid
 flowchart TD
@@ -60,6 +82,8 @@ flowchart TD
   Agent --> Model2[Client span: model inference]
   Root --> Validate[Internal span: validate answer]
 ```
+
+</BookDiagram>
 
 The tool span and its downstream HTTP span describe different operations. The tool span captures application meaning; the HTTP span captures transport behavior. Keep both. Collapsing them loses either business semantics or dependency detail.
 
@@ -96,6 +120,8 @@ Exception stack traces belong in exception events or correlated logs. They shoul
 
 A conversation correlates turns. A task represents durable work. Neither must match a trace.
 
+<BookDiagram inBook={Boolean(props.book)} label="How a conversation and a task relate to separate traces">
+
 ```mermaid
 flowchart TD
   Conversation[Conversation C-42]
@@ -109,6 +135,8 @@ flowchart TD
   Turn2 -.->|creates| Task
   Task -.->|task ID| Worker
 ```
+
+</BookDiagram>
 
 Use `gen_ai.conversation.id` when the application already has a real conversation or thread identifier. Do not derive it from a trace ID or request hash: a conversation can contain multiple executions, while a trace identifies only one observed execution.
 
@@ -167,6 +195,8 @@ Before instrumenting an operation, answer:
 4. Which fields are standard, which are custom, and which are backend-specific?
 5. What retention and access policy applies to each signal?
 
+{props.book && <p>Use the <a href={props.book.appendix}>telemetry placement reference</a> to check where each field belongs.</p>}
+
 ## References
 
 - [OpenTelemetry specification overview](https://opentelemetry.io/docs/reference/specification/overview/)
@@ -177,6 +207,9 @@ Before instrumenting an operation, answer:
 - [Open proposal for GenAI task conventions](https://github.com/open-telemetry/semantic-conventions/issues/2665)
 - [Langfuse data model](https://langfuse.com/docs/observability/data-model)
 
----
-
-**Next up**: [Ch 3 - Semantic Conventions and Schema Governance](/observability-ai-agents/ch-03-semantic-conventions-schema-governance/) shows how to use evolving GenAI conventions without turning upgrades into silent schema changes.
+{!props.book && (
+  <>
+    <hr />
+    <p><strong>Next up</strong>: <a href="/observability-ai-agents/ch-03-semantic-conventions-schema-governance/">Ch 3 - Semantic Conventions and Schema Governance</a> shows how to use evolving GenAI conventions without turning upgrades into silent schema changes.</p>
+  </>
+)}

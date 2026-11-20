@@ -9,7 +9,7 @@ order: 8
 
 Privacy controls for agent telemetry fail when they are treated as one regex before export. Agent traces combine user text, retrieved documents, tool payloads, model output, memory, identifiers, exception messages, and evaluation data. The same personal data can appear in several of those places during one task.
 
-This chapter turns the governance rules from Chapter 7 into enforceable privacy controls. The goal is not to prove legal compliance in a blog post. The goal is to give engineers a concrete design: where sensitive data can enter telemetry, which fields are allowed, where detection runs, how values are transformed, who can read the result, how long copies live, and how the pipeline proves that controls still work.
+This chapter turns the governance rules from Chapter 7 into enforceable privacy controls. The goal is not to prove legal compliance in a {props.book ? "chapter" : "blog post"}. The goal is to give engineers a concrete design: where sensitive data can enter telemetry, which fields are allowed, where detection runs, how values are transformed, who can read the result, how long copies live, and how the pipeline proves that controls still work.
 
 The default posture is simple: prevent sensitive data from entering telemetry when the operational question can be answered with metadata, bounded categories, or secure references. Redaction is a fallback control, not permission to capture everything first.
 

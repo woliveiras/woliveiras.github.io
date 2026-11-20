@@ -24,6 +24,51 @@ metadata; helpers in `src/brief/` check for duplicates and exclude drafts and
 future issues from public output. Read the [editorial workflow](monday-brief.md)
 before creating or correcting an issue. The template is `templates/brief.mdx`.
 
+## Customize a book
+
+Export `book` from a `src/books/<name>.book.ts` file using
+[`BookDefinition`](../src/books/design.ts), with a unique path such as
+`/books/your-book/`. The catalog discovers these files automatically. Pass the
+same definition to `BookLayout` on each page and to `BookCover` on the landing
+page. Use `isBookAvailable` in the book's routes so the pages and sharing card
+follow the same publication setting. Drafts appear in preview mode. Set
+`published: true` when the book is ready to go live.
+
+- Set **colors** in `theme.light` and `theme.dark`. Use `paper` for the background,
+  `ink` for body text, `muted` for secondary text, `accent` for links and the
+  primary button, and `rule` for dividers. Omitted colors use the shared defaults.
+- Set the **typeface** with `theme.fontFamily`, a CSS font stack for headings and
+  body text.
+- For an image **cover**, import the image from `src/assets/` and set `cover` to
+  `{ image, alt }`. Use an empty `alt` for decorative artwork. Use
+  `{ artwork: YourCoverArt }` for an Astro component, or omit `cover` for a
+  text-only cover.
+
+Run `pnpm dev --mode book-preview --port 4322` to preview a book. Use its `path`
+for the cover. [See a working definition](../src/books/observability.book.ts).
+
+### Book sharing cards
+
+In preview mode, append `share-card/` to the book's path. This preview uses the
+cover artwork, title, and author from the book definition. Set `share.subtitle`
+if you want a short line below the title.
+
+Capture the preview at 1200 × 630 and save the PNG under `src/books/cards/`.
+Substitute the book's preview URL and filename in this command.
+
+```sh
+pnpm exec playwright screenshot --viewport-size '1200,630' \
+  --wait-for-selector '.book-share-card' \
+  http://127.0.0.1:4322/books/your-book/share-card/ \
+  src/books/cards/your-book-share.png
+```
+
+Set `share.image.file` to the PNG's path and add a short description in
+`share.image.alt`. The catalog serves the PNG at
+`/open-graph/books/<slug>.png` for every eligible book with an image, and
+`BookLayout` links to it from the cover and chapters. Capture a new PNG after
+changing the card text or artwork.
+
 ## Dynamic Routing
 
 Use `getStaticPaths()` with `getBlogPosts()`:

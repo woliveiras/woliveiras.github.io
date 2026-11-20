@@ -56,7 +56,7 @@ The classifications lead to different implementation decisions:
 | `gen_ai.input.messages` | Opt-in | Development | Leave content capture disabled until privacy, access, and retention controls explicitly allow it. |
 | `error.type` | Conditionally required | Stable | Emit it when the operation fails, using the error classification rules defined by the convention. |
 
-These classifications connect directly to the controls in the rest of the series. Stability determines whether schema pinning and migration are necessary. Requirement level influences instrumentation tests. Opt-in content fields require the capture policy and privacy controls introduced later. None of these labels grants permission to collect sensitive data.
+These classifications connect directly to the controls in the rest of the {props.book ? "book" : "series"}. Stability determines whether schema pinning and migration are necessary. Requirement level influences instrumentation tests. Opt-in content fields require the capture policy and privacy controls introduced later. None of these labels grants permission to collect sensitive data.
 
 ## Pin the schema version
 

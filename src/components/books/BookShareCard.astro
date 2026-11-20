@@ -1,0 +1,127 @@
+---
+import { Image } from "astro:assets";
+import type { BookDefinition } from "../../books/design";
+
+interface Props {
+	book: BookDefinition;
+}
+
+const { book } = Astro.props;
+const Artwork = book.cover?.artwork;
+const colors = book.theme?.light;
+---
+
+<!doctype html>
+<html lang="en" class="book-share-page">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="robots" content="noindex" />
+		<title>{book.title} · Social card</title>
+	</head>
+	<body style="margin: 0">
+		<main class="book-share-card" style={{
+			"--share-paper": colors?.paper ?? "#fafaf9",
+			"--share-ink": colors?.ink ?? "#292524",
+			"--share-accent": colors?.accent ?? "#9f1239",
+			"--share-font": book.theme?.fontFamily ?? 'Georgia, "Times New Roman", serif',
+		}}>
+			<div class="share-copy">
+				<h1>{book.title}</h1>
+				{book.share?.subtitle && <p class="share-subtitle">{book.share.subtitle}</p>}
+				<p class="share-byline">{book.author}</p>
+			</div>
+			<div class="share-book" aria-hidden="true">
+				<div class="share-jacket">
+					{Artwork && <Artwork />}
+					{book.cover?.image && (
+						<Image src={book.cover.image} alt="" width={640} priority />
+					)}
+				</div>
+			</div>
+		</main>
+	</body>
+</html>
+
+<style>
+	:global(.book-share-page astro-dev-toolbar) { display: none; }
+
+	.book-share-card,
+	.book-share-card :global(*) { box-sizing: border-box; }
+
+	.book-share-card {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) 398px;
+		gap: 32px;
+		align-items: center;
+		width: 1200px;
+		height: 630px;
+		padding: 56px 76px;
+		color: var(--share-ink);
+		background:
+			radial-gradient(ellipse at 85% 76%, color-mix(in srgb, var(--share-accent) 14%, transparent), transparent 62%),
+			var(--share-paper);
+		overflow: hidden;
+	}
+
+	.share-copy h1 {
+		margin: 0;
+		font: 400 78px / 0.99 var(--share-font);
+		letter-spacing: -0.055em;
+		text-wrap: balance;
+	}
+
+	.share-subtitle {
+		max-width: 31ch;
+		margin: 25px 0 0;
+		font: 400 29px / 1.32 var(--share-font);
+		text-wrap: pretty;
+	}
+
+	.share-byline {
+		margin: 33px 0 0;
+		color: var(--share-accent);
+		font: 600 20px / 1.2 system-ui, sans-serif;
+	}
+
+	.share-book {
+		position: relative;
+		isolation: isolate;
+		justify-self: center;
+		width: 320px;
+		height: 455px;
+		transform: rotate(-7deg);
+	}
+
+	.share-book::before {
+		position: absolute;
+		z-index: -1;
+		inset: 6px -13px -7px 7px;
+		border: 3px solid color-mix(in srgb, var(--share-accent) 48%, #251522);
+		border-radius: 5px 9px 9px 4px;
+		background: repeating-linear-gradient(0deg, #c8b8ab 0 1px, #f4e8db 1px 3px);
+		box-shadow: 16px 24px 32px #25152242, 6px 12px 14px #25152224;
+		content: "";
+	}
+
+	.share-jacket {
+		position: relative;
+		width: 100%;
+		height: 100%;
+		overflow: hidden;
+		border-radius: 5px 7px 7px 4px;
+		background: var(--share-accent);
+	}
+
+	.share-jacket > :global(*) { width: 100%; height: 100%; }
+	.share-jacket > img { display: block; object-fit: cover; }
+
+	.share-jacket::after {
+		position: absolute;
+		inset: 0;
+		background: linear-gradient(90deg, #0004 0 5px, #fff2 7px, #0003 12px, transparent 22px);
+		border: 1px solid #fff2;
+		border-radius: inherit;
+		content: "";
+	}
+</style>

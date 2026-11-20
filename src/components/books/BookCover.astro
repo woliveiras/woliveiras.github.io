@@ -1,0 +1,45 @@
+---
+import { Image } from "astro:assets";
+import type { BookDefinition } from "../../books/design";
+
+interface Props {
+	book: BookDefinition;
+	startHref: string;
+	contentsHref: string;
+}
+
+const { book, startHref, contentsHref } = Astro.props;
+const { cover } = book;
+const Artwork = cover?.artwork;
+---
+
+<section class:list={["book-cover", { "book-cover-illustrated": cover }]} aria-labelledby="cover-title">
+	<div class="book-cover-copy">
+		<h1 id="cover-title">{book.title}</h1>
+		<p class="book-byline">{book.author}</p>
+		<p class="book-cover-description">{book.description}</p>
+		<div class="book-cover-actions">
+			<a class="book-start" href={startHref}>Start reading <span aria-hidden="true">→</span></a>
+			<a href={contentsHref}>Table of contents</a>
+		</div>
+	</div>
+	{cover?.image && (
+		<Image
+			class="book-cover-image"
+			src={cover.image}
+			alt={cover.alt}
+			layout="constrained"
+			sizes="(min-width: 83rem) 34rem, (min-width: 52rem) 44vw, 92vw"
+			priority
+		/>
+	)}
+	{Artwork && <Artwork />}
+</section>
+
+<style>
+	.book-cover-image {
+		display: block;
+		width: 100%;
+		height: auto;
+	}
+</style>

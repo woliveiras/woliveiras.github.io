@@ -54,7 +54,7 @@ Treat each OpenAI request as one `CLIENT` span. If the application retries the r
 | Did the provider fail? | span status, `error.type`, recorded exception |
 | Did the response finish cleanly? | `gen_ai.response.finish_reasons` when available, or provider status fields when using typed Responses API objects |
 
-Use OpenTelemetry semantic conventions when a stable or development attribute exists. Use a documented custom namespace for application-specific details that do not have a standard attribute yet. In this series, custom attributes use the `app.*` namespace.
+Use OpenTelemetry semantic conventions when a stable or development attribute exists. Use a documented custom namespace for application-specific details that do not have a standard attribute yet. In this {props.book ? "book" : "series"}, custom attributes use the `app.*` namespace.
 
 ## Use the Responses API explicitly
 

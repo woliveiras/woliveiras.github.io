@@ -6,6 +6,7 @@ interface Props {
 	title: string;
 	description: string;
 	image?: string;
+	socialImage?: { src: string; alt: string; width: number; height: number };
 	ogType?: "website" | "article";
 }
 
@@ -15,8 +16,11 @@ const {
 	title,
 	description,
 	image = "main.png",
+	socialImage,
 	ogType = "website",
 } = Astro.props;
+
+const socialImageURL = new URL(socialImage?.src ?? `${BASE}/open-graph/${image}`, Astro.url);
 ---
 
 <!-- Global Metadata -->
@@ -44,20 +48,22 @@ const {
 <meta property="og:url" content={Astro.url} />
 <meta property="og:title" content={title} />
 <meta property="og:description" content={description} />
-<meta
-  property="og:image"
-  content={new URL(BASE + "/open-graph/" + image, Astro.url)}
-/>
+<meta property="og:image" content={socialImageURL} />
+{socialImage && (
+  <>
+    <meta property="og:image:width" content={String(socialImage.width)} />
+    <meta property="og:image:height" content={String(socialImage.height)} />
+    <meta property="og:image:alt" content={socialImage.alt} />
+  </>
+)}
 
 <!-- Twitter -->
 <meta property="twitter:card" content="summary_large_image" />
 <meta property="twitter:url" content={Astro.url} />
 <meta property="twitter:title" content={title} />
 <meta property="twitter:description" content={description} />
-<meta
-  property="twitter:image"
-  content={new URL(BASE + "/open-graph/" + image, Astro.url)}
-/>
+<meta property="twitter:image" content={socialImageURL} />
+{socialImage && <meta name="twitter:image:alt" content={socialImage.alt} />}
 
 <!-- Google tag (gtag.js) -->
 {G_TAG &&

@@ -1,0 +1,44 @@
+<div class="trace-art" aria-hidden="true">
+	<div class="trace-bars"><span></span><span></span><span></span><span></span><span></span><span></span></div>
+</div>
+
+<style>
+	.trace-art {
+		display: grid;
+		align-items: center;
+		aspect-ratio: 1.4;
+		min-width: 0;
+		padding: 12%;
+		background:
+			radial-gradient(ellipse at 20% 16%, #813d57 0%, transparent 58%),
+			linear-gradient(145deg, #3c2230 12%, #21151d 82%);
+	}
+
+	.trace-bars {
+		display: grid;
+		gap: clamp(0.45rem, 1.5vw, 1.1rem);
+		align-content: center;
+		min-height: 100%;
+		background: repeating-linear-gradient(90deg, #e4abb620 0 1px, transparent 1px 20%);
+	}
+
+	.trace-bars span {
+		display: block;
+		width: var(--span-length);
+		height: clamp(0.22rem, 0.65vw, 0.5rem);
+		margin-inline-start: var(--span-start, 0%);
+		background: linear-gradient(90deg, #f4b7b9, #bb5c77);
+		box-shadow: 0 0 1.4rem #eb8faa42;
+	}
+
+	.trace-bars span:nth-child(1) { --span-length: 98%; }
+	.trace-bars span:nth-child(2) { --span-length: 24%; --span-start: 8%; }
+	.trace-bars span:nth-child(3) { --span-length: 39%; --span-start: 21%; }
+	.trace-bars span:nth-child(4) { --span-length: 14%; --span-start: 28%; }
+	.trace-bars span:nth-child(5) { --span-length: 33%; --span-start: 52%; }
+	.trace-bars span:nth-child(6) { --span-length: 15%; --span-start: 78%; }
+
+	@media (min-width: 52rem) {
+		.trace-art { aspect-ratio: 0.9; }
+	}
+</style>

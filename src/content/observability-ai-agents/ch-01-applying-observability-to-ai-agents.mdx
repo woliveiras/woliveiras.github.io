@@ -5,6 +5,8 @@ module: 0
 order: 1
 ---
 
+import BookDiagram from "../../components/books/BookDiagram.astro";
+
 # Why Agent Observability Is Different
 
 An agent endpoint can return HTTP 200 while the task fails. The model can select the wrong tool, retrieve an obsolete policy, repeat a step until a budget limit is reached, or produce a fluent answer that contradicts the system of record. Service telemetry records a successful request. The user experiences a failed outcome.
@@ -17,6 +19,8 @@ Latency, traffic, errors, and saturation still matter. They reveal provider outa
 
 Consider a support agent asked to check an order and explain a delayed shipment:
 
+<BookDiagram inBook={Boolean(props.book)} label="Support agent workflow">
+
 ```mermaid
 flowchart TD
   Request[User asks about order] --> Route[Agent selects workflow]
@@ -27,6 +31,8 @@ flowchart TD
   Answer --> Validate[Validate citations and policy]
   Validate --> Response[Return HTTP 200]
 ```
+
+</BookDiagram>
 
 The request can be fast and error-free while any of these failures occur:
 
@@ -85,6 +91,8 @@ Once a metric identifies an affected cohort, exemplars or trace links provide re
 
 The relationship is complementary:
 
+<BookDiagram inBook={Boolean(props.book)} label="How metrics, traces, and logs support an investigation">
+
 ```mermaid
 flowchart TD
   Metrics[Metrics detect a change] --> Cohort[Filter affected cohort]
@@ -94,6 +102,8 @@ flowchart TD
   Logs --> Cause[Confirm root cause]
   Eval --> Cause
 ```
+
+</BookDiagram>
 
 ## Questions a production trace must answer
 
@@ -122,6 +132,9 @@ The goal is reproducible investigation, not an illusion of access to the model's
 - [Google SRE: Monitoring Distributed Systems](https://sre.google/sre-book/monitoring-distributed-systems/)
 - [NIST AI RMF Core](https://airc.nist.gov/airmf-resources/airmf/5-sec-core/)
 
----
-
-**Next up**: [Ch 2 - The Telemetry Data Model](/observability-ai-agents/ch-02-structuring-telemetry-for-ai-agents/) separates traces, spans, conversations, tasks, metrics, logs, and evaluations.
+{!props.book && (
+  <>
+    <hr />
+    <p><strong>Next up</strong>: <a href="/observability-ai-agents/ch-02-structuring-telemetry-for-ai-agents/">Ch 2 - The Telemetry Data Model</a> separates traces, spans, conversations, tasks, metrics, logs, and evaluations.</p>
+  </>
+)}

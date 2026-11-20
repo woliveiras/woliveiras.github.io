@@ -5,15 +5,18 @@ const {
 	title,
 	description,
 	image,
+	socialImage,
 	lang = "en",
 	ogType = "website",
+	wide = false,
+	showSupportWidget = true,
 } = Astro.props;
 ---
 
 <!doctype html>
 <html lang={lang} class="h-full antialiased">
   <head>
-    <BaseHead title={title} description={description} image={image} ogType={ogType} />
+    <BaseHead title={title} description={description} image={image} socialImage={socialImage} ogType={ogType} />
     <slot name="head" />
 
     <script is:inline>
@@ -45,7 +48,7 @@ const {
       }
 
       pre {
-        @apply overflow-hidden!;
+        overflow: var(--code-block-overflow, hidden) !important;
         @apply border! border-base-300! dark:border-base-700! bg-base-200/50! dark:bg-base-950/30! rounded-xl!;
       }
 
@@ -139,22 +142,26 @@ const {
   </head>
 
   <body class="dark:bg-base-950 flex mx-1 sm:mx-4 transition-all duration-150">
-    <div class="max-w-5xl mx-auto my-1 sm:my-8 w-full">
+    <div class:list={["mx-auto my-1 sm:my-8 w-full", wide ? "max-w-[88rem]" : "max-w-5xl"]}>
       <div class="w-full">
         <slot />
       </div>
     </div>
 
-    <script
-      is:inline
-      src="https://storage.ko-fi.com/cdn/scripts/overlay-widget.js"></script>
-    <script is:inline>
-      kofiWidgetOverlay.draw("1ilhas", {
-        type: "floating-chat",
-        "floating-chat.donateButton.text": "Support Me",
-        "floating-chat.donateButton.background-color": "#794bc4",
-        "floating-chat.donateButton.text-color": "#fff",
-      });
-    </script>
+    {showSupportWidget && (
+      <>
+        <script
+          is:inline
+          src="https://storage.ko-fi.com/cdn/scripts/overlay-widget.js"></script>
+        <script is:inline>
+          kofiWidgetOverlay.draw("1ilhas", {
+            type: "floating-chat",
+            "floating-chat.donateButton.text": "Support Me",
+            "floating-chat.donateButton.background-color": "#794bc4",
+            "floating-chat.donateButton.text-color": "#fff",
+          });
+        </script>
+      </>
+    )}
   </body>
 </html>

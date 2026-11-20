@@ -5,11 +5,13 @@ module: 3
 order: 12
 ---
 
+import BookDiagram from "../../components/books/BookDiagram.astro";
+
 # Reference Architecture and Local Setup
 
 This chapter creates the local foundation used by the implementation chapters. It is not a production deployment guide. The local Langfuse stack exists so the reader can inspect the full telemetry path without creating a hosted observability account or paying for a backend.
 
-The implementation module uses a small order-support agent. It retrieves policy snippets, reads order state through a tool, calls the OpenAI Responses API, records OpenTelemetry spans, and exports traces through a local Collector into Langfuse.
+{props.book ? "Part 4 uses" : "The implementation module uses"} a small order-support agent. It retrieves policy snippets, reads order state through a tool, calls the OpenAI Responses API, records OpenTelemetry spans, and exports traces through a local Collector into Langfuse.
 
 The domain is intentionally small. The boundaries are not. This setup includes the pieces that make agent observability difficult in production: model calls, retrieval, tools, branching, runtime budgets, content policy, telemetry export, and backend inspection.
 
@@ -39,6 +41,8 @@ The runtime path and the telemetry path are easier to read separately.
 
 The runtime path is the agent execution:
 
+<BookDiagram inBook={Boolean(props.book)} label="Local agent execution">
+
 ```mermaid
 flowchart TD
   Runner[Local runner]
@@ -55,7 +59,11 @@ flowchart TD
   Graph --> Outcome
 ```
 
+</BookDiagram>
+
 The telemetry path is the observability pipeline:
+
+<BookDiagram inBook={Boolean(props.book)} label="Telemetry pipeline to Langfuse">
 
 ```mermaid
 flowchart TD
@@ -70,6 +78,8 @@ flowchart TD
   Collector --> Langfuse
   Collector --> Debug
 ```
+
+</BookDiagram>
 
 The application exports OTLP to the Collector. It does not send telemetry directly to Langfuse. This keeps filtering, batching, sampling, and backend credentials outside application code.
 
@@ -163,7 +173,7 @@ MAX_AGENT_ITERATIONS=6
 MAX_MODEL_CALLS=4
 ```
 
-Set `OPENAI_MODEL` to a current Responses API model available to the account. The rest of the series treats the model value as configuration, not as part of the observability model.
+Set `OPENAI_MODEL` to a current Responses API model available to the account. The rest of the {props.book ? "book" : "series"} treats the model value as configuration, not as part of the observability model.
 
 Copy it locally and keep secrets out of Git:
 
@@ -207,9 +217,9 @@ settings = Settings()  # pyright: ignore[reportCallIssue]
 
 ## Start Langfuse locally
 
-This setup starts Langfuse locally so the rest of the series can show the full telemetry path without requiring a hosted account. It is a learning environment, not a production recommendation.
+This setup starts Langfuse locally so the rest of the {props.book ? "book" : "series"} can show the full telemetry path without requiring a hosted account. It is a learning environment, not a production recommendation.
 
-Use the current official self-hosting files instead of copying an abbreviated Compose configuration into the article. The official Docker Compose guide is the source of truth if file names or required variables change.
+Use the current official self-hosting files instead of copying an abbreviated Compose configuration into the {props.book ? "chapter" : "article"}. The official Docker Compose guide is the source of truth if file names or required variables change.
 
 ```sh
 git clone --depth 1 https://github.com/langfuse/langfuse.git infrastructure/langfuse

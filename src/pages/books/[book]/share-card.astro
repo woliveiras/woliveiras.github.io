@@ -1,0 +1,19 @@
+---
+import BookShareCard from "$components/books/BookShareCard.astro";
+import { books } from "../../../books/catalog";
+import type { BookDefinition } from "../../../books/design";
+
+interface Props {
+	book: BookDefinition;
+}
+
+export function getStaticPaths() {
+	if (import.meta.env.MODE !== "book-preview") return [];
+
+	return books.map(({ book, slug }) => ({ params: { book: slug }, props: { book } }));
+}
+
+const { book } = Astro.props;
+---
+
+<BookShareCard book={book} />

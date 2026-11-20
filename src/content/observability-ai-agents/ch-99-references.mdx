@@ -11,32 +11,32 @@ This appendix separates terms used by OpenTelemetry, application architecture, e
 
 ## Glossary
 
-| Term | Meaning in this series |
+| Term | Meaning in this {props.book ? "book" : "series"} |
 |---|---|
-| Agent | Software that uses a model to select or sequence actions toward a task. |
-| Attribute | Typed key-value metadata attached to a span, resource, log, or metric point. |
-| Baggage | Application key-value context propagated across boundaries; not a telemetry record. |
-| Conversation | A set of related user and agent interactions, usually correlated by `gen_ai.conversation.id`. |
-| Evaluation | A versioned judgment against an explicit criterion, produced by code, a human, or a model. |
-| Event | A timestamped occurrence; in tracing, a span event belongs to one span. |
-| Exemplar | A link from an aggregated metric observation to a representative trace. |
-| Guardrail | A control that detects, transforms, blocks, or escalates an input, output, or action. |
-| Instrumentation scope | Identity and version of the component that emitted telemetry. |
-| Link | A causal or correlational relationship between a span and another span context that is not its parent. |
-| Log | A timestamped record that can carry severity, body, attributes, trace ID, and span ID. |
-| Metric | An aggregated measurement over time and a bounded set of dimensions. |
-| Observation | Langfuse object for an operation inside a trace; it can represent several observation types. |
-| OTLP | OpenTelemetry Protocol for exporting traces, metrics, and logs. |
-| Resource | Attributes describing the entity that produced telemetry, such as a service. |
-| Root span | A span without a parent in its trace. |
-| Sampling | Selection of telemetry for recording or export; not a privacy mechanism. |
-| Session | Backend or application grouping for related interactions. It is not an OpenTelemetry parent of a trace. |
-| Span | A timed operation with context, attributes, events, links, status, and parent relationship. |
-| SLI | A quantitative indicator of service behavior. |
-| SLO | A target for an SLI over a defined population and time window. |
-| Task | A business unit of work that can span requests, traces, workers, or conversation turns. |
-| Trace | A graph of causally related spans that share a trace ID. |
-| Trace context | Identifiers and flags propagated so spans can join a trace. |
+| <span id="agent">Agent</span> | Software that uses a model to select or sequence actions toward a task. |
+| <span id="attribute">Attribute</span> | Typed key-value metadata attached to a span, resource, log, or metric point. |
+| <span id="baggage">Baggage</span> | Application key-value context propagated across boundaries; not a telemetry record. |
+| <span id="conversation">Conversation</span> | A set of related user and agent interactions, usually correlated by `gen_ai.conversation.id`. |
+| <span id="evaluation">Evaluation</span> | A versioned judgment against an explicit criterion, produced by code, a human, or a model. |
+| <span id="event">Event</span> | A timestamped occurrence; in tracing, a span event belongs to one span. |
+| <span id="exemplar">Exemplar</span> | A link from an aggregated metric observation to a representative trace. |
+| <span id="guardrail">Guardrail</span> | A control that detects, transforms, blocks, or escalates an input, output, or action. |
+| <span id="instrumentation-scope">Instrumentation scope</span> | Identity and version of the component that emitted telemetry. |
+| <span id="link">Link</span> | A causal or correlational relationship between a span and another span context that is not its parent. |
+| <span id="log">Log</span> | A timestamped record that can carry severity, body, attributes, trace ID, and span ID. |
+| <span id="metric">Metric</span> | An aggregated measurement over time and a bounded set of dimensions. |
+| <span id="observation">Observation</span> | Langfuse object for an operation inside a trace; it can represent several observation types. |
+| <span id="otlp">OTLP</span> | OpenTelemetry Protocol for exporting traces, metrics, and logs. |
+| <span id="resource">Resource</span> | Attributes describing the entity that produced telemetry, such as a service. |
+| <span id="root-span">Root span</span> | A span without a parent in its trace. |
+| <span id="sampling">Sampling</span> | Selection of telemetry for recording or export; not a privacy mechanism. |
+| <span id="session">Session</span> | Backend or application grouping for related interactions. It is not an OpenTelemetry parent of a trace. |
+| <span id="span">Span</span> | A timed operation with context, attributes, events, links, status, and parent relationship. |
+| <span id="sli">SLI</span> | A quantitative indicator of service behavior. |
+| <span id="slo">SLO</span> | A target for an SLI over a defined population and time window. |
+| <span id="task">Task</span> | A business unit of work that can span requests, traces, workers, or conversation turns. |
+| <span id="trace">Trace</span> | A graph of causally related spans that share a trace ID. |
+| <span id="trace-context">Trace context</span> | Identifiers and flags propagated so spans can join a trace. |
 
 ## OpenTelemetry
 

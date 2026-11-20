@@ -5,6 +5,8 @@ module: 3
 order: 15
 ---
 
+import BookDiagram from "../../components/books/BookDiagram.astro";
+
 # Instrumenting Tools, Retrieval, and Memory
 
 Tools create effects, retrieval supplies evidence, and memory carries state across interactions. Once model-call spans are in place, most confusing incidents move to these boundaries: the model asked for the right thing but the tool was denied, retrieval returned stale policy, or memory injected state that nobody expected.
@@ -38,12 +40,16 @@ The first wrapper in this chapter instruments a read-only tool: `fetch_order_sta
 
 This span should sit above the downstream client calls. If the tool implementation calls an HTTP service, a database, or a queue, those lower-level libraries can create their own child spans. The tool span gives those child spans application meaning.
 
+<BookDiagram inBook={Boolean(props.book)} label="Tool span and downstream service calls">
+
 ```mermaid
 flowchart TD
   Tool[execute_tool fetch_order_status] --> Auth[authorize order read]
   Tool --> HTTP[HTTP GET order service]
   HTTP --> DB[database query in downstream service]
 ```
+
+</BookDiagram>
 
 Create `src/agent_observability/tools.py` and add the tool wrapper there:
 

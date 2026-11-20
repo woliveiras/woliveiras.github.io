@@ -5,6 +5,8 @@ module: 3
 order: 16
 ---
 
+import BookDiagram from "../../components/books/BookDiagram.astro";
+
 # Instrumenting LangGraph and Multi-Agent Workflows
 
 Chapter 15 created spans for model-adjacent operations: tools, retrieval, and memory. LangGraph is where those operations become an execution path. The graph decides which operation runs, which state fields change, when work branches, and where the task stops.
@@ -318,6 +320,8 @@ When independent nodes run concurrently, their spans should overlap and share th
 
 Use this diagram as the target shape when you later refactor the graph. No code change is required in this chapter part.
 
+<BookDiagram inBook={Boolean(props.book)} label="Trace structure across workflow branches">
+
 ```mermaid
 flowchart TD
   Root[invoke order-support] --> Prepare[prepare context]
@@ -326,6 +330,8 @@ flowchart TD
   Retrieval --> Join[compose answer]
   Order --> Join
 ```
+
+</BookDiagram>
 
 Do not derive end-to-end latency by summing parallel child spans.
 

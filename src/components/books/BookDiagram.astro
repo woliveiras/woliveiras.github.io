@@ -1,0 +1,15 @@
+---
+interface Props {
+	inBook: boolean;
+	label: string;
+	wide?: boolean;
+}
+
+const { inBook, label, wide = false } = Astro.props;
+---
+
+{inBook ? (
+	<div class:list={["book-diagram", { "book-diagram-wide": wide }]} role="region" aria-label={label} tabindex="0">
+		<slot />
+	</div>
+) : <slot />}

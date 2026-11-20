@@ -9,7 +9,7 @@ order: 26
 
 Streaming is another output path. It can improve the user experience, but it can also leak graph state through a browser event, log line, or span attribute before anyone notices.
 
-By this point in the series, the trace shape is stable, content capture is restricted, Langfuse context is present, prompt identity is tracked, scores exist, datasets can gate releases, and Chapter 25 introduced a subgraph boundary. Now it is safe to add graph streaming.
+By this point in the {props.book ? "book" : "series"}, the trace shape is stable, content capture is restricted, Langfuse context is present, prompt identity is tracked, scores exist, datasets can gate releases, and Chapter 25 introduced a subgraph boundary. Now it is safe to add graph streaming.
 
 This chapter adds a streaming entrypoint to the demo and a manual scenario that prints sanitized graph progress while Langfuse records only stream lifecycle metadata.
 
@@ -359,7 +359,7 @@ At this point the demo should have:
 - separate handling for model token streaming and graph progress streaming;
 - a Langfuse trace named `manual-graph-updates-stream` that remains readable.
 
-The appendix collects the terminology and references used throughout the series.
+The appendix collects the terminology and references used throughout the {props.book ? "book" : "series"}.
 
 ## References
 
@@ -370,4 +370,4 @@ The appendix collects the terminology and references used throughout the series.
 
 ---
 
-**Appendix**: [Glossary and References](/observability-ai-agents/ch-99-references/) collects terminology, standards, implementation documentation, and research used throughout the series.
+**Appendix**: [Glossary and References](/observability-ai-agents/ch-99-references/) collects terminology, standards, implementation documentation, and research used throughout the {props.book ? "book" : "series"}.

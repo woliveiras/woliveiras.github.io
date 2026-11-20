@@ -5,6 +5,8 @@ module: 0
 order: 4
 ---
 
+import BookDiagram from "../../components/books/BookDiagram.astro";
+
 # Context Propagation Across Agent Workflows
 
 An agent trace becomes fragmented when execution crosses a boundary without carrying its trace context. The model call still appears in the backend, as do the tool call and background worker, but they look like unrelated operations. Latency moves to disconnected root spans, errors lose the request that caused them, and a trace no longer explains the execution.
@@ -151,6 +153,8 @@ A producer should attach a message creation context to each message. A consumer 
 
 Current OpenTelemetry messaging conventions use span links as the default correlation mechanism because links support both cases: several consumer spans can reference one message creation context, and one batch consumer span can reference several message creation contexts.
 
+<BookDiagram inBook={Boolean(props.book)} label="Message flow and trace propagation" wide>
+
 ```mermaid
 flowchart TB
   subgraph MessageFlow["Message flow"]
@@ -181,6 +185,8 @@ flowchart TB
 
   MessageFlow ~~~ TraceRelationships
 ```
+
+</BookDiagram>
 
 The upper layer shows one explicit fan-out scenario: the API injects the producer context into message metadata, and the broker routes the message through two subscriptions. Solid arrows describe messaging behavior, not span parentage. The lower layer shows the telemetry topology: each worker starts an independent trace, and each consumer span stores a link to the message creation span context.
 
@@ -245,6 +251,8 @@ Use one continuous trace only when pause durations, trace size, backend retentio
 
 Use `gen_ai.conversation.id` when the application has a real conversation or thread identifier. A conversation can contain many turns, and each turn can have its own trace:
 
+<BookDiagram inBook={Boolean(props.book)} label="Traces across conversation turns">
+
 ```mermaid
 flowchart LR
   Conversation[conversation ID: conv_782]
@@ -256,6 +264,8 @@ flowchart LR
   Conversation -. correlation .-> Turn2
   Conversation -. correlation .-> Turn3
 ```
+
+</BookDiagram>
 
 Conversation ID is appropriate for trace and log queries. It is normally unsuitable as a metric dimension because the number of conversations grows without a fixed bound.
 

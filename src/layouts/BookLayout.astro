@@ -1,0 +1,56 @@
+---
+import ThemeToggle from "$components/ThemeToggle.astro";
+import BaseLayout from "$layouts/BaseLayout.astro";
+import { type BookDefinition, bookShareImagePath } from "../books/design";
+import { SITE_TITLE } from "../config.json";
+import "../styles/book.css";
+
+interface Props {
+	book: BookDefinition;
+	title: string;
+	description: string;
+	isCover: boolean;
+	isContents: boolean;
+	contentsHref: string;
+}
+
+const { book, title, description, isCover, isContents, contentsHref } = Astro.props;
+const shareImage = book.share?.image;
+const socialImage = shareImage && {
+	src: bookShareImagePath(book.path),
+	alt: shareImage.alt,
+	width: 1200,
+	height: 630,
+};
+const themeStyles: Record<string, string> = {};
+
+for (const mode of ["light", "dark"] as const) {
+	for (const [color, value] of Object.entries(book.theme?.[mode] ?? {})) {
+		themeStyles[`--book-${mode}-${color}`] = value;
+	}
+}
+if (book.theme?.fontFamily) themeStyles["--book-font-family"] = book.theme.fontFamily;
+---
+
+<BaseLayout title={isCover ? book.title : `${title} · ${book.title}`} description={description} socialImage={socialImage} wide showSupportWidget={false}>
+	<Fragment slot="head">
+		{!book.published && <meta name="robots" content="noindex" />}
+	</Fragment>
+	<div class="book-layout" style={themeStyles}>
+		<a class="book-skip" href="#book-main">Skip to content</a>
+		<header class="book-masthead">
+			{isCover ? (
+				<a href="/">← {SITE_TITLE}</a>
+			) : (
+				<a class="book-name" href={book.path}>{book.title}</a>
+			)}
+			<nav aria-label="Book navigation">
+				<a href={contentsHref} aria-current={isContents ? "page" : undefined}>Table of contents</a>
+				<ThemeToggle aria-label="Toggle color theme" type="button" />
+			</nav>
+		</header>
+		<main id="book-main" tabindex="-1">
+			<slot />
+		</main>
+	</div>
+</BaseLayout>

@@ -5,6 +5,8 @@ module: 1
 order: 7
 ---
 
+import BookDiagram from "../../components/books/BookDiagram.astro";
+
 # Content Capture as a Data-Governance Decision
 
 Prompts, model outputs, tool payloads, and retrieved documents are application data. Copying them into telemetry creates a new processing system with its own recipients, indexes, exports, backups, retention schedule, and incident surface. An observability backend does not become an approved content store merely because the SDK can send data to it.
@@ -260,6 +262,8 @@ These are project-specific attributes. Keep their values bounded if they become 
 
 The first exporter is already a boundary. If a remote Collector or backend is not authorized to receive raw content, masking there is too late.
 
+<BookDiagram inBook={Boolean(props.book)} label="Telemetry content policy decisions">
+
 ```mermaid
 flowchart TD
   Source[Agent data source] --> Gate[Policy decision]
@@ -275,7 +279,11 @@ flowchart TD
   Gate -->|deny| Block[Do not export content]
 ```
 
+</BookDiagram>
+
 Only the approved result enters the telemetry pipeline:
+
+<BookDiagram inBook={Boolean(props.book)} label="Exporting approved telemetry">
 
 ```mermaid
 flowchart TD
@@ -283,6 +291,8 @@ flowchart TD
   OTel --> Collector[Authorized Collector]
   Collector --> Backend[Telemetry backend]
 ```
+
+</BookDiagram>
 
 Apply allowlist projection before denylist redaction when possible. An allowlist starts from no exported fields; a denylist assumes every dangerous field has already been discovered. Use detection and redaction as additional controls for allowed free text, not as permission to export arbitrary objects.
 

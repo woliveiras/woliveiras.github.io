@@ -7,13 +7,13 @@ order: 0
 
 # Before You Start
 
-This series is for software engineers who build or operate AI agents. It assumes that a model already participates in a workflow that can call tools, retrieve data, maintain state, or hand work to another component. The goal is to make that workflow explainable in production without copying every prompt and response into a telemetry backend.
+This {props.book ? "book" : "series"} is for software engineers who build or operate AI agents. It assumes that a model already participates in a workflow that can call tools, retrieve data, maintain state, or hand work to another component. The goal is to make that workflow explainable in production without copying every prompt and response into a telemetry backend.
 
 The conceptual chapters apply to most agent frameworks and model providers. The implementation chapters use one concrete stack so every command and code sample can be followed end to end.
 
 ## What you need to know
 
-The series assumes working knowledge of:
+The {props.book ? "book" : "series"} assumes working knowledge of:
 
 - Python applications and virtual environments.
 - HTTP APIs and JSON payloads.
@@ -24,7 +24,7 @@ OpenTelemetry terminology is introduced as it is used. Prior experience with an 
 
 ## Reference stack
 
-| Layer | Choice in this series | Why it is here |
+| Layer | Choice in this {props.book ? "book" : "series"} | Why it is here |
 |---|---|---|
 | Runtime | Python 3.11 or newer | Current async context propagation and typing support. |
 | Agent orchestration | LangGraph | Explicit nodes, state, branches, and durable execution. |
@@ -34,7 +34,7 @@ OpenTelemetry terminology is introduced as it is used. Prior experience with an 
 | Backend | Langfuse | Trace inspection and evaluation features for LLM applications. |
 | Local services | Docker Compose | Reproducible development environment. |
 
-OpenTelemetry is the instrumentation contract in this series. The application emits spans, attributes, events, context, and OTLP data through OpenTelemetry APIs and semantic conventions. Langfuse is the backend we use to inspect that evidence, connect it to prompts and evaluations, and operate the agent locally.
+OpenTelemetry is the instrumentation contract in this {props.book ? "book" : "series"}. The application emits spans, attributes, events, context, and OTLP data through OpenTelemetry APIs and semantic conventions. Langfuse is the backend we use to inspect that evidence, connect it to prompts and evaluations, and operate the agent locally.
 
 This separation is intentional. If application code writes only to one observability product, the telemetry model usually becomes a product integration. By using OpenTelemetry first, the core evidence stays portable: workflow spans, model calls, tool execution, retrieval, guardrails, costs, and outcomes remain understandable even if the backend changes or another backend is added later. In short: OpenTelemetry defines how the agent describes what happened; Langfuse helps us investigate and operate what happened.
 
@@ -44,7 +44,7 @@ The local Langfuse and Docker Compose setup exists so the examples can be run wi
 
 ## Required tools
 
-Confirm the local toolchain before the implementation module:
+Confirm the local toolchain before {props.book ? "Part 4, Hands-on Implementation" : "the implementation module"}:
 
 ```sh
 python --version
@@ -79,6 +79,9 @@ By the end, the reference agent has:
 - Dashboards, SLOs, alerts, release gates, and incident runbooks.
 - Tests that fail when instrumentation loses context or emits unsafe attributes.
 
----
-
-**Next up**: [Ch 1 - Why Agent Observability Is Different](/observability-ai-agents/ch-01-applying-observability-to-ai-agents/) explains why a healthy endpoint can still represent a failed agent task.
+{!props.book && (
+  <>
+    <hr />
+    <p><strong>Next up</strong>: <a href="/observability-ai-agents/ch-01-applying-observability-to-ai-agents/">Ch 1 - Why Agent Observability Is Different</a> explains why a healthy endpoint can still represent a failed agent task.</p>
+  </>
+)}
