@@ -1,84 +1,242 @@
 ---
 title: "Focused Tests and Coverage Gates"
-description: "Prove a focused test catches a bug and make coverage regressions fail a check."
+description: "Use OpenCode to write focused tests, prove they catch a regression, and enforce a versioned coverage policy."
 module: 3
 order: 12
 ---
 
-The registration bug took two requests to see. One request returned the expected 400. The next one exposed the consumed ID. You need an HTTP test for that sequence. A pure validator gives you a cheaper way to test how the application handles types, whitespace, and boundary lengths.
+In [Building Your Harness](/books/hands-on-coding-assistants/chapters/building-your-harness/), the same registration contract failed on the defective checkout and passed on the corrected one. The assertion that mattered came after the rejected request. It checked which ID the next caller received.
 
-Start from `lab-registration`, the known-good reference for the registration change. Bring the regression test you wrote during debugging, or read the reference in `lab-coverage`.
+Keep that HTTP check. This time, you'll also test the registration rules directly so a failure can point to a boundary such as a 100-character name. Then you'll use a real coverage report to see which paths your tests reach and make a drop below an agreed minimum fail the verification command.
+
+Start from the root of your lab fork with a clean working tree. Use Node `24.22.3`, the version in `.nvmrc`, for the whole exercise so you can compare reports. The [OpenCode setup](/books/hands-on-coding-assistants/chapters/setup-and-practical-integration/) gives you the agents you'll use here.
 
 ```sh
+node --version
 git switch -c coverage-exercise lab-registration
 npm test
 npm run test:registration
-git show lab-coverage:test/registration-regression.test.ts
+opencode
 ```
+
+Expect three tests in the base suite and two in the registration contract. Both suites should pass. Keep a second terminal for commands you run yourself while OpenCode is open.
 
 ## Give each test one job
 
-Ask **Plan** to read the registration spec, `src/app.ts`, and the HTTP tests. Give it the failure you reproduced. Then ask **Build** to extract a pure `normalizeRegistration(input: unknown)` function into `src/registration.ts` and test that function in `test/registration.test.ts`. Keep the response mapping and ID allocation in the route.
+A **unit test** calls a small piece of code directly. Here it can pass a name and email to a validator and check the normalized values it returns. An **HTTP test** sends a request to the running service. Use that kind of test to check the response and to see whether one request changes what happens on the next. The validator can say an input is invalid. The route decides whether to send `400`, when to assign an ID, and what to store.
+
+Choose **Plan** with `/agents`. Ask it to use the spec to decide which assertions belong at each level.
 
 ```text
-Extract the registration input validation without changing the HTTP API.
-Add focused tests for a valid name and email that need normalization, a
-non-string name, and a name at the 100-character limit. Keep the HTTP
-contract unchanged. Use the HTTP helper to check that a rejected request
-leaves ID 1 available on a fresh server.
+Read specs/registration-validation.md, contracts/registration.test.ts,
+src/app.ts, and test/client.ts. For normalization, invalid input, and
+ID allocation, show the input, expected result, and test level.
+Point to the code that must stay in the HTTP handler. Explain how
+a test that checks only the 400 could miss the ID regression.
+Leave the files unchanged.
 ```
 
-Check a separate pair of HTTP tests around the task title limit in `test/app.test.ts`. A title with 120 characters is valid. A title with 121 returns 400 and leaves the list unchanged. Assert the full result and compare state where it matters.
+Read the proposed assertions before asking for code. A name with 100 characters after trimming is accepted. Add one character and it should be rejected. A numeric name is rejected even if it could be converted to a string. For the HTTP case, a rejected request followed by a valid one on the same fresh server should yield `400`, then `201` with ID `"1"`. If you saved your focused regression during debugging, you can give the agent that test to reuse.
 
-```typescript title="test/app.test.ts"
-test("a title over the limit leaves tasks unchanged", async t => {
-  const request = await startApp(t);
-  const before = await (await request("/tasks")).json();
-  const response = await request("/tasks", jsonRequest("POST", {
-    title: "x".repeat(121),
-  }));
-  assert.equal(response.status, 400);
-  assert.deepEqual(await response.json(), { error: "invalid_task" });
-  assert.deepEqual(await (await request("/tasks")).json(), before);
-});
+Switch to **Build** in the same session.
+
+```text
+Extract normalizeRegistration(input: unknown) into src/registration.ts
+and call it from src/app.ts. Keep HTTP responses, ID allocation, and
+storage in the route. Add tests in test/registration.test.ts for
+normalization, a numeric name, and the 100/101-character boundary after
+trimming. Add or reuse the two-request regression in
+test/registration-regression.test.ts. Keep the spec and contract
+unchanged. Run npm test and npm run test:registration and report the
+observed results.
 ```
 
-With the new tests in place, temporarily change the title check from `> 120` to `>= 120` in your exercise branch. `npm test` should fail on the exact-limit case with an observed 400 where it expected 201. Undo that edit and rerun both suites. If the test stays green with the fault in place, find out which input it sends and which code it reaches before accepting it.
+Review the route and the tests. Look for the expected values from the spec in the assertions and confirm that the regression test sends both requests to the same server. Read the tool output for each command. Run the command yourself if the session contains only a summary.
+
+## Check that a plausible mistake turns the suite red
+
+Use the same approach on the task title limit. A title with 120 characters is valid. A title with 121 characters returns `400` and leaves the task list intact. Ask **Build** to add both cases to `test/app.test.ts`.
+
+```text
+Add HTTP tests for POST /tasks at 120 and 121 characters in
+test/app.test.ts. At 120, check for 201 and the expected title. At
+121, check for 400, the invalid_task body, and the same task list
+before and after the request. Change only the tests, then run npm test.
+```
+
+Inspect the diff and save the passing version before trying a deliberate mistake.
+
+```sh
+npm test
+npm run test:registration
+git status --short
+git add -- src/app.ts src/registration.ts test/app.test.ts test/registration.test.ts test/registration-regression.test.ts
+git diff --cached --check
+git diff --cached
+git commit -m "Test registration and task boundaries"
+```
+
+With a clean exercise branch, ask **Build** to make one temporary change.
+
+```text
+In the POST /tasks handler, change the title limit check from
+> 120 to >= 120. Change only that comparison, leave all tests
+as they are, and run npm test. Show the failing assertion and stop.
+```
+
+The exact-limit test should see `400` where it expects `201`. If the run stays green, inspect the input length, the route under test, and the comparison in the diff. Once you've checked that the diff contains only the temporary edit, restore the saved handler and rerun both suites.
+
+```sh
+git diff -- src/app.ts
+git restore -- src/app.ts
+npm test
+npm run test:registration
+```
+
+The failing assertion showed that the new test could detect an off-by-one error. Now look at a different question. Which parts of the application did the suite execute at all?
 
 ## Read the failure from the coverage command
 
-Run this command in a separate worktree at `lab-start`, using Node 24.22.3, the version in `.nvmrc`. Check `node --version` and select that release before measuring. Its three tests can all pass while the command exits unsuccessfully because it also requires 90% line coverage of `src/app.ts`.
+**Coverage** measures which code the tests execute. Line coverage counts lines that ran. Branch coverage measures which paths through decisions ran, and function coverage measures which functions were called. A **coverage gate** makes verification fail when a measured ratio drops below a minimum. A line can run while a test makes a weak assertion about its result. That's why the failure you just reproduced still matters.
+
+Measure the original three tests in a temporary checkout at `lab-start`. This checkout gives you a known report independent of the tests you wrote in your exercise branch.
 
 ```sh
 git worktree add --detach ../task-api-coverage-probe lab-start
 cd ../task-api-coverage-probe
 node --test --experimental-test-coverage --test-coverage-lines=90 \
   --test-coverage-include=src/app.ts test/*.test.ts
+echo "$?"
 ```
 
-Read the uncovered lines in the report. Find a case you would want to protect anyway, such as a body that's too large to parse. Send the request and assert the response and untouched state. Repeat the report on the same Node version and file selection. A different runtime or selection can change the number you are comparing.
+On Node `24.22.3`, all three tests pass, line coverage for `src/app.ts` is `72.22%`, and the process exits with `1`. Read the uncovered lines in the report. They include the branch in `readObject` that rejects a body larger than 4,096 bytes.
+
+Start OpenCode in the probe checkout and give **Plan** the output you saw.
+
+```text
+Read src/app.ts and test/app.test.ts and use the coverage report I
+pasted. Explain why the tests pass and the command exits 1. Find the
+oversized request branch in readObject. Suggest an HTTP request that
+reaches it and tell me what to assert about the response and stored tasks.
+```
+
+Use a short title and a separate field containing `"x".repeat(4096)`. This makes the serialized JSON exceed 4,096 bytes while keeping the title within its own limit. Switch to **Build**.
+
+```text
+In this probe checkout, add one test to test/app.test.ts. Send
+POST /tasks with a short title and an extra field of 4096 ASCII
+characters. Assert 400, the invalid_task body, and the same task
+list before and after. Leave the application and other tests alone.
+```
+
+Run the same coverage command again. With that one test added, expect four passing tests and about `76.39%` line coverage. The report moved, and the threshold still blocks the run. You now have a useful test for a request the starter suite never sent.
+
+Keep the two reports or their relevant lines. Close the probe's OpenCode session. In the terminal where you entered the probe, check that the diff contains only the added test, then restore the file and remove the checkout.
+
+```sh
+git diff -- test/app.test.ts
+git restore -- test/app.test.ts
+cd -
+git worktree remove ../task-api-coverage-probe
+```
 
 ## Enforce the versioned policy
 
-From the probe worktree, use `lab-coverage` to create a separate checkpoint for the rest of the exercise. It includes the focused unit and HTTP cases, `coverage-policy.json`, and `tools/coverage.mjs`.
+Switch to the prepared `lab-coverage` checkpoint. It includes focused unit and HTTP tests, `coverage-policy.json`, and the script that runs the tests and applies the policy. Open a fresh OpenCode session on this checkout so it inspects the files the next chapter will use.
 
 ```sh
-git worktree add -b coverage-policy-exercise ../task-api-coverage-policy lab-coverage
-cd ../task-api-coverage-policy
+git switch -c coverage-policy-exercise lab-coverage
+opencode
+```
+
+Choose **Plan** and ask how the script makes its decision.
+
+```text
+Read package.json, coverage-policy.json, and tools/coverage.mjs.
+Trace npm run coverage, npm run verify, and the --base option.
+Show which tests and source files the script uses. Explain how
+the measured ratios and the policy from the base commit can each
+cause a failure. Give me the commands to check, then wait for output.
+```
+
+Review the commands and run each one from the fork root.
+
+```sh
 npm run coverage
 npm run verify
 node tools/coverage.mjs --base "$(git rev-parse lab-coverage)"
 ```
 
-Open the policy and compare the report with its file list and the covered and total counts for each minimum. On Node 24.22.3, the checkpoint measures 81 of 83 lines, 43 of 46 branches, and all five functions across the included files. `npm run coverage` gives you the measurement. `npm run verify` checks it against the policy.
+The first command reports coverage and can still fail if a test fails. The second also enforces the checked-out policy. The third checks the selected files and minimums against the base commit before running the tests. With the prepared suite, all three commands succeed. The measured ratios are `81/83` lines, `43/46` branches, and `5/5` functions across `src/app.ts` and `src/registration.ts`. The policy stores both counts for each ratio so the script can compare them without rounding a percentage.
 
-Temporarily remove the test named “an unknown path returns the not_found response” from `test/app.test.ts` in this clean exercise branch. `npm test` still passes. `npm run verify` fails on coverage. Read the new line and branch ratios before restoring that test from `HEAD`. This shows why you need the gate even after the test runner reports green.
+### Watch the gate reject a lost test
 
-The base comparison also checks the proposed policy against the starting revision. Try lowering the line minimum's covered count in `coverage-policy.json`. Run the base check again and read the rejection. Restore the policy from `HEAD`. Policy changes need someone to review why the measurement or minimum is changing. When you accept a higher measured coverage ratio, raise the corresponding minimum so the next change preserves the improvement.
+From the clean checkpoint, switch to **Build** and ask for one temporary edit.
 
-Keep the command and the failing check alongside your exercise diff. The next chapter gives that command its own checkout and a place in the merge rules.
+```text
+Remove only the test named "an unknown path returns the not_found
+response" from test/app.test.ts. Leave the policy and source files
+unchanged. Run npm test and stop so I can compare it with npm run verify.
+```
+
+Run `npm run verify` yourself. The tests still present pass, but the gate reports `79/83` lines and `41/44` branches and exits with `1`. Look at both counts when you compare the ratios. In this run the branch denominator changed too. Restore the test and rerun the gate before trying the next change.
+
+```sh
+git diff -- test/app.test.ts
+git restore -- test/app.test.ts
+npm run verify
+```
+
+### Watch the base check reject a lower minimum
+
+Ask **Build** to change the policy while keeping the restored test suite in place.
+
+```text
+In coverage-policy.json, change minimum.lines.covered from 81 to 80.
+Leave all other fields and files unchanged and show me the diff.
+```
+
+Run the base check again.
+
+```sh
+node tools/coverage.mjs --base "$(git rev-parse lab-coverage)"
+echo "$?"
+```
+
+Expect `The lines coverage minimum is lower than the base policy.` and exit `1`. This rejection happens before the tests run. Restore the policy and repeat the command.
+
+```sh
+git diff -- coverage-policy.json
+git restore -- coverage-policy.json
+node tools/coverage.mjs --base "$(git rev-parse lab-coverage)"
+```
+
+A reviewer still needs to inspect changes to the test selection, source files, and coverage script. A coverage ignore directive in the source, for example, can change what the runner counts. Review such changes alongside the policy and runtime version. If you agree to preserve an improvement, raise the corresponding minimum using the measured counts and explain the change in review.
+
+Give **Build** the outputs you kept from the earlier checkouts and ask it to record the evidence.
+
+```text
+Save the commands, Node version, checkpoints, and observed results in
+notes/coverage.md. Include the 120-character assertion failure, the
+starter coverage report, and the two distinct policy experiment
+failures. Identify which command CI needs to run against the base
+commit. Write only the note and flag any missing output.
+```
+
+Check the note against the output you recorded. Commit it on `coverage-policy-exercise` so you can recover it after changing branches.
+
+```sh
+git status --short
+git add -- notes/coverage.md
+git diff --cached --check
+git diff --cached -- notes/coverage.md
+git commit -m "Record coverage gate results"
+```
+
+In [Required CI Checks and Merge](/books/hands-on-coding-assistants/chapters/required-ci-checks-and-merge/), you'll start from `lab-coverage` again and make a pull request show whether that verification passed on the revision under review.
 
 ## References
 
+- OpenCode maintainers. [Agents](https://opencode.ai/docs/agents/). Official OpenCode documentation.
 - Node.js contributors. [Collecting code coverage in Node.js](https://nodejs.org/learn/test-runner/collecting-code-coverage). Official Node.js guide.
-- Node.js contributors. [Test runner](https://nodejs.org/api/test.html). Node.js API reference.
+- Node.js contributors. [Test runner](https://nodejs.org/api/test.html) and [Command-line API](https://nodejs.org/api/cli.html). Node.js API reference.
