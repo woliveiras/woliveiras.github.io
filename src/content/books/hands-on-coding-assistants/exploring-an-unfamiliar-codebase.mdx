@@ -105,7 +105,15 @@ and symbol for each code finding. Identify which findings I confirmed
 by running a command. Return the map in chat.
 ```
 
-Read the draft against your results, then save it as `notes/repo-map.md`. You can switch to **Build** in the same session and ask it to write the reviewed draft to that path. Stage and read the map before committing it.
+Read the draft against your results, then save it as `notes/repo-map.md`. To have the assistant save it, switch to **Build** in the same session and give it the path and tool.
+
+```text
+Use the write tool to create notes/repo-map.md from the repository
+map in your preceding answer. Keep file references relative to the
+repository so the map works in another checkout. Write only this file.
+```
+
+Open the saved file before staging it. Check that the commands and observed responses match the exercise and that the file references work from the checkout.
 
 ```sh
 git add notes/repo-map.md

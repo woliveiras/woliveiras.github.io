@@ -81,7 +81,7 @@ Read contracts/registration.test.ts before editing.
 
 Use the same finish condition for both runs. The two suites must pass and you must be able to accept the diff against the spec. Inspect the file reads as well. If both sessions discover the contract before the edit, record that outcome. If you had to supply the next-ID requirement, record when you supplied it and how you verified the correction.
 
-Paste your measurements into **Plan** and ask it to help interpret the comparison.
+Paste a row for each run into **Plan**. Include elapsed time, the exit status of both commands, and whether you accepted the diff for each implementation. The agent needs those results to know which runs reached the same finish condition.
 
 ```text
 Use the results I pasted. Compare only runs with the same finish
@@ -90,11 +90,18 @@ differences are visible in the tool activity. Propose one adjustment
 I can test on a repeat run. Keep uncertainty in the report.
 ```
 
-Check the suggested adjustment against the evidence. Alternate run order on a repeat so familiarity with the first result has less influence. Keep interrupted runs as part of the record, with the outcome clearly marked. In each implementation worktree, review and commit the diff you tested. Return to the fork root and save the measurements, exact prompts, revision IDs, and your chosen adjustment in `notes/measurement.md`. Once all four worktrees are clean and their OpenCode sessions are closed, commit the note and remove the temporary checkouts.
+Check the suggested adjustment against the evidence. Alternate run order on a repeat so familiarity with the first result has less influence. Keep interrupted runs as part of the record, with the outcome clearly marked. In each implementation worktree, review and commit the diff you tested. Return to the fork root and save the measurements, exact prompts, revision IDs, and your chosen adjustment in `notes/measurement.md`. If you ask Build to save it, give it that relative path and open the file there before you continue.
 
 ```sh
+git branch --show-current
+git status --short --untracked-files=all
 git add -- notes/measurement.md
 git diff --cached --check
+```
+
+Check that you are on `measurement-record` and the staged file is the intended note. If the tool wrote a copy under a different path, move the reviewed file to `notes/measurement.md` and stage it again. Once all four worktrees are clean and their OpenCode sessions are closed, commit and remove them.
+
+```sh
 git commit -m "Record the Task API measurement exercise"
 git worktree remove ../task-api-manual
 git worktree remove ../task-api-delegated

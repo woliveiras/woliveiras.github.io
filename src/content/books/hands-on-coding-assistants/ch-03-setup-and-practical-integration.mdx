@@ -27,7 +27,7 @@ When OpenCode reads a file, it can send the contents and tool output with its ne
 
 Install Ollama for your operating system. The examples use Ollama **0.40.16**. The `qwen3.5:9b` catalog entry lists tool support. Check the exact download size for your variant and [whether it fits your machine](/books/hands-on-coding-assistants/appendices/model-setup/#check-whether-a-model-fits-your-machine) first. Running the model also needs memory for its working state and context.
 
-Set the context to __65536__ in the Ollama app, or start the CLI server with that setting. The environment variable must be present **when the server starts**. If Ollama already owns the port, use its app settings or restart that server before starting another one. Ollama's integration guide recommends __64k__ or more for local models in OpenCode.
+Set the context to __65536__ in the Ollama app, or start the CLI server with that setting. The environment variable must be present **when the server starts**. If you already have an Ollama instance for this exercise, change its context in the app or restart it with the new setting. You can also [run a separate Ollama server on another port](/books/hands-on-coding-assistants/appendices/model-setup/#local-context-and-discovery). Ollama's integration guide recommends __64k__ or more for local models in OpenCode.
 
 The following command starts the Ollama server with a context length of 65536. Run it in a terminal separate from the lab.
 
@@ -43,7 +43,9 @@ ollama list
 opencode
 ```
 
-In OpenCode, open `/models` and select `ollama/qwen3.5:9b`. OpenCode discovers models at Ollama's default local address. If the model is missing, check `ollama list` and the port before changing the prompt. After the first model request, run `ollama ps` in your terminal to inspect the allocated context and where the model is running. If it is slow or the machine runs out of memory, choose a smaller tool-capable model and run the same checks, or continue with the hosted option.
+In OpenCode, open `/models` and select `ollama/qwen3.5:9b`. OpenCode discovers models at Ollama's default local address. If you just pulled the model, give the inventory time to refresh and reopen `/models`. Use `ollama list` to check the download and `opencode models` to check discovery.
+
+After the first model request, run `ollama ps` in your terminal. Check the `CONTEXT` and `PROCESSOR` columns. The first request may take a while to load the model and generate a response. If even the short tool check takes too long, try [running Qwen without reasoning](/books/hands-on-coding-assistants/appendices/model-setup/#retry-a-slow-tool-check). If the model runs out of memory, check a smaller tool-capable model or continue with the hosted option.
 
 ## Run a free hosted model
 
@@ -80,8 +82,9 @@ opencode
 Select the same model and switch to **Build**.
 
 ```text
-Append one line containing "Setup edit check." to README.md.
-Use the file editing tool. Leave the other files alone.
+Read README.md and keep its last paragraph in place. Use the edit
+tool to add one line containing "Setup edit check." after that
+paragraph. Leave the other files alone.
 ```
 
 Exit the session. Inspect the actual diff and restore the known scratch change.
@@ -95,7 +98,7 @@ cd -
 git worktree remove ../task-api-setup-check
 ```
 
-Run the restore and worktree removal only after checking the diff. The exercise should add one line to `README.md` and touch no other tracked file. Record the model ID, OpenCode version, and what you observed in the file read, shell call, and edit.
+Run the restore and worktree removal only after checking the diff. Look for the marker after the original last paragraph and check that no other file changed. If Build describes the edit and the diff is empty, ask it to call the edit tool on `README.md`, then check the diff again. Record the model ID, OpenCode version, and what you observed in the file read, shell call, and edit.
 
 ## Read the permission prompts
 

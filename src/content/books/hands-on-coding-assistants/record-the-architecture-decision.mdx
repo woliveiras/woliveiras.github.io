@@ -49,17 +49,17 @@ Read the comparison alongside the RFC. The in-memory arrays are easy to run and 
 
 MADR also provides optional YAML metadata. Use `status` to record where the decision stands, `date` for when it was last updated, and `decision-makers` when it helps to name who made the choice. A `proposed` record is still up for review. An `accepted` record captures agreement on the choice. The confirmation checks may still be ahead of you.
 
-Review the options and choose one before asking for the draft. If you choose SQLite under the exercise assumptions, use this prompt in the same Plan session. Adapt the choice and reasoning if your assumptions differ.
+Review the options and choose one before asking for the draft. If you choose SQLite under the exercise assumptions, use this prompt in the same Plan session and paste the example that follows it. Adapt the choice and reasoning if your assumptions differ.
 
 ```text
-Draft a MADR 4.0.0 record for the durable follow-up. The choice for this
-exercise is SQLite on persistent local storage for one host and one
-writable Task API instance. Carry over the constraints and alternatives
-we reviewed. Explain why the choice fits, what migration and backup work
-it adds, and when to reconsider it. Under Confirmation, describe future
-restart and restore checks with explicit expected results. Link the
-reviewed RFC and the in-memory labels spec. Keep the status proposed
-and return the draft in chat for review.
+Draft the durable follow-up using the Markdown Architectural Decision
+Records 4.0.0 example I pasted. Keep its headings and YAML frontmatter.
+The choice for this exercise is SQLite on persistent local storage for
+one host and one writable Task API instance. Explain why the choice
+fits, what migration and backup work it adds, and when to reconsider
+it. Under Confirmation, describe future restart and restore checks
+with expected results. Link the reviewed RFC and the in-memory labels
+spec. Keep status proposed and return the draft in chat.
 ```
 
 Compare the draft with this example. The outcome says why SQLite fits, and each confirmation check would catch a different way of losing the data.
@@ -131,13 +131,14 @@ Once you've chosen an option and can explain its consequences, you can mark the 
 
 ```text
 Save the reviewed MADR draft as docs/decisions/0001-task-label-storage.md.
-Use status <proposed or accepted> and date <YYYY-MM-DD>. Preserve the
+Start the file with a YAML block delimited by --- lines. Set status
+to <proposed or accepted> and date to <YYYY-MM-DD>. Preserve the
 approved choice and the future confirmation checks. Under More
 Information, link ../rfcs/0001-task-labels.md and ../../specs/task-labels.md.
 Write only the ADR and leave the changes for me to review and commit.
 ```
 
-Run `git status --short --untracked-files=all`. You should see only the new ADR. Open both links from the saved file. Then stage the document and read the full diff before you commit it.
+Run `git status --short --untracked-files=all`. You should see only the new ADR. Open it and check that the status and date are between the two `---` lines at the top. Open both links from the saved file. Then stage the document and read the full diff before you commit it.
 
 ```sh
 git add -- docs/decisions/0001-task-label-storage.md

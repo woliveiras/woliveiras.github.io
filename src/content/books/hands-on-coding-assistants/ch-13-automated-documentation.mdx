@@ -45,8 +45,9 @@ For each finding, give the file and relevant code. Say which parts
 are confirmed by the HTTP responses or tests. Return the findings
 in chat and leave the files unchanged.
 
-GET /tasks returned <status and JSON body>.
-POST /tasks returned <status and JSON body>.
+I started the service with PORT=3100 npm start. These are the
+requests and responses I verified in a second terminal.
+<paste both curl commands and their status lines and JSON bodies>
 ```
 
 Open the files Plan cites. Follow `npm start` from `package.json` to `src/server.ts`, which calls `createApp()` and listens on loopback. In `src/app.ts`, find the arrays inside `createApp()` and follow the read and write paths to the same `tasks` array. Compare the example responses with the actual output you pasted. If the agent names a database, ask it to find the connection in this revision and revise the finding. If it names a labels route, ask it to point to the matching handler and use the routes this checkout serves.
@@ -63,11 +64,12 @@ for README.md with the two curl commands and their expected status
 and body on a fresh server. Mention when the starter data resets.
 
 Draft docs/architecture.md with the commit hash, a Mermaid C4Context
-diagram, and a Mermaid C4Container diagram. Label the direction and
-protocol of each relationship, and show where state lives. Add a
-short description below each diagram and link to the files that
-support the runtime claims. Return both drafts in chat and leave
-the files unchanged.
+diagram, and a Mermaid C4Container diagram. Show the reader and Task
+API in context. In the container view, show the single Node.js
+process and describe the arrays inside it. Label each relationship
+with its direction and protocol. Link to the source with paths
+relative to docs/architecture.md, such as ../src/app.ts. Return both
+drafts in chat and leave the files unchanged.
 ```
 
 Compare the context view with this example. It shows a reader sending HTTP requests to the Task API. The system name stays the same when you zoom in.
@@ -114,20 +116,32 @@ the routing and task arrays live at runtime. Revise the container
 diagram and its description to reflect the process you find.
 ```
 
+You can give the agent the two Mermaid blocks above to use as the approved diagrams. Check the links from the location of the saved document. For example, `src/app.ts` in `docs/architecture.md` would open `docs/src/app.ts`. The link needs to start with `../src/`.
+
 Use the same review on the README draft. The order of the two requests matters because the second one changes the list. An example that runs the requests on a server with earlier tasks will get a different ID. Make the fresh-server condition visible beside the commands.
 
 ## Save documentation for this revision
 
-When the examples and diagrams match the checkout, switch to **Build** with `/agents` in the same session. It can use the drafts you reviewed.
+When the examples and diagrams match the checkout, switch to **Build** with `/agents` in the same session. Apply one draft at a time so you can check what was saved after each tool call.
 
 ```text
-Apply the approved drafts to README.md and docs/architecture.md.
-Keep the existing README setup instructions and show the port
-override beside the example requests. Write the diagrams
-as fenced mermaid blocks in plain Markdown. Edit only those two
-files. Run npm test and npm run test:registration as separate
-commands and report the actual results.
+Use the edit tool to add the approved HTTP examples to README.md.
+Keep the existing setup instructions. Start the example with
+PORT=3100 npm start and use port 3100 in both curl commands.
+Show the diff. Change only README.md.
 ```
+
+Check the README diff, then ask Build to save the architecture draft.
+
+```text
+Use the write tool to save the approved architecture draft in
+docs/architecture.md. Keep both diagrams as fenced mermaid blocks
+in plain Markdown. Include the description and relative source
+links below each diagram. Write only that file. Run npm test and
+npm run test:registration separately. Report the actual results.
+```
+
+If a turn ends without an edit or write, check the file before continuing. Retry with just the approved section and its destination path, or paste the reviewed draft into that file yourself.
 
 Open the completed test calls in the session. Expect the three starter tests and the focused regression test to pass under `npm test`. The separate registration contract should pass its two tests. Run `git status --short` in your own terminal. Expect an edit to `README.md` and a new `docs/architecture.md`. Once the paths match, stage both files so the diff includes the new architecture document.
 

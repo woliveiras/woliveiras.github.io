@@ -135,7 +135,7 @@ Open the saved prompt and compare it with what you actually sent. In the note, i
 
 ### Rehearse redaction before sharing
 
-Keep a session export in a temporary directory while deciding what evidence to retain. OpenCode can redact sensitive transcript and file data with `--sanitize`. If you use an export, inspect it for sensitive values and check that it still contains the evidence you need. The shareable record can use observed excerpts and Git revision IDs.
+Keep a session export in a temporary directory while deciding what evidence to retain. OpenCode can replace prompt and response text, local paths, and tool data with markers when you export with `--sanitize`. If an excerpt you need was redacted, verify it in the original session and copy only the reviewed detail into your notes. The shareable record can use those excerpts and Git revision IDs.
 
 ```sh
 prompt_review_dir=$(mktemp -d)

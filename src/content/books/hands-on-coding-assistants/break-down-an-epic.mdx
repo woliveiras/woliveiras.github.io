@@ -75,17 +75,37 @@ Complexity describes how hard the work is to reason about. Hours estimate effort
 
 There are 24–32 engineering hours in this example. With two people who each have four focused hours a day, assign LABEL-2 and LABEL-3 to separate people after LABEL-1. The longest required chain is LABEL-1, the longer of the two middle items, then LABEL-4. The range is four to five workdays. With one person at the same daily capacity, the work takes six to eight days. If an external compatibility decision adds up to two days of waiting on that chain, the two-person forecast becomes four to seven days. These are example ranges under stated assumptions. The GAO calls the longest chain that governs the finish date the critical path.
 
-Ask Plan to recompute the schedule for one person and one external wait. Check the sums yourself and decide which assumptions you'll keep. Then switch to **Build** in the same session.
+Paste your approved ticket estimates and dependencies into the same Plan session. If you use the example above, use this prompt. Replace its rows if you revised the tickets.
+
+```text
+Calculate the forecast using only these approved estimates and dependencies:
+LABEL-1: 4 hours, no dependency.
+LABEL-2: 8–12 hours, depends on LABEL-1.
+LABEL-3: 8–12 hours, depends on LABEL-1.
+LABEL-4: 4 hours, depends on LABEL-2 and LABEL-3.
+
+Show the sum of effort and the duration of the longest dependency chain.
+Give the elapsed workdays with one person and with two people, each doing
+four focused hours per day. Recalculate the two-person range if an
+external compatibility decision adds zero to two workdays on the
+critical path. Use these same estimates in every calculation.
+```
+
+Check the arithmetic yourself. Add all four tickets for the effort range. For the two-person schedule, compute `(4 + max(8, 8) + 4) / 4` and `(4 + max(12, 12) + 4) / 4`. Both calculations include time to agree on the contract and time to run the integration check. If the agent starts the clock after LABEL-1, ask for the full chain again. Once you've checked the numbers, switch to **Build** in the same session.
 
 ```text
 Save the reviewed backlog and forecast as notes/task-labels-epic.md.
 Give each ticket its own description, acceptance checks, dependencies,
-complexity, and estimate. Include the capacity assumptions and explain
-how the compatibility decision affects the forecast. Keep the durable
-storage follow-up visible. Change only the epic note.
+complexity, and estimate. Use the ticket IDs, dependencies, and hours
+I approved. Use these checked results for the example: 24–32 engineering
+hours, 6–8 workdays with one person, 4–5 with two, or 4–7 with two
+when the external decision adds up to two workdays. Record the inputs
+behind those results. Keep compatibility and durable storage visible.
+Write acceptance checks as work we will verify during delivery.
+Change only the epic note.
 ```
 
-Read the saved note and check that each dependency points to an existing ticket. Commit the map and backlog together.
+Substitute your own checked results if you changed the rows. Read the saved note and check that each dependency points to an existing ticket. Add up the saved rows again. If Build still changes the numbers after you give it the checked calculation, correct the note yourself and verify the arithmetic against the saved tickets before you commit.
 
 ```sh
 git add notes/repo-map.md notes/task-labels-epic.md

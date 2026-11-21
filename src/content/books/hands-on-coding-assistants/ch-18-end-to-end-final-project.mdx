@@ -51,15 +51,35 @@ Creation and list responses keep `id` and `title` and add `labels`. Someone whos
 
 ## Implement and check the behavior
 
-Switch to **Build** with the approved plan. Ask it to keep the existing acceptance criteria visible while it works.
+Switch to **Build** with the approved plan. Start with the task shape and the list. That gives you a clean checkpoint before you add the route that changes state.
 
 ```text
-Implement the reviewed in-memory labels plan in src/app.ts. Update
-the existing task response assertions for the labels field and keep
-their title and invalid-input checks. Leave contracts/labels.test.ts
-unchanged. Run npm test and npm run test:labels separately. Show me
-the changes and the observed result of each command.
+In src/app.ts, add labels: string[] to Task. Give the seeded task and
+each new task an empty labels array. In GET /tasks, use
+url.searchParams.get("label") on the parsed URL. Return all tasks
+when it is absent, an empty list when it is blank, and exact matches
+after trimming and lowercasing otherwise. Update the existing task
+response assertions in test/app.test.ts for the new field. Keep all
+title and invalid-input checks. Change only those two files and run npm test.
 ```
+
+Check the diff and the base test output. The task type should require a labels array, and the seed and creation path should both set it. The labels contract still needs the update route. Ask Build to implement it next.
+
+```text
+Implement PATCH /tasks/:id/labels in src/app.ts. Extract the task ID
+from the route so this works for a newly created task as well as the
+seeded task. Read specs/task-labels.md and validate the whole array
+before any lookup or mutation. Reject the entire request if any
+element has an invalid type or length. Normalize valid labels,
+deduplicate in first-seen order, and enforce the limit on distinct
+labels. Use the error precedence and response shapes in the spec.
+Keep contracts/labels.test.ts unchanged. Run npm test and
+npm run test:labels as separate commands.
+```
+
+Check `git status --short --untracked-files=all` as well as the diff. If an agent wrote a separate scratch file for the handler, check whether the app uses it and remove the unused draft before you stage. Inspect the route and verify it can reach a task created during the test.
+
+If the patch converts non-strings with `String()` or drops invalid labels with `filter()`, ask Build to replace only the validation block. Have it walk the array once and return `invalid_labels` on the first invalid element. Add each valid normalized value to a set and check the number of distinct values before looking up the task. If the agent keeps editing the wrong block, open a fresh session with the spec, the current block, and the failing input. You can compare that block with `git diff lab-harness lab-labels -- src/app.ts` before asking Build to apply the focused correction.
 
 After the supplied contract passes directly, ask Build to add this import so the ordinary suite runs it too.
 
@@ -67,7 +87,9 @@ After the supplied contract passes directly, ask Build to add this import so the
 import "../contracts/labels.test.ts";
 ```
 
-Ask Build to add focused coverage for ten distinct labels and for a raw array that collapses to one normalized label. Review each assertion against the input and expected result. Then check the same coverage policy CI will compare with the base.
+Ask Build to use `startApp` and `jsonRequest` from `test/client.ts`, following the imports and setup in `test/app.test.ts`. Start with one case. Create a task with `POST /tasks`, take the `id` from the JSON response, and set an initial label. Then send `["urgent", null]` to that task, assert `400` with `{ error: "invalid_labels" }`, and read `GET /tasks` to check that the stored labels are still the same. The error response alone cannot show whether the task changed.
+
+Once that test passes, ask Build to add cases for ten distinct labels, eleven distinct labels, and eleven inputs that normalize to one label. Review each assertion against the request it actually makes. Run `npm test` and look for the two supplied contract cases by name, as well as your focused cases. Then check the same coverage policy CI will compare with the base.
 
 ```sh
 npm test
@@ -78,7 +100,7 @@ git diff --exit-code capstone-base -- contracts/labels.test.ts
 git diff capstone-base -- src/ test/
 ```
 
-If coverage fails, open the report and ask Build which observable behavior would reach the uncovered branch. Protect behavior that matters to the contract. Have the person who owns the gate review any policy or test selection change independently. If you need a worked implementation to compare against, inspect `git diff lab-harness lab-labels -- src/ test/` after reviewing your own diff.
+If coverage fails, open the report and ask Build which observable behavior would reach the uncovered branch. Protect behavior that matters to the contract. Have the person who owns the gate review any policy or test selection change independently.
 
 Start a fresh local service with `PORT=3100 npm start`. From a second terminal, run the update, read the task back, and check whether rejection changes stored state.
 
@@ -134,7 +156,7 @@ finding give the criterion, the changed line, and a concrete request
 with its expected and inferred results.
 ```
 
-Check the reads and reproduce any finding yourself. If the report has no findings, keep that result and select a contract case to verify independently. After a correction, rerun the checks, commit the change, and regenerate the patch so the reviewer and CI can refer to the revised head.
+Check the reads and reproduce any finding yourself. If the reviewer questions how the implementation handles a blank filter, send `GET /tasks?label=%20` while the store contains a labeled task. Expect `200` and `[]`. Record what the request showed and how it affected the finding. If the report has no findings, keep that result and select a contract case to verify independently. After a correction, rerun the checks, commit the change, and regenerate the patch so the reviewer and CI can refer to the revised head.
 
 ### Check the proposed revision in CI
 
@@ -165,13 +187,19 @@ curl -sSi 'http://127.0.0.1:3400/tasks?label=urgent'
 curl -fsS http://127.0.0.1:3400/metrics | grep '^lab_task_gateway_requests_total'
 ```
 
-Record the request times and give them to **Plan**.
+Record the request times and give them to **Plan**. The alert exercise searched for `504` responses. For these successful requests, use this LogQL selector in the same Loki data source.
+
+```text title="LogQL"
+{service_name="task-gateway",exercise="live"} | json | status=200
+```
 
 ```text
-Use the times I recorded for the successful PATCH and filtered GET.
-Give me a Loki query for the live gateway and tell me how to find
-each trace by ID. Name the fields to check for status, route template,
-and any raw task ID or label filter. Wait for my results.
+Read observability/simulator.mjs and use the Loki query and UTC
+window I pasted for the PATCH and filtered GET. Tell me how to
+find both records in Grafana, copy each trace_id, and open each
+trace in Tempo. Cite the fields from the simulator that I should
+check for status, route template, and unwanted request data.
+Wait for my results.
 ```
 
 In Grafana, open the matching logs and traces. Expect status `200` and the route templates `/tasks/:id/labels` and `/tasks`. With no other traffic, the `2xx` counter should increase by two. Read the raw log and span attributes to verify that they use the templates and omit the raw task ID and filter value. Save the trace IDs and query results. Remove the lab stack after verification.
@@ -187,20 +215,28 @@ docker compose -f observability/compose.yml -f observability/compose.alerts.yml 
 Keep the local reviewer setup and review record on a separate evidence branch from the tested feature. Give **Build** the verified results and ask for a shareable note. Keep the decision with the PR and link it to the exact revision you checked.
 
 ```text
-Use the reviewed evidence I pasted to write notes/capstone-review.md.
+Use the write tool to create notes/capstone-review.md from the
+reviewed evidence I pasted.
 Record the implementation scope, spec and design references, tests,
 reviewer findings and any correction, CI revision and status, and
 runtime evidence. Mark remaining checks as pending. Propose a merge
 decision with the evidence for it and change only the note.
 ```
 
-Read the note against the evidence. If you measured the work, include the time you spent verifying and correcting the result. A teammate should be able to recreate the diff, look up the CI run, and repeat the request you checked. Commit the evidence separately if you want to keep it with the lab, and share the reviewed findings in the PR.
+Check that `notes/capstone-review.md` exists, then read it against the evidence. If Build only prints a draft, ask it to save the checked draft to that path. Compare the saved LogQL with the query you ran so that someone can paste it into Explore. If you measured the work, include the time you spent verifying and correcting the result. A teammate should be able to recreate the diff, look up the CI run, and repeat the request you checked. Commit the evidence separately if you want to keep it with the lab, and share the reviewed findings in the PR.
 
 ```sh
 git switch -c capstone-evidence
+git diff capstone-base HEAD | cmp - notes/review.patch
 git add -- .opencode/agents/reviewer.md notes/review.patch notes/capstone-review.md
-git diff --cached --check
+git diff --cached --check -- .opencode/agents/reviewer.md notes/capstone-review.md
+git show :notes/review.patch | cmp - notes/review.patch
 git diff --cached --stat
+```
+
+As in the [reviewer exercise](/books/hands-on-coding-assistants/chapters/custom-agents-and-sub-agents/#save-the-review-handoff), both `cmp` calls should succeed without output. Commit after the checks pass.
+
+```sh
 git commit -m "Record the task labels merge decision"
 ```
 

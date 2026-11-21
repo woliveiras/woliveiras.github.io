@@ -34,7 +34,9 @@ agent: plan
 ---
 
 Read the spec at $1 and the acceptance test at $2.
+Apply the repository's loaded review guide to your report.
 Return a row for each criterion with a check and expected result.
+Check each numeric boundary against the actual test input.
 Flag any criterion without a check. Leave files unchanged.
 ```
 
@@ -44,7 +46,9 @@ Reopen OpenCode from the fork root, start a fresh session, and run the command.
 /check-spec specs/registration-validation.md contracts/registration.test.ts
 ```
 
-Check the tool reads for the spec and `contracts/registration.test.ts`. Look for **State after rejection** and confirm that it names the successful response with ID `"1"` after the invalid requests. The contract includes an overlong name of 101 characters. If the report says it tests exactly 100, open the input list and ask Plan to mark that case as unchecked. If the label is missing, check the path in `instructions`, then rerun in a fresh session to verify that the guide is present.
+If the command is missing when you open a cold project, wait for OpenCode to discover it and check the command list again in the same workspace. Confirm the file is under `.opencode/commands/` and that you opened the fork root.
+
+Check the tool reads for the spec and `contracts/registration.test.ts`. Look for **State after rejection** and confirm that it names the successful response with ID `"1"` after the invalid requests. The contract includes an overlong name of 101 characters. If the report says it tests exactly 100, open the input list and ask Plan to mark that case as unchecked. If the label is missing, check the path in `instructions` and ask Plan which reporting label it received from the loaded guide. Rerun in a fresh session and check the result before treating the guide as verified.
 
 ## Keep permissions in the config
 

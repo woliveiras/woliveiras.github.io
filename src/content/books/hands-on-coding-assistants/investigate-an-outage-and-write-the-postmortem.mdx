@@ -96,7 +96,13 @@ Find the release events and the recorded page in the same stream. Run each query
 {service_name="task-gateway",exercise="incident"} | json | event="page"
 ```
 
-Paste the deploy to `v2`, the page, and the rollback to `v1` into the session with their actual UTC timestamps and the queries that returned them. The seed records the page for this exercise. You'll set up an alert that sends a notification in a later chapter. Keep the page time separate from the first affected minute and the first sampled timeout. A sample can show a particular request failed. The metric bucket tells you when a group of failures was observed.
+Copy the UTC timestamp displayed beside each Loki entry. Paste the deploy to `v2`, the page, and the rollback to `v1` into the session with those timestamps and the queries that returned them. If your tool returns raw Loki JSON, its entry timestamp is in Unix nanoseconds. You can convert it in the terminal by replacing `NANOSECONDS` below with the integer from the result.
+
+```sh
+node -e 'console.log(new Date(Number(BigInt(process.argv[1]) / 1000000n)).toISOString())' NANOSECONDS
+```
+
+The seed records the page for this exercise. You'll set up an alert that sends a notification in a later chapter. Keep the page time separate from the first affected minute and the first sampled timeout. A sample can show a particular request failed. The metric bucket tells you when a group of failures was observed.
 
 ## Calculate impact from the request counts
 
@@ -131,18 +137,20 @@ Expect `60` and `300`. Paste both results, the queries, and the first clean buck
 
 ### Let OpenCode run a read-only query
 
-You can also give Plan a query to execute. For this lab, Grafana exposes the same Prometheus data through its data source proxy. Replace the timestamp with `lastAffectedUnixSeconds` from your replay and send this prompt in the same session.
+You can also give Plan a query to execute. For this lab, Grafana exposes the same Prometheus data through its data source proxy. Replace both placeholders with `lastAffectedUnixSeconds` from your replay and send this prompt in the same session.
 
 ```text
 Use the shell tool to run this one GET request against the loopback
-Grafana Viewer. Ask me before running it. Read the value in the JSON
-response and report the exact query, timestamp, and returned count.
+Grafana Viewer. Ask me before running it. Report the exact query,
+the numeric evaluation time from data.result[0].value[0], and the
+count from data.result[0].value[1]. Keep the Unix time as returned.
 
 curl -fsS -G 'http://127.0.0.1:3300/api/datasources/proxy/uid/prometheus/api/v1/query' \
-  --data-urlencode 'query=sum(sum_over_time(lab_incident_requests{outcome="timeout"}[3m] @ LAST_AFFECTED_UNIX_SECONDS))'
+  --data-urlencode 'query=sum(sum_over_time(lab_incident_requests{outcome="timeout"}[3m] @ LAST_AFFECTED_UNIX_SECONDS))' \
+  --data-urlencode 'time=LAST_AFFECTED_UNIX_SECONDS'
 ```
 
-Check the method, address, and query in the permission prompt and inspect the completed shell result. The second element of `data.result[0].value` should be `"60"`. Compare it with the result in Explore. If the call is denied or returns an error, use the UI result and record which path supplied your evidence.
+Check the method, address, and query in the permission prompt and inspect the completed shell result. The `@` modifier anchors the selector to the affected window. The `time` parameter sets the evaluation timestamp returned in the first element of `data.result[0].value`. It should equal the timestamp from the seed. The second element should be `"60"`. Compare the count with the result in Explore. If the call is denied or returns an error, use the UI result and record which path supplied your evidence.
 
 ## Turn the evidence into a postmortem
 
@@ -150,11 +158,12 @@ Use the same Plan session to assemble the timeline and evidence from the results
 
 ```text
 Use the Grafana results I pasted to build a UTC timeline and an Evidence
-section. Preserve the exact queries, time ranges, and trace IDs. Identify
-the first affected bucket, first sampled timeout, page, rollback, and first
-clean bucket. Give the observed impact and list the remaining gaps. For
-any proposed cause, tell me which observation supports it and what we
-would still need to verify. Return your draft evidence in chat.
+section. Copy the UTC times I verified for each event and keep the exact
+queries, time ranges, and trace IDs. Identify the first affected bucket,
+first sampled timeout, page, rollback, and first clean bucket. Use the
+verified impact of 60 timeouts in 300 observed requests, or 20%, during
+the three affected minutes. Mark gaps and any remaining checks.
+Return your draft evidence in chat.
 ```
 
 Check that the output uses the timestamps and trace IDs from your run. Give each observation a name so the postmortem and its reviewer can point to it. Rows can look like these.
@@ -178,7 +187,7 @@ deadline using the sampled trace and keep unknowns visible.
 Give each action an owner and a way to verify completion.
 ```
 
-Read the agent's draft against the evidence. For example, the impact section can say that 20% of **observed requests** timed out in the affected buckets. Under contributing factors, you can say the upstream work in the sampled trace outlasted the gateway deadline. The reason the upstream work took longer belongs under open questions until you can verify it.
+Read the agent's draft against the evidence. For example, the impact section can say that 20% of **observed requests** timed out in the affected buckets. Under contributing factors, you can say the upstream work in the sampled trace outlasted the gateway deadline. If the draft calls the deadline too short, ask what service target or expected latency would support that conclusion. Keep the appropriate deadline and the reason the upstream work took longer open until you can verify them.
 
 For a follow-up, assign the service owner an alert on elevated gateway errors with a runbook. Require a test that recreates the failure, delivers the notification to a test destination, and confirms it resolves after recovery. That gives the next chapter a check to build.
 
@@ -189,7 +198,9 @@ Draft a Bug report section for the postmortem. Give it a title that
 names the observed failure, the expected and observed behavior,
 steps to find the same evidence in the replay, and a verification
 check for a future fix. Reference the Evidence rows. Label the replay
-as simulated and leave the cause of the upstream latency open.
+as simulated. The replay seeds the same historical evidence every
+time. Describe a controlled request against the future fixed service
+for verification. Leave the cause of the upstream latency open.
 ```
 
 A title such as “Task creation returns 504 while the Task API records 201” gives the next engineer a symptom to investigate. Under verification, ask them to check what the caller sees and what the API records under a controlled exercise of the timeout path. Check that the report leaves room to determine whether retries create duplicate tasks.
@@ -217,7 +228,7 @@ the replay evidence and tell what a future fix has to demonstrate.
 Return findings in chat and leave the file unchanged.
 ```
 
-Verify a finding by reopening its source in Grafana. Check the time zone and incident window, redo the impact calculation, and confirm what establishes recovery. If you use this workflow with real incident data, share only the authorized excerpts with the agent and review the saved document for sensitive values.
+Verify the timeline row by row against Grafana. The page comes after the first affected minute starts, and the rollback comes before the first clean minute. If the draft puts these events in a different order, paste the UTC timestamps from the matching entries and correct the timeline. Redo the impact calculation and check that the recovery row records both the zero timeouts and the 100 requests. If you use this workflow with real incident data, share only the authorized excerpts with the agent and review the saved document for sensitive values.
 
 If the review finds a correction, paste the finding and the evidence you checked into **Build**.
 
@@ -252,4 +263,5 @@ Keep the postmortem on `incident-postmortem`. In [Building Your Harness](/books/
 - Grafana Labs. [Configure trace to logs correlation](https://grafana.com/docs/grafana/latest/datasources/tempo/configure-tempo-data-source/configure-trace-to-logs/) and [Roles and permissions](https://grafana.com/docs/grafana/latest/administration/roles-and-permissions/#organization-roles). Grafana documentation.
 - Grafana Labs. [Prometheus query editor](https://grafana.com/docs/grafana/latest/datasources/prometheus/query-editor/). Grafana documentation.
 - Grafana Labs. [Data source HTTP API](https://grafana.com/docs/grafana/latest/developer-resources/api-reference/http-api/api-legacy/data_source/). Grafana HTTP API reference.
+- Prometheus contributors. [Instant queries](https://prometheus.io/docs/prometheus/latest/querying/api/#instant-queries). Prometheus HTTP API reference.
 - OpenCode maintainers. [TUI](https://opencode.ai/docs/cli/tui/). OpenCode 2 documentation.

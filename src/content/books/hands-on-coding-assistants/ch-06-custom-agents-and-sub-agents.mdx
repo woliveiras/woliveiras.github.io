@@ -56,7 +56,8 @@ permissions:
 
 Read the named spec, the relevant contract, and notes/review.patch.
 Review the patch against the acceptance criteria. For each finding,
-cite the changed file and line and the criterion it violates.
+open the changed source file and cite its line and the criterion it
+violates. Label any line number you cite from the patch itself.
 Give one input, the expected result, and the result you infer from
 the changed code. Name the check a human can run to verify it.
 ```
@@ -133,10 +134,10 @@ Each session uses the context window of the model it runs with. Two sessions usi
 If you need a more precise request from the reviewer, give Build the ID returned by the tool call. Replace `CHILD_SESSION_ID` with that value.
 
 ```text
-Follow up with reviewer in the same child session, CHILD_SESSION_ID.
-Ask it for the exact request body that demonstrates the length
-boundary and the expected HTTP status. Return the child's answer
-and keep the runtime result pending.
+Call the subagent tool with agent set to reviewer and sessionID
+set to CHILD_SESSION_ID. Ask for the exact request body for the
+length boundary and the expected HTTP status. Return the child's
+answer and keep the runtime result pending.
 ```
 
 Check that the new call uses the same ID and brings back a second report. The child can use the earlier evidence in that conversation.
@@ -148,21 +149,29 @@ Compare the direct and delegated findings against the same criterion. They can u
 Give **Build** the two SHAs, your tool observations, and the finding you checked.
 
 ```text
-Write notes/reviewer-findings.md using the evidence I gave you.
+Use the write tool to create notes/reviewer-findings.md using the
+evidence I gave you. Save the note to disk.
 Record the base and head SHAs, the spec criterion and changed line,
 the proposed request, and the expected and inferred statuses.
 Record the model and tool observations for the direct and delegated
 runs and what I still need to verify against the running service.
-Write only the note.
+Change only notes/reviewer-findings.md.
 ```
 
-Read the note and confirm it labels the HTTP result as pending. Commit the record and reviewer setup on `reviewer-exercise`.
+Open the saved note and confirm it labels the HTTP result as pending. Check the source line in `src/app.ts` and the relevant criterion in the spec. If the agent returned the note in chat, ask it to save that text with the write tool, then check the path again. Commit the record and reviewer setup on `reviewer-exercise`. Check the Markdown files for whitespace and compare the patch byte for byte. A Git diff adds a leading space to each context line, so a tab-indented line inside the saved patch can trigger a whitespace check on the patch file itself.
 
 ```sh
 git status --short --untracked-files=all
+git diff lab-registration lab-review -- src/app.ts | cmp - notes/review.patch
 git add -- .opencode/agents/reviewer.md notes/review.patch notes/reviewer-findings.md
-git diff --cached --check
+git diff --cached --check -- .opencode/agents/reviewer.md notes/reviewer-findings.md
+git show :notes/review.patch | cmp - notes/review.patch
 git diff --cached -- .opencode/agents/reviewer.md notes/reviewer-findings.md
+```
+
+Both comparisons should exit with `0` and print nothing. Once the checks pass, commit the evidence.
+
+```sh
 git commit -m "Record a scoped registration review"
 ```
 

@@ -54,7 +54,21 @@ opencode models
 
 `ollama list` shows the downloaded tags. `ollama ps` shows the loaded model, allocation, and processor placement. `opencode models` shows the ID you can select. If the model fits at a short context but becomes slow at `65536`, check memory pressure and processor placement at that allocation. Use a smaller tool-capable tag or use the hosted path if the exercise can't fit comfortably.
 
-On the default listener, OpenCode 2 discovers eligible models automatically. If you configured a different listener, merge provider settings into your project or personal OpenCode config:
+On the default listener, OpenCode 2 discovers eligible models automatically. To keep an existing Ollama instance running while you do the lab, start a second server on a free loopback port.
+
+```sh
+OLLAMA_HOST=127.0.0.1:11439 OLLAMA_CONTEXT_LENGTH=65536 ollama serve
+```
+
+Set the same address for the Ollama CLI in your exercise terminal.
+
+```sh
+export OLLAMA_HOST=127.0.0.1:11439
+ollama pull qwen3.5:9b
+ollama list
+```
+
+Tell OpenCode which listener to use by merging this into your personal config, typically `~/.config/opencode/opencode.jsonc`. Your lab branches and temporary worktrees will then use the same listener without adding a configuration change to the exercise diff.
 
 ```jsonc
 {
@@ -66,7 +80,28 @@ On the default listener, OpenCode 2 discovers eligible models automatically. If 
 }
 ```
 
-Use the port on which your instance listens. Run `opencode models` to confirm the exact ID before using it. If discovery is still in progress, wait briefly and check again. On the local path, select a downloaded model tag. Ollama also offers cloud tags, which use a remote provider.
+Use the port on which your instance listens. Run `opencode models` to confirm the exact ID before using it. If discovery is still in progress, wait briefly and check again. Check that `ollama list` and OpenCode agree on the tag. Select a downloaded model, since Ollama also offers cloud tags that use a remote provider.
+
+### Retry a slow tool check
+
+Qwen 3.5 can spend time reasoning before the first tool call. If the short setup check stalls, try turning off reasoning for that model. Merge the following entry into the Ollama provider in your personal OpenCode config. Keep the `settings` entry if you configured a separate listener.
+
+```jsonc
+{
+  "providers": {
+    "ollama": {
+      "models": {
+        "qwen3.5:9b": {
+          "body": { "reasoning_effort": "none" },
+          "limit": { "context": 65536, "output": 8192 }
+        }
+      }
+    }
+  }
+}
+```
+
+This example gives OpenCode the same context limit as the Ollama allocation set above and reserves up to 8,192 tokens for a response. Reopen OpenCode and rerun the [setup check](/books/hands-on-coding-assistants/chapters/setup-and-practical-integration/#check-file-and-shell-tools) in a fresh Plan session. Look for the completed file read and shell call. If the answer is missing a tool result, name the tool and the exact action in a follow-up and check what actually ran.
 
 ## Free hosted options
 
@@ -84,7 +119,9 @@ OpenRouter is another option. Use `/connect`, select OpenRouter, and enter your 
 ## References
 
 - OpenCode maintainers. [Providers](https://opencode.ai/docs/providers/), [Models](https://opencode.ai/docs/models/), and [Console models](https://opencode.ai/docs/console/models/#free-models). Official OpenCode 2 documentation and maintained model catalog. [Ollama model discovery](https://opencode.ai/docs/providers/#ollama).
+- OpenCode maintainers. [Configuration locations](https://opencode.ai/docs/config/#locations). OpenCode 2 documentation.
 - Ollama maintainers. [OpenCode](https://docs.ollama.com/integrations/opencode) and [Context length](https://docs.ollama.com/context-length). Official integration and runtime documentation.
+- Ollama maintainers. [OpenAI compatibility](https://docs.ollama.com/api/openai-compatibility). Request fields, including `reasoning_effort`.
 - OpenRouter. [Free AI Models](https://openrouter.ai/collections/free-models/) and [Limits](https://openrouter.ai/docs/api_reference/limits). Provider catalog and API documentation. [Nemotron 3.5 Lightning free](https://openrouter.ai/nvidia/nemotron-3.5-lightning:free).
 - Ollama maintainers. [Local FAQ](https://docs.ollama.com/faq) and [qwen3:8b](https://ollama.com/library/qwen3:8b). Model catalog entry and [GPU placement guide](https://docs.ollama.com/faq#how-can-i-tell-if-my-model-was-loaded-onto-the-gpu).
 - Apple. [View About settings on Mac](https://support.apple.com/guide/mac-help/mchlea7173f3/mac), [View memory usage in Activity Monitor](https://support.apple.com/en-au/guide/activity-monitor/-actmntr1004/mac), and [Get started with MLX for Apple silicon](https://developer.apple.com/videos/play/wwdc2025/315/). Support guides and WWDC25 session. [Unified memory segment](https://developer.apple.com/videos/play/wwdc2025/315/?time=261).

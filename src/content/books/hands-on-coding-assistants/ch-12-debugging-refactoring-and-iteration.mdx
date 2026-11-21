@@ -53,23 +53,26 @@ Switch to **Build** in the same session after you've checked the cause. Ask for 
 
 ```text
 Add test/registration-regression.test.ts using startApp(t) and
-jsonRequest from test/client.ts. Send the two inputs we reproduced,
-in order, to one fresh server. Assert 400 and invalid_registration
-for the numeric name, then 201 and ID "1" for the valid request.
-Leave src/app.ts unchanged. Run the focused test and show where it fails.
+jsonRequest from test/client.ts. Send {"name":42,"email":"ada@example.test"}
+to POST /registrations, then send {"name":"Ada","email":"ada@example.test"}
+to the same fresh server. Assert 400 and invalid_registration for
+the first response, then 201 and ID "1" for the second.
+Leave src/app.ts unchanged. Run node --test test/registration-regression.test.ts
+and show where it fails.
 ```
 
 ```sh
 node --test test/registration-regression.test.ts
 ```
 
-Read the failure. A test that only sees `400` would pass this broken implementation. Once you can reproduce the `"2"` result with the new test, give Build the failing assertion and ask for the smallest correction.
+Read the failure. The focused command runs one test, and the failing assertion should compare ID `"2"` with `"1"`. A test that only sees `400` would pass this broken implementation. Once you can reproduce the `"2"` result, give Build the failing assertion and ask for the smallest correction.
 
 ```text
 The focused test gets ID "2" after a rejected request. In src/app.ts,
 move ID allocation after validation succeeds. Preserve the accepted
-response and the test assertions. Run the focused test, npm test,
-and npm run test:registration and report each result.
+response and the test assertions. Run node --test test/registration-regression.test.ts,
+npm test, and npm run test:registration as separate commands.
+Report the observed result for each one.
 ```
 
 Inspect the diff and rerun the test and both suites.
@@ -91,8 +94,10 @@ Give Build the original and corrected results and ask it to save the handoff.
 ```text
 Write notes/registration-fix.md using the responses and test results
 I checked. Record the symptom, shortest reproduction, cause, focused
-change, and both results of the regression test. Name the base tag
-lab-debugging and the commands a reviewer can rerun. Write only the note.
+change, and both results of node --test test/registration-regression.test.ts.
+Record npm test and npm run test:registration separately. Give the
+reviewer git diff lab-debugging HEAD -- src/app.ts for the patch.
+Write only the note.
 ```
 
 Check the note against your observations. Commit it with the fix and test so someone can compare the result against the fixture.

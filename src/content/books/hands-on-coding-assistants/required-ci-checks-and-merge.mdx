@@ -33,10 +33,10 @@ Choose **Plan** with `/agents`. Keep a second terminal in the fork for Git comma
 
 ```text
 Read .nvmrc, coverage-policy.json, and tools/coverage.mjs. Use the
-workflow I pasted. Tell me what triggers the job, which revision
-checkout tests, and where BASE_SHA comes from. Trace what happens
-if a PR loses coverage or proposes a lower minimum. Give me the
-lines I can check in the workflow and keep the files unchanged.
+workflow I pasted from .github/workflows/ci.yml. Quote the workflow
+expressions that trigger the job and provide BASE_SHA. Tell me which
+revision checkout tests and what happens if a PR loses coverage or
+proposes a lower minimum. Keep the files unchanged.
 ```
 
 Read the answer against the workflow. It runs on `pull_request`, sets up Node from `.nvmrc`, and gives its repository token read access. The checkout step uses the PR's **test merge commit**, which GitHub creates by combining the proposed changes with the base branch. The `BASE_SHA` in the verification step identifies the base commit whose policy the script reads. Full history lets the script look up that policy with Git. Keep those two revisions straight. The workflow runs the proposed code and compares its policy with the one the PR would change.
@@ -138,6 +138,12 @@ The remaining tests should pass. Confirm that the diff removes exactly one test.
 ```sh
 git diff -- test/app.test.ts
 git add -- test/app.test.ts
+git diff --cached --check
+```
+
+Once the staged check passes, commit and push the branch.
+
+```sh
 git commit -m "Demonstrate a coverage failure"
 git push -u origin ci-failing
 ```

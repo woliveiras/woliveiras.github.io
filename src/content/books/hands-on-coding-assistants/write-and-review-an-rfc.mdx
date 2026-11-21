@@ -31,12 +31,15 @@ Read notes/task-labels-epic.md, docs/architecture.md, and src/app.ts.
 
 Propose an in-memory release for the lab. Describe the problem, the
 current API, the goal and scope, and the proposed update and filter
-requests. Compare adding labels to the existing task response with
-an opt-in version and a separate labels resource. Explain what each
-would require from callers. Include risks, adoption and rollback,
-then ask one question for the client owner and one for the operator.
-Keep the durable storage choice open. Mark assumptions and return
-the draft in chat, with the files unchanged.
+requests. Give each of these three alternatives its own heading:
+1. Add labels to the existing response for all callers.
+2. Offer an opt-in response version and keep the old shape available.
+3. Keep the task response and expose labels as a separate resource.
+For each, explain what a caller with a strict parser would have to do.
+Include risks, adoption and rollback. Ask the client owner how we can
+test compatibility and ask the operator when labels must survive a
+restart. Keep the storage choice open. Return the draft in chat and
+leave the files unchanged.
 ```
 
 Check the draft against `GET /tasks`. The current service returns a list of tasks with `id` and `title`. In the proposal, `PATCH /tasks/:id/labels` replaces a task's labels, and `GET /tasks?label=urgent` filters the list. The additive option would include a `labels` array in both the list and task creation responses. Show what one task in the list looks like before and after that change.
@@ -50,6 +53,8 @@ Check the draft against `GET /tasks`. The current service returns a list of task
 ```
 
 Those two objects give reviewers a specific compatibility question. Adding a field keeps the current keys available to callers that ignore extra fields. An opt-in version lets a caller choose when to adopt the new shape and gives the service two shapes to support. A separate labels resource preserves the original shape and adds requests for callers that need labels. Put those consequences beside each option so a reviewer can check the assumption about their own client.
+
+If the draft groups always adding the field and letting callers opt in under the same option, ask Plan to split them. A strict client sees different payloads under those two choices. Keep the example payload and the compatibility question with whichever option you propose.
 
 Give the draft an adoption condition and a way to reverse the change. For the lab, running the prior revision and checking `GET /tasks` can confirm that the original response shape is back. Starting that process resets the in-memory state, including tasks, labels, and registrations. State that effect in the rollback section.
 
@@ -121,19 +126,30 @@ In a **Review and disposition** section, record what you heard, your response, a
 
 If a comment is deferred or declined, give a reason the reviewer can respond to. Keep open questions visible when you still need evidence.
 
-Switch to **Build** in the review session. The following prompt applies the sample decisions. If you used different comments, give Build your decisions and the sections they affect.
+Switch to **Build** in the review session. Apply the changes one section at a time so you can check what the feedback changed. Use your own decisions if you worked with a different set of comments.
 
 ```text
-Revise only docs/rfcs/0001-task-labels.md. In Adoption, describe the
-in-memory lab audience and require the worker's compatibility check
-before changing the response legacy callers receive. In Rollback,
-state how restarting resets in-memory tasks, labels, and registrations.
-Record the durable production follow-up under Review and disposition,
-with the service owner and restart and restore checks. Keep the
-original comments and show what changed in response to each one.
+Read the current docs/rfcs/0001-task-labels.md and revise only its
+Alternatives and Adoption sections. Keep the three response
+strategies separate. The lab uses the additive response for
+clients that accept it. Legacy callers keep the existing shape
+until their compatibility check passes or the team chooses a
+different response strategy.
 ```
 
-Read the diff alongside the draft commit. Look for a change to the adoption condition in the proposal itself. Then check that the rollback steps still make sense and that someone can pick up the durability follow-up from the review record. If you used a real reviewer, send them the revised section and ask them to confirm it addresses the concern they raised.
+Read the diff to check that the adoption condition is in the proposal itself. Then apply the second change.
+
+```text
+In docs/rfcs/0001-task-labels.md, update only Rollback and Review
+and disposition. In Rollback, explain how to run the preceding
+revision and check the original GET /tasks response. State that
+restarting resets in-memory tasks, labels, and registrations.
+In Review and disposition, record both original comments and
+their dispositions. Assign the durable follow-up to the service
+owner with separate restart and restore checks before production.
+```
+
+Read the diff alongside the draft commit. Check that a reader can find each comment and what happened to it. If an edit failed or a row is missing, give Build the current section and the exact reviewed text to apply. Check the rollback command and make sure someone can pick up the durability follow-up from the review record. If you used a real reviewer, send them the revised section and ask them to confirm it addresses the concern they raised.
 
 ```sh
 git diff -- docs/rfcs/0001-task-labels.md

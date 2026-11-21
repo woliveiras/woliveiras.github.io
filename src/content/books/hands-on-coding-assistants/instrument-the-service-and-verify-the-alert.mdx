@@ -172,6 +172,14 @@ Open a result and copy the trace ID. In **Loki**, use the same time range and su
 
 Show the agent the matching log and span. Expect one gateway span for the injected error, a gateway status of `504`, and no `upstream_status` field in that log. The trace and log explain the sampled failure. The alert ratio tells you how often gateway requests failed during its evaluation window.
 
+If Loki returns no match, check the UTC range and search for the failed gateway requests first.
+
+```text title="LogQL"
+{service_name="task-gateway",exercise="live"} | json | status=504
+```
+
+Copy a `trace_id` from a matching log and open that trace in Tempo. If you still have evidence from only one source, record the gap. If you run another degraded phase to collect a sample, give the agent its own UTC window so it can distinguish that run from the alert delivery test.
+
 ## Check what the telemetry contains
 
 After the traffic scripts finish, send one healthy request with a fictional marker in its title. Note when you sent it so you can find the actual record.
@@ -209,11 +217,11 @@ Give **Build** the evidence you checked.
 
 ```text
 Save notes/alert-verification.md. Record the two files we changed,
-the commands and UTC windows, the three traffic results, and the
-firing and resolved deliveries. Include the query and trace ID
-that led to the matching log. Record how I checked the marker and
-the 4xx counter. Keep the evidence needed for review and flag
-anything I have not verified. Write only the note.
+the three traffic results, and the firing and resolved deliveries.
+Copy the UTC windows and webhook times I verified. If I sampled a
+request in another run, record its own window, query, and trace ID.
+Record how I checked the marker and the 4xx counter. Flag anything
+I have not verified. Write only the note.
 ```
 
 Compare the note with the actual output. In particular, check that it shows successful traffic after recovery and a resolved delivery for the same rule. Commit the two changes and the note on `instrument-alerts`, then remove the live stack and its lab volumes.

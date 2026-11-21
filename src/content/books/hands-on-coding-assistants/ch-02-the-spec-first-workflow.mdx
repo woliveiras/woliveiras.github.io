@@ -85,21 +85,34 @@ git commit -m "Draft the registration spec"
 
 ## Review the spec before planning
 
-Run `opencode` from the root of your lab fork. Start a fresh session with `/new` if one is already open, then select **Plan** with `/agents`. Give the agent your saved draft and the current handler.
+Run `opencode` from the root of your lab fork. Start a fresh session with `/new` if one is already open, then select **Plan** with `/agents`. Review the draft on its own first. The starter still accepts inputs your draft rejects, so a review that starts with the code can spend the whole answer listing those known differences.
 
 ```text
-Read only notes/registration-spec.md and src/app.ts for this review.
-Compare my draft with the POST /registrations handler. For each finding,
-quote the criterion and give a request or request sequence that exposes
-the gap. Point out any decision I still need to make. Return the review
-in chat and leave the files as they are.
+Read only notes/registration-spec.md. Consider two fresh servers.
+On the first, send one valid registration. On the second, send an
+invalid registration with a numeric name and then the same valid
+registration. Assume the invalid request returns the required 400.
+Does my draft require the same ID in both successful responses?
+Quote the rule if it exists or mark the decision open. Then name
+one other outcome a reader would still have to guess. Answer in
+chat and leave the files unchanged.
 ```
 
 Read the findings against the request from the team. For example, a reviewer might point out that a handler could allocate an ID before rejecting a numeric name. A test that checks only for `400` would pass. You can close the gap with a criterion that a caller can verify on one fresh server.
 
 > Send a registration with a numeric name, then send a valid registration. The first request returns `400` with `{"error":"invalid_registration"}`. The second returns `201` with ID `"1"`.
 
-If your draft already covers that sequence, look for a different gap. Check whether it says when the name length is measured and whether it gives examples on both sides of the limit. Use the review to improve your file by hand. For every suggested change you keep, make sure you can name the request that demonstrates it.
+If your draft already covers that sequence, look for a different gap. Check whether it says when the name length is measured and whether it gives examples on both sides of the limit. Once you've decided what the draft should say, ask Plan to compare those decisions with the current code.
+
+```text
+Read src/app.ts. Compare the current POST /registrations handler
+with the criteria in my draft and the decisions we just made. For
+each difference, give the current and intended results for one
+request or sequence. Use valid JSON for request bodies and port
+3100 if you show a curl command. Leave the files unchanged.
+```
+
+Use the findings to improve your file by hand. For every suggested change you keep, make sure you can name the request that demonstrates it.
 
 Now open `specs/registration-validation.md` and `contracts/registration.test.ts`. These are the lab's reference behavior and acceptance tests. Compare the decisions in your draft with the agreed rules. Check the name length after trimming, the email shape and normalization, both response shapes, and the effect of a rejected request on the next ID. Bring your spec into agreement with the reference and resolve the open questions that affect implementation.
 
@@ -188,19 +201,30 @@ Switch to **Build** in the same session. First ask for the tests on their own.
 ```text
 Turn the revised notes/task-lookup.md criteria into HTTP tests in
 test/task-lookup.test.ts. Use startApp(t) and jsonRequest from
-test/client.ts. Assert the response body as well as the status and
-compare the list before and after the lookups. Leave src/app.ts
-unchanged. Run node --test test/task-lookup.test.ts and show the result.
+test/client.ts. Cover a seeded ID, an ID from POST /tasks, and an
+unknown ID. For each case, assert status and body and compare the
+task list before and after the lookup. Leave src/app.ts unchanged.
+Run node --test test/task-lookup.test.ts and show the result.
 ```
 
-Expect the known-ID lookup to fail with `404` where it expects `200`. If it passes, check that it actually calls the new route. An unknown-ID test can already pass because the starter returns `404` for unmatched routes. Once you've seen the right failure, ask Build to implement the reviewed spec in `src/app.ts` and leave the tests unchanged. Inspect the diff, check that `GET /tasks` still lists tasks, and rerun the checks yourself.
+Expect the known-ID lookups to fail with `404` where they expect `200`. If one passes, check that it actually calls the new route. The unknown-ID test can already pass because the starter returns `404` for unmatched routes. Read its assertions too. A test that only checks the error misses any change to the task list. Once you've seen the right failure, ask Build to implement the reviewed spec in `src/app.ts` and leave the tests unchanged. Inspect the diff, check that `GET /tasks` still lists tasks, and rerun the checks yourself.
 
 ```sh
 node --test test/task-lookup.test.ts
 npm test
+```
+
+When both commands pass, stage the changes and check the patch.
+
+```sh
 git add -- notes/task-lookup.md src/app.ts test/task-lookup.test.ts
 git diff --cached --check
 git diff --cached
+```
+
+If Git reports trailing whitespace, give Build the reported lines and ask it to fix the formatting while preserving the assertions. Remove any comment that still describes the new route as missing. Rerun the tests, stage the correction, and check the staged diff again. Once you've reviewed it and the checks pass, commit it.
+
+```sh
 git commit -m "Look up tasks by ID"
 ```
 

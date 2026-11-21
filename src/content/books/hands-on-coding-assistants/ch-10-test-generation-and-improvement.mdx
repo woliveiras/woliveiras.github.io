@@ -43,28 +43,31 @@ Switch to **Build** in the same session.
 ```text
 Extract normalizeRegistration(input: unknown) into src/registration.ts
 and call it from src/app.ts. Keep HTTP responses, ID allocation, and
-storage in the route. Add tests in test/registration.test.ts for
-normalization, a numeric name, and the 100/101-character boundary after
-trimming. Add or reuse the two-request regression in
-test/registration-regression.test.ts. Keep the spec and contract
-unchanged. Run npm test and npm run test:registration and report the
-observed results.
+storage in the route. In test/registration.test.ts, check normalization
+and a numeric name. For the boundary checks, wrap each name in spaces.
+Assert that 100 letters return the trimmed name and normalized email.
+Assert that 101 letters return undefined. Add or reuse the two-request
+regression in test/registration-regression.test.ts. Keep the spec and
+contract unchanged. Make two shell calls with the exact commands
+npm test and npm run test:registration. Report each tool result.
 ```
 
-Review the route and the tests. Look for the expected values from the spec in the assertions and confirm that the regression test sends both requests to the same server. Read the tool output for each command. Run the command yourself if the session contains only a summary.
+Review the route and the tests. Look for the expected values from the spec in the assertions and confirm that the regression test sends both requests to the same server. Read the tool input and output for each command. A redirect such as `2>&1` can take the command outside the lab's exact allowlist. Ask for the plain command again or run it yourself if you have only a summary or a permission denial.
 
 ## Check that a plausible mistake turns the suite red
 
 Use the same approach on the task title limit. A title with 120 characters is valid. A title with 121 characters returns `400` and leaves the task list intact. Ask **Build** to add both cases to `test/app.test.ts`.
 
 ```text
-Add HTTP tests for POST /tasks at 120 and 121 characters in
-test/app.test.ts. At 120, check for 201 and the expected title. At
-121, check for 400, the invalid_task body, and the same task list
-before and after the request. Change only the tests, then run npm test.
+Append HTTP tests for POST /tasks at 120 and 121 characters to
+test/app.test.ts. Preserve all existing tests, including the blank
+title case. Start each new test with its own startApp(t) client.
+At 120, check for 201 and the expected title. At 121, check for 400,
+the invalid_task body, and the same task list before and after the
+request. Change only that test file, then run npm test.
 ```
 
-Inspect the diff and save the passing version before trying a deliberate mistake.
+Inspect the diff. If the test expects rejection at exactly 100 characters, fix that assertion to match the spec. If the new task cases replaced any existing test, restore that case before accepting the patch. Save the passing version before trying a deliberate mistake.
 
 ```sh
 npm test

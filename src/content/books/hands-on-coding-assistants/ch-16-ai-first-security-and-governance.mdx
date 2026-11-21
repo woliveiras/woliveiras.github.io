@@ -65,17 +65,18 @@ git show prompt-evidence:notes/registration-verification.md | grep -nF 'DO_NOT_S
 
 The search should return no match. Read the whole note for other sensitive values before giving excerpts to an agent or reviewer. A hosted model can receive the prompt, file excerpts, and tool output. Check the connected tools on a local session too, since those tools can make their own network requests. Use the fictional lab records for this exercise.
 
-Give **Plan** the reviewed excerpts and the two tool results.
+Give **Plan** the reviewed excerpts and the two tool results. For each result, write the tool name, target path, and outcome on the same line. For example, record the denied edit on `contracts/registration.test.ts` separately from the successful edit on `notes/edit-probe.md`.
 
 ```text
 Use the evidence I pasted to draft a review handoff. List the files
-and tools needed for the review, the permission rule I tested, the
-allowed and denied tool results, and the evidence a teammate can
-inspect. Identify any access that needs a separate owner decision.
+and tools needed for the review and the permission rule I tested.
+Make one row per observed tool result, with its exact path and
+outcome. Include my check that the contract diff was empty.
+Identify any access that needs a separate owner decision.
 Keep the draft in chat.
 ```
 
-Confirm the handoff describes exactly what the probes exercised. Ask **Build** to save the approved text in `notes/governance-review.md`. Check the note for sensitive contents and commit it with the verified rule on `review-boundaries`.
+Compare each row with the tool activity and the diff. The denied edit shows what the OpenCode rule did. The empty diff confirms that the contract stayed intact during the probe. Ask **Build** to save the approved text in `notes/governance-review.md`. Open the file and verify that it preserves both outcomes before committing it with the rule on `review-boundaries`.
 
 ```sh
 git add -- opencode.jsonc notes/governance-review.md

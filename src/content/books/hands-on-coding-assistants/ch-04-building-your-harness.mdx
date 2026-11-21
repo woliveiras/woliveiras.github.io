@@ -61,10 +61,11 @@ Ask **Plan** to turn the first choice into commands you can inspect before runni
 ```text
 Plan a two-version check for registration. Compare lab-debugging and
 lab-registration in temporary detached Git worktrees. Use the same
-existing registration contract in both. Give me commands I can run
-in a second terminal, including a comparison of the test and its
-helper. Tell me which assertion should fail on the defective version
-and what a passing result on the corrected version should look like.
+commands in both worktrees. Compare package.json,
+contracts/registration.test.ts, and test/client.ts between the tags.
+Give me commands I can run in a second terminal. Tell me which
+assertion should fail on the defective version and what a passing
+result on the corrected version should look like.
 ```
 
 The contract already covers the sequence you need. Use two worktrees, which are separate checkouts of the same Git repository. Keep OpenCode in the original checkout for this exercise and run the commands in a second terminal from the fork root.
@@ -136,10 +137,13 @@ Switch to **Build** in the same session. Ask it to save your decision and the re
 Write notes/harness.md using the results and decisions we reviewed.
 For each selected control, record the failure, where the control
 runs, who acts on it, and the evidence needed to accept it. For the
-registration contract include both revisions, the command, the Node
-version, and the observed assertion and exit statuses. For the alert
-include the replay counts and the live checks still to run. Write
-only notes/harness.md.
+two-version proof, record npm run test:registration and
+contracts/registration.test.ts, both revisions, the Node version,
+and the observed assertion and exit statuses. Keep the earlier
+focused regression in the fix note. For the alert, record 60/300
+during the incident and 0/100 in the first clean bucket. Mark CI
+enforcement, the live threshold, and alert delivery as pending.
+Write only notes/harness.md.
 ```
 
 Open a fresh **Plan** session to review the saved record.
@@ -151,7 +155,7 @@ the replay actually proves about the alert and what still needs a
 live test. Give me findings with file and section references.
 ```
 
-Check any findings against the outputs you kept. If a correction is needed, give **Build** the finding and the relevant output and ask it to update `notes/harness.md`. Inspect the staged note, commit it, then remove the two temporary checkouts.
+Check any findings against the outputs you kept. The two-version proof should cite the same contract file on both tags. Its failing assertion is `"15"` versus `"1"`. If the note uses the focused test's `"2"` result or claims the threshold and delivery were verified, give **Build** the relevant output and have it correct the note. Inspect the staged note, commit it, then remove the two temporary checkouts.
 
 ```sh
 git status --short --untracked-files=all

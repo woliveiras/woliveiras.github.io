@@ -57,8 +57,10 @@ Open OpenCode from the same location and use a fresh **Plan** session.
 
 ```text
 Call project_context_get_task_conventions with an empty argument
-object. Quote its observed result and identify a test in
-test/app.test.ts that checks the same behavior.
+object. If that tool is unavailable or denied, report it and stop.
+Use only the named MCP tool to obtain the result. Quote its observed
+response and identify a test in test/app.test.ts that checks the same
+behavior.
 ```
 
 Look for a completed call to the named tool. The response says invalid task input returns HTTP `400` and leaves stored tasks unchanged. Open the blank-title test and find its assertion on the task list after the rejection. The matching test supports the convention. The tool event shows where the session actually got it.
@@ -69,7 +71,7 @@ Now append a narrow denial to the project's `permissions` array.
 { "action": "project_context_get_task_conventions", "resource": "*", "effect": "deny" }
 ```
 
-Reopen OpenCode with the changed config and try the same prompt in a new session. Discovery can still list a connected server while the tool is unavailable or denied. Check the tool activity before assigning credit to the integration. Restore the permission and confirm that a fresh session can call the tool again.
+Reopen OpenCode with the changed config and try the same prompt in a new session. Discovery can still list a connected server while the tool is unavailable or denied. Check the tool activity. If the agent suggests calling the server through the shell, stop at that point and keep the probe scoped to the MCP tool. Restore the permission and confirm that a fresh session can call the tool again.
 
 Save what you observed at process startup, discovery, and invocation. Commit the working configuration on `context-tool` after checking that you removed the temporary denial.
 

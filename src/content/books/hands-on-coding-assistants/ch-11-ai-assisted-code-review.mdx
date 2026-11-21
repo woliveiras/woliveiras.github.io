@@ -22,10 +22,11 @@ Expect three base tests and two contract tests to pass. The contract includes a 
 
 ```text
 Read specs/registration-validation.md, contracts/registration.test.ts,
-and notes/review.patch. For the name-length finding, give the changed
-line, the acceptance criterion, a request I can run on a fresh server,
-and the expected and inferred results. Keep the HTTP result pending
-until I run the request.
+notes/review.patch, and src/app.ts. Cite the comparator's line in
+src/app.ts and the acceptance criterion it affects. Give a Node fetch
+example for port 3100 that builds a 100-letter name, includes a valid
+email, and serializes the body with JSON.stringify. Give the expected
+and inferred statuses. Keep the observed result pending.
 ```
 
 ## Verify a finding before asking for a fix
@@ -36,7 +37,7 @@ Start the service in a terminal from the lab root.
 PORT=3100 npm start
 ```
 
-In a second terminal, send three otherwise identical requests. The cases on either side of 100 make it easier to tell a boundary error from a broken route or invalid email.
+In a second terminal, send three otherwise identical requests. Construct the name in JavaScript, then serialize the body. An expression such as `"x".repeat(100)` inside a literal JSON request body gives the server invalid JSON. The cases on either side of 100 make it easier to tell a boundary error from a broken route or invalid email.
 
 ```sh
 node --input-type=module - <<'JS'
