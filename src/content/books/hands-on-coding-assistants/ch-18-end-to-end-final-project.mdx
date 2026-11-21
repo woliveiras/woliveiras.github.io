@@ -15,7 +15,11 @@ Bring your [reviewed RFC](/books/hands-on-coding-assistants/chapters/write-and-r
 git show design-task-labels:docs/rfcs/0001-task-labels.md
 git show design-task-labels:docs/decisions/0001-task-label-storage.md
 git show incident-postmortem:notes/harness.md
+git show ci-evidence:notes/ci.md
+git show instrument-alerts:notes/alert-verification.md
 ```
+
+Keep the design constraints for Plan. Use the CI and alert notes to check where you verified the branch rule and how you found a gateway log and its trace.
 
 Start from a clean checkout of your fork with Node `24.22.3`. The base branch supplies the verification workflow, coverage policy, and live gateway. Keep it at this commit while you review and run CI.
 
@@ -57,7 +61,7 @@ unchanged. Run npm test and npm run test:labels separately. Show me
 the changes and the observed result of each command.
 ```
 
-After the supplied contract passes directly, add this import so the ordinary suite runs it too.
+After the supplied contract passes directly, ask Build to add this import so the ordinary suite runs it too.
 
 ```typescript title="test/labels.test.ts"
 import "../contracts/labels.test.ts";
@@ -99,7 +103,15 @@ console.log(keys.join(", "), "accepted by the old exact-key check:", keys.join("
 JS
 ```
 
-Expect the check to report `false` because the response includes `labels`. Record the compatibility finding with the adoption decision from the RFC. Stop the service, inspect the diff, and commit the reviewed source and tests on `task-labels`.
+Expect the check to report `false` because the response includes `labels`. Record the compatibility finding with the adoption decision from the RFC. Stop the service and inspect the diff. If the changed files match your approved scope, stage and commit the source and tests on `task-labels`.
+
+```sh
+git status --short
+git add -- src/app.ts test/app.test.ts test/labels.test.ts
+git diff --cached --check
+git diff --cached
+git commit -m "Add searchable task labels"
+```
 
 ## Review and verify the result
 
@@ -137,14 +149,20 @@ Target `capstone-base` with an active ruleset that requires **verify (Node 24)**
 
 ### Check the running gateway
 
-With `task-labels` checked out, start the live stack as in [Instrument the Service and Verify the Alert](/books/hands-on-coding-assistants/chapters/instrument-the-service-and-verify-the-alert/). Replay the successful update and filtered GET against port `3400`. Check that the filter still returns task 1 with the normalized labels.
+With `task-labels` checked out, start the live stack as in [Instrument the Service and Verify the Alert](/books/hands-on-coding-assistants/chapters/instrument-the-service-and-verify-the-alert/). Wait for the gateway's metrics endpoint to respond, record its starting counts, and replay the update and filtered GET against port `3400`. Check that the filter still returns task 1 with the normalized labels.
 
 ```sh
 docker compose -f observability/compose.yml -f observability/compose.alerts.yml up -d
+```
+
+```sh
+curl -fsS http://127.0.0.1:3400/metrics | grep '^lab_task_gateway_requests_total'
+date -u
 curl -sSi -X PATCH http://127.0.0.1:3400/tasks/1/labels \
   -H 'Content-Type: application/json' \
   -d '{"labels":[" Urgent ","bug","urgent"]}'
 curl -sSi 'http://127.0.0.1:3400/tasks?label=urgent'
+curl -fsS http://127.0.0.1:3400/metrics | grep '^lab_task_gateway_requests_total'
 ```
 
 Record the request times and give them to **Plan**.
@@ -156,7 +174,7 @@ each trace by ID. Name the fields to check for status, route template,
 and any raw task ID or label filter. Wait for my results.
 ```
 
-In Grafana, open the matching logs and traces. Expect status `200` and the route templates `/tasks/:id/labels` and `/tasks`. Confirm the `2xx` request counter increases. Read the raw log and span attributes to verify that they use the templates and omit the raw task ID and filter value. Save the trace IDs and query results. Remove the lab stack after verification.
+In Grafana, open the matching logs and traces. Expect status `200` and the route templates `/tasks/:id/labels` and `/tasks`. With no other traffic, the `2xx` counter should increase by two. Read the raw log and span attributes to verify that they use the templates and omit the raw task ID and filter value. Save the trace IDs and query results. Remove the lab stack after verification.
 
 ```sh
 docker compose -f observability/compose.yml -f observability/compose.alerts.yml down -v

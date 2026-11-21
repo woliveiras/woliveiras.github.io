@@ -17,14 +17,14 @@ git status --short
 git rev-parse HEAD
 npm test
 npm run test:registration
-npm start
+PORT=3100 npm start
 ```
 
 Check that you're on `design-task-labels` with a clean working tree and both suites passing. Save the commit hash printed by Git. In a second terminal, check the initial list and create a task.
 
 ```sh
-curl -sSi http://127.0.0.1:3000/tasks
-curl -sSi http://127.0.0.1:3000/tasks \
+curl -sSi http://127.0.0.1:3100/tasks
+curl -sSi http://127.0.0.1:3100/tasks \
   -H 'Content-Type: application/json' -d '{"title":"  Review the diff  "}'
 ```
 
@@ -122,7 +122,8 @@ When the examples and diagrams match the checkout, switch to **Build** with `/ag
 
 ```text
 Apply the approved drafts to README.md and docs/architecture.md.
-Keep the existing README setup instructions. Write the diagrams
+Keep the existing README setup instructions and show the port
+override beside the example requests. Write the diagrams
 as fenced mermaid blocks in plain Markdown. Edit only those two
 files. Run npm test and npm run test:registration as separate
 commands and report the actual results.

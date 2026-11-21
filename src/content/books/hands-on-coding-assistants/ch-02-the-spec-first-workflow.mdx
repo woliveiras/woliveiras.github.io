@@ -163,9 +163,48 @@ git commit -m "Validate registrations before changing state"
 
 ## Implement the task lookup with OpenCode
 
-For a second exercise, start a separate branch from `lab-start`. A client needs to fetch a single task using `GET /tasks/:id`. Write the first spec in `notes/task-lookup.md` and ask Plan to review it. If your only success example fetches the seeded task at `/tasks/1`, a hard-coded response could satisfy it. Add a case that creates a task, takes the ID from the response, and fetches that task. Specify `404` with `{"error":"not_found"}` for an unknown ID and check that the list stays the same after each lookup. Keep the scope to literal IDs used by the service.
+Try the same workflow on a second request. A client needs to fetch one task by ID without reading the whole list. Start from `lab-start` so you can focus on the task routes.
 
-Review the revised spec. Turn the lookup cases into focused HTTP tests and run them against the starter. Check that the new tests reach the missing behavior before you ask Build to implement it. Run the focused tests again with `npm test` after the change. Save the practice exercise on its own branch. The debugging chapter starts from a separate registration checkpoint.
+```sh
+git switch -c task-lookup lab-start
+mkdir -p notes
+opencode
+```
+
+Write a first draft in `notes/task-lookup.md`. Specify `GET /tasks/:id` for literal IDs issued by the service. A lookup for a known task should return `200` with the same object shape as a task in `GET /tasks`. An unknown ID should return `404` with `{"error":"not_found"}`. The task list should stay the same after either lookup. In a fresh **Plan** session, ask for a review before you change the code.
+
+```text
+Review notes/task-lookup.md against src/app.ts and test/app.test.ts.
+Check that the criteria distinguish a lookup from a hard-coded
+response for the seeded task. Give me a sequence that proves the
+route can find a task created by the caller. Suggest the smallest
+plan that covers the revised criteria. Leave the files unchanged.
+```
+
+If the draft looks up only the seeded task, add a case that creates a task and looks up the ID returned by `POST /tasks`. Compare the body with the creation response. Check that the unknown-ID case uses an ID absent from that server's list, and capture the list before and after the lookups. Give Plan the revised spec and confirm its plan covers both cases.
+
+Switch to **Build** in the same session. First ask for the tests on their own.
+
+```text
+Turn the revised notes/task-lookup.md criteria into HTTP tests in
+test/task-lookup.test.ts. Use startApp(t) and jsonRequest from
+test/client.ts. Assert the response body as well as the status and
+compare the list before and after the lookups. Leave src/app.ts
+unchanged. Run node --test test/task-lookup.test.ts and show the result.
+```
+
+Expect the known-ID lookup to fail with `404` where it expects `200`. If it passes, check that it actually calls the new route. An unknown-ID test can already pass because the starter returns `404` for unmatched routes. Once you've seen the right failure, ask Build to implement the reviewed spec in `src/app.ts` and leave the tests unchanged. Inspect the diff, check that `GET /tasks` still lists tasks, and rerun the checks yourself.
+
+```sh
+node --test test/task-lookup.test.ts
+npm test
+git add -- notes/task-lookup.md src/app.ts test/task-lookup.test.ts
+git diff --cached --check
+git diff --cached
+git commit -m "Look up tasks by ID"
+```
+
+Keep this exercise on `task-lookup`. The next chapter starts from a separate registration checkpoint.
 
 <span id="setting-up-for-the-rest-of-the-series"></span>
 

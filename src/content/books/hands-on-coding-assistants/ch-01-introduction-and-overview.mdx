@@ -35,7 +35,9 @@ When you ask OpenCode to run `npm test`, the model can propose the command. Open
 
 ## Working through the exercises
 
-Follow the chapters in order on your first pass. A `lab-*` tag gives you the code an exercise expects. Keep your own work on named branches so you can retrieve it after switching checkpoints. The RFC and ADR stay on the design branch, and the postmortem and first harness decisions stay on the incident branch.
+Follow the chapters in order on your first pass. A `lab-*` tag gives you the code an exercise expects. Commit your work on the named exercise branch before starting from another tag. That new branch starts at the checkpoint and won't contain your earlier commits. When a later exercise needs a saved file, it shows you how to read it with `git show branch:path`. The RFC and ADR stay on `design-task-labels`, and the postmortem and first harness decisions stay on `incident-postmortem`.
+
+Keep a second terminal for Git, tests, and the lab service while OpenCode is open. When you move to a different branch or worktree, start a fresh OpenCode session in the checkout the exercise names. Use the same session when a chapter asks you to switch from Plan to Build so the agent can use the plan you reviewed.
 
 When you come back for a specific task, use the [table of contents](/books/hands-on-coding-assistants/contents/) and start with the checkpoint and inputs named in that chapter. For example, [Model Setup and Troubleshooting](/books/hands-on-coding-assistants/appendices/model-setup/) helps you recover a working setup, and [Building Your Harness](/books/hands-on-coding-assistants/chapters/building-your-harness/#verify-the-check-on-both-versions) shows how to check the same contract against a broken and a corrected revision.
 

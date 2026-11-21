@@ -3,6 +3,7 @@ import type { APIRoute } from "astro";
 
 const files = [
 	".gitignore",
+	".nvmrc",
 	"AGENTS.md",
 	"README.md",
 	"opencode.jsonc",

@@ -17,7 +17,7 @@ The exercises use a small Task API. You'll read the code, refine a request, diag
 ## What to install
 
 - **Git** to clone your fork, start exercises from known revisions, and review a diff.
-- **Node.js 24 or later** and npm to run the TypeScript service and its tests. The starter uses the standard library.
+- **Node.js and npm** to run the TypeScript service and its tests. Use Node `24.22.3` from the lab's `.nvmrc` if you want the same coverage results as the book and CI. The starter runs on Node 24 or later and uses the standard library.
 - **OpenCode 2.3.2** for the terminal exercises. Follow the [setup chapter](/books/hands-on-coding-assistants/chapters/setup-and-practical-integration/) to install it and verify one model.
 - **Docker with Compose** for the postmortem and alerting chapters. You can install it when you reach the incident.
 
@@ -45,7 +45,7 @@ You can [download the starter source](/books/hands-on-coding-assistants/lab.tar.
 
 ## What you need to know
 
-The service uses fictional data and keeps it in memory. Start it with `npm start` and open `http://127.0.0.1:3000/health`. Expect `{"status":"ok"}`. Stop it with Ctrl+C. Each test starts its own server on a free port.
+The service uses fictional data and keeps it in memory. Start it with `PORT=3100 npm start` and open `http://127.0.0.1:3100/health`. Expect `{"status":"ok"}`. Stop it with Ctrl+C. If port 3100 is busy, choose a free port and change the request URLs to match. Each test starts its own server on a free port.
 
 A chapter may give you a start tag such as `lab-start` or `lab-debugging`. Check `git status --short` before switching. Commit the work you want to keep or start a separate worktree. A tag gives you the same starting code even if your previous exercise took a different route.
 

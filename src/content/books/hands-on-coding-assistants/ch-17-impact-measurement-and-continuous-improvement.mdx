@@ -15,9 +15,11 @@ You'll compare running two checks yourself with asking OpenCode to run them. The
 
 ## Compare manual and delegated checks
 
-Create two clean worktrees from the same starter commit. Use the same Node version in both and record it.
+From the root of your fork, create a branch for the measurement record and two clean worktrees from the same starter commit. Use the same Node version in both and record it.
 
 ```sh
+git switch -c measurement-record lab-start
+mkdir -p notes
 git worktree add --detach ../task-api-manual lab-start
 git worktree add --detach ../task-api-delegated lab-start
 git -C ../task-api-manual rev-parse HEAD
@@ -88,7 +90,17 @@ differences are visible in the tool activity. Propose one adjustment
 I can test on a repeat run. Keep uncertainty in the report.
 ```
 
-Check the suggested adjustment against the evidence. Alternate run order on a repeat so familiarity with the first result has less influence. Keep interrupted runs as part of the record, with the outcome clearly marked. Save the measurements, exact prompts, and your chosen adjustment in an exercise note. Commit the diffs you want to keep on their exercise branches before removing the temporary checkouts.
+Check the suggested adjustment against the evidence. Alternate run order on a repeat so familiarity with the first result has less influence. Keep interrupted runs as part of the record, with the outcome clearly marked. In each implementation worktree, review and commit the diff you tested. Return to the fork root and save the measurements, exact prompts, revision IDs, and your chosen adjustment in `notes/measurement.md`. Once all four worktrees are clean and their OpenCode sessions are closed, commit the note and remove the temporary checkouts.
+
+```sh
+git add -- notes/measurement.md
+git diff --cached --check
+git commit -m "Record the Task API measurement exercise"
+git worktree remove ../task-api-manual
+git worktree remove ../task-api-delegated
+git worktree remove ../task-api-spec-only
+git worktree remove ../task-api-spec-and-contract
+```
 
 ## Account for energy, water, and local impacts
 
@@ -96,7 +108,7 @@ A local wall meter can give you energy for the whole machine during the measured
 
 Broader impacts use different measurements. Berkeley Lab distinguishes water used directly at a data center from water associated with its electricity supply. The IEA report describes electricity demand and grid constraints. A Virginia legislative review documents local economic benefits and reported effects of persistent noise at some sites. Keep each conclusion tied to the scope of its source.
 
-In the [final project](/books/hands-on-coding-assistants/chapters/end-to-end-final-project/), use the same finish condition to record where review and verification took time. Those observations can guide which controls you keep for the next change.
+In the [final project](/books/hands-on-coding-assistants/chapters/end-to-end-final-project/), you can recover this note with `git show measurement-record:notes/measurement.md`. Use the same finish condition to record where review and verification took time. Those observations can guide which controls you keep for the next change.
 
 ## References
 

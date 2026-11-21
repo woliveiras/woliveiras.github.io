@@ -19,6 +19,7 @@ Start at the incident checkpoint in your lab fork with a clean working tree. You
 
 ```sh
 git switch -c incident-postmortem lab-observability
+mkdir -p notes
 opencode
 ```
 
@@ -128,6 +129,21 @@ sum(sum_over_time(lab_incident_requests[3m] @ LAST_AFFECTED_UNIX_SECONDS))
 
 Expect `60` and `300`. Paste both results, the queries, and the first clean bucket into the session. Check that Plan calculates **60 of 300 observed requests, or 20%**, in the three affected minutes. The number of affected clients remains unknown because the replay has no client identity. Retries and duplicates also remain open. The upstream `201` in a timeout trace gives you a reason to ask about retries in a real incident like this one.
 
+### Let OpenCode run a read-only query
+
+You can also give Plan a query to execute. For this lab, Grafana exposes the same Prometheus data through its data source proxy. Replace the timestamp with `lastAffectedUnixSeconds` from your replay and send this prompt in the same session.
+
+```text
+Use the shell tool to run this one GET request against the loopback
+Grafana Viewer. Ask me before running it. Read the value in the JSON
+response and report the exact query, timestamp, and returned count.
+
+curl -fsS -G 'http://127.0.0.1:3300/api/datasources/proxy/uid/prometheus/api/v1/query' \
+  --data-urlencode 'query=sum(sum_over_time(lab_incident_requests{outcome="timeout"}[3m] @ LAST_AFFECTED_UNIX_SECONDS))'
+```
+
+Check the method, address, and query in the permission prompt and inspect the completed shell result. The second element of `data.result[0].value` should be `"60"`. Compare it with the result in Explore. If the call is denied or returns an error, use the UI result and record which path supplied your evidence.
+
 ## Turn the evidence into a postmortem
 
 Use the same Plan session to assemble the timeline and evidence from the results you brought back.
@@ -235,4 +251,5 @@ Keep the postmortem on `incident-postmortem`. In [Building Your Harness](/books/
 - Grafana Labs. [Query tracing data](https://grafana.com/docs/grafana/latest/datasources/tempo/query-editor/) and [Construct a TraceQL query](https://grafana.com/docs/tempo/latest/traceql/construct-traceql-queries/). Grafana and Tempo documentation.
 - Grafana Labs. [Configure trace to logs correlation](https://grafana.com/docs/grafana/latest/datasources/tempo/configure-tempo-data-source/configure-trace-to-logs/) and [Roles and permissions](https://grafana.com/docs/grafana/latest/administration/roles-and-permissions/#organization-roles). Grafana documentation.
 - Grafana Labs. [Prometheus query editor](https://grafana.com/docs/grafana/latest/datasources/prometheus/query-editor/). Grafana documentation.
+- Grafana Labs. [Data source HTTP API](https://grafana.com/docs/grafana/latest/developer-resources/api-reference/http-api/api-legacy/data_source/). Grafana HTTP API reference.
 - OpenCode maintainers. [TUI](https://opencode.ai/docs/cli/tui/). OpenCode 2 documentation.

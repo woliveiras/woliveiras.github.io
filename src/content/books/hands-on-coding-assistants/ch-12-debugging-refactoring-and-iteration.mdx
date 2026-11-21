@@ -9,16 +9,16 @@ order: 5
 
 The registration spec says that rejecting a request leaves the next ID available. Yet the first valid request after a rejection can return ID `"2"`. Both status codes look right. You need the sequence to see the failure.
 
-Use the `lab-debugging` tag, which starts from a working registration change and reintroduces the bug. Commit any previous exercise first. In a clean checkout, run the starter suite and the contract separately.
+Use the `lab-debugging` tag, which starts from a working registration change and reintroduces the bug. Commit any previous exercise first. From the lab root, create the branch and run the starter suite and the contract separately.
 
 ```sh
 git switch -c debug-registration lab-debugging
+mkdir -p notes
 npm test
 npm run test:registration
-PORT=3100 npm start
 ```
 
-The base suite passes. In the registration contract, the normalization test passes and the other test expects ID `"1"` after 14 rejections. It gets `"15"`. Try just one rejection and one success against the same fresh server. Run both commands in a second terminal.
+The base suite passes. In the registration contract, the normalization test passes and the other test expects ID `"1"` after 14 rejections. It gets `"15"`. Try just one rejection and one success against the same fresh server. Start it with `PORT=3100 npm start`, then run both requests in a second terminal.
 
 ```sh
 curl -sSi http://127.0.0.1:3100/registrations \
@@ -33,7 +33,7 @@ Expect `400` and `{"error":"invalid_registration"}`, then `201` and `{"id":"2","
 
 ## Test the explanation before asking for an edit
 
-Give **Plan** your observed responses and one question it can trace.
+Run `opencode` in the lab root, start a fresh session with `/new` if needed, and select **Plan** with `/agents`. Give it the responses you observed and one question it can trace.
 
 ```text
 On a fresh server a numeric name gets HTTP 400. The following valid
@@ -49,13 +49,30 @@ On another fresh instance, try a valid request first. It gets ID `"1"`, which ru
 
 ## Prove the failure in a focused test
 
-Ask **Build** to add a test first. In `test/registration-regression.test.ts`, use `startApp(t)` and `jsonRequest()` from `test/client.ts`. Send exactly the two inputs you used with curl. Assert `400` and the error body for the first response, followed by `201` and ID `"1"` for the second. Leave the handler unchanged until you've seen that assertion fail.
+Switch to **Build** in the same session after you've checked the cause. Ask for the test first.
+
+```text
+Add test/registration-regression.test.ts using startApp(t) and
+jsonRequest from test/client.ts. Send the two inputs we reproduced,
+in order, to one fresh server. Assert 400 and invalid_registration
+for the numeric name, then 201 and ID "1" for the valid request.
+Leave src/app.ts unchanged. Run the focused test and show where it fails.
+```
 
 ```sh
 node --test test/registration-regression.test.ts
 ```
 
-Read the failure. A test that only sees `400` would pass this broken implementation. Once you can reproduce the `"2"` result with the new test, move ID allocation past validation. Inspect the diff and rerun the test and both suites.
+Read the failure. A test that only sees `400` would pass this broken implementation. Once you can reproduce the `"2"` result with the new test, give Build the failing assertion and ask for the smallest correction.
+
+```text
+The focused test gets ID "2" after a rejected request. In src/app.ts,
+move ID allocation after validation succeeds. Preserve the accepted
+response and the test assertions. Run the focused test, npm test,
+and npm run test:registration and report each result.
+```
+
+Inspect the diff and rerun the test and both suites.
 
 ```sh
 node --test test/registration-regression.test.ts
@@ -69,7 +86,16 @@ Expect all tests to pass. Check the changed handler and read the new file as wel
 
 ## Make the handoff about facts
 
-Write `notes/registration-fix.md` with the symptom, shortest request sequence, cause, patch and observed verification results. Record the base tag and cite the regression test. Commit the fix and test together so someone can compare the result against the fixture.
+Give Build the original and corrected results and ask it to save the handoff.
+
+```text
+Write notes/registration-fix.md using the responses and test results
+I checked. Record the symptom, shortest reproduction, cause, focused
+change, and both results of the regression test. Name the base tag
+lab-debugging and the commands a reviewer can rerun. Write only the note.
+```
+
+Check the note against your observations. Commit it with the fix and test so someone can compare the result against the fixture.
 
 ```sh
 git add src/app.ts test/registration-regression.test.ts notes/registration-fix.md

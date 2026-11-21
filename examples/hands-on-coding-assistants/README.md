@@ -1,6 +1,6 @@
 # Hands-on Coding Assistants lab
 
-This is a small, in-memory task API for the book exercises. It needs Git and Node.js 24 or later. The application and its tests use the Node.js standard library.
+This is a small, in-memory task API for the book exercises. It needs Git and Node.js 24 or later. The application and its tests use the Node.js standard library. The `.nvmrc` file names the Node version used for the book's coverage checks.
 
 Run `npm test` on the starter. Three tests should pass. Run `npm start` to serve the API on `127.0.0.1:3000` and stop it with Ctrl+C. Restarting the server resets the sample data.
 

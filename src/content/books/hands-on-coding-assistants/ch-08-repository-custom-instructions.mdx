@@ -25,7 +25,7 @@ Add `"instructions": ["docs/review-guide.md"]` as a top-level entry in `opencode
 
 ## Add a command that starts from a spec
 
-Save this template as `.opencode/commands/check-spec.md`. OpenCode substitutes the text you supply for `$ARGUMENTS` and runs the prompt with **Plan**.
+Save this template as `.opencode/commands/check-spec.md`. OpenCode puts the spec path in `$1` and the contract path in `$2`, switches to **Plan**, and submits the expanded prompt.
 
 ```md title=".opencode/commands/check-spec.md"
 ---
@@ -33,7 +33,7 @@ description: Match a Task API spec to its contract checks
 agent: plan
 ---
 
-Read the spec at $ARGUMENTS and the related acceptance test.
+Read the spec at $1 and the acceptance test at $2.
 Return a row for each criterion with a check and expected result.
 Flag any criterion without a check. Leave files unchanged.
 ```
@@ -41,7 +41,7 @@ Flag any criterion without a check. Leave files unchanged.
 Reopen OpenCode from the fork root, start a fresh session, and run the command.
 
 ```text
-/check-spec specs/registration-validation.md
+/check-spec specs/registration-validation.md contracts/registration.test.ts
 ```
 
 Check the tool reads for the spec and `contracts/registration.test.ts`. Look for **State after rejection** and confirm that it names the successful response with ID `"1"` after the invalid requests. The contract includes an overlong name of 101 characters. If the report says it tests exactly 100, open the input list and ask Plan to mark that case as unchecked. If the label is missing, check the path in `instructions`, then rerun in a fresh session to verify that the guide is present.

@@ -16,6 +16,8 @@ git show read-task-api:notes/repo-map.md > notes/repo-map.md
 opencode
 ```
 
+The copied map describes the starter. Keep its original revision in the note, and use the registration fix as the baseline for describing the current service.
+
 ## Separate work you can start from decisions you need
 
 Use **Plan**. Give it a brief with enough friction to reveal the dependencies.
@@ -37,7 +39,7 @@ Check the dependency direction. Two changes can start after a shared contract is
 
 ## Write tickets someone else can pick up
 
-Save `notes/task-labels-epic.md` with the feature goal, open decisions and tickets. Use a stable local ID for each ticket so you can record which one blocks another. Jira accepts time estimates and linked work items. You can do this exercise entirely in the repository.
+Draft the feature goal, open decisions, and tickets in the same Plan session. Use a stable local ID for each ticket so you can record which one blocks another. Jira accepts time estimates and linked work items. You can do this exercise entirely in the repository.
 
 One ticket can read like this.
 
@@ -73,7 +75,17 @@ Complexity describes how hard the work is to reason about. Hours estimate effort
 
 There are 24–32 engineering hours in this example. With two people who each have four focused hours a day, assign LABEL-2 and LABEL-3 to separate people after LABEL-1. The longest required chain is LABEL-1, the longer of the two middle items, then LABEL-4. The range is four to five workdays. With one person at the same daily capacity, the work takes six to eight days. If an external compatibility decision adds up to two days of waiting on that chain, the two-person forecast becomes four to seven days. These are example ranges under stated assumptions. The GAO calls the longest chain that governs the finish date the critical path.
 
-Ask the agent to recompute the schedule for one person and one external wait. Check the sums yourself and record which constraint moved the finish date. Commit the backlog after checking for work with missing prerequisites.
+Ask Plan to recompute the schedule for one person and one external wait. Check the sums yourself and decide which assumptions you'll keep. Then switch to **Build** in the same session.
+
+```text
+Save the reviewed backlog and forecast as notes/task-labels-epic.md.
+Give each ticket its own description, acceptance checks, dependencies,
+complexity, and estimate. Include the capacity assumptions and explain
+how the compatibility decision affects the forecast. Keep the durable
+storage follow-up visible. Change only the epic note.
+```
+
+Read the saved note and check that each dependency points to an existing ticket. Commit the map and backlog together.
 
 ```sh
 git add notes/repo-map.md notes/task-labels-epic.md

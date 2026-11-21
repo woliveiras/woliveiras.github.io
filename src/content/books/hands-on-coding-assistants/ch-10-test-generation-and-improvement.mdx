@@ -142,10 +142,11 @@ git worktree remove ../task-api-coverage-probe
 
 ## Enforce the versioned policy
 
-Switch to the prepared `lab-coverage` checkpoint. It includes focused unit and HTTP tests, `coverage-policy.json`, and the script that runs the tests and applies the policy. Open a fresh OpenCode session on this checkout so it inspects the files the next chapter will use.
+Keep your tests on `coverage-exercise`. Switch to the prepared `lab-coverage` checkpoint for the shared baseline used by the coverage and CI exercises. It includes its own focused unit and HTTP tests, `coverage-policy.json`, and the script that runs the tests and applies the policy. Starting from this suite lets you compare your measured counts with the examples below.
 
 ```sh
 git switch -c coverage-policy-exercise lab-coverage
+mkdir -p notes
 opencode
 ```
 

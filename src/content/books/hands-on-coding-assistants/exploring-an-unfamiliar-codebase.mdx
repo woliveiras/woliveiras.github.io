@@ -14,6 +14,8 @@ In your [fork](/books/hands-on-coding-assistants/introduction/#get-the-lab), wit
 ```sh
 git switch -c read-task-api lab-start
 git status --short
+git rev-parse HEAD
+mkdir -p notes
 opencode
 ```
 
@@ -93,12 +95,22 @@ curl -sSi http://127.0.0.1:3100/registrations \
   -d '{"name":42,"email":"ada@example.test"}'
 ```
 
-On the fresh service, you should see `201` with `{"id":"1","name":"42","email":"ada@example.test"}`. Stop the server with Ctrl+C. Write `notes/repo-map.md` with the checkout, the entry point and dependency map, the task request trace, and the commands and observed responses. Include the numeric name and the returned string in the registration example. Separate what you read in the factory from what you saw over HTTP. Inspect the diff and commit just the map.
+On the fresh service, you should see `201` with `{"id":"1","name":"42","email":"ada@example.test"}`. Stop the server with Ctrl+C. Give Plan the outputs you checked and ask it to assemble the map.
+
+```text
+Use the Git revision and the HTTP and test results I pasted. Draft a
+repository map with setup commands, dependencies, entry points, where
+tasks live, and the blank title and numeric name examples. Cite a path
+and symbol for each code finding. Identify which findings I confirmed
+by running a command. Return the map in chat.
+```
+
+Read the draft against your results, then save it as `notes/repo-map.md`. You can switch to **Build** in the same session and ask it to write the reviewed draft to that path. Stage and read the map before committing it.
 
 ```sh
 git add notes/repo-map.md
 git diff --cached --check
-git diff --cached --stat
+git diff --cached -- notes/repo-map.md
 git commit -m "Map the Task API starter"
 ```
 
