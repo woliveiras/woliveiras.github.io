@@ -60,7 +60,7 @@ Open `specs/registration-validation.md` and `contracts/registration.test.ts` you
 | The state after rejection | The plan tests a rejection followed by a valid request on the same fresh server and checks the next ID |
 | The scope and verification | The plan keeps the patch in the registration route, leaves the contract unchanged, and names both test commands |
 
-A line such as “return 400 for invalid input” covers only part of the failure. Use this example to check the state criterion. Send `{"name":42,"email":"ada@example.test"}` to a fresh server. The response should be `400` with `{"error":"invalid_registration"}`. Then send `{"name":"Ada","email":"ada@example.test"}` to the same server. That request should return `201` with ID `"1"`. A plan can be concise and still describe both observations.
+A line such as “return 400 for invalid input” covers only part of the failure. Look for two expected responses in the proposed check. On a fresh server with the patch, `{"name":42,"email":"ada@example.test"}` should return `400` with `{"error":"invalid_registration"}`. The next request to that same server, with `{"name":"Ada","email":"ada@example.test"}`, should return `201` with ID `"1"`. If the plan proposes a manual check with `curl`, make sure its command shows the status as well as the body. The `-i` flag includes the status line and response headers.
 
 Choose the shortest prompt whose plan you can verify for this run. The short prompt may lead the agent to discover the spec on its own. Check the file reads before crediting it for that. If a plan misses a criterion, ask for the missing check in that session before you accept it. For example, use this follow-up when the plan stops at the first response.
 
@@ -75,7 +75,7 @@ Save the original wording you selected and record any follow-up separately. That
 
 ## Verify the chosen plan on the starter
 
-From the branch you opened for this exercise, run the checks before asking for the patch.
+From the branch you opened for this exercise, run the checks separately before asking for the patch. In your terminal, `echo "$?"` immediately after a command gives you its exit status for the record.
 
 ```sh
 npm test
@@ -104,7 +104,7 @@ git diff -- src/app.ts
 git diff --exit-code -- specs/ contracts/ AGENTS.md opencode.jsonc
 ```
 
-Expect both suites to pass. The status should show only `src/app.ts` modified at this point. After reviewing the patch, commit it and capture the revision and the diff command a teammate can use later.
+Expect three passing base tests and two passing registration contract tests. The status should show only `src/app.ts` modified at this point. After reviewing the patch, commit it and capture the revision and the diff command a teammate can use later.
 
 ```sh
 git add -- src/app.ts
@@ -130,7 +130,7 @@ correction and its verification. Mark proposed checks as pending.
 Write only the two record files.
 ```
 
-Open the saved prompt and compare it with what you actually sent. In the note, identify files by path and revision. For test results, keep the command, exit status, and the assertion that mattered. A short record such as “the starter contract expected `400` for a numeric name and got `201`; after the patch both contract tests passed” gives a reviewer something to check. Include any approval that affected the run and record work you did in a separate terminal.
+Open the saved prompt and compare it with what you actually sent. In the note, identify files by path and revision. For test results, keep the command, exit status, and the assertion that mattered. For example, the starter contract expects `400` for a blank name and gets `201`. After the patch both contract tests should pass. Include any approval that affected the run and record work you did in a separate terminal.
 
 ### Rehearse redaction before sharing
 
