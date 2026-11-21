@@ -7,66 +7,101 @@ order: 24
 
 ## Count the whole change
 
-A suggestion arrives in seconds. Now count the time it takes to inspect the diff, supply a missing constraint, rerun the checks, and accept the patch. A randomized study of experienced open-source developers using early-2025 models found that developers took longer in the AI-enabled condition in that study. Measure your own task, model, and review effort.
+The task is complete when you can accept the result. Time spent reading a diff, correcting a missed requirement, or rerunning a check belongs in that measurement. A randomized study of experienced open-source developers found that participants took longer with the early-2025 AI tools available in that study. Use the lab to measure your own workflow and find where you spend the time.
+
+You'll compare running two checks yourself with asking OpenCode to run them. Then you'll change one part of an implementation prompt and see what it does to the work you have to review.
 
 <span id="compare-manual-and-delegated-setup"></span>
 
 ## Compare manual and delegated checks
 
-Create two clean worktrees at `lab-start` and confirm they have the same commit.
+Create two clean worktrees from the same starter commit. Use the same Node version in both and record it.
 
 ```sh
 git worktree add --detach ../task-api-manual lab-start
 git worktree add --detach ../task-api-delegated lab-start
 git -C ../task-api-manual rev-parse HEAD
 git -C ../task-api-delegated rev-parse HEAD
+node --version
 ```
 
-From inside `../task-api-manual`, time yourself running the two commands from the registration exercise.
+Use a timer or note the start and end times. Start when you are ready to run or delegate the checks. Stop after you can report both results and verify the checkout is clean. From the manual worktree, run each of these commands and record its exit status immediately after it returns.
 
 ```sh
 npm test
+echo "$?"
 npm run test:registration
+echo "$?"
+git status --short
 ```
 
-The base tests should pass and the contract should fail. Open OpenCode from inside `../task-api-delegated`, select your model in a fresh **Plan** session, and record its ID. Take the same measurements.
+Expect three passing base tests with exit `0` and two failing contract tests with exit `1`. A correct report on the starter includes the failure. In the delegated worktree, open a fresh **Plan** session with the model you want to measure. Record its ID and send this prompt.
 
 ```text
 Run npm test and npm run test:registration as separate shell calls.
-Use the exact commands. Report each observed result and leave the
-repository unchanged.
+Use the exact commands. Report the observed status and test result
+for each. Leave the repository unchanged.
 ```
 
-Include the time you spend checking what ran. Run `git status --short` in each worktree and keep those results with the test output. If a provider quota, missing tool support, or denied command interrupts the task, record the point where it stopped. Preserve any outcomes you can confirm from individual events. A run that ends before verification has a different outcome from a verified run.
+Read the tool results. If the agent runs only one command, include the time spent asking again and verifying the new output. If a quota or denied call prevents completion, record the interruption and the results you were able to confirm. Check `git status --short` in the delegated worktree yourself.
 
 | Record | Where to check it |
 | --- | --- |
-| Elapsed time | Time from starting the task through the last verification or recorded interruption |
-| Actions and retry count | Visible tool activity and human intervention in the session |
-| Tokens or charges | Reported token categories and the provider's usage or billing record, when available |
-| Verification | Command, exit status, and working-tree status |
-| Rework | Spec clarifications, changes to the patch, reruns, and approvals you performed |
+| Elapsed time | Start through final verification, or through the recorded interruption |
+| Test outcome | The two commands, exit statuses, and the observed failure |
+| Interventions | Retries, approvals, later prompts, and checks you ran yourself |
+| Usage | Model and runtime versions, reported token categories, and any available charges |
 
-An export can supply token counts when the client receives them. Use the session ID from `opencode session list`. Keep cache, input, output, and reasoning counts separate. Store observed commands and results in your own reviewed record.
+OpenCode's session export can supply usage fields when the client receives them. Inspect the export before sharing it, as in the [prompt exercise](/books/hands-on-coding-assistants/chapters/prompt-engineering-for-code-assistants/#keep-a-record-that-survives-the-session). Keep input, cached, output, and reasoning counts distinct. A teammate should be able to tell which run is comparable even if one field is missing.
 
 ## Change one thing
 
-Try the registration implementation on two clean copies of the same base. Give one session a prompt with the spec path. Give the other the same prompt and the path to the acceptance test. Use the same spec, model, runtime, and verification procedure. A completed result passes both suites and has a diff a person can accept against the spec. Time the work through that review.
+Use two more clean worktrees at `lab-start`. From the fork root, create a branch for each run so you can keep its diff. The task is to implement registration validation. Keep the same model, permissions, spec, and acceptance checks in both.
 
-Record whether identifying the contract reduced the number of missed criteria or corrections. Repeat before treating a difference as stable. If you repeat across models, record the exact IDs and alternate run order. Quotas, hardware and context settings can change the result.
+```sh
+git worktree add -b measure-spec-only ../task-api-spec-only lab-start
+git worktree add -b measure-spec-and-contract ../task-api-spec-and-contract lab-start
+```
+
+Open a fresh **Build** session from the first checkout.
+
+```text
+Read specs/registration-validation.md and implement it in src/app.ts.
+Keep the supplied tests unchanged. Run npm test and
+npm run test:registration, and report the observed results.
+```
+
+In the second checkout, send the same prompt with one additional sentence directly after the first.
+
+```text
+Read contracts/registration.test.ts before editing.
+```
+
+Use the same finish condition for both runs. The two suites must pass and you must be able to accept the diff against the spec. Inspect the file reads as well. If both sessions discover the contract before the edit, record that outcome. If you had to supply the next-ID requirement, record when you supplied it and how you verified the correction.
+
+Paste your measurements into **Plan** and ask it to help interpret the comparison.
+
+```text
+Use the results I pasted. Compare only runs with the same finish
+condition. Show where time or interventions differed and which
+differences are visible in the tool activity. Propose one adjustment
+I can test on a repeat run. Keep uncertainty in the report.
+```
+
+Check the suggested adjustment against the evidence. Alternate run order on a repeat so familiarity with the first result has less influence. Keep interrupted runs as part of the record, with the outcome clearly marked. Save the measurements, exact prompts, and your chosen adjustment in an exercise note. Commit the diffs you want to keep on their exercise branches before removing the temporary checkouts.
 
 ## Account for energy, water, and local impacts
 
-A free quota sets the price you see. For a local run, a wall meter can give you energy for the whole machine. Measure an idle interval of the same length if you want to estimate the extra use above baseline. For a hosted run, use provider measurements with comparable scope where available. Tokens and call counts alone leave energy use unknown.
+A local wall meter can give you energy for the whole machine during the measured interval. Record what else was running. If you measure an idle interval of the same length, document it before estimating the additional energy. For a hosted run, report energy as unknown unless you have a provider measurement with comparable scope. Token counts describe model usage.
 
-The Berkeley Lab report distinguishes water used directly at a data center from water associated with its electricity supply. What those impacts mean for a specific run depends on its infrastructure and location. A Virginia legislative review also describes construction-driven economic benefits, local tax revenue, and reported effects of persistent noise at some sites. Keep these observations tied to the places and scopes the reports studied.
+Broader impacts use different measurements. Berkeley Lab distinguishes water used directly at a data center from water associated with its electricity supply. The IEA report describes electricity demand and grid constraints. A Virginia legislative review documents local economic benefits and reported effects of persistent noise at some sites. Keep each conclusion tied to the scope of its source.
 
-Keep the measurement with the task and the control you changed. In the final project you can use it to explain where a second session helped and where a direct check was quicker.
+In the [final project](/books/hands-on-coding-assistants/chapters/end-to-end-final-project/), use the same finish condition to record where review and verification took time. Those observations can guide which controls you keep for the next change.
 
 ## References
 
 - Joel Becker et al. [Measuring the Impact of Early-2025 AI on Experienced Open-Source Developer Productivity](https://arxiv.org/abs/2507.09089). arXiv preprint 2507.09089v2, submitted 12 July 2025 and revised 25 July 2025. DOI 10.48550/arXiv.2507.09089. The arXiv record lists no publication venue.
-- OpenCode maintainers. [CLI commands](https://opencode.ai/docs/cli/commands/) and [Session commands](https://opencode.ai/docs/cli/commands/#session). Official OpenCode 2 documentation.
+- OpenCode maintainers. [CLI commands](https://opencode.ai/docs/cli/commands/#session). Official OpenCode 2 documentation.
 - International Energy Agency. [Key Questions on Energy and AI](https://www.iea.org/reports/key-questions-on-energy-and-ai). IEA report, 16 April 2026.
 - Arman Shehabi et al. [2024 United States Data Center Energy Usage Report](https://eta.lbl.gov/publications/2024-lbnl-data-center-energy-usage-report). Lawrence Berkeley National Laboratory technical report LBNL-2001637, 19 December 2024. DOI 10.71468/P1WC7Q.
-- Joint Legislative Audit and Review Commission. [Data Centers in Virginia](https://jlarc.virginia.gov/pdfs/reports/Rpt598.pdf). Report 598 to the Governor and General Assembly of Virginia, 9 December 2024. [Study summary](https://jlarc.virginia.gov/landing-2024-data-centers-in-virginia.asp).
+- Joint Legislative Audit and Review Commission. [Data Centers in Virginia](https://jlarc.virginia.gov/pdfs/reports/Rpt598.pdf). Report 598 to the Governor and General Assembly of Virginia, 9 December 2024.

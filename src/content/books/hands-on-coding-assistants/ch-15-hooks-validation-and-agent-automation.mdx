@@ -1,15 +1,24 @@
 ---
 title: "Hooks, Validation & Agent Automation"
-description: "Make a local check run at commit time and observe a shell call using an OpenCode plugin."
+description: "Verify a Git pre-commit check and observe an OpenCode shell call with a local plugin."
 module: 3
 order: 21
 ---
 
-CI gives the reviewer a result on a clean checkout. You can shorten your own feedback loop by running a check before creating a commit. You can also record that an assistant called a tool. Those are different events, and the distinction matters when you investigate a failure.
+In the coverage exercise, someone had to remember to run the gate. CI ran the gate for a proposed revision. A **hook** runs code when a specific event occurs. A Git pre-commit hook can stop a commit locally. An OpenCode server plugin can observe a tool event in the agent's session. You'll trigger both events and check what each one proves.
 
 ## Put the check where it will run
 
-From a clean checkout, start a branch at `lab-coverage`. Record the existing value of `git config --local --get core.hooksPath` before changing it. Create `.githooks/pre-commit` in the repository root.
+Start from `lab-coverage` in your lab fork with Node `24.22.3`. Note the existing hooks path. The local setting affects this repository, including its other worktrees.
+
+```sh
+git switch -c local-checks lab-coverage
+node --version
+git config --local --get core.hooksPath
+mkdir -p .githooks
+```
+
+An empty result from `git config --get` means the local setting was absent. Save the hook as `.githooks/pre-commit`.
 
 ```sh title=".githooks/pre-commit"
 #!/bin/sh
@@ -18,18 +27,33 @@ git diff --cached --check
 npm run verify
 ```
 
+Ask **Plan** to read the hook and the verified policy before you install it.
+
+```text
+Read .githooks/pre-commit, package.json, and tools/coverage.mjs.
+Tell me which command reads the staged changes and which command
+tests the working tree. Give me a way to prove that Git stops the
+commit on a failure and reaches the coverage gate after I fix it.
+Leave the files and Git settings unchanged.
+```
+
+Run these commands yourself. Setting the executable bit allows Git to run the script. The added line has two spaces at the end.
+
 ```sh
 chmod +x .githooks/pre-commit
 git config --local core.hooksPath .githooks
+printf '\nLocal verification exercise.  \n' >> README.md
+git add -- README.md
+git commit -m "Exercise the pre-commit gate"
 ```
 
-Add a line with trailing whitespace to `README.md`, stage the file, and try to commit. `git diff --cached --check` should stop the commit and identify the line. Remove the trailing whitespace, stage the fix, and try again. This time the hook should reach `npm run verify`. Watch for its result before Git reports the commit.
+Expect Git to identify the trailing whitespace and stop before the coverage command. Check `git status --short` and read the staged diff. Remove the spaces you added, stage `README.md` again, and retry the same commit. This time the hook should run tests and print the coverage counts before Git creates the commit.
 
-The diff check reads the index. The tests and coverage run on the working tree. Inspect `git status --short` while reproducing the check and use CI to verify the committed revision. Return `core.hooksPath` to its previous value when you finish, or use `git config --local --unset core.hooksPath` if it was absent.
+The whitespace command reads the index. The test runner reads the working tree. Check for unstaged changes when interpreting a successful local run, and keep the [required CI check](/books/hands-on-coding-assistants/chapters/required-ci-checks-and-merge/) for the revision under review. Restore the previous hooks path when you finish or run `git config --local --unset core.hooksPath` if you started without a local setting.
 
 ## Where an OpenCode hook fits
 
-A server plugin observes events inside OpenCode. This exercise attaches a marker to a completed shell call. The plugin runs in the server process, so review its code before loading it. Put this file in the repository at `.opencode/plugins/lab-check-marker.js`.
+A **plugin** adds behavior to OpenCode. This server plugin runs in the server process and marks completed shell calls. Use the source below as the whole example. Save it at `.opencode/plugins/lab-check-marker.js`.
 
 ```javascript title=".opencode/plugins/lab-check-marker.js"
 export default {
@@ -47,19 +71,40 @@ export default {
 };
 ```
 
-Use a fresh OpenCode invocation. If the CLI has no selected model, add `--model provider/model` with the ID from setup. The exact `npm test` command matches the lab's permission rule.
+Read the file before you load it. The event handler adds metadata to the result. It leaves the command and its returned exit status available to the session. A completed shell call may still contain a failing command result.
+
+In a fresh OpenCode process, ask **Plan** to run the exact command the project already allows. Add `--model provider/model` with your selected model ID if the CLI needs it. Keep the raw output in a temporary directory.
 
 ```sh
+hook_evidence=$(mktemp -d)
 opencode run --standalone --agent plan --format json \
   "Execute only npm test using the shell tool. Report the observed result." \
-  > ../hook-enabled.jsonl
+  > "$hook_evidence/enabled.jsonl"
 ```
 
-Find the completed shell event. In the OpenCode 2.3.2 JSON stream, look for the metadata object under `part.state.metadata.metadata`. It should contain `labCheckObserved: true` and the command exit status. A completed tool call can carry a failing command result. Check both values.
+Find the completed shell event with `npm test` as its input. On OpenCode `2.3.2`, `part.state.metadata.metadata` contains the marker and the command result metadata. Check that `labCheckObserved` is true and that the exit status is zero.
 
-Move the plugin file outside `.opencode/plugins/` and repeat in another fresh process with the same model and prompt. Look for the completed shell event again. The marker should disappear while the command result remains. If the agent skips the shell tool, repeat the request before drawing a conclusion about the plugin. Save only the reviewed evidence you need from the two runs. The merge requirement still comes from the CI check.
+Move the file outside the discovery directory and repeat with the same model and prompt. Use a fresh process again.
+
+```sh
+mv .opencode/plugins/lab-check-marker.js "$hook_evidence/lab-check-marker.js"
+opencode run --standalone --agent plan --format json \
+  "Execute only npm test using the shell tool. Report the observed result." \
+  > "$hook_evidence/disabled.jsonl"
+```
+
+Expect the same successful command and no marker in the second shell event. If a session skips the command, ask it to use the shell tool and inspect the new event. Record the Git rejection and the two OpenCode observations in your exercise notes. Put the plugin back and commit the reviewed source on `local-checks`.
+
+```sh
+mv "$hook_evidence/lab-check-marker.js" .opencode/plugins/lab-check-marker.js
+git add -- .githooks/pre-commit .opencode/plugins/lab-check-marker.js
+git diff --cached --check
+git commit -m "Record the local gate and tool event marker"
+```
+
+In [MCP](/books/hands-on-coding-assistants/chapters/mcp-model-context-protocol/), you'll connect a tool that runs in a separate process and check both its discovery and its call.
 
 ## References
 
 - Git maintainers. [githooks](https://git-scm.com/docs/githooks). Git reference manual.
-- OpenCode maintainers. [Server](https://opencode.ai/docs/build/plugins/server/), [server hooks](https://opencode.ai/docs/build/plugins/server/#hooks), [Plugins](https://opencode.ai/docs/plugins/), and [CLI commands](https://opencode.ai/docs/cli/commands/). Official OpenCode 2 documentation.
+- OpenCode maintainers. [Plugins](https://opencode.ai/docs/plugins/), [Server hooks](https://opencode.ai/docs/build/plugins/server/#hooks), and [CLI commands](https://opencode.ai/docs/cli/commands/). Official OpenCode 2 documentation.

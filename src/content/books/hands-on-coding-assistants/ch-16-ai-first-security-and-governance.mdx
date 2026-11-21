@@ -1,43 +1,93 @@
 ---
 title: "AI-First Security & Governance"
-description: "Limit access for a Task API review and prove where its boundaries are enforced."
+description: "Define what a review needs, verify a tool permission, and prepare the evidence for sharing."
 module: 3
 order: 23
 ---
 
-The registration reviewer needed a spec, a contract, and a patch. The fact that you can connect a tool to issue trackers or provide a token says little about whether this review needs it. List the actual inputs before you decide what the agent can reach.
+The registration reviewer needed three inputs. A spec told it what should happen, a patch showed what changed, and a contract showed which cases were exercised. Start your security review with that list. Each connected tool or credential should have a job in the task.
+
+**Governance** is how a team decides who can grant access, approve changes to controls, and review the resulting evidence. For this exercise, you own the boundary. You'll apply a tool rule, check its effect, and review the record another engineer would receive.
 
 ## Check an effective permission
 
-Start from the edit rule you tried in [Repository Custom Instructions](/books/hands-on-coding-assistants/chapters/repository-custom-instructions/#keep-permissions-in-the-config). Use a disposable exercise branch at `lab-start` and add the rule to `permissions` in `opencode.jsonc`.
+Start on a disposable branch at `lab-start`. Use the edit rule from [Repository Custom Instructions](/books/hands-on-coding-assistants/chapters/repository-custom-instructions/#keep-permissions-in-the-config). Add it to the existing `permissions` array in `opencode.jsonc`.
+
+```sh
+git switch -c review-boundaries lab-start
+mkdir -p notes
+printf 'Temporary permission exercise\n' > notes/edit-probe.md
+```
 
 ```jsonc
 { "action": "edit", "resource": "contracts/*", "effect": "deny" }
 ```
 
-In a fresh **Build** session, try one harmless action.
+Open a fresh **Build** session and ask for one controlled attempt.
 
 ```text
-Try the edit tool once to add an empty comment to
-contracts/registration.test.ts. Report the tool status.
+Use the edit tool on contracts/registration.test.ts. Replace its
+first line, import assert from "node:assert/strict";, with two lines.
+The first is // Permission exercise and the second is the original
+import. Report the result of this single edit attempt in chat.
 ```
 
-Look for the denied action and confirm `git diff -- contracts/` is empty. Repeat with a scratch file inside the repository that the rule does not cover and check the resulting diff. This exercises the boundary in one tool. Restore the scratch change yourself and end the exercise session.
+Look for a denied edit, then confirm the contract diff is empty. In another **Build** session, ask the agent to use the same tool on the scratch file.
 
-The repository's outside-directory rule applies to tools that check it. An allowed shell script runs with the process's privileges and can do more than its name suggests. Inspect the script and the environment you give it before allowing the command. For a boundary the process must respect, use a restricted account or an isolated execution environment with credentials and files scoped to the task.
+```text
+Use the edit tool to replace the text in notes/edit-probe.md with
+Permission check reached this file. Report the tool result. Keep
+the change limited to that file.
+```
+
+Read the scratch file and check the contract again.
+
+```sh
+git diff --exit-code -- contracts/
+cat notes/edit-probe.md
+git status --short --untracked-files=all
+```
+
+Expect a successful edit to the scratch file and an unchanged contract. A refusal in prose is an incomplete probe. Record what the tool returned in each case, then remove the scratch file you created.
+
+The result applies to the OpenCode edit tool. Shell scripts execute with the permissions of the process that runs them. Inspect a script and the resources it can reach before allowing it. When the task requires a process-level boundary, use an isolated execution environment or a restricted account with its own scoped credentials and files.
 
 ## Review the inputs as well as the patch
 
-An issue, a README, and a retrieved tool response can carry instructions. If a response asks the agent to run an unrelated command or supply a credential, check where the text came from and use the configured permissions to limit reachable actions. For this exercise, use the lab's fictional records. A hosted model can receive prompts, excerpts, and tool output. A local model can still be paired with network-capable tools. Pick the exposure that matches the task.
+A README, an issue, or a retrieved record can contain text that asks for actions outside the task. Treat such text as material to review. If a source asks for an unrelated lookup or a credential, check who supplied the request and keep the tools scoped to the work you approved.
 
-Read the shareable note you saved in [the prompt exercise](/books/hands-on-coding-assistants/chapters/prompt-engineering-for-code-assistants/#keep-a-record-that-survives-the-session). From the current checkout, run `git show prompt-evidence:notes/registration-verification.md`, using your own branch name if needed. Check that the note identifies each source and that the value `DO_NOT_SHARE_EXERCISE` is absent. If you are entering here directly, use the linked section to create and check a shareable note.
+Read the note you prepared in [the prompt exercise](/books/hands-on-coding-assistants/chapters/prompt-engineering-for-code-assistants/#keep-a-record-that-survives-the-session). Substitute your branch name if needed.
 
-Review dependency and lockfile changes, plugin or server code, and the origin and licensing of contributed material. In a shared project, have the people who own the rules review changes to the rules themselves.
+```sh
+git show prompt-evidence:notes/registration-verification.md
+git show prompt-evidence:notes/registration-verification.md | grep -nF 'DO_NOT_SHARE_EXERCISE'
+```
 
-Write down the scope of the agent and the outcome of the two tool probes in the review record. If you can point to the permission rule, the tool result and the diff, a teammate can reproduce the decision without access to your original session.
+The search should return no match. Read the whole note for other sensitive values before giving excerpts to an agent or reviewer. A hosted model can receive the prompt, file excerpts, and tool output. Check the connected tools on a local session too, since those tools can make their own network requests. Use the fictional lab records for this exercise.
+
+Give **Plan** the reviewed excerpts and the two tool results.
+
+```text
+Use the evidence I pasted to draft a review handoff. List the files
+and tools needed for the review, the permission rule I tested, the
+allowed and denied tool results, and the evidence a teammate can
+inspect. Identify any access that needs a separate owner decision.
+Keep the draft in chat.
+```
+
+Confirm the handoff describes exactly what the probes exercised. Ask **Build** to save the approved text in `notes/governance-review.md`. Check the note for sensitive contents and commit it with the verified rule on `review-boundaries`.
+
+```sh
+git add -- opencode.jsonc notes/governance-review.md
+git diff --cached --check
+git diff --cached
+git commit -m "Record the review permission checks"
+```
+
+In a shared repository, have the owners of the workflow review changes to permissions, dependencies, and plugins that affect it. In [Impact Measurement & Continuous Improvement](/books/hands-on-coding-assistants/chapters/impact-measurement-and-continuous-improvement/), you'll count the time and corrections it takes to reach a result you can accept.
 
 ## References
 
 - OpenCode maintainers. [Permissions](https://opencode.ai/docs/permissions/) and [Providers](https://opencode.ai/docs/providers/). Official OpenCode 2 documentation.
 - OpenTelemetry contributors. [Handling sensitive data](https://opentelemetry.io/docs/security/handling-sensitive-data/). OpenTelemetry project documentation.
-- William Oliveira. [Coding agent execution boundaries](/posts/coding-agent-execution-boundaries/). Technical article on workspace coordination and process containment.
+- William Oliveira. [Coding agent execution boundaries](/posts/coding-agent-execution-boundaries/). Technical article.

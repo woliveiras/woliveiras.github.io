@@ -1,55 +1,97 @@
 ---
 title: "AI-Assisted Code Review"
-description: "Verify a reviewer finding against the feature specification, the diff, and a running service."
+description: "Reproduce a reviewer finding against the running service, then protect the fix with a regression test."
 module: 3
 order: 17
 ---
 
 ## Bring the evidence to the reviewer
 
-The registration contract can pass while a name at the exact length limit is rejected. Start on `reviewer-exercise`, created from the `lab-review` tag. You need `notes/review.patch` and the reviewer definition from [Custom Agents & Sub-Agents](/books/hands-on-coding-assistants/chapters/custom-agents-and-sub-agents/). If you enter here from the contents, follow that setup to recreate the patch with `lab-registration` as the base and `lab-review` as the head. Check the contract yourself before opening the review.
+The registration reviewer found a case that the green contract missed. A name at the exact length limit should be accepted. The changed comparison suggests the API will reject it. A useful review finding gives you enough information to settle that question with a request to the running service.
+
+Stay on `reviewer-exercise` from [Custom Agents & Sub-Agents](/books/hands-on-coding-assistants/chapters/custom-agents-and-sub-agents/). You need the reviewer profile and `notes/review.patch`, with `lab-registration` as the base and `lab-review` as the revision being reviewed. If you arrived from the contents, use that chapter to recreate them. The saved finding may be in `notes/reviewer-findings.md`.
 
 ```sh
-git log -1 --oneline
+git rev-parse lab-registration lab-review
+git diff --exit-code lab-review -- src/ contracts/ test/
 npm test
 npm run test:registration
-git diff lab-registration lab-review -- src/app.ts
 ```
 
-Both suites should pass. The test data covers a short name and a name of 101 characters. The spec also accepts 100. Ask your reviewer for a request that follows the spec and behaves differently at the changed line.
+Expect three base tests and two contract tests to pass. The contract includes a short valid name and rejects 101 characters. Confirm the 100-character case with **reviewer**. If you already have a finding from the previous chapter, use this prompt to refine the request it proposes.
 
 ```text
 Read specs/registration-validation.md, contracts/registration.test.ts,
-and notes/review.patch. Find a criterion the existing tests could miss.
-For each finding, give the changed file and line, a concrete input,
-the expected result, and what the code implies will happen. Identify
-the checks you actually ran.
+and notes/review.patch. For the name-length finding, give the changed
+line, the acceptance criterion, a request I can run on a fresh server,
+and the expected and inferred results. Keep the HTTP result pending
+until I run the request.
 ```
 
 ## Verify a finding before asking for a fix
 
-Start `npm start` in one terminal. From a second terminal, submit names of three lengths to the local service. The Node script builds the JSON bodies so you can see exactly which input produced each status.
+Start the service in a terminal from the lab root.
+
+```sh
+PORT=3100 npm start
+```
+
+In a second terminal, send three otherwise identical requests. The cases on either side of 100 make it easier to tell a boundary error from a broken route or invalid email.
 
 ```sh
 node --input-type=module - <<'JS'
 for (const length of [99, 100, 101]) {
-  const response = await fetch("http://127.0.0.1:3000/registrations", {
+  const response = await fetch("http://127.0.0.1:3100/registrations", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ name: "x".repeat(length), email: "sam@example.test" }),
   });
-  console.log(length, response.status);
+  console.log(length, response.status, await response.json());
 }
 JS
 ```
 
-On `lab-review`, the statuses are 201, 400 and 400. The middle case should return 201. A model that reports this as an observed result without running the request has given you a hypothesis. Preserve the distinction in your notes.
+At `lab-review`, the statuses are `201`, `400`, and `400`. The middle request should return `201`. Give the observed result to the reviewer and ask which line explains it. The patch changed `> 100` to `>= 100`. Confirm that the length is measured after trimming, as the spec requires. Stop the server before changing the source so you can start a fresh process for the final check.
 
-Turn the 100-character case into an HTTP regression test in `test/app.test.ts` and run `npm test` to see it fail. Then ask Build for the smallest change that makes the test pass without rejecting a different set of inputs. Review the new diff and run both suites. The direct requests should now return 201, 201 and 400. Stop the service and keep the base, head, verified finding and resolution together in your review note.
+## Turn the finding into a regression test
 
-If the review returns no findings, check whether the session opened the spec and the materialized diff. Repeat with the criterion and input specified. The decision to accept the patch stays with the person who can reproduce the behavior.
+Open **Build** in a separate session. Give it the confirmed finding and ask for the test first.
 
-Save the verified fix, test, and review note on `reviewer-exercise`. Start [AGENTS.md & Project Context](/books/hands-on-coding-assistants/chapters/agents-md-and-project-context/) from a clean checkout of its named checkpoint.
+```text
+Add one HTTP regression test to test/app.test.ts using startApp and
+jsonRequest. Send a valid email and a name with 100 characters after
+trimming. Assert HTTP 201 and the stored trimmed name. Leave src/app.ts
+and the contract unchanged. Run npm test and show the failing assertion.
+```
+
+Check that the test fails because the route returns `400` for that input. An import error or malformed request leaves the finding unverified by the test. If the test is green, check the input length, status assertion, and revision under test before proceeding.
+
+```text
+The new test reproduces the reviewed failure. Change only the
+name-length comparison in src/app.ts to accept the stated limit.
+Keep the test and contract intact. Run npm test and
+npm run test:registration separately and show their results.
+```
+
+Review the diff and rerun the checks. Restart the service and repeat the same request sequence. The observed statuses should now be `201`, `201`, and `400`. Stop the service when you finish.
+
+```sh
+npm test
+npm run test:registration
+git diff --check
+git diff -- src/app.ts test/app.test.ts
+```
+
+Ask Build to update `notes/reviewer-findings.md` with the actual before and after results and the regression command. Keep `notes/review.patch` as the snapshot of the change you reviewed. If you entered here directly, create the note with the base, head, changed line, request, and observed correction. Read the staged diff before committing the fix.
+
+```sh
+git add -- src/app.ts test/app.test.ts notes/reviewer-findings.md
+git diff --cached --check
+git diff --cached
+git commit -m "Accept the exact registration name limit"
+```
+
+Keep the review on `reviewer-exercise`. In [AGENTS.md & Project Context](/books/hands-on-coding-assistants/chapters/agents-md-and-project-context/), you'll start from `lab-start` and check which shared guidance is available before you ask an agent to act.
 
 ## References
 

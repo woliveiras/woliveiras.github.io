@@ -1,31 +1,37 @@
 ---
 title: "Custom Agents & Sub-Agents"
-description: "Define a reviewer with explicit tool permissions and verify its work in a separate session."
+description: "Configure a read-only reviewer, delegate a review to it, and hand off a finding someone can reproduce."
 module: 3
 order: 16
 ---
 
-The implementation session has already spent time defending a patch. A new review session starts with the criterion and the changed line. Give it the spec, the tests, and a diff with a known base.
+In [the prompt exercise](/books/hands-on-coding-assistants/chapters/prompt-engineering-for-code-assistants/#keep-a-record-that-survives-the-session), you kept the spec, revision, and test results behind a patch. A reviewer can use those inputs to decide whether the patch does what the spec says. Give the reviewer a fresh session and enough access to read the evidence. Its job is to find a case worth checking before you accept the change.
+
+A **custom agent** is a named OpenCode profile with its own instructions and tool permissions. A **primary agent** handles the session you are working in. A **subagent** handles a task a parent agent delegates to a separate child session. You'll use one reviewer definition both ways to see what changes when Build delegates the work.
 
 ## Give the reviewer a copy of the diff
 
-Use a clean working tree and start from the review checkpoint.
+Use the [OpenCode setup](/books/hands-on-coding-assistants/chapters/setup-and-practical-integration/) and start from the root of your lab fork with a clean working tree. Keep the work from the prompt exercise on its branch. Use the prepared `lab-review` checkpoint here so each review starts with the same change.
 
 ```sh
 git switch -c reviewer-exercise lab-review
+git rev-parse lab-registration lab-review
 mkdir -p .opencode/agents notes
 git diff lab-registration lab-review -- src/app.ts > notes/review.patch
+npm run test:registration
 ```
 
-Read `notes/review.patch` yourself. The two refs put the intended change in the file even when the working tree is clean. Keep the patch with the base and head SHAs when you pass it to someone else.
+Record the two SHAs in order. `lab-registration` is the base and `lab-review` is the head. Read `notes/review.patch`. It shows the change between those commits even though `git diff` on a clean working tree would be empty. The reviewer can open this file with its read tool and see the exact patch.
+
+The two contract tests pass at this checkpoint. Keep that result beside the diff. You'll ask the reviewer where a change can still break the spec while those tests pass.
 
 ## Give the reviewer a different job
 
-Create `.opencode/agents/reviewer.md`. OpenCode loads the Markdown body as the agent's instructions. `mode: all` makes the agent available directly and as a child. The child can inherit your selected model and uses its own permission rules.
+Save the following definition as `.opencode/agents/reviewer.md` in your fork. The frontmatter gives OpenCode the description, mode, and permissions. The Markdown body gives the reviewer its job and defines what goes into a finding.
 
 ```md title=".opencode/agents/reviewer.md"
 ---
-description: Reviews a known Task API diff against its spec and contract
+description: Reviews a Task API patch against its spec and contract
 mode: all
 permissions:
   - action: "*"
@@ -49,28 +55,121 @@ permissions:
 ---
 
 Read the named spec, the relevant contract, and notes/review.patch.
-Cite the changed file and line for each finding. Give a request that
-would demonstrate it, the expected result, and the result implied by
-the code. Say which checks still need a human to run them.
+Review the patch against the acceptance criteria. For each finding,
+cite the changed file and line and the criterion it violates.
+Give one input, the expected result, and the result you infer from
+the changed code. Name the check a human can run to verify it.
 ```
 
-The broad denial comes first. The later read rules grant the inputs this review needs. Run and inspect the shell checks yourself. The same repository can give Build more tools for a later task.
+`mode: all` makes the profile selectable as a primary agent and callable as a subagent. Use `primary` for a profile you only want to select directly, or `subagent` for one you only want another agent to call.
+
+OpenCode uses the last matching permission rule. The first rule denies tool actions by default for this reviewer. The later rules allow file reads at the paths it needs. Those rules apply after the repository rules, so the reviewer can't run `npm test` through its shell tool even though the lab allows that command for Build. Keep the shell checks in your own terminal during review.
 
 ## Run an independent pass
 
-Open OpenCode from the repository root, choose **reviewer** with `/agents`, and send this request.
+Open OpenCode from the fork root after saving the file.
+
+```sh
+opencode
+```
+
+Start a fresh session with `/new` and choose **reviewer** with `/agents`. If it doesn't appear, check the file path and frontmatter, then reopen OpenCode from the fork root. Give the reviewer the evidence paths and a question about the patch.
 
 ```text
 Read specs/registration-validation.md, contracts/registration.test.ts,
-and notes/review.patch. Identify a request where this patch diverges
-from the spec. Tell me how I can reproduce it using a fresh server.
+and notes/review.patch. Find a registration input where the patch and
+spec disagree even though the existing contract passes. Cite the
+changed line and give the expected HTTP status and what the code
+implies. Keep runtime observations pending.
 ```
 
-Watch for actual reads of the requested files. In a separate session, ask the reviewer to try the shell tool with the exact command `git status --short` to exercise the boundary. The tool should be unavailable or the request should be denied. A prose refusal alone gives you weaker evidence. The setup files and patch are expected in the working tree. Confirm that the reviewer itself added no changes.
+Check the completed file reads before you judge the answer. A finding you can take forward points to the comparison in `src/app.ts`, where `> 100` became `>= 100`. The spec accepts a name of exactly 100 characters after trimming. A request with that name and a valid email should return `201`. The changed line implies `400`. Find the short accepted name and the 101-character rejection in the contract to see why its assertions can pass.
 
-You can also open a fresh **Build** session and ask it to call `reviewer` with the same input. Check that the parent started a child and got a report. Build controls which children it can launch. Give the child the paths and task explicitly, since it starts with its own context. Keep one of the review findings and test it in the next chapter.
+If the report says the change is safe, check whether the session opened the spec and the patch. Give the reviewer the criterion about trimmed name length and ask it to follow execution for exactly 100 characters. Keep the answer tied to a request you can run in the next chapter.
+
+### Check the tool boundary
+
+Start another **reviewer** session. Use a file the reviewer should be able to open, one outside its read rules, and a command the repository normally allows.
+
+```text
+This is a permission check. Use the read tool to open notes/review.patch,
+then try to read README.md with the same tool. Try to run the exact command
+npm test using the shell tool once if that tool is available. Report what
+the tools allowed and stop after those checks.
+```
+
+Look for the completed patch read and the permission denial for `README.md`. Expect the shell tool to be unavailable or the action to be denied. If the session offers only a refusal in chat, keep the shell probe unverified. Check the working tree from your own terminal.
+
+```sh
+git status --short --untracked-files=all
+git diff --exit-code lab-review -- src/ specs/ contracts/ test/
+```
+
+Expect the reviewer definition and the saved patch to be the only new files at this point. The tracked source, spec, and tests should match the checkpoint.
+
+## Delegate the review from Build
+
+Open a fresh **Build** session and give it the same task to delegate.
+
+```text
+Use the reviewer subagent to review the change from lab-registration
+to lab-review. Give it specs/registration-validation.md,
+contracts/registration.test.ts, and notes/review.patch. Ask for one
+finding with a changed line, a concrete input, the expected HTTP status,
+and the result the code implies. Return its finding when it reports back.
+Leave the repository unchanged.
+```
+
+Look for a `subagent` tool call that targets `reviewer`. Build's permission to launch a child applies to that call. The child uses the reviewer's read rules. Check the file reads in the child session. If Build returns its own assessment, ask it to make the delegation and check the resulting tool activity.
+
+### Check the model, context, and reports
+
+The tool call passes the task prompt to a new child session and returns its ID. The child starts with its own conversation and opens the named files in the same checkout. Give it the paths and the question even if Build already has the relevant lines in its conversation. When the child goes idle, OpenCode delivers its report to Build. The report becomes part of Build's conversation, and you can inspect the child's reads in its own session.
+
+With the definition above, the delegated reviewer uses the model selected in Build's session. Set a `model` field in the reviewer's frontmatter to give it a different model. Use the exact `provider/model` ID of a model you can select with `/models`. Selecting **reviewer** directly as a primary agent leaves the model selection of that session in place.
+
+Each session uses the context window of the model it runs with. Two sessions using the same model and provider settings have the same limit per request, and each fills its window with its own instructions, conversation, and tool results. A different model can give the reviewer a different limit. Keep the delegation small enough to fit the reviewer's window. Here it needs the spec, contract, and patch. To verify the model choice, use the [session export from the prompt exercise](/books/hands-on-coding-assistants/chapters/prompt-engineering-for-code-assistants/#rehearse-redaction-before-sharing) and compare `info.model` in the parent and child exports. The child's `info.parentID` links it back to Build.
+
+If you need a more precise request from the reviewer, give Build the ID returned by the tool call. Replace `CHILD_SESSION_ID` with that value.
+
+```text
+Follow up with reviewer in the same child session, CHILD_SESSION_ID.
+Ask it for the exact request body that demonstrates the length
+boundary and the expected HTTP status. Return the child's answer
+and keep the runtime result pending.
+```
+
+Check that the new call uses the same ID and brings back a second report. The child can use the earlier evidence in that conversation.
+
+Compare the direct and delegated findings against the same criterion. They can use different wording. Keep the finding that identifies the input, the changed line, and the expected and inferred results. You can check those facts from the spec, contract, and patch even if the service has yet to run.
+
+## Save the review handoff
+
+Give **Build** the two SHAs, your tool observations, and the finding you checked.
+
+```text
+Write notes/reviewer-findings.md using the evidence I gave you.
+Record the base and head SHAs, the spec criterion and changed line,
+the proposed request, and the expected and inferred statuses.
+Record the model and tool observations for the direct and delegated
+runs and what I still need to verify against the running service.
+Write only the note.
+```
+
+Read the note and confirm it labels the HTTP result as pending. Commit the record and reviewer setup on `reviewer-exercise`.
+
+```sh
+git status --short --untracked-files=all
+git add -- .opencode/agents/reviewer.md notes/review.patch notes/reviewer-findings.md
+git diff --cached --check
+git diff --cached -- .opencode/agents/reviewer.md notes/reviewer-findings.md
+git commit -m "Record a scoped registration review"
+```
+
+Stay on this branch for [AI-Assisted Code Review](/books/hands-on-coding-assistants/chapters/ai-assisted-code-review/). You'll run the request from the finding against a fresh server, turn the failure into a regression test, and review the fix.
 
 ## References
 
-- OpenCode maintainers. [Agents](https://opencode.ai/docs/agents/) and [Permissions](https://opencode.ai/docs/permissions/), including [agent permissions](https://opencode.ai/docs/permissions/#agents). Official OpenCode 2 documentation.
+- OpenCode maintainers. [Agents](https://opencode.ai/docs/agents/), [Permissions](https://opencode.ai/docs/permissions/), and [TUI](https://opencode.ai/docs/cli/tui/). Official OpenCode documentation.
+- OpenCode maintainers. [Tools](https://opencode.ai/docs/tools/#subagent), [Models](https://opencode.ai/docs/models/), and [Compaction](https://opencode.ai/docs/compaction/). Official OpenCode documentation for child sessions, model selection, and context limits.
 - Git maintainers. [git-diff](https://git-scm.com/docs/git-diff). Git reference manual.

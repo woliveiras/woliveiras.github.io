@@ -8,9 +8,9 @@ kind: appendix
 
 ## Pick a model for the exercise
 
-The lab needs a model that can read a file, run a test command, and make a small edit. Start with the [file and shell checks](/books/hands-on-coding-assistants/chapters/setup-and-practical-integration/#check-file-and-shell-tools), then [verify an edit in a separate worktree](/books/hands-on-coding-assistants/chapters/setup-and-practical-integration/#check-an-edit-in-a-separate-worktree). A model that answers questions may still struggle to call a tool repeatedly.
+Start with the [file and shell checks](/books/hands-on-coding-assistants/chapters/setup-and-practical-integration/#check-file-and-shell-tools), then [verify an edit in a separate worktree](/books/hands-on-coding-assistants/chapters/setup-and-practical-integration/#check-an-edit-in-a-separate-worktree). In Plan, look for a completed read of `package.json` and a successful `npm test` tool call. In Build, look for the requested change in the diff. Those are the capabilities the exercises need.
 
-Keep the exact OpenCode version, model ID and result when you run the exercise. If you use Ollama, record its version and the context allocated to the model. If you change model or provider later, repeat the three checks with the new configuration.
+Keep the exact OpenCode version, model ID, and observed result for each check. If you use Ollama, record its version and the context allocated to the model. Use the same checks after a change so you know which result improved.
 
 ## Check whether a model fits your machine
 
@@ -28,7 +28,7 @@ For a rough estimate of the raw weights in decimal GB, multiply the parameter co
 
 At runtime, budget for the weights, the runner's working memory, and the KV cache, which holds information about tokens the model has already processed. A longer context can increase how much memory the cache needs. The headroom needed depends on the model architecture, quantization, and configured context length. Estimate for the context you'll use in OpenCode.
 
-Use a checker to narrow down the candidates. **Can I Run AI?** takes hardware specs in the browser. `llmfit` detects hardware from the terminal and estimates memory fit and speed. Use those estimates to pick a smaller variant when memory is tight, then measure on your machine.
+Use a checker if you have several candidates. **Can I Run AI?** takes hardware specs in the browser. `llmfit` detects hardware from the terminal and estimates memory fit and speed. Use the estimate to choose a tag to check. The next step measures the allocation you actually get.
 
 ### Verify with Ollama
 
@@ -44,7 +44,15 @@ Ollama's integration guide calls for a context window of at least 64k tokens wit
 OLLAMA_CONTEXT_LENGTH=65536 ollama serve
 ```
 
-Set that variable before the server starts. Stop an existing instance if it already owns the port. After the first request, `ollama ps` shows the loaded runner and allocated context. Larger context uses more memory. Check speed and memory on your own machine before moving on to longer exercises.
+Set that variable before the server starts. If the app is already listening on the port, use its context setting or stop it before starting this command. Send the file-read prompt from the setup chapter, then inspect the active model.
+
+```sh
+ollama list
+ollama ps
+opencode models
+```
+
+`ollama list` shows the downloaded tags. `ollama ps` shows the loaded model, allocation, and processor placement. `opencode models` shows the ID you can select. If the model fits at a short context but becomes slow at `65536`, check memory pressure and processor placement at that allocation. Use a smaller tool-capable tag or use the hosted path if the exercise can't fit comfortably.
 
 On the default listener, OpenCode 2 discovers eligible models automatically. If you configured a different listener, merge provider settings into your project or personal OpenCode config:
 
@@ -62,14 +70,14 @@ Use the port on which your instance listens. Run `opencode models` to confirm th
 
 ## Free hosted options
 
-Open `/models` to select a currently available free OpenCode model. A catalog entry can be visible before an underlying provider accepts your requests. If the first request is rejected because of availability or a quota, check the catalog and select another free entry.
+Open `/models` to select a currently available free OpenCode model. As of November 21, 2026, the catalog lists `opencode/deepseek-v4.1-flash-free`. Check the current free list and send the same file-read and shell prompt. A listed model can still return a quota or availability error. Record that response, then select another free entry and repeat the check.
 
-OpenRouter is another option. Use `/connect`, select OpenRouter, and enter your own OpenRouter API key there. In `/models`, select an explicit free variant with tool-calling support. As of November 20, 2026, the catalog lists `nvidia/nemotron-3.5-lightning:free` with tools. Check the current entry, account requirements and rate limits before using it. Repeat the setup exercise with the exact ID selected in OpenCode. Use the sample project with either hosted option. Its data is fictional.
+OpenRouter is another option. Use `/connect`, select OpenRouter, and enter your OpenRouter API key there. In `/models`, select an explicit free variant with tool-calling support. The catalog lists `nvidia/nemotron-3.5-lightning:free` with tools as of November 21, 2026. Check the current entry and account limits, then run the setup checks with the exact ID selected in OpenCode. Use the fictional lab data on either hosted path.
 
 | Symptom | Check |
 | --- | --- |
 | The model is missing | Verify that the local server is listening, the model is installed, and `opencode models` shows the expected ID. On a hosted path, check the provider's current list and account requirements. |
-| Chat works, but the session skips tool calls | Inspect permissions and repeat the setup check with the same prompt. If the model still skips tools, try another one. |
+| Chat works and the session skips a tool call | Check whether the tool was selected, denied, or skipped. Use the exact command from the setup check. If a completed tool still reports failure, read the result first. |
 | The local session is slow or loses track of files | Check the allocated context and use the small lab in a fresh session. Keep optional MCP tools out of the first exercise. |
 | The hosted route hits a limit | Follow the provider's quota guidance or switch to another free entry. Keep the same spec and tests. |
 

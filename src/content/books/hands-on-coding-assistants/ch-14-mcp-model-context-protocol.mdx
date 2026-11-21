@@ -1,24 +1,33 @@
 ---
 title: "MCP (Model Context Protocol)"
-description: "Connect a read-only tool and verify server startup, discovery, and a model's actual call."
+description: "Connect a read-only tool and verify process startup, discovery, invocation, and permissions."
 module: 3
 order: 22
 ---
 
-You can explain the Task API's validation convention by reading its tests. Suppose the same convention came from a shared service outside the repository. The agent would need a way to find and call that service. The Model Context Protocol, or MCP, lets OpenCode discover tools supplied by a server and invoke them with structured input.
+The Task API's tests tell you how the service handles an invalid request. If that convention lives in a tool outside the repository, the agent needs a client that can discover the tool and call it. **Model Context Protocol**, or **MCP**, defines that exchange. OpenCode is the client here. It starts the local server, negotiates the protocol, discovers the tool and its input schema, and can send the tool's result to the model.
 
-Start a new exercise branch at `lab-start`. The lab includes `tools/project-context.mjs`, a small local server started over standard input and output. Its one tool returns a fixed sentence about validation. It needs no network service or key.
+Use a new exercise branch at `lab-start`. The included server, `tools/project-context.mjs`, uses standard input and output. It provides a fixed response about task validation and needs no network service or credential.
 
 ```sh
 git switch -c context-tool lab-start
 npm run test:mcp
 ```
 
-The smoke test starts the process and checks its sample replies. Use that result to diagnose process failures before you bring in the model. The MCP specification describes a client that negotiates initialization before normal operation. You can verify a real client connection separately.
+Expect one passing test. It starts the process, sends initialization and tool requests, and checks their replies. This gives you a process-level check before involving OpenCode.
 
 ## Connect the server in OpenCode
 
-Merge this top-level `mcp` block into the existing `opencode.jsonc`. Preserve the existing permissions. Disabling Code Mode for this server makes the individual tool call visible.
+Open **Plan** and ask how to interpret the smoke test before you configure the client.
+
+```text
+Read tools/project-context.mjs and contracts/mcp.test.ts.
+Trace initialization, tool discovery, and the conventions
+reply. Tell me how to configure OpenCode to start this process
+and what I should inspect to verify a real tool call.
+```
+
+Read the server yourself. Check which executable and path OpenCode will use. Merge the following top-level block into `opencode.jsonc`, keeping the existing permissions. With `codemode: false`, this server's tool is presented directly, which makes the call easier to identify in the exercise.
 
 ```jsonc
 {
@@ -34,26 +43,44 @@ Merge this top-level `mcp` block into the existing `opencode.jsonc`. Preserve th
 }
 ```
 
-From the repository root, run `opencode mcp list` and check for `project_context` with a connected status. If OpenCode 2.3.2 reports `No MCP servers configured` on the first request, check your working directory and the smoke test, then retry in the same background service. That version has a cold registry issue. Use the normal service for this exercise to give discovery time to finish.
+From the fork root, run the client discovery check.
+
+```sh
+opencode mcp list
+```
+
+Look for `project_context` with a connected status. If OpenCode `2.3.2` reports no servers on its first request, check the working directory, config, and smoke test. Retry in the same normal background service after it has had time to discover the server. That version has a cold registry issue. A working standalone smoke test narrows the diagnosis to the client setup when OpenCode fails to connect.
 
 ## Ask the model to call it
 
-Start a fresh Plan session.
+Open OpenCode from the same location and use a fresh **Plan** session.
 
 ```text
-Call project_context_get_task_conventions. Report its response and show
-which test in test/app.test.ts checks that convention.
+Call project_context_get_task_conventions with an empty argument
+object. Quote its observed result and identify a test in
+test/app.test.ts that checks the same behavior.
 ```
 
-Look for a completed tool call and compare its response with the source. It should mention returning HTTP 400 and preserving the task list. The model can give you those facts by reading the repository. Look at the call itself to distinguish that answer from an integration that worked.
+Look for a completed call to the named tool. The response says invalid task input returns HTTP `400` and leaves stored tasks unchanged. Open the blank-title test and find its assertion on the task list after the rejection. The matching test supports the convention. The tool event shows where the session actually got it.
 
-For one comparison, append a denial to `permissions`.
+Now append a narrow denial to the project's `permissions` array.
 
 ```jsonc
 { "action": "project_context_get_task_conventions", "resource": "*", "effect": "deny" }
 ```
 
-In a new session the tool should be unavailable or blocked even if the server is listed as connected. Undo the rule and verify a successful call again. Record the process, discovery, and call results separately. Add a production MCP connection when its controlled lookup makes the workflow easier to verify.
+Reopen OpenCode with the changed config and try the same prompt in a new session. Discovery can still list a connected server while the tool is unavailable or denied. Check the tool activity before assigning credit to the integration. Restore the permission and confirm that a fresh session can call the tool again.
+
+Save what you observed at process startup, discovery, and invocation. Commit the working configuration on `context-tool` after checking that you removed the temporary denial.
+
+```sh
+git diff -- opencode.jsonc
+git add -- opencode.jsonc
+git diff --cached --check
+git commit -m "Connect the Task API MCP example"
+```
+
+For a service you connect later, review the commands and credentials it needs and document what each exposed tool can do. In [AI-First Security & Governance](/books/hands-on-coding-assistants/chapters/ai-first-security-and-governance/), you'll apply the same check to the boundaries of a review.
 
 ## References
 

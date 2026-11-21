@@ -1,15 +1,15 @@
 ---
 title: "End-to-End Final Project"
-description: "Implement searchable task labels and use the test, review, CI, and runtime evidence to make a merge decision."
+description: "Implement searchable task labels and make a merge decision using the spec, tests, review, CI, and telemetry."
 module: 4
 order: 25
 ---
 
 ## The scenario
 
-A user wants to mark a task as urgent and find it again from the list. Implement searchable labels on the existing in-memory Task API. The larger change in your RFC and ADR covers what happens when the service needs durable storage. Here the work is to verify the first release against the agreed API contract and decide whether it is ready to merge.
+A user wants to label a task as urgent and find it again. You've done the design work for a larger feature. Now ship a small version that stores labels in memory. The RFC and ADR explain the future durable version. The exercise's label spec defines what a caller should see from the version you implement.
 
-Read the [reviewed RFC](/books/hands-on-coding-assistants/chapters/write-and-review-an-rfc/#incorporate-the-feedback) and [storage ADR](/books/hands-on-coding-assistants/chapters/record-the-architecture-decision/) before you open a new coding session. Bring the checks from [your harness note](/books/hands-on-coding-assistants/chapters/building-your-harness/#record-the-controls-and-their-evidence) as well.
+Bring your [reviewed RFC](/books/hands-on-coding-assistants/chapters/write-and-review-an-rfc/#incorporate-the-feedback), [storage ADR](/books/hands-on-coding-assistants/chapters/record-the-architecture-decision/), and [harness note](/books/hands-on-coding-assistants/chapters/building-your-harness/#record-the-controls-and-their-evidence). Substitute the branch names you used.
 
 ```sh
 git show design-task-labels:docs/rfcs/0001-task-labels.md
@@ -17,7 +17,7 @@ git show design-task-labels:docs/decisions/0001-task-label-storage.md
 git show incident-postmortem:notes/harness.md
 ```
 
-Substitute your branch names if they differ. The earlier branches hold your notes and decisions. Start the feature from `lab-harness`, which supplies the reference code and checks. Keep `capstone-base` so you can review the exact feature diff.
+Start from a clean checkout of your fork with Node `24.22.3`. The base branch supplies the verification workflow, coverage policy, and live gateway. Keep it at this commit while you review and run CI.
 
 ```sh
 git switch -c capstone-base lab-harness
@@ -26,92 +26,168 @@ npm run verify
 npm run test:labels
 ```
 
-The existing verification passes on the reference. The label contract fails before the implementation exists. Read `specs/task-labels.md`, then open `contracts/labels.test.ts` and match each behavior with its assertion. Bring the decisions from your RFC and ADR into the PR description so a reviewer can see where the feature ends.
+Expect ordinary verification to pass and both label contract tests to fail before implementation. Keep both results for the PR. The starter's verification uses the tests selected by the harness, and this feature's contract still needs to be included in the ordinary run.
 
 ## Plan the change
 
-Select **Plan** and give the agent the input and output you need.
+Open OpenCode from the fork root. In **Plan**, give it the relevant decisions from the RFC and ADR and ask it to read the actual acceptance criteria.
 
 ```text
-Read specs/task-labels.md, contracts/labels.test.ts, src/app.ts, and
-test/app.test.ts. Plan the in-memory labels feature. Show where
-normalization, deduplication, validation, and mutation happen in src/app.ts.
-Specify what a request sees when it clears labels, when the target
-is missing, and when the input is invalid. Explain which existing
-responses acquire a labels field. Keep files unchanged.
+Read specs/task-labels.md, contracts/labels.test.ts, src/app.ts,
+and test/app.test.ts. Use the design decisions I pasted to plan
+the in-memory labels feature. Trace normalization and deduplication
+through validation, lookup, and mutation. Give expected results
+for clearing labels, invalid input, missing tasks, and filtering.
+Map each step to a check. Leave the files unchanged.
 ```
 
-Compare the plan with the contract. Ten distinct labels are allowed after normalization. A request with eleven copies of the same label can still be valid. A valid empty list clears the labels. An invalid input preserves them. Check the order of validation and lookup too. An invalid payload for an unknown task is still invalid.
+Review the plan before editing. The limit is ten distinct labels after normalization, so a raw array can have eleven copies of the same label and still be valid. An empty array clears labels. Invalid input must preserve existing labels and must return `400` even for an unknown task. Valid input for an unknown task returns `404`. A present blank filter returns an empty list.
 
-The specification adds `labels` to existing responses and retains `id` and `title`. Check those fields and run a consumer check before proposing rollout. For an example strict consumer, save a list response from the running service and try asserting that each object has exactly the two old keys. It will reject the expanded shape. Record that fact against the adoption decision in the RFC.
+Creation and list responses keep `id` and `title` and add `labels`. Someone whose client accepts only the original keys could see a compatibility break. Include that case in the rollout discussion before accepting the plan.
 
 ## Implement and check the behavior
 
-Switch to **Build** with the approved plan. Ask for small steps that first add the data and response shape, then implement updates and filtering, then verify edge cases. Read the changes to the original task tests. The response objects now include `labels`, and the assertions about title normalization and rejected input still apply.
+Switch to **Build** with the approved plan. Ask it to keep the existing acceptance criteria visible while it works.
 
-After the contract passes on its own, add `test/labels.test.ts` to include it in ordinary verification.
+```text
+Implement the reviewed in-memory labels plan in src/app.ts. Update
+the existing task response assertions for the labels field and keep
+their title and invalid-input checks. Leave contracts/labels.test.ts
+unchanged. Run npm test and npm run test:labels separately. Show me
+the changes and the observed result of each command.
+```
+
+After the supplied contract passes directly, add this import so the ordinary suite runs it too.
 
 ```typescript title="test/labels.test.ts"
 import "../contracts/labels.test.ts";
 ```
 
-Add a focused case in a separate test for ten distinct labels and a request whose raw array is longer but collapses to one. Leave the supplied contract intact. Verify the new module and review the full diff against the reference.
+Ask Build to add focused coverage for ten distinct labels and for a raw array that collapses to one normalized label. Review each assertion against the input and expected result. Then check the same coverage policy CI will compare with the base.
 
 ```sh
 npm test
 npm run test:labels
-npm run verify
+node tools/coverage.mjs --base "$(git rev-parse capstone-base)"
 git diff --check
-git diff capstone-base -- src test contracts
+git diff --exit-code capstone-base -- contracts/labels.test.ts
+git diff capstone-base -- src/ test/
 ```
 
-If the coverage gate fails, read the changed branch or line in the report. Cover behavior that matters to the contract. Ask a maintainer to review any change in coverage policy independently.
+If coverage fails, open the report and ask Build which observable behavior would reach the uncovered branch. Protect behavior that matters to the contract. Have the person who owns the gate review any policy or test selection change independently. If you need a worked implementation to compare against, inspect `git diff lab-harness lab-labels -- src/ test/` after reviewing your own diff.
 
-Run `npm start` in a second terminal. From the first, try a state change and read it back.
+Start a fresh local service with `PORT=3100 npm start`. From a second terminal, run the update, read the task back, and check whether rejection changes stored state.
 
 ```sh
-curl -i -X PATCH http://127.0.0.1:3000/tasks/1/labels \
+curl -sSi -X PATCH http://127.0.0.1:3100/tasks/1/labels \
   -H 'Content-Type: application/json' \
   -d '{"labels":[" Urgent ","bug","urgent"]}'
-curl -i 'http://127.0.0.1:3000/tasks?label=urgent'
+curl -sSi 'http://127.0.0.1:3100/tasks?label=urgent'
+curl -sSi -X PATCH http://127.0.0.1:3100/tasks/1/labels \
+  -H 'Content-Type: application/json' \
+  -d '{"labels":[" "]}'
+curl -sSi 'http://127.0.0.1:3100/tasks?label=urgent'
 ```
 
-Expect a 200 update with `["urgent","bug"]` and a list containing that task. Next send an invalid labels payload and repeat the list request. Confirm it still contains the same labels. Stop the service when you finish.
+The two reads should show the same task with `["urgent","bug"]`. The invalid update returns `400` with `invalid_labels`. For the strict client case, check the keys of the first task against its old contract.
+
+```sh
+node --input-type=module - <<'JS'
+const tasks = await (await fetch("http://127.0.0.1:3100/tasks")).json();
+const keys = Object.keys(tasks[0]).sort();
+console.log(keys.join(", "), "accepted by the old exact-key check:", keys.join(",") === "id,title");
+JS
+```
+
+Expect the check to report `false` because the response includes `labels`. Record the compatibility finding with the adoption decision from the RFC. Stop the service, inspect the diff, and commit the reviewed source and tests on `task-labels`.
 
 ## Review and verify the result
 
-Commit the feature on `task-labels`. Use the reviewer defined in [Custom Agents & Sub-Agents](/books/hands-on-coding-assistants/chapters/custom-agents-and-sub-agents/), or recreate its definition for this exercise. Its read rules cover `specs/`, `contracts/`, `src/`, `test/`, and `notes/review.patch`. Update those paths if you limited the earlier reviewer to specific registration files.
+Bring the [reviewer profile](/books/hands-on-coding-assistants/chapters/custom-agents-and-sub-agents/#give-the-reviewer-a-different-job) from the independent-review exercise. If your branch name differs, use that name in the command. If you entered here directly, create the profile from that section. The reviewer needs read access to `specs/`, `contracts/`, `src/`, `test/`, and the saved patch.
 
 ```sh
-mkdir -p notes
+mkdir -p .opencode/agents notes
+git show reviewer-exercise:.opencode/agents/reviewer.md > .opencode/agents/reviewer.md
 git diff capstone-base HEAD > notes/review.patch
+git rev-parse capstone-base HEAD
 ```
 
-In a new review session, name the current files.
+Open a fresh **reviewer** session with these inputs.
 
 ```text
-Read specs/task-labels.md, contracts/labels.test.ts and notes/review.patch.
-Check the normalized limit, how a rejected update affects stored labels,
-and the shape of the existing responses. Read the focused tests affected
-by the diff. Give a concrete request that would verify each finding.
+Read specs/task-labels.md, contracts/labels.test.ts, and notes/review.patch.
+Check the normalized limit, state after a rejected update, and the
+shape of the existing responses. Inspect the relevant tests. For each
+finding give the criterion, the changed line, and a concrete request
+with its expected and inferred results.
 ```
 
-Check any findings against the contract and the diff. Restart the service if a finding needs an HTTP check. Record the input, expected result, observed result, and any correction you made. If the review reports no findings, record that outcome and choose a contract case to verify independently. If you change the code, rerun verification, commit the correction, and regenerate `notes/review.patch` before opening the PR. Stop the service before starting the telemetry stack.
+Check the reads and reproduce any finding yourself. If the report has no findings, keep that result and select a contract case to verify independently. After a correction, rerun the checks, commit the change, and regenerate the patch so the reviewer and CI can refer to the revised head.
 
-Push `capstone-base` and `task-labels` to your fork. Target `capstone-base` with your ruleset and open a PR from `task-labels` to that branch. Verify that **verify (Node 24)** ran on the revision under review, which includes the activated labels contract. If your check fails after a locally green run, compare the checked revision, Node version, and report before asking for a patch.
+### Check the proposed revision in CI
 
-With the feature checked out, bring up the live stack from [Instrument the Service and Verify the Alert](/books/hands-on-coding-assistants/chapters/instrument-the-service-and-verify-the-alert/). Replay the PATCH and the filtered GET against the gateway on port 3400. Check that the filtered response still contains task 1 and that the live logs and traces include `/tasks/:id/labels` and `/tasks` with 2xx outcomes. Compare them with the gateway count by status class. The route template and metric labels omit the raw task ID and filter value. Stop the stack after recording the signal.
+Use the process from [Required CI Checks and Merge](/books/hands-on-coding-assistants/chapters/required-ci-checks-and-merge/). Confirm `origin` points to your fork. Push the two branches and open the pull request within that fork.
 
-Keep the spec, design links, review outcome, tests, CI result, and runtime evidence with the PR. Include one check you chose from the harness exercises and the failure it can detect on this change. If you measured your work, record how much of the time went into checking and correcting the result. Review the record for sensitive values before sharing it.
+```sh
+git push -u origin capstone-base
+git push -u origin task-labels
+```
+
+Target `capstone-base` with an active ruleset that requires **verify (Node 24)**. If the check needs an initial run before you can select it, use the passing-PR setup from that chapter. Inspect the verification log and the merge section. Record the head, base, checked-out revision, and whether the required job passed. Look for the labels cases in the job output to confirm that the verification ran the new contract.
+
+### Check the running gateway
+
+With `task-labels` checked out, start the live stack as in [Instrument the Service and Verify the Alert](/books/hands-on-coding-assistants/chapters/instrument-the-service-and-verify-the-alert/). Replay the successful update and filtered GET against port `3400`. Check that the filter still returns task 1 with the normalized labels.
+
+```sh
+docker compose -f observability/compose.yml -f observability/compose.alerts.yml up -d
+curl -sSi -X PATCH http://127.0.0.1:3400/tasks/1/labels \
+  -H 'Content-Type: application/json' \
+  -d '{"labels":[" Urgent ","bug","urgent"]}'
+curl -sSi 'http://127.0.0.1:3400/tasks?label=urgent'
+```
+
+Record the request times and give them to **Plan**.
+
+```text
+Use the times I recorded for the successful PATCH and filtered GET.
+Give me a Loki query for the live gateway and tell me how to find
+each trace by ID. Name the fields to check for status, route template,
+and any raw task ID or label filter. Wait for my results.
+```
+
+In Grafana, open the matching logs and traces. Expect status `200` and the route templates `/tasks/:id/labels` and `/tasks`. Confirm the `2xx` request counter increases. Read the raw log and span attributes to verify that they use the templates and omit the raw task ID and filter value. Save the trace IDs and query results. Remove the lab stack after verification.
+
+```sh
+docker compose -f observability/compose.yml -f observability/compose.alerts.yml down -v
+```
 
 <span id="series-recap-what-you-learned"></span>
 
 ## Record the merge decision
 
-Say whether the PR is ready to merge. Link to the revision CI tested, name one behavior you checked on the running service, and note any condition that still blocks the decision. Another developer should be able to take the contract and your record, rerun the checks, and see why you reached that decision.
+Keep the local reviewer setup and review record on a separate evidence branch from the tested feature. Give **Build** the verified results and ask for a shareable note. Keep the decision with the PR and link it to the exact revision you checked.
+
+```text
+Use the reviewed evidence I pasted to write notes/capstone-review.md.
+Record the implementation scope, spec and design references, tests,
+reviewer findings and any correction, CI revision and status, and
+runtime evidence. Mark remaining checks as pending. Propose a merge
+decision with the evidence for it and change only the note.
+```
+
+Read the note against the evidence. If you measured the work, include the time you spent verifying and correcting the result. A teammate should be able to recreate the diff, look up the CI run, and repeat the request you checked. Commit the evidence separately if you want to keep it with the lab, and share the reviewed findings in the PR.
+
+```sh
+git switch -c capstone-evidence
+git add -- .opencode/agents/reviewer.md notes/review.patch notes/capstone-review.md
+git diff --cached --check
+git diff --cached --stat
+git commit -m "Record the task labels merge decision"
+```
 
 ## References
 
 - Node.js contributors. [Test runner](https://nodejs.org/api/test.html). Node.js API reference.
-- GitHub. [Status checks](https://docs.github.com/en/pull-requests/reference/status-checks). GitHub Docs.
+- GitHub. [Status checks](https://docs.github.com/en/pull-requests/reference/status-checks). GitHub documentation.
 - OpenCode maintainers. [Agents](https://opencode.ai/docs/agents/). Official OpenCode 2 documentation.

@@ -1,24 +1,36 @@
 ---
 title: "Agent Skills & Modular Expertise"
-description: "Teach a spec-writing procedure to OpenCode and verify when it loads."
+description: "Load a reusable spec-writing procedure and verify its effect and permissions."
 module: 3
 order: 20
 ---
 
-A command works when you already know which prompt to run. A skill makes a procedure available for the agent to load when the task calls for it. In this exercise the procedure is to turn a feature request into a spec without quietly filling in product decisions.
+When you ran `/check-spec`, you supplied the task and chose the prompt to run. A **skill** packages instructions for a kind of work. OpenCode can advertise its ID and description, then load its body when the agent calls the skill tool. Use one when the procedure recurs across tasks and needs more detail than the project guidance you load at startup.
 
-Start a fresh branch from `lab-start`. In a Plan session, ask for a draft for this request.
+Start a fresh branch at `lab-start` and open **Plan**. Give it a request that still has unanswered product questions.
+
+```sh
+git switch -c spec-writing-skill lab-start
+opencode
+```
 
 ```text
 A user wants to download their tasks to open in a spreadsheet.
 Draft a Task API feature spec. Identify what still needs a decision.
+Return it in chat.
 ```
 
-Save the answer in your exercise notes. There is no checked-in spec for that feature. File format, columns, and records included in the export are still choices the owner needs to make.
+Keep the draft. The request leaves the file format, columns, and which records to include open. A draft can describe those decisions and ask the owner to settle them.
 
 ## Add the procedure
 
-Create `.opencode/skills/spec-writer/SKILL.md`. The name and description advertise it to the model. The body is loaded when the skill is selected.
+Create the skill directory in your fork.
+
+```sh
+mkdir -p .opencode/skills/spec-writer
+```
+
+Save the following file. The directory sets the ID `spec-writer`, and the description tells the model when the procedure applies.
 
 ```md title=".opencode/skills/spec-writer/SKILL.md"
 ---
@@ -26,27 +38,44 @@ name: spec-writer
 description: Draft a Task API feature spec with observable criteria and explicit open decisions.
 ---
 
-Read the feature request and the relevant route in src/app.ts.
-Return a draft with Goal, Acceptance criteria, Verification, and
-Open questions. Under Verification, give a concrete input and
-expected outcome for each decided criterion. Ask about the visible
-effect of rejection wherever the feature can change stored state.
-Leave unanswered product decisions in Open questions.
+Read the feature request and the relevant route in the repository's
+src/app.ts. Return a draft with Goal, Acceptance criteria,
+Verification, and Open questions. Under Verification, give a
+concrete input and expected outcome for each decided criterion.
+Ask about the visible effect of rejection wherever the feature
+can change stored state. Leave unanswered decisions in Open questions.
 ```
 
-Start a new Plan session with the same model. Submit the same task with `Use @spec-writer.` at the beginning. Inspect the tool activity for a completed skill call with ID `spec-writer`. Compare the two drafts. Is the new one clear about what a caller can observe? Did it decide on CSV without being asked? The activity tells you whether OpenCode loaded the skill. The answer tells you whether the loaded procedure was useful.
+Reopen OpenCode and use the same model in a fresh **Plan** session.
+
+```text
+Use the skill tool to load spec-writer. A user wants to download
+their tasks to open in a spreadsheet. Draft a Task API feature
+spec. Identify what still needs a decision. Return it in chat.
+```
+
+Check for a completed `skill` call with the ID `spec-writer`. Then compare the drafts. Look for a concrete verification step for each settled criterion and for questions about format and scope. If a draft promises CSV, ask what part of the request settled that choice. Save the answer and the tool observation together so you can tell what the skill contributed.
 
 ## Check the permission boundary
 
-Add this last rule to the `permissions` array for one test session.
+Append this rule to the `permissions` array in `opencode.jsonc` for a comparison.
 
 ```jsonc
 { "action": "skill", "resource": "spec-writer", "effect": "deny" }
 ```
 
-Open a fresh session and try the skill again. The skill should be unavailable to that agent or the attempt should be denied. It can still answer from the prompt and files it sees. Look for a successful load before crediting the skill with the result. Remove the denial when you finish and confirm the skill loads again.
+Reopen OpenCode and repeat the same request in a fresh **Plan** session. The skill should be unavailable or the load should be denied. A draft can still be produced from the prompt. Record whether there was a completed skill call. Remove the test denial, reopen OpenCode, and check that the skill loads again.
 
-Review the text and any scripts or resources a skill would ask the agent to use before sharing it. Keep the skill in this repository while its procedure depends on the Task API.
+Review the skill body and any resources it directs an agent to use before sharing it. Record the successful and restricted runs, then commit the skill on `spec-writing-skill`.
+
+```sh
+git diff --exit-code -- opencode.jsonc
+git add -- .opencode/skills/spec-writer/SKILL.md
+git diff --cached --check
+git commit -m "Add the Task API spec-writing skill"
+```
+
+In [Hooks, Validation & Agent Automation](/books/hands-on-coding-assistants/chapters/hooks-validation-and-agent-automation/), you'll see how a check can run in response to an event.
 
 ## References
 
