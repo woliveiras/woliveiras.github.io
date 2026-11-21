@@ -7,10 +7,14 @@ order: 19
 
 You can answer a question about a spec in three places. The spec supplies the behavior. A command supplies the prompt you want to use each time. The permission rules decide whether that session can edit the spec or its contract.
 
-Continue from the project-instructions exercise or start a new branch at `lab-start`. Create a short file at `docs/review-guide.md`.
+Continue from the project-instructions exercise or start a new branch at `lab-start`. From the repository root, create the directories for the guide and command, then write `docs/review-guide.md`.
+
+```sh
+mkdir -p docs .opencode/commands
+```
 
 ```md title="docs/review-guide.md"
-In a contract review, include a row for state after rejection.
+In a contract review, include a row labelled "State after rejection".
 Name the assertion that observes it, or mark that row as unchecked.
 ```
 
@@ -37,7 +41,7 @@ In a fresh session, run the command.
 /check-spec specs/registration-validation.md
 ```
 
-Look for reads of both the spec and `contracts/registration.test.ts`. Check the description of the next-ID assertion and its relationship to state after rejection. If the answer invents a test for the exact 100-character limit, look for that input in the file and correct the report.
+Look for reads of both the spec and `contracts/registration.test.ts`. The **State after rejection** label gives you something specific to look for from the guide. Check that the row names the actual next-ID assertion. If the answer invents a test for the exact 100-character limit, look for that input in the file and correct the report.
 
 ## Keep permissions in the config
 

@@ -7,14 +7,15 @@ order: 15
 
 ## Your prompt derives from your spec
 
-“Fix registration” gives an agent enough information to find the route. It leaves the response format, validation rules, and side effects open. In the spec exercise, a rejected request had to leave the next ID available. If that line is missing from the prompt and the agent skips the spec, you may get an entirely plausible patch that breaks the rule.
+“Fix registration” gives an agent enough information to find the route. It leaves the response format, validation rules, and side effects open. In [The Spec-First Workflow](/books/hands-on-coding-assistants/chapters/the-spec-first-workflow/), a rejected request had to leave the next ID available. If that line is missing from the prompt and the agent skips the spec, you may get an entirely plausible patch that breaks the rule.
 
 ## Compare three prompts on one task
 
-Use a clean branch at `lab-start`.
+Use a clean branch at `lab-start`. If you still have changes from the alert exercise, save them on that branch or open a separate worktree first.
 
 ```sh
 git switch -c prompt-evidence lab-start
+mkdir -p prompts notes
 ```
 
 Select the same model in three fresh **Plan** sessions and submit one prompt per session.
@@ -41,19 +42,21 @@ Save the chosen prompt as `prompts/plan-registration.txt` and track it with its 
 
 ## Keep a record that survives the session
 
-A teammate may have the commit and no way to open your conversation. Keep `notes/registration-verification.md` with the fields you need to review the change. Update it after an intervention changes the task or the patch.
+A teammate may have the checkout and no way to open your conversation. Keep `notes/registration-verification.md` with enough detail to judge the chosen plan. If you implemented the plan, include the verified diff. Update the record after an intervention changes the plan or the patch.
 
 | Record | Where to get it |
 | --- | --- |
-| Starting ref, final commit, and diff | `git rev-parse lab-start`, `git rev-parse HEAD`, and `git diff lab-start HEAD` after you commit the exercise |
+| Starting ref and outcome | Record `git rev-parse lab-start` and the plan you selected. If you implemented it, record its commit and the feature diff against `lab-start`. |
 | Spec, prompt, and instruction files used | Repository paths and the exact versions you checked, plus file reads visible in the session |
 | Model and tool configuration | Model ID, `opencode --version`, and the project rules that applied |
-| Commands and results | Tool activity or terminal output, with exit status and failing assertions where relevant |
+| Commands and results | Tool activity or terminal output, with exit status and failing assertions for checks you actually ran. Mark proposed checks as pending. |
 | Human intervention | What changed in the request, patch, or decision, and what you verified after the change |
 
 OpenCode can export a session with `opencode session export SESSION_ID --sanitize`. Use the actual session ID from `opencode session list`. Check the export before sharing it, and keep evidence of exact commands in your review note if the export omits it.
 
 Try redaction with a fake value such as `SAMPLE_REDACTION_MARKER=DO_NOT_SHARE_EXERCISE`. Put it in a scratch copy of the note, remove the sensitive value, and search that copy for the exact marker. Review file paths, stack traces and diffs by hand too. Store only the evidence the next reviewer needs. Keep raw session data out of the patch and PR.
+
+Review the saved prompt and shareable note, then commit them on `prompt-evidence`. Keep that branch when you switch to the review checkpoint. [AI-First Security & Governance](/books/hands-on-coding-assistants/chapters/ai-first-security-and-governance/#review-the-inputs-as-well-as-the-patch) will use the saved note from a separate checkout.
 
 ## References
 

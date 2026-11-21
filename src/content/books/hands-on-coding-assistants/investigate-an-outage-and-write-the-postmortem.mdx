@@ -1,94 +1,238 @@
 ---
 title: "Investigate an Outage and Write the Postmortem"
-description: "Reconstruct a simulated Task API outage from traces, logs, and metrics in Grafana."
+description: "Use OpenCode to guide a Grafana investigation and record the findings in a reviewed postmortem."
 module: 2
 order: 10
 ---
 
-A gateway starts returning HTTP 504 for `POST /tasks` after a release. Someone rolls back, and the errors stop. You have enough to start an investigation. To write the postmortem, you still need to establish how many requests failed, what the gateway was waiting for, and which parts of that explanation the evidence supports.
+A caller reports that creating a task timed out. You know the route, `POST /tasks`, and the response the caller saw, HTTP `504`. You'll use OpenCode to decide what to look for in Grafana, follow the evidence, and leave a postmortem and a bug report someone else can work from.
+
+## What a postmortem records
+
+A **postmortem** is a written review of an incident. It explains the impact, how the team detected and responded to the problem, how service recovered, and what the team will do afterward. It should give someone who was outside the incident enough evidence to understand the decisions people made with the information they had. That is the point of a blameless review. It looks at the conditions that made the failure possible and assigns follow-up work to improve those conditions.
+
+Write one after a significant outage, a degradation that breached a service target, or an incident where recovery exposed a gap worth fixing. A team can also review a near miss when the same conditions could cause a future outage. During a live incident, use the notes people are already keeping and focus on restoring service. Once the system is stable, use those notes and the telemetry to reconstruct what happened.
 
 ## Open the incident
 
-Start from the incident checkpoint with a clean working tree. You need Docker with Compose. The lab generates fictional traffic, releases, and trace IDs, with the same intervals shifted to the current time. You can investigate the outage without access to a production system.
+Start at the incident checkpoint in your lab fork with a clean working tree. You need Docker with Compose. Open OpenCode before starting the replay so the agent can guide the investigation from the first report.
 
 ```sh
 git switch -c incident-postmortem lab-observability
+opencode
+```
+
+Start a fresh session with `/new` if needed and choose **Plan** with `/agents`. Give it the report you have and ask where to start.
+
+```text
+Someone reported that POST /tasks returned HTTP 504 in the replay.
+Read observability/README.md and observability/compose.yml. Tell me
+how to start and seed the replay, which Grafana page to open, and
+what access to expect. Ask me for the seed output before you draw
+any conclusions about the incident. Return the steps in chat.
+```
+
+Review the commands Plan gives you. Run the setup it identifies in a separate terminal from the fork root.
+
+```sh
 docker compose -f observability/compose.yml up -d
 docker compose -f observability/compose.yml exec -T simulator node incident.mjs
 ```
 
-Save the UTC window (`from` and `to`) and trace IDs printed by the seed command. Open [Task API Incident Replay](http://127.0.0.1:3300/d/task-api-incident/task-api-incident-replay) and set the time picker to an absolute range using the printed window and UTC. The lab gives you a Viewer session. The fixture allows temporary Explore queries while dashboard saves require a different role. Give OpenCode the queries and evidence you collect.
+Wait for the seed to print its JSON and paste it into the same session. The timestamps are specific to your run. The top-level `from` and `to` give you the search window. The `incident.from` and `incident.toExclusive` values bound the three affected minute buckets. Plan will use `lastAffectedUnixSeconds` to anchor the impact queries.
+
+Open [Task API Incident Replay](http://127.0.0.1:3300/d/task-api-incident/task-api-incident-replay), as Plan suggests. Set the time picker to UTC and use an absolute range from the top-level `from` and `to` values. The lab opens as a Viewer and contains fictional traffic. Let Plan propose queries in chat. Run them in Grafana and bring the actual output back into the session before asking what it means.
 
 ## Follow a failed request
 
-A trace connects the spans for one request. A span represents an operation such as the gateway handling the request or waiting for the upstream API. In **Explore**, select **Tempo** and enter this TraceQL query in the code editor.
+A trace connects the spans for a request. A span describes an operation, such as the gateway handling the request or the Task API doing work upstream. Ask Plan to help you find a trace that explains what a caller saw.
+
+```text
+Use the seed output I pasted. Help me find traces for failed task
+creation. Give me the Grafana data source, query type, time range,
+and a query I can copy. Tell me which fields to bring back from the
+gateway and Task API spans so we can compare what each one recorded.
+```
+
+Check the proposed query against the report. It should search the gateway for `/tasks` spans that returned `504`. In **Explore**, choose **Tempo**, select **TraceQL**, and run the query over the absolute range. Here is the query for the replay.
 
 ```text title="TraceQL"
 { resource.service.name = "task-gateway" && span.http.route = "/tasks" && span.http.response.status_code = 504 }
 ```
 
-Open a result. Record its trace ID, start time, the gateway result, and the duration of the API span. In the sampled failing requests, the gateway returns `504` at its 750 ms deadline and the API span reports `201` after 1,100 ms. Remove the status predicate and compare a successful request outside the failing window. If you get an empty result, try the printed range again and check whether Tempo has finished indexing. An empty result under the wrong time filter tells you about the query.
+Expect three sampled failures. Open the earliest result and expand the gateway and `task-api` spans. The gateway ends at its 750 ms deadline with `504`. The API span lasts 1,100 ms and records `201`. Paste what you saw into Plan in this form, filling in the placeholders from your run.
 
-Select **Loki** in Explore. Use the same window and substitute the trace ID from the span.
+```text
+Tempo trace <TRACE_ID>, started at <UTC_TIMESTAMP>.
+Gateway span: HTTP 504, 750 ms. Task API span: HTTP 201, 1,100 ms.
+What does this establish? Give me a query to find a successful request
+to compare, and tell me which fields to bring back.
+```
+
+Run the comparison Plan proposes and give it the result. Changing `504` to `201` in the same query finds successful gateway requests outside the affected window. In the replay, a successful gateway span takes 39 ms and its Task API span takes 27 ms. If the timeout query returns an empty result, give Plan the query and time range you actually used so it can help you check the filters.
+
+Use the trace result to ask for corroboration in the logs.
+
+```text
+Use the trace result I just pasted. Give me LogQL queries to look
+for its gateway log and to find the deploy, page, and rollback events.
+Tell me which timestamps and fields to capture. If a trace has no
+matching log in the window, tell me how to record that gap.
+```
+
+Choose **Loki** in Explore. Use the same time range and replace `<TRACE_ID>` with the ID from Tempo.
 
 ```text title="LogQL"
 {service_name="task-gateway",exercise="incident"} | json | trace_id="<TRACE_ID>"
 ```
 
-One failed trace has no matching log. Try the printed IDs and record which trace you could corroborate and which has a gap. Then query release events in the same stream.
+A matching log gives you another record of the gateway status and the deadline message. Try the query with the other failing traces. One has a deliberately missing log. Give Plan the trace ID for that missing match along with the matching log from your first trace.
+
+Find the release events and the recorded page in the same stream. Run each query separately.
 
 ```text title="LogQL"
 {service_name="task-gateway",exercise="incident"} | json | event="release"
+{service_name="task-gateway",exercise="incident"} | json | event="page"
 ```
 
-Change the filter to `event="page"` to find the simulated page. Put the deploy, first affected bucket, page, rollback, and recovery on a UTC timeline. The release, timeout spans, and recovery after rollback establish sequence. Verify any proposed contributing factor against an actual span or log before describing it as confirmed. The `201` span also leaves a question about retries and duplicates. The fixture contains no evidence to settle it.
+Paste the deploy to `v2`, the page, and the rollback to `v1` into the session with their actual UTC timestamps and the queries that returned them. The seed records the page for this exercise. You'll set up an alert that sends a notification in a later chapter. Keep the page time separate from the first affected minute and the first sampled timeout. A sample can show a particular request failed. The metric bucket tells you when a group of failures was observed.
 
 ## Calculate impact from the request counts
 
-In **Prometheus**, use a range query over the same window. These fixture metrics record a request count for each minute and outcome. Use the sample points in the incident window, including the successful requests in the denominator.
+Give Plan the log findings and ask how to measure the impact.
+
+```text
+Help me measure impact and check recovery from the Prometheus data.
+Use lab_incident_requests, which records a request count for each
+minute and outcome. Give me the queries for timed-out and total
+requests, the query type for each step, and what to check after the
+rollback. Use the affected timestamps in the seed output. Wait for
+the query results before calculating impact.
+```
+
+Review the proposed numerator and denominator, then choose **Prometheus** in Explore. Open the **Code** editor and use **Range**. Run the following queries separately and read the points at the seed's minute timestamps.
 
 ```text title="PromQL"
 lab_incident_requests{outcome="timeout"}
-```
-
-```text title="PromQL"
 sum(lab_incident_requests)
 ```
 
-The three affected minutes contain 20, 30, and 10 timed-out requests out of 100 each. Use an instant query to check the total with an exact range. Replace `LAST_AFFECTED_UNIX_SECONDS` with the value of `lastAffectedUnixSeconds` from the seed.
+There are 20, 30, and 10 timed-out requests in the affected minutes, out of 100 total requests per minute. Find the first clean bucket after rollback at `incident.toExclusive`. Expect 100 requests and zero timeouts in that bucket.
+
+Switch the query type to **Instant** to check the affected totals. Replace `LAST_AFFECTED_UNIX_SECONDS` with `lastAffectedUnixSeconds` from the seed and run each expression on its own. The timestamp pins the three-minute calculation to the replay.
 
 ```text title="PromQL"
 sum(sum_over_time(lab_incident_requests{outcome="timeout"}[3m] @ LAST_AFFECTED_UNIX_SECONDS))
 sum(sum_over_time(lab_incident_requests[3m] @ LAST_AFFECTED_UNIX_SECONDS))
 ```
 
-Run these as separate queries. Expect 60 of 300 requests, or 20% of observed requests in those buckets. The trace sample helps explain an individual request. The series gives you the denominator. The fixture has no client identity, so the number of affected clients is unknown. Check for a clean bucket at comparable traffic after rollback before marking recovery.
+Expect `60` and `300`. Paste both results, the queries, and the first clean bucket into the session. Check that Plan calculates **60 of 300 observed requests, or 20%**, in the three affected minutes. The number of affected clients remains unknown because the replay has no client identity. Retries and duplicates also remain open. The upstream `201` in a timeout trace gives you a reason to ask about retries in a real incident like this one.
 
 ## Turn the evidence into a postmortem
 
-Create `notes/postmortem.md`. Start with an evidence table with time, source, query or trace ID, observation, and status. Mark each item as confirmed, a hypothesis, or a gap. Then use OpenCode in **Plan** with the evidence you saved.
+Use the same Plan session to assemble the timeline and evidence from the results you brought back.
 
 ```text
-Read notes/postmortem.md. Draft the summary, impact, detection,
-UTC timeline, response, recovery, contributing factors, and actions.
-Point to an evidence row for each factual claim. Flag missing
-timestamps, different clocks, and any leap from requests to clients.
-For each action propose a role and a check that proves it is done.
-Return the draft for review and leave the files unchanged.
+Use the Grafana results I pasted to build a UTC timeline and an Evidence
+section. Preserve the exact queries, time ranges, and trace IDs. Identify
+the first affected bucket, first sampled timeout, page, rollback, and first
+clean bucket. Give the observed impact and list the remaining gaps. For
+any proposed cause, tell me which observation supports it and what we
+would still need to verify. Return your draft evidence in chat.
 ```
 
-Check the draft by reopening a trace and a log and doing the impact arithmetic yourself. Keep the page timestamp separate from the first failed request and preserve the distinction between the request sample and the aggregate impact. Review the draft for identifiers, credentials, and raw payloads before sharing it.
+Check that the output uses the timestamps and trace IDs from your run. Give each observation a name so the postmortem and its reviewer can point to it. Rows can look like these.
 
-One action can be assigned to the service owner. Add a gateway timeout alert with a runbook and demonstrate receipt and resolution in a test destination. The next part uses that action to decide what to build and how to check it.
+| Name | Source | Observation |
+| --- | --- | --- |
+| Sampled timeout | Tempo query and trace ID | Gateway `504` at 750 ms. The API records `201` after 1,100 ms. |
+| Detection | Loki page query and event time | The replay records a page after the affected window begins. |
+| Impact | Prometheus instant queries at the seed timestamp | 60 timeouts out of 300 observed requests in the three affected minutes. |
+| Response and recovery | Loki rollback event and the first clean Prometheus bucket | Rollback to `v1` precedes a bucket with 100 requests and zero timeouts. |
+| Missing log | Tempo trace ID and Loki trace-ID query | One sampled timeout has no matching log in the window. |
 
-Save and commit the reviewed postmortem on your branch, then remove this Compose stack and its temporary volumes.
+If Plan gives the first sampled timeout as the exact beginning of the outage, ask it to reconsider using the metric bucket and the trace timestamp. If it says the release caused the latency, ask which evidence establishes that cause. Keep the sequence in the timeline and record causation as a hypothesis while the evidence is incomplete. Run any additional query you agree is useful and give Plan the result to update its account.
+
+```text
+Draft a blameless postmortem in chat using the evidence we just reviewed.
+Include summary, impact, detection, a UTC timeline, response and
+recovery, contributing factors, open questions, and follow-up actions.
+Point to an Evidence row for each factual claim. Explain the gateway
+deadline using the sampled trace and keep unknowns visible.
+Give each action an owner and a way to verify completion.
+```
+
+Read the agent's draft against the evidence. For example, the impact section can say that 20% of **observed requests** timed out in the affected buckets. Under contributing factors, you can say the upstream work in the sampled trace outlasted the gateway deadline. The reason the upstream work took longer belongs under open questions until you can verify it.
+
+For a follow-up, assign the service owner an alert on elevated gateway errors with a runbook. Require a test that recreates the failure, delivers the notification to a test destination, and confirms it resolves after recovery. That gives the next chapter a check to build.
+
+Ask Plan for a bug report that an engineer can work from alongside the postmortem. Save it in the same document so the symptom and the evidence stay together.
+
+```text
+Draft a Bug report section for the postmortem. Give it a title that
+names the observed failure, the expected and observed behavior,
+steps to find the same evidence in the replay, and a verification
+check for a future fix. Reference the Evidence rows. Label the replay
+as simulated and leave the cause of the upstream latency open.
+```
+
+A title such as “Task creation returns 504 while the Task API records 201” gives the next engineer a symptom to investigate. Under verification, ask them to check what the caller sees and what the API records under a controlled exercise of the timeout path. Check that the report leaves room to determine whether retries create duplicate tasks.
+
+## Review and save the postmortem
+
+Once you've read the draft, switch to **Build** with `/agents` in the same session. Ask it to save the version you reviewed.
+
+```text
+Save the reviewed draft in notes/postmortem.md. Include the Evidence
+section with the original queries, timestamps, and trace IDs, and the
+reviewed Bug report section. Write only this file. Leave the changes
+for me to inspect and commit.
+```
+
+Open a fresh **Plan** session for a review of the saved file. Give it a job it can do from the record.
+
+```text
+Review notes/postmortem.md against its Evidence section. Check the
+impact denominator, the order of detection and recovery, and every
+causal claim. Quote any sentence that overstates the evidence and
+suggest a replacement. Flag actions with no owner or completion
+check. Check whether an engineer can follow the bug report back to
+the replay evidence and tell what a future fix has to demonstrate.
+Return findings in chat and leave the file unchanged.
+```
+
+Verify a finding by reopening its source in Grafana. Check the time zone and incident window, redo the impact calculation, and confirm what establishes recovery. If you use this workflow with real incident data, share only the authorized excerpts with the agent and review the saved document for sensitive values.
+
+If the review finds a correction, paste the finding and the evidence you checked into **Build**.
+
+```text
+Update notes/postmortem.md using the verified review finding and
+Grafana result I just pasted. Keep the original query and timestamp
+in the Evidence section. Show me which sentences changed and why.
+```
+
+Before committing, check that the document is the only changed file and inspect the staged diff.
+
+```sh
+git status --short --untracked-files=all
+git add -- notes/postmortem.md
+git diff --cached --check
+git diff --cached -- notes/postmortem.md
+git commit -m "Record the Task API outage postmortem"
+```
+
+Remove the replay stack and its temporary volumes when you finish.
 
 ```sh
 docker compose -f observability/compose.yml down -v
 ```
+
+Keep the postmortem on `incident-postmortem`. In [Building Your Harness](/books/hands-on-coding-assistants/chapters/building-your-harness/), you'll use the observed failures and the follow-up action to decide which checks to add.
 
 ## References
 
 - John Lunney and Sue Lueder. [Postmortem Culture: Learning from Failure](https://sre.google/sre-book/postmortem-culture/). Google, *Site Reliability Engineering*, chapter 15.
 - Grafana Labs. [Query tracing data](https://grafana.com/docs/grafana/latest/datasources/tempo/query-editor/) and [Construct a TraceQL query](https://grafana.com/docs/tempo/latest/traceql/construct-traceql-queries/). Grafana and Tempo documentation.
 - Grafana Labs. [Configure trace to logs correlation](https://grafana.com/docs/grafana/latest/datasources/tempo/configure-tempo-data-source/configure-trace-to-logs/) and [Roles and permissions](https://grafana.com/docs/grafana/latest/administration/roles-and-permissions/#organization-roles). Grafana documentation.
+- Grafana Labs. [Prometheus query editor](https://grafana.com/docs/grafana/latest/datasources/prometheus/query-editor/). Grafana documentation.
+- OpenCode maintainers. [TUI](https://opencode.ai/docs/cli/tui/). OpenCode 2 documentation.

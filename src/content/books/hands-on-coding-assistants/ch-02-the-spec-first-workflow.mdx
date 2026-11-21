@@ -165,7 +165,7 @@ git commit -m "Validate registrations before changing state"
 
 For a second exercise, start a separate branch from `lab-start`. A client needs to fetch a single task using `GET /tasks/:id`. Write the first spec in `notes/task-lookup.md` and ask Plan to review it. If your only success example fetches the seeded task at `/tasks/1`, a hard-coded response could satisfy it. Add a case that creates a task, takes the ID from the response, and fetches that task. Specify `404` with `{"error":"not_found"}` for an unknown ID and check that the list stays the same after each lookup. Keep the scope to literal IDs used by the service.
 
-Review the revised spec, ask Plan how to implement it, then use Build and run `npm test`. Save your work on that branch so the next exercise can start from its named tag.
+Review the revised spec. Turn the lookup cases into focused HTTP tests and run them against the starter. Check that the new tests reach the missing behavior before you ask Build to implement it. Run the focused tests again with `npm test` after the change. Save the practice exercise on its own branch. The debugging chapter starts from a separate registration checkpoint.
 
 <span id="setting-up-for-the-rest-of-the-series"></span>
 

@@ -15,7 +15,7 @@ Write an ADR when a choice has lasting effects on how you build, operate, or cha
 
 ## Start from what the discussion settled
 
-Stay on `design-task-labels` with the revised `docs/rfcs/0001-task-labels.md` committed. Read its **Review and disposition** section. Find the storage follow-up and the checks that came out of the review. The sample review calls for restart and restore checks. Open `docs/architecture.md` to see how the current process owns its in-memory state.
+Stay on `design-task-labels` with the revised `docs/rfcs/0001-task-labels.md` committed. Read its **Review and disposition** section. Find the storage follow-up and the checks that came out of the review. The sample review calls for restart and restore checks. Open `docs/architecture.md` to see how the current process owns its in-memory state. Keep `specs/task-labels.md` at hand for the first release's API behavior. Those expectations carry into the final project.
 
 For the durable follow-up, assume one host, one Task API instance responsible for writes, and a persistent local disk. The operator needs to back up and restore the data. Treat several writable instances on different hosts as a reason to revisit the decision. These exercise assumptions give you a way to compare the options.
 

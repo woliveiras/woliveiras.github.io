@@ -1,5 +1,5 @@
 ---
-title: "Introduction"
+title: "Before You Start"
 description: "Fork the Task API and get the tools you need to follow the exercises."
 module: 0
 order: 0
@@ -10,7 +10,7 @@ kind: introduction
 
 ## Who this book is for
 
-This book is designed for developers who already have experience in software development and want to learn how to use coding assistants effectively. It assumes you are comfortable with Git, some programming knowledge, and basic command-line operations. The exercises will help you understand how to evaluate and integrate coding assistant suggestions into your workflow.
+You should already be comfortable reading code, working with Git, and running commands in a terminal. The exercises ask you to inspect diffs, run checks, and decide whether an assistant's suggestion fits the code in front of you.
 
 The exercises use a small Task API. You'll read the code, refine a request, diagnose a bug, plan a larger change, document the system, and investigate a simulated outage. You'll use what you find to decide which checks belong in the repository. Bring the editor and terminal you already use.
 
@@ -32,11 +32,12 @@ git clone https://github.com/YOUR_LOGIN/hands-on-coding-assistants-lab.git
 cd hands-on-coding-assistants-lab
 git fetch https://github.com/woliveiras/hands-on-coding-assistants-lab.git --tags
 git rev-parse --verify lab-start
+git switch --detach lab-start
 git status --short
 npm test
 ```
 
-The fetch gives you the exercise tags even if your fork copied only the default branch. Expect a revision hash, an empty status, and three passing tests.
+The fetch gives you the exercise tags even if your fork copied only the default branch. The initial checks run at `lab-start`. Expect a revision hash, an empty status, and three passing tests. Each exercise that makes changes tells you which branch to create or continue using.
 
 You can [download the starter source](/books/hands-on-coding-assistants/lab.tar.gz) to inspect it offline. Use the fork for the exercises that name a Git tag or use GitHub Actions.
 
@@ -47,6 +48,8 @@ You can [download the starter source](/books/hands-on-coding-assistants/lab.tar.
 The service uses fictional data and keeps it in memory. Start it with `npm start` and open `http://127.0.0.1:3000/health`. Expect `{"status":"ok"}`. Stop it with Ctrl+C. Each test starts its own server on a free port.
 
 A chapter may give you a start tag such as `lab-start` or `lab-debugging`. Check `git status --short` before switching. Commit the work you want to keep or start a separate worktree. A tag gives you the same starting code even if your previous exercise took a different route.
+
+Once the starter tests pass, see [how the exercises fit together](/books/hands-on-coding-assistants/chapters/introduction-and-overview/) and what you'll carry into the final project.
 
 ## References
 

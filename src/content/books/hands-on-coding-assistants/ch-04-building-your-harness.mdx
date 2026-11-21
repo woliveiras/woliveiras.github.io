@@ -1,48 +1,173 @@
 ---
-title: "Building Your Harness: A Strategic Overview"
-description: "Turn the failures you investigated into checks you can run again."
+title: "Building Your Harness"
+description: "Use OpenCode to choose controls from prior failures and prove that the first check catches a regression."
 module: 3
 order: 11
 ---
 
-The registration route could return 400 and still consume an ID. You caught that in a later request. In the outage exercise, a single trace helped explain a timeout, and the request counter showed how often callers saw it. Both exercises gave you something you could check yourself.
+The registration handler returned `400` for an invalid request, just as the spec said. The next valid request exposed the bug when it got ID `"2"` on a fresh server. You had to look at two requests to see that the first one changed state. In the outage exercise, you had a similar problem at a different scale. One trace explained what happened to a request. Counting responses told you how often callers ran into it.
 
-OpenCode already connects the model to files, commands, and permissions. You can put additional controls around that work. Start with a test that reproduces a costly failure. Decide who owns the control and how a second person can tell it ran.
+A **harness** is the setup around a coding agent that gives it project context, limits what it can do, and checks the results of its work. OpenCode already provides the agent, tools, and a way to configure permissions. Your repository adds the parts that know about your project. The spec says what the code must do. `AGENTS.md` can tell the agent which command to run. The test runner executes the assertions and gives you an exit status. A required CI check can make that result a condition of merging. An alert can show you when a deployed service is failing and give the responder somewhere to start.
+
+In this exercise, you'll use the bug and the postmortem to decide what to check, prove that a test can reject a broken version, and record what a later alert will have to demonstrate.
+
+## Bring the earlier evidence into OpenCode
+
+Use the root of your lab fork. Start on `incident-postmortem` with a clean working tree and the committed `notes/postmortem.md`. You'll also need the registration fix note committed on `debug-registration`, or whichever branch you used in the debugging chapter.
+
+```sh
+git branch --show-current
+git status --short
+opencode
+```
+
+Open a fresh session with `/new` and choose **Plan** with `/agents`.
+
+```text
+Read notes/postmortem.md. The earlier registration fix is on
+debug-registration, in notes/registration-fix.md. Tell me how to
+read that committed note from this checkout without switching
+branches. Wait for me to paste it before suggesting controls.
+```
+
+Check the branch and path the agent gives you. The following command prints the note from the earlier commit. Substitute your branch name if you used a different one.
+
+```sh
+git show debug-registration:notes/registration-fix.md
+```
+
+Paste the note into the same session. You now have two records with a different job. The fix note shows a behavior you can reproduce on demand. The postmortem shows a symptom you want to detect while the service is running.
 
 ## Put the check where it can see the failure
 
-| Evidence from the exercises | Control to add | How you can tell it works |
-| --- | --- | --- |
-| After a rejected registration, the next ID changed | A focused test and an HTTP regression test | The test fails on the defective snapshot and passes on the fix |
-| A plan sounded complete while a requirement was still missing | A versioned spec, a review prompt, and a second review session | A finding names a criterion, the affected line, and a reproducible input |
-| You had to correlate a deployment with errors by hand | Request telemetry and an alert with a runbook | A synthetic failure reaches the local notification receiver and links to evidence |
-| A different checkout changed what the reviewer saw | A named base and head, plus CI on a fresh checkout | The change under review and its required check identify the same revision |
+```text
+Use the fix note I pasted and notes/postmortem.md. Propose one control
+for each confirmed failure. Cite the observation it should catch.
+Name where it runs, what healthy and failing cases look like, what
+output I should keep, and who acts on a failure. If a control needs
+another step to enforce it, name that step. Leave files unchanged.
+```
 
-A requirement belongs in the spec. A test expresses the part you can observe automatically. A permission decides whether the agent can reach a tool or resource. Each layer gives you a different kind of evidence. Put repository guidance in versioned files and review tool access separately.
+Review the proposals against the original evidence. A check that asserts only the `400` response would accept the broken registration handler. The test needs to send a valid request on the same server afterward and check that it gets ID `"1"`. In the postmortem, a slow span explained one timeout. To detect a service-wide problem, look at how many gateway requests fail within a window and how much traffic the gateway is serving.
+
+Say where each control takes effect. The lab's OpenCode permissions allow `npm run test:registration`. The permission lets the agent run the command when it needs to. To make the result matter at merge time, require a CI job that actually runs the check. If the suggested control is a review, decide what the reviewer must be able to reproduce from the spec, diff, and test output.
 
 ## Choose one change to make repeatable
 
-Stay on `incident-postmortem`, where you saved `notes/postmortem.md`. Bring the fix note from the earlier branch into this working tree.
+Start with registration. The behavior is already in the spec, the lab has a known defective version, and you can run the check without Docker. Carry the gateway error signal forward to the alert exercise. There you'll need live traffic and a receiver to verify delivery and recovery.
 
-```sh
-git show debug-registration:notes/registration-fix.md > notes/registration-fix.md
-```
-
-If you called your fix branch something else, use that name in the command. Read both notes and start a Plan session.
+Ask **Plan** to turn the first choice into commands you can inspect before running.
 
 ```text
-Read notes/registration-fix.md and notes/postmortem.md.
-Suggest one check for each failure the notes confirm. Name the existing
-file or signal it could use, give a negative case that would prove the
-check works, and tell me who would act on the result. Keep the files
-unchanged.
+Plan a two-version check for registration. Compare lab-debugging and
+lab-registration in temporary detached Git worktrees. Use the same
+existing registration contract in both. Give me commands I can run
+in a second terminal, including a comparison of the test and its
+helper. Tell me which assertion should fail on the defective version
+and what a passing result on the corrected version should look like.
 ```
 
-Keep the answers you can trace to the source. Save any notes you want to carry forward on their own branch or outside the working tree so you can start each later exercise from a clean checkpoint. A suggestion to count failed registrations is plausible, but it will miss the original bug if the status is already 400. Test the state after the rejected request. If the agent suggests an alert on one slow span, check your postmortem for the signal you used to measure impact.
+The contract already covers the sequence you need. Use two worktrees, which are separate checkouts of the same Git repository. Keep OpenCode in the original checkout for this exercise and run the commands in a second terminal from the fork root.
 
-Save the approved rows in `notes/harness.md` or keep them in your exercise notes. Use them to decide which changes to take forward. The next chapter starts with the regression you can reproduce on demand.
+```sh
+git worktree add --detach ../task-api-harness-bug lab-debugging
+git worktree add --detach ../task-api-harness-fix lab-registration
+git diff lab-debugging lab-registration -- package.json contracts/registration.test.ts test/client.ts
+git rev-parse lab-debugging lab-registration
+```
+
+The diff should be empty. Record the two commit IDs in order. Record `node --version` too and use the same Node installation for all three runs. The lab needs Node 24 or later.
+
+## Verify the check on both versions
+
+First run the base suite in the defective checkout.
+
+```sh
+(cd ../task-api-harness-bug && npm test)
+```
+
+Expect three passing tests. The base suite covers the task API. Its result gives you a useful comparison with the registration contract. Run the contract on each checkout separately and read the exit status immediately after each run.
+
+```sh
+(cd ../task-api-harness-bug && npm run test:registration)
+echo "$?"
+```
+
+Expect exit `1`. The invalid requests get `400`, and the next valid request returns ID `"15"` where the test expects `"1"`. The contract sends fourteen invalid requests, so it exposes the same allocation bug you saw with one invalid request. Read the failed assertion. A missing test file or an unsupported Node version would leave this verification incomplete.
+
+```sh
+(cd ../task-api-harness-fix && npm run test:registration)
+echo "$?"
+```
+
+Expect two passing tests and exit `0`. Paste the outputs and revisions into the original **Plan** session.
+
+```text
+I pasted the command output and revisions from both worktrees. Tell
+me what each result proves. Quote the failing assertion and explain
+why the base suite stayed green. Flag anything that would prevent
+me from using this as evidence for a required CI check later.
+```
+
+Check that the agent attributes the results to the right revisions. You can now show that the contract distinguishes the two versions. Later, the merge exercise will check whether GitHub actually requires the result for the change being reviewed.
+
+## Check the alert signal against the outage
+
+Still in **Plan**, use the postmortem to verify that your proposed signal would have distinguished the affected period from recovery.
+
+```text
+Read the Prometheus evidence in notes/postmortem.md. Compare the
+timeout count and total request count in the affected window with
+the first clean bucket. Use that comparison to propose a gateway
+error signal. Give me the healthy, degraded, and recovered cases
+I should exercise to verify a future alert and its notification.
+Keep alert delivery and the live threshold open until we test them.
+```
+
+Check the arithmetic against the note. The replay had `60/300` timeouts in the affected three minutes and `0/100` in the first clean minute. The counts tell you that traffic continued while the errors went away. If an interval has no requests, that interval gives you no evidence that callers can create tasks successfully.
+
+Keep the ratio of gateway `5xx` responses to total requests as the signal to try. It includes the `504`s from the outage and leaves expected validation responses such as `400` out of the error count. You'll exercise a rule on live gateway counters, then check that degraded traffic produces a firing notification and healthy traffic produces a resolved one. The responder should be able to use the alert to reach the relevant dashboard and traces.
+
+## Record the controls and their evidence
+
+Switch to **Build** in the same session. Ask it to save your decision and the results you checked.
+
+```text
+Write notes/harness.md using the results and decisions we reviewed.
+For each selected control, record the failure, where the control
+runs, who acts on it, and the evidence needed to accept it. For the
+registration contract include both revisions, the command, the Node
+version, and the observed assertion and exit statuses. For the alert
+include the replay counts and the live checks still to run. Write
+only notes/harness.md.
+```
+
+Open a fresh **Plan** session to review the saved record.
+
+```text
+Read notes/harness.md and notes/postmortem.md. Check that I could
+repeat the two-version registration test from the note. Check what
+the replay actually proves about the alert and what still needs a
+live test. Give me findings with file and section references.
+```
+
+Check any findings against the outputs you kept. If a correction is needed, give **Build** the finding and the relevant output and ask it to update `notes/harness.md`. Inspect the staged note, commit it, then remove the two temporary checkouts.
+
+```sh
+git status --short --untracked-files=all
+git add -- notes/harness.md
+git diff --cached --check
+git diff --cached -- notes/harness.md
+git commit -m "Record the first harness controls"
+git worktree remove ../task-api-harness-bug
+git worktree remove ../task-api-harness-fix
+```
+
+Keep the note on `incident-postmortem`. Start [Focused Tests and Coverage Gates](/books/hands-on-coding-assistants/chapters/test-generation-and-improvement/) from the known-good `lab-registration` checkpoint. You'll add focused tests, verify that they catch a regression, and give coverage a threshold the runner can enforce. [Required CI Checks and Merge](/books/hands-on-coding-assistants/chapters/required-ci-checks-and-merge/) takes that verification to a clean checkout. Bring your alert cases to [Instrument the Service and Verify the Alert](/books/hands-on-coding-assistants/chapters/instrument-the-service-and-verify-the-alert/).
 
 ## References
 
-- OpenCode maintainers. [Instructions](https://opencode.ai/docs/instructions/) and [Permissions](https://opencode.ai/docs/permissions/). Official OpenCode 2 documentation.
-- William Oliveira. [Introducing Geremmyas](/posts/introducing-geremmyas-spec-driven-development-ai-assistants/). Technical article on keeping task specifications and verification with a change.
+- OpenCode maintainers. [Instructions](https://opencode.ai/docs/instructions/), [Permissions](https://opencode.ai/docs/permissions/), and [Agents](https://opencode.ai/docs/agents/). Official OpenCode 2 documentation.
+- Git maintainers. [git-worktree](https://git-scm.com/docs/git-worktree). Git reference manual.
+- Node.js contributors. [Test runner](https://nodejs.org/api/test.html). Node.js API reference.
+- William Oliveira. [How to Build a Reliable Coding-Agent Harness](/posts/how-to-build-a-reliable-coding-agent-harness/). Technical article, August 4, 2026.

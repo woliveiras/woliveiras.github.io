@@ -9,7 +9,9 @@ order: 24
 
 A suggestion arrives in seconds. Now count the time it takes to inspect the diff, supply a missing constraint, rerun the checks, and accept the patch. A randomized study of experienced open-source developers using early-2025 models found that developers took longer in the AI-enabled condition in that study. Measure your own task, model, and review effort.
 
-## Compare manual and delegated setup
+<span id="compare-manual-and-delegated-setup"></span>
+
+## Compare manual and delegated checks
 
 Create two clean worktrees at `lab-start` and confirm they have the same commit.
 
@@ -20,14 +22,14 @@ git -C ../task-api-manual rev-parse HEAD
 git -C ../task-api-delegated rev-parse HEAD
 ```
 
-In the first, time yourself running the two commands from the registration exercise.
+From inside `../task-api-manual`, time yourself running the two commands from the registration exercise.
 
 ```sh
 npm test
 npm run test:registration
 ```
 
-The base tests should pass and the contract should fail. In the second worktree, select your model in a fresh **Plan** session and record its ID. Take the same measurements.
+The base tests should pass and the contract should fail. Open OpenCode from inside `../task-api-delegated`, select your model in a fresh **Plan** session, and record its ID. Take the same measurements.
 
 ```text
 Run npm test and npm run test:registration as separate shell calls.
@@ -35,7 +37,7 @@ Use the exact commands. Report each observed result and leave the
 repository unchanged.
 ```
 
-Include the time you spend checking what ran. If a provider quota, missing tool support, or denied command interrupts the task, record the point where it stopped. Preserve any outcomes you can confirm from individual events. A run that ends before verification has a different outcome from a verified run.
+Include the time you spend checking what ran. Run `git status --short` in each worktree and keep those results with the test output. If a provider quota, missing tool support, or denied command interrupts the task, record the point where it stopped. Preserve any outcomes you can confirm from individual events. A run that ends before verification has a different outcome from a verified run.
 
 | Record | Where to check it |
 | --- | --- |

@@ -1,22 +1,23 @@
 ---
 title: "End-to-End Final Project"
-description: "Use the complete harness to ship and verify searchable labels on the Task API."
+description: "Implement searchable task labels and use the test, review, CI, and runtime evidence to make a merge decision."
 module: 4
 order: 25
 ---
 
 ## The scenario
 
-A user wants to mark a task as urgent and find it again from the list. Ship searchable labels on the existing in-memory Task API. The larger change in your RFC and ADR covers what happens when the service needs durable storage. Here the work is to deliver and verify the first feature under the agreed API contract.
+A user wants to mark a task as urgent and find it again from the list. Implement searchable labels on the existing in-memory Task API. The larger change in your RFC and ADR covers what happens when the service needs durable storage. Here the work is to verify the first release against the agreed API contract and decide whether it is ready to merge.
 
-Read the decisions you made before you open a new coding session.
+Read the [reviewed RFC](/books/hands-on-coding-assistants/chapters/write-and-review-an-rfc/#incorporate-the-feedback) and [storage ADR](/books/hands-on-coding-assistants/chapters/record-the-architecture-decision/) before you open a new coding session. Bring the checks from [your harness note](/books/hands-on-coding-assistants/chapters/building-your-harness/#record-the-controls-and-their-evidence) as well.
 
 ```sh
 git show design-task-labels:docs/rfcs/0001-task-labels.md
 git show design-task-labels:docs/decisions/0001-task-label-storage.md
+git show incident-postmortem:notes/harness.md
 ```
 
-Use your design branch name if it differs. Start from the harness checkpoint. Keep `capstone-base` as a reference so you can review the exact feature diff.
+Substitute your branch names if they differ. The earlier branches hold your notes and decisions. Start the feature from `lab-harness`, which supplies the reference code and checks. Keep `capstone-base` so you can review the exact feature diff.
 
 ```sh
 git switch -c capstone-base lab-harness
@@ -95,17 +96,19 @@ and the shape of the existing responses. Read the focused tests affected
 by the diff. Give a concrete request that would verify each finding.
 ```
 
-Ask for one finding you can check in the running service. For every finding, record the input, expected result, observed result, and what you changed after reproducing it.
+Check any findings against the contract and the diff. Restart the service if a finding needs an HTTP check. Record the input, expected result, observed result, and any correction you made. If the review reports no findings, record that outcome and choose a contract case to verify independently. If you change the code, rerun verification, commit the correction, and regenerate `notes/review.patch` before opening the PR. Stop the service before starting the telemetry stack.
 
 Push `capstone-base` and `task-labels` to your fork. Target `capstone-base` with your ruleset and open a PR from `task-labels` to that branch. Verify that **verify (Node 24)** ran on the revision under review, which includes the activated labels contract. If your check fails after a locally green run, compare the checked revision, Node version, and report before asking for a patch.
 
 With the feature checked out, bring up the live stack from [Instrument the Service and Verify the Alert](/books/hands-on-coding-assistants/chapters/instrument-the-service-and-verify-the-alert/). Replay the PATCH and the filtered GET against the gateway on port 3400. Check that the filtered response still contains task 1 and that the live logs and traces include `/tasks/:id/labels` and `/tasks` with 2xx outcomes. Compare them with the gateway count by status class. The route template and metric labels omit the raw task ID and filter value. Stop the stack after recording the signal.
 
-Keep the spec, design links, verified finding, tests, CI result, and runtime evidence with the PR. Review the record for sensitive values before sharing it.
+Keep the spec, design links, review outcome, tests, CI result, and runtime evidence with the PR. Include one check you chose from the harness exercises and the failure it can detect on this change. If you measured your work, record how much of the time went into checking and correcting the result. Review the record for sensitive values before sharing it.
 
 <span id="series-recap-what-you-learned"></span>
 
-The artifact you want to carry into another project is the evidence behind your merge decision. Give the next task a clear result and a way for someone else to reproduce it.
+## Record the merge decision
+
+Say whether the PR is ready to merge. Link to the revision CI tested, name one behavior you checked on the running service, and note any condition that still blocks the decision. Another developer should be able to take the contract and your record, rerun the checks, and see why you reached that decision.
 
 ## References
 

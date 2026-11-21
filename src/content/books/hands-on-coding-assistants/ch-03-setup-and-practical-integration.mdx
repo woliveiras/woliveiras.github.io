@@ -7,7 +7,7 @@ order: 2
 
 ## Start with a known project
 
-From the root of your [Task API fork](https://github.com/woliveiras/hands-on-coding-assistants-lab), check Git and Node, then install the CLI used in the exercises.
+Start at the `lab-start` checkpoint in your [Task API fork](https://github.com/woliveiras/hands-on-coding-assistants-lab). From the repository root, check Git and Node, then install the CLI used in the exercises.
 
 ```sh
 git --version
@@ -43,7 +43,7 @@ ollama list
 opencode
 ```
 
-On the OpenCode interface, open the models selection by running the command `/models` and select `ollama/qwen3.5:9b`. OpenCode discovers models at Ollama's default local address. If the model is missing, check `ollama list` and the port before changing the prompt. After the first model request, run `ollama ps` in your terminal to inspect the allocated context and where the model is running. If it is slow or the machine runs out of memory, choose a smaller tool-capable model and run the same checks, or continue with the hosted option. We'll talk about the hosted model following.
+In OpenCode, open `/models` and select `ollama/qwen3.5:9b`. OpenCode discovers models at Ollama's default local address. If the model is missing, check `ollama list` and the port before changing the prompt. After the first model request, run `ollama ps` in your terminal to inspect the allocated context and where the model is running. If it is slow or the machine runs out of memory, choose a smaller tool-capable model and run the same checks, or continue with the hosted option.
 
 ## Run a free hosted model
 
@@ -53,7 +53,7 @@ You can also check model IDs from a shell with `opencode models`. Record the ID 
 
 ## Check file and shell tools
 
-Now we can start the lab exercises. The first exercise checks that the model can read a file and run a shell command. It also verifies that the model is using the same tool version as your own terminal. The exercise uses the `package.json` file and the `npm test` command.
+Check that the selected model can read a file in this checkout and run a shell command. Use `package.json` and `npm test` so you can compare the file read and test output with what you observed in your terminal.
 
 In the lab folder, open `opencode` and run the command `/agents`. Select **Plan**, and give it this request.
 
@@ -95,13 +95,13 @@ cd -
 git worktree remove ../task-api-setup-check
 ```
 
-Run the restore and worktree removal only after checking the diff. The exercise should add one line to `README.md` and touch no other tracked file. Record the model, version and three observations. You'll use the same working model to the chapter [explore the application](/books/hands-on-coding-assistants/chapters/exploring-an-unfamiliar-codebase/).
+Run the restore and worktree removal only after checking the diff. The exercise should add one line to `README.md` and touch no other tracked file. Record the model ID, OpenCode version, and what you observed in the file read, shell call, and edit.
 
 ## Read the permission prompts
 
 The starter allows exact test commands and asks about other shell commands. Review the command and its working directory when OpenCode asks. You can check unfamiliar commands yourself from a separate terminal.
 
-With all the checks complete, you can continue to the next chapter. The exercises will use the same model and tool versions you just verified.
+Use the setup you verified to [explore the Task API](/books/hands-on-coding-assistants/chapters/exploring-an-unfamiliar-codebase/). You'll check the agent's explanation against a request to the running service.
 
 ## References
 

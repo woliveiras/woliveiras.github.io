@@ -9,7 +9,7 @@ The registration reviewer needed a spec, a contract, and a patch. The fact that 
 
 ## Check an effective permission
 
-Use a disposable exercise branch at `lab-start`. Open `opencode.jsonc` and add this final rule to `permissions`.
+Start from the edit rule you tried in [Repository Custom Instructions](/books/hands-on-coding-assistants/chapters/repository-custom-instructions/#keep-permissions-in-the-config). Use a disposable exercise branch at `lab-start` and add the rule to `permissions` in `opencode.jsonc`.
 
 ```jsonc
 { "action": "edit", "resource": "contracts/*", "effect": "deny" }
@@ -30,7 +30,9 @@ The repository's outside-directory rule applies to tools that check it. An allow
 
 An issue, a README, and a retrieved tool response can carry instructions. If a response asks the agent to run an unrelated command or supply a credential, check where the text came from and use the configured permissions to limit reachable actions. For this exercise, use the lab's fictional records. A hosted model can receive prompts, excerpts, and tool output. A local model can still be paired with network-capable tools. Pick the exposure that matches the task.
 
-Open the verification record you saved in the prompt chapter. Check that it identifies each source and that the redaction marker is absent from the shareable copy. Review dependency and lockfile changes, plugin or server code, and the origin and licensing of contributed material. In a shared project, have the people who own the rules review changes to the rules themselves.
+Read the shareable note you saved in [the prompt exercise](/books/hands-on-coding-assistants/chapters/prompt-engineering-for-code-assistants/#keep-a-record-that-survives-the-session). From the current checkout, run `git show prompt-evidence:notes/registration-verification.md`, using your own branch name if needed. Check that the note identifies each source and that the value `DO_NOT_SHARE_EXERCISE` is absent. If you are entering here directly, use the linked section to create and check a shareable note.
+
+Review dependency and lockfile changes, plugin or server code, and the origin and licensing of contributed material. In a shared project, have the people who own the rules review changes to the rules themselves.
 
 Write down the scope of the agent and the outcome of the two tool probes in the review record. If you can point to the permission rule, the tool result and the diff, a teammate can reproduce the decision without access to your original session.
 

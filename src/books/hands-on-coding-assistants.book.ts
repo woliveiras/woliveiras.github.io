@@ -6,7 +6,7 @@ export const book = {
 	author: "William Oliveira",
 	path: "/books/hands-on-coding-assistants/",
 	description:
-		"A developer's workflow for AI-assisted engineering using OpenCode, from writing the first spec to shipping a feature with review, security checks, and a way to measure the result.",
+		"Work through the Task API with OpenCode. Write a spec, review a patch, and use CI and the running service to decide whether a feature is ready to merge.",
 	published: true,
 	parts: [
 		{

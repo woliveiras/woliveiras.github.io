@@ -80,7 +80,9 @@ git commit -m "Preserve the next registration ID after rejection"
 
 ## Refactor after you have a green baseline
 
-With the fix committed, you can try extracting a validation function in a separate branch. Keep status codes, ID allocation and storage in the route. Rerun the focused test and the contract after the extraction. Leave the function inline if extracting it makes the order harder to see. The verified fix commit is the one to use when you [document the API](/books/hands-on-coding-assistants/chapters/automated-documentation/).
+With the fix committed, you can try extracting a validation function in a separate branch. Keep status codes, ID allocation and storage in the route. Rerun the focused test and the contract after the extraction. Leave the function inline if extracting it makes the order harder to see.
+
+Use the branch with the verified fix to [break down the task labels epic](/books/hands-on-coding-assistants/chapters/break-down-an-epic/). Its plan and the API documentation that follows both start from that version of the service.
 
 ## References
 

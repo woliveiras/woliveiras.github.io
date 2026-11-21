@@ -1,5 +1,5 @@
 ---
-title: "Introduction & Overview"
+title: "How the Exercises Fit Together"
 description: "Follow the Task API from your first repository investigation through design, an incident, and a feature verified in CI."
 module: 0
 order: 1
@@ -11,7 +11,7 @@ order: 1
 
 Someone asks you to fix registration in a service you've never run. Before you change the handler, you need to know how to start the service, how it handles invalid input, and what callers expect. In this book you'll work on a small TypeScript service called the Task API. You'll use OpenCode to trace a request through the code, then run the service to check what happens.
 
-The request you traced gives you a concrete example for the spec. Later, that spec helps you catch a patch that returns the right error and still changes state. The exercises stay with the Task API so you can carry work forward. Your fork is where you'll keep the documents, tests and patches you produce.
+The request you traced gives you a concrete example for the spec. Later, that spec helps you catch a patch that returns the right error and still changes state. By the final project, you'll use that same way of working to deliver searchable task labels. Another developer should be able to start from your pull request, find the contract and test results, and reproduce the checks behind your merge decision.
 
 ## How the book is organized
 
@@ -19,7 +19,7 @@ The request you traced gives you a concrete example for the spec. Later, that sp
 
 In **Shape and Document a Change**, you'll plan a larger feature that lets people label tasks and find them again. You'll break the work into tickets, work out which tasks can run in parallel, and document the current service with C4 diagrams in Mermaid. That picture of the existing system gives reviewers a common starting point for your proposal, which you'll write as a request for comments (RFC). You'll revise it after review and record the decision about durable storage in an architecture decision record (ADR).
 
-In **Investigate a Production Incident**, the Task API's simulated gateway starts returning HTTP `504` when callers try to create tasks. You'll use the Docker Compose lab to compare traces, logs and request counts in Grafana. From those records you'll work out when the failures began, which requests were affected and whether service recovered after the rollback. The postmortem records what the evidence supports and gives you a reason to improve monitoring later in the book.
+In **Investigate a Production Incident**, the Task API's simulated gateway starts returning HTTP `504` when callers try to create tasks. You'll use the Docker Compose lab to compare traces, logs and request counts in Grafana. The counts show the first affected minute and how many observed requests timed out. A trace lets you inspect one of those failures. The postmortem records what each source supports and gives you a signal to test in the alerting exercise.
 
 **Build the Harness** returns to the earlier exercises and makes some of their checks repeatable. You'll put tests and coverage in CI, require a passing check before merge, and see an alert fire and resolve in the lab. You'll also configure how OpenCode works in the repository. The chapters cover versioned prompts and project instructions, a reviewer with limited permissions, and ways to extend the assistant with skills, plugins and MCP.
 
@@ -35,7 +35,9 @@ When you ask OpenCode to run `npm test`, the model can propose the command. Open
 
 ## Working through the exercises
 
-Follow the chapters in order on your first pass. Each exercise tells you which revision to open or which branch to continue from. Keep the work you want to reuse, and start from the named checkpoint when a chapter needs a known failure. The examples give you requests to send, tests to run and results to compare, even when your model takes a different route through the task.
+Follow the chapters in order on your first pass. A `lab-*` tag gives you the code an exercise expects. Keep your own work on named branches so you can retrieve it after switching checkpoints. The RFC and ADR stay on the design branch, and the postmortem and first harness decisions stay on the incident branch.
+
+When you come back for a specific task, use the [table of contents](/books/hands-on-coding-assistants/contents/) and start with the checkpoint and inputs named in that chapter. For example, [Model Setup and Troubleshooting](/books/hands-on-coding-assistants/appendices/model-setup/) helps you recover a working setup, and [Building Your Harness](/books/hands-on-coding-assistants/chapters/building-your-harness/#verify-the-check-on-both-versions) shows how to check the same contract against a broken and a corrected revision.
 
 When your fork is ready, [set up OpenCode and run the first tool checks](/books/hands-on-coding-assistants/chapters/setup-and-practical-integration/) against the starter. You'll use that same setup to investigate the repository in the following chapter.
 

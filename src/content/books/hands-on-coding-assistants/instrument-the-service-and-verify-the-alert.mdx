@@ -5,7 +5,7 @@ module: 3
 order: 14
 ---
 
-In the postmortem, a slow span helped you understand a 504. The request counter gave you impact across the incident window. To detect the next incident, add a check you can drive from a request all the way to a message that tells someone what to do.
+In the postmortem, a slow span helped you understand a 504. The request counter gave you impact across the incident window. Bring the healthy, degraded, and recovered cases from [your harness note](/books/hands-on-coding-assistants/chapters/building-your-harness/#record-the-controls-and-their-evidence). This time you'll drive requests through a live gateway and verify that an operator receives a message they can act on.
 
 ## Start the live lab
 
@@ -36,7 +36,7 @@ Add one log field that helps you separate gateway responses from responses forwa
 ...(upstreamStatus === undefined ? {} : { upstream_status: upstreamStatus }),
 ```
 
-A healthy forwarded request should show an upstream status of 201. The deliberately injected timeout should have gateway status 504, with no upstream status. A request marker in a fictional title should be absent from the outgoing log and span fields. Check this in the live run below and keep the patch focused on the log.
+A successful forwarded task creation should show an upstream status of 201. The deliberately injected timeout should have gateway status 504, with no upstream status. A request marker in a fictional title should be absent from the outgoing log and span fields. Check this in the live run below and keep the patch focused on the log.
 
 ## Exercise the threshold
 
@@ -81,6 +81,8 @@ Record the query output, a trace and its matching log, and the firing and resolv
 ```sh
 docker compose -f observability/compose.yml -f observability/compose.alerts.yml down -v
 ```
+
+Save the evidence with the changes you made on `instrument-alerts`. Before starting [the prompt exercise](/books/hands-on-coding-assistants/chapters/prompt-engineering-for-code-assistants/#compare-three-prompts-on-one-task), commit the changes you want to keep or use a separate worktree for its clean `lab-start` checkout.
 
 ## References
 
