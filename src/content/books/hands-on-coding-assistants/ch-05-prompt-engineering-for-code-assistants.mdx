@@ -1,64 +1,181 @@
 ---
 title: "Prompt Engineering for Code Assistants"
-description: "Give an agent the context it needs and preserve enough evidence to review the result."
+description: "Compare prompts in OpenCode, verify the chosen plan, and leave a record someone else can review."
 module: 3
 order: 15
 ---
 
 ## Your prompt derives from your spec
 
-“Fix registration” gives an agent enough information to find the route. It leaves the response format, validation rules, and side effects open. In [The Spec-First Workflow](/books/hands-on-coding-assistants/chapters/the-spec-first-workflow/), a rejected request had to leave the next ID available. If that line is missing from the prompt and the agent skips the spec, you may get an entirely plausible patch that breaks the rule.
+“Fix registration” can lead an agent straight to `POST /registrations`. That still leaves a decision about what should happen after a rejection. In [The Spec-First Workflow](/books/hands-on-coding-assistants/chapters/the-spec-first-workflow/), that decision was already in the spec. A rejected request must leave the next ID available. A plan that checks only the error response can miss it.
+
+**Prompt engineering** is the work of deciding what to ask the agent, which context it needs, and what result you can check. The spec holds the behavior you agreed to. Your prompt tells the agent what to do with that spec in the current session. The repository's `AGENTS.md` supplies guidance shared across tasks.
+
+A question about where a route lives can start with a single path. A change to registration needs the acceptance criteria and the test that exercises the request sequence. Add context to settle a decision the agent would otherwise have to guess. You'll compare three ways to ask for the same plan, apply the one you choose, and keep enough evidence for someone to review the result from Git.
 
 ## Compare three prompts on one task
 
-Use a clean branch at `lab-start`. If you still have changes from the alert exercise, save them on that branch or open a separate worktree first.
+Start in your lab fork with a clean working tree. Commit any work you want to keep from the alert exercise, or open a separate checkout. Use the [OpenCode setup](/books/hands-on-coding-assistants/chapters/setup-and-practical-integration/) and switch to the starter again. The spec and contract are already present at this checkpoint.
 
 ```sh
 git switch -c prompt-evidence lab-start
-mkdir -p prompts notes
+git rev-parse HEAD
+opencode --version
+opencode
 ```
 
-Select the same model in three fresh **Plan** sessions and submit one prompt per session.
+Choose your model with `/models` and select **Plan** with `/agents`. Use the same model, checkout, and project settings for all three prompts. Start a fresh session with `/new` for each one so it begins without the earlier answers. Record which permissions you granted or denied during each run.
+
+Start by naming the task and leaving the agent to find its context.
 
 ```text
 Plan a fix for registration.
 ```
 
-```text
-Read src/app.ts. Plan a change that validates names and email addresses
-before storing a registration.
-```
+In the second session, name the source file and the change you want.
 
 ```text
-Read specs/registration-validation.md, contracts/registration.test.ts, and
-the registration route in src/app.ts. Plan a patch within that route.
-Map each acceptance criterion to a check and show how you would observe
-the next ID after rejection. Keep the repository unchanged.
+Read src/app.ts. Plan a change that validates names and email
+addresses before storing a registration.
 ```
 
-Mark each plan for the same things. Did it check types before normalization? Did it set the error status and shape? Did it check the order of validation and ID assignment? Did those points come from a file the session actually read? Open the tool activity to check. If two prompts work equally well on this task, keep the shorter one with the file boundaries you can defend.
+In the third session, name the spec and contract. Ask the agent to show how you could verify its plan.
 
-Save the chosen prompt as `prompts/plan-registration.txt` and track it with its input spec. If you use **Build**, supply the reviewed plan and ask it to run `npm test` and `npm run test:registration` separately so you can match one observed result to each command. When a check fails, quote the shortest useful assertion and its input so the agent can locate the failure.
+```text
+Read specs/registration-validation.md, contracts/registration.test.ts,
+and the registration route in src/app.ts. Plan a patch limited to
+that route. Map each acceptance criterion to a check and give the
+request sequence that would verify the next ID after rejection.
+Cite the files you used. Keep the repository unchanged.
+```
+
+### Read the plans against the same criteria
+
+Open `specs/registration-validation.md` and `contracts/registration.test.ts` yourself. For each plan, check the tool activity for completed file reads and then check what the plan actually says.
+
+| What to look for | Evidence you can check |
+| --- | --- |
+| The source of a requirement | A completed read of the spec or contract and a plan that points to the relevant criterion |
+| The validation rules | The plan checks types before normalization, applies the trimmed name limit and email shape, and keeps the specified response status and body |
+| The state after rejection | The plan tests a rejection followed by a valid request on the same fresh server and checks the next ID |
+| The scope and verification | The plan keeps the patch in the registration route, leaves the contract unchanged, and names both test commands |
+
+A line such as “return 400 for invalid input” covers only part of the failure. Use this example to check the state criterion. Send `{"name":42,"email":"ada@example.test"}` to a fresh server. The response should be `400` with `{"error":"invalid_registration"}`. Then send `{"name":"Ada","email":"ada@example.test"}` to the same server. That request should return `201` with ID `"1"`. A plan can be concise and still describe both observations.
+
+Choose the shortest prompt whose plan you can verify for this run. The short prompt may lead the agent to discover the spec on its own. Check the file reads before crediting it for that. If a plan misses a criterion, ask for the missing check in that session before you accept it. For example, use this follow-up when the plan stops at the first response.
+
+```text
+Read the registration spec and contract again. Add the expected
+error body and the next valid response on the same fresh server
+to the plan. Show the assertion that would catch a consumed ID.
+Keep the revised plan in chat.
+```
+
+Save the original wording you selected and record any follow-up separately. That gives you a prompt you can reuse and a record of what the first answer needed.
+
+## Verify the chosen plan on the starter
+
+From the branch you opened for this exercise, run the checks before asking for the patch.
+
+```sh
+npm test
+npm run test:registration
+```
+
+The three base tests pass at `lab-start`. The two registration contract tests fail. One receives unnormalized fields, and the other sees `201` for invalid input where it expects `400`. Save the failing assertion so you can compare it with the verification after the patch.
+
+Return to the session with the reviewed plan and switch to **Build**.
+
+```text
+Implement the reviewed registration plan in src/app.ts. Keep
+contracts/, the spec, and the project instructions unchanged.
+Run npm test and npm run test:registration as separate commands.
+Show the diff and the observed result for each command. Leave the
+change for me to review and commit.
+```
+
+Inspect each tool result. If a command was skipped, run it yourself and record where the result came from. If it failed, give Build the shortest relevant output and ask it to explain the failure before editing. Review the diff for the order of operations. Validation should finish before the handler creates a registration or updates the stored array.
+
+```sh
+npm test
+npm run test:registration
+git status --short --untracked-files=all
+git diff -- src/app.ts
+git diff --exit-code -- specs/ contracts/ AGENTS.md opencode.jsonc
+```
+
+Expect both suites to pass. The status should show only `src/app.ts` modified at this point. After reviewing the patch, commit it and capture the revision and the diff command a teammate can use later.
+
+```sh
+git add -- src/app.ts
+git diff --cached --check
+git diff --cached -- src/app.ts
+git commit -m "Validate registrations before storing them"
+git rev-parse HEAD
+git diff lab-start HEAD -- src/app.ts
+```
 
 ## Keep a record that survives the session
 
-A teammate may have the checkout and no way to open your conversation. Keep `notes/registration-verification.md` with enough detail to judge the chosen plan. If you implemented the plan, include the verified diff. Update the record after an intervention changes the plan or the patch.
+A teammate may be able to open your checkout long after the session is gone. Give **Build** the selected prompt and the observations you checked, including the base and implementation SHAs, test outputs, and any follow-up. Ask it to save two files.
 
-| Record | Where to get it |
-| --- | --- |
-| Starting ref and outcome | Record `git rev-parse lab-start` and the plan you selected. If you implemented it, record its commit and the feature diff against `lab-start`. |
-| Spec, prompt, and instruction files used | Repository paths and the exact versions you checked, plus file reads visible in the session |
-| Model and tool configuration | Model ID, `opencode --version`, and the project rules that applied |
-| Commands and results | Tool activity or terminal output, with exit status and failing assertions for checks you actually ran. Mark proposed checks as pending. |
-| Human intervention | What changed in the request, patch, or decision, and what you verified after the change |
+```text
+Save the exact selected Plan prompt I pasted as
+prompts/plan-registration.txt. In notes/registration-verification.md,
+record why I chose it, the base and implementation SHAs, the
+model and OpenCode version, and which spec, contract, and
+instructions the sessions used. Include the command to reproduce
+the diff, each test command and observed result, and any human
+correction and its verification. Mark proposed checks as pending.
+Write only the two record files.
+```
 
-OpenCode can export a session with `opencode session export SESSION_ID --sanitize`. Use the actual session ID from `opencode session list`. Check the export before sharing it, and keep evidence of exact commands in your review note if the export omits it.
+Open the saved prompt and compare it with what you actually sent. In the note, identify files by path and revision. For test results, keep the command, exit status, and the assertion that mattered. A short record such as “the starter contract expected `400` for a numeric name and got `201`; after the patch both contract tests passed” gives a reviewer something to check. Include any approval that affected the run and record work you did in a separate terminal.
 
-Try redaction with a fake value such as `SAMPLE_REDACTION_MARKER=DO_NOT_SHARE_EXERCISE`. Put it in a scratch copy of the note, remove the sensitive value, and search that copy for the exact marker. Review file paths, stack traces and diffs by hand too. Store only the evidence the next reviewer needs. Keep raw session data out of the patch and PR.
+### Rehearse redaction before sharing
 
-Review the saved prompt and shareable note, then commit them on `prompt-evidence`. Keep that branch when you switch to the review checkpoint. [AI-First Security & Governance](/books/hands-on-coding-assistants/chapters/ai-first-security-and-governance/#review-the-inputs-as-well-as-the-patch) will use the saved note from a separate checkout.
+Keep a session export in a temporary directory while deciding what evidence to retain. OpenCode can redact sensitive transcript and file data with `--sanitize`. If you use an export, inspect it for sensitive values and check that it still contains the evidence you need. The shareable record can use observed excerpts and Git revision IDs.
+
+```sh
+prompt_review_dir=$(mktemp -d)
+opencode session list
+```
+
+For an export, use the ID of the session you want to inspect.
+
+```sh
+prompt_session_id='ses_REPLACE_ME'
+opencode session export "$prompt_session_id" --sanitize > "$prompt_review_dir/session.json"
+```
+
+Try the redaction check on a copy of the note. Add a fictional value so you can verify that your search finds it before removal.
+
+```sh
+cp notes/registration-verification.md "$prompt_review_dir/review-before.md"
+printf '\nSAMPLE_REDACTION_MARKER=DO_NOT_SHARE_EXERCISE\n' >> "$prompt_review_dir/review-before.md"
+grep -nF 'DO_NOT_SHARE_EXERCISE' "$prompt_review_dir/review-before.md"
+```
+
+Expect one matching line. Remove the marker line from the scratch record and check both that copy and the note you intend to commit.
+
+```sh
+sed '/^SAMPLE_REDACTION_MARKER=DO_NOT_SHARE_EXERCISE$/d' "$prompt_review_dir/review-before.md" > "$prompt_review_dir/review-after.md"
+grep -nF 'DO_NOT_SHARE_EXERCISE' "$prompt_review_dir/review-after.md" notes/registration-verification.md
+echo "$?"
+```
+
+Expect no matches and exit status `1`. This check covers the fictional value. Read the note, prompt, and diff for other sensitive contents, including credentials, personal data, and machine-specific paths. Stage the two shareable files and review the staged diff before committing.
+
+```sh
+git add -- prompts/plan-registration.txt notes/registration-verification.md
+git diff --cached --check
+git diff --cached
+git commit -m "Record the registration prompt and verification"
+```
+
+Keep the branch for [AI-First Security & Governance](/books/hands-on-coding-assistants/chapters/ai-first-security-and-governance/#review-the-inputs-as-well-as-the-patch), where you'll check the same note from a separate checkout. Next, in [Custom Agents & Sub-Agents](/books/hands-on-coding-assistants/chapters/custom-agents-and-sub-agents/), you'll give a reviewer a known diff and a narrower job. Start that exercise from `lab-review` so the reviewer sees the prepared change.
 
 ## References
 
-- OpenCode maintainers. [CLI commands](https://opencode.ai/docs/cli/commands/) and [Session commands](https://opencode.ai/docs/cli/commands/#session). Official OpenCode 2 documentation for sessions and sanitized exports.
+- OpenCode maintainers. [TUI](https://opencode.ai/docs/cli/tui/) and [CLI commands](https://opencode.ai/docs/cli/commands/#session). Official OpenCode documentation for agent selection, sessions, and sanitized exports.
 - Git maintainers. [git-diff](https://git-scm.com/docs/git-diff). Git reference manual.
