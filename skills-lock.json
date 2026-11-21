@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "skills": {
+    "book-writing": {
+      "source": "woliveiras/book-writing",
+      "commit": "be6ab4f6a06cd50d4d6ff71a3b65d3a4acd4f702",
+      "sourceType": "github",
+      "skillPath": "skills/book-writing/SKILL.md",
+      "computedHash": "472d0f2af3bca959e9d3d2bfe201fba3aa50318773ab92fa9fadda985cab4932"
+    }
+  }
+}

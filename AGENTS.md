@@ -13,6 +13,12 @@ details and examples.
   exception is when the user explicitly requests a different voice.
 - This applies to blog posts, series, documentation, pages, UI copy,
   descriptions, announcements, and any other prose.
+- For books, use `book-writing` to define the reader promise, structure
+  chapters, and make clear what each chapter builds on. Use `writing` for the
+  house voice and to judge what the available evidence supports.
+  [Book-writing skill](.agents/skills/book-writing/SKILL.md)
+- For standalone articles, use `writing` to choose the structure, draft the
+  article, and revise it.
 - Do not replace the house voice with generic technical, corporate, academic,
   or assistant prose.
 - Never invent personal experience, opinions, project outcomes, measurements,
