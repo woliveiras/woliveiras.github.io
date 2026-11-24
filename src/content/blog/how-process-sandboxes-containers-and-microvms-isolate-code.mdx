@@ -80,12 +80,21 @@ This separation does not make every action safe. A writable host share can carry
 
 The dotted arrows show where a file read can lead to host-side work. The Sentry or the guest can also satisfy a read internally.
 
+<div className="isolation-flow not-prose" role="region" aria-label="File read paths" tabIndex={0}>
+
 ```mermaid
+---
+config:
+  look: classic
+  flowchart:
+    nodeSpacing: 24
+    rankSpacing: 36
+---
 flowchart TB
-    test["Test process calls open()"]
+    test["Test process calls<br/>open()"]
     test --> sandbox["Host process sandbox"]
     test --> container["Conventional Linux container"]
-    test --> gvisor["gVisor workload"]
+    test --> gvisor["gVisor<br/>workload"]
     test --> vm["VM or microVM guest"]
     sandbox --> local["Host kernel<br/>Process policy"]
     container --> linux["Runtime host kernel<br/>Container mount view and policy"]
@@ -93,13 +102,21 @@ flowchart TB
     vm --> guest["Guest kernel<br/>Guest filesystem and devices"]
     sentry -.-> host["Host kernel"]
     guest -.-> vmm["Virtualization layer<br/>Virtual device I/O"]
+    class test entry
+    class host,vmm followup
 ```
+
+</div>
 
 ## Conclusion
 
-Start with what the test needs to reach. A host policy can let it read an installed SDK and write to a checkout. If it needs a separate kernel, check which disks, folders, and services the guest can still reach. In the Docker example, the test can work on a copy of the fixture in the container if the host copy needs to stay intact.
+Isolation is not determined only by the technology wrapping the process. It depends on who receives the system call, which kernel interprets it, and which host resources the setup exposes.
 
-[How Codex Sandboxes Local Commands](/posts/how-codex-sandboxes-local-commands/) takes one file outside the checkout and tries to read it with `cat` under two profiles. Changing one rule determines whether the process can open the file.
+A host sandbox can keep the process on the host kernel and restrict its file and network operations. A conventional container adds namespaces and mounts while usually preserving that kernel. gVisor inserts the Sentry and, for some filesystem operations, the Gofer between the application and the host kernel. A microVM adds a guest kernel and requires the virtual devices and virtualization layer to bridge I/O requests.
+
+Start with the resources the workload needs. An SDK, checkout, fixture, package registry, or credential can be allowed directly, mounted, copied, or denied. Ask what remains shared for every one of those resources, including writes and network connections. In the Docker example, mounting the checkout gives the test direct access to the host-backed file; a copy or read-only mount changes what a write can affect.
+
+[How Codex Sandboxes Local Commands](/posts/how-codex-sandboxes-local-commands/) puts this model into practice. It runs `cat` and a network probe under different profiles and shows how changing one filesystem or network rule determines whether the process can reach the resource.
 
 ## References
 

@@ -9,6 +9,78 @@
 svg[id^="mermaid"] {
 	margin: 50px auto;
 }
+
+.isolation-flow {
+	--flow-surface: #fafaf9;
+	--flow-card: #ffffff;
+	--flow-frame: #e7e5e4;
+	--flow-border: #a8a29e;
+	--flow-ink: #292524;
+	--flow-edge: #57534e;
+	--flow-entry: #fff1f2;
+	--flow-accent: #be123c;
+	max-width: 100%;
+	overflow-x: auto;
+	margin-block: 1.5rem 2rem;
+	padding: clamp(0.75rem, 2.5vw, 1.5rem);
+	border: 1px solid var(--flow-frame);
+	border-radius: 1rem;
+	background: var(--flow-surface);
+}
+
+.dark .isolation-flow {
+	--flow-surface: #1c1917;
+	--flow-card: #292524;
+	--flow-frame: #44403c;
+	--flow-border: #78716c;
+	--flow-ink: #f5f5f4;
+	--flow-edge: #a8a29e;
+	--flow-entry: #4c0519;
+	--flow-accent: #fb7185;
+}
+
+.isolation-flow:focus-visible {
+	outline: 2px solid var(--flow-accent);
+	outline-offset: 3px;
+}
+
+.isolation-flow > svg {
+	display: block;
+	width: 100%;
+	min-width: 40rem;
+	height: auto;
+	margin: 0 auto;
+}
+
+.isolation-flow .node > .label-container {
+	fill: var(--flow-card) !important;
+	stroke: var(--flow-border) !important;
+	stroke-width: 1.25px !important;
+	rx: 8px;
+	ry: 8px;
+}
+
+.isolation-flow .node.entry > .label-container {
+	fill: var(--flow-entry) !important;
+	stroke: var(--flow-accent) !important;
+}
+
+.isolation-flow .node.followup > .label-container {
+	fill: var(--flow-surface) !important;
+}
+
+.isolation-flow .nodeLabel {
+	color: var(--flow-ink) !important;
+}
+
+.isolation-flow :is(.flowchart-link, .marker) {
+	stroke: var(--flow-edge) !important;
+}
+
+.isolation-flow .marker {
+	fill: var(--flow-edge) !important;
+}
+
 /* Responsive table wrapper: keep tables within the content container
    and allow horizontal scrolling on small screens. */
 .prose :where(table):not(:where([class~="not-prose"] *)) {

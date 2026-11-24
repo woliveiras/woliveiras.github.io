@@ -92,6 +92,30 @@ Expected behavior:
 - If no such material exists, return to the author brief instead of inventing a
   hook.
 
+## Case 6: a sandbox experiment before the reader's question
+
+Draft opening
+
+> I asked Codex to run a small experiment on my Mac.
+
+Source notes
+
+> When Codex runs `pnpm test`, the author wants to know what the test process
+> can reach. A build may need an SDK outside the checkout. An integration test
+> may need a local database. In the macOS lab, the `:workspace` profile allowed
+> a read outside the checkout and blocked a write in the same directory. It
+> also blocked a TCP connection to a local listener. Adding a `deny` rule for
+> the file blocked the same read.
+
+Expected behavior
+
+- Open with the access decision created by letting Codex run `pnpm test`.
+  Explain a consequence for local development before describing the lab setup.
+- Use the lab to answer the question about the profile's permissions. Keep the
+  observations scoped to the tested profile, commands, and platform.
+- Treat the SDK and database as examples of what a development task may need.
+  Describe the file and the loopback listener as the resources the lab used.
+
 ## Evaluation questions
 
 For every case, ask:

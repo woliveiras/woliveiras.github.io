@@ -43,6 +43,12 @@ constraint, or a recommendation. Build outward from that sentence.
 Definitions, industry context, and tool descriptions can follow when the reader
 needs them. They should not replace the reason this author is writing now.
 
+Open a technical post with a concrete engineering decision, failure, or
+trade-off the reader needs to understand. Name the operation and show what it
+can affect. Introduce the experiment, research, or setup when it helps answer
+the question the opening raises. A result can lead when it makes the practical
+consequence clear on its own.
+
 Compare these openings:
 
 > A fantastic tool used by the JavaScript community to preserve code quality is
@@ -228,6 +234,8 @@ meaning or rhythm.
 
 ## Voice test
 
+- After the first paragraph of a technical post, can the reader name the
+  decision or problem the article will help them understand?
 - Could the opening belong to hundreds of technical blogs? If yes, replace it
   with the actual problem, disagreement, or supplied moment.
 - Could the same article have been generated from its title alone? If yes, the
