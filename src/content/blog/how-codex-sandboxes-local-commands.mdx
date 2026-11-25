@@ -1,0 +1,97 @@
+---
+title: "How Codex Sandboxes Local Commands"
+description: "Understand how Codex profiles, approval policies and platform backends control local commands and which processes remain outside their execution boundary."
+pubDate: "2026-11-23"
+published: true
+tags: ["ai-agents", "ai-engineering", "security", "architecture"]
+---
+
+Working with Codex, we run a lot of commands in our local environment. Some commands can be dangerous, and some commands can be useful but still need to be restricted.
+
+When Codex runs a local command, the important question is not whether the command is "inside Codex". The command is a process with its own filesystem and network boundary, and Codex controls that boundary.
+
+That boundary depends on several settings working together: a **permission profile** limits operations, an **approval policy** decides who authorizes actions, and the **host backend** translates the profile into OS-level controls. Understanding each part separately makes failures easier to diagnose and prevents an approval prompt from being mistaken for a sandbox.
+
+In this article, we'll understand how Codex sandboxes local commands, how to diagnose failures, and how to choose the smallest useful boundary for a command.
+
+## Profiles and approvals make different decisions
+
+A **permission profile** describes what a process may access. It can allow writes in the workspace, add an external directory, deny a selected file or disable network access. The built-in `:workspace` profile, for example, allows writes in the active workspace and system temporary directories. It protects paths such as `.git` and `.codex`, and keeps network access off by default.
+
+An **approval policy** decides whether Codex may execute or retry an action without a separate approval. It does not weaken or strengthen the OS sandbox. It answers "is this action authorized now?" The profile answers "which operations are possible after authorization?"
+
+The difference explains apparently contradictory outcomes:
+
+- A command can be approved and still fail if its profile denies the operation.
+- A command can run without an approval prompt and still perform only the operations allowed by its profile.
+- An approval can broaden the available action for a session without making an unrelated process subject to that profile.
+
+For a custom profile, `CODEX_HOME` defines the directory Codex uses for configuration. `:workspace` is a named built-in profile, not a literal directory. A profile can inherit from `:workspace` and add explicit allowances or denials for specific paths.
+
+When checking a session, inspect the configuration Codex actually loaded. `default_permissions` selects a profile, and `[permissions]` defines custom profiles. Older `sandbox_mode` and `sandbox_workspace_write` settings follow a compatibility path. A loaded `sandbox_mode` can take precedence over `default_permissions`, and managed requirements can limit the profiles a session is allowed to use.
+
+## Choose the smallest useful boundary
+
+As we do in security engineering, we want to minimize the attack surface. A sandbox should allow only the operations that a command needs to succeed. It should not grant every capability that the host account has.
+
+Start with a concrete resource:
+
+1. Identify the process that performs the operation.
+2. Identify the exact path or service it needs.
+3. Allow that resource in the profile used to launch the process.
+4. Keep unrelated paths and network access outside the profile.
+
+Consider a test suite that writes reports, reads a shared SDK cache and connects to a local database. These are three separate requirements. The workspace profile can cover report writes, while a narrower rule handles the SDK cache or database connection. Broad host access would solve all three at once, but it would also allow every other command launched with that profile to use them.
+
+The `:workspace` profile is useful for commands that should not write outside the checkout. It is not a claim that the process can read no other file. If your host account can read the SDK, shell configuration or project credentials, the profile may permit those reads unless a rule denies them explicitly.
+
+Network access requires a separate decision. A process can be isolated from one directory but still connect to a database or send a request. It can also be blocked from network access while retaining the read and write permissions it needs for local files.
+
+## The platform enforces the limits differently
+
+Codex runs sandboxed commands by default in a [host process sandbox](/posts/how-process-sandboxes-containers-and-microvms-isolate-code/#a-host-sandbox-constrains-a-process-in-its-existing-environment). The command keeps the host operating system, but the OS applies the filesystem and network policy to the process and its descendants.
+
+- **macOS.** Codex turns the profile into a Seatbelt policy and invokes the command through `sandbox-exec`. The policy decides which filesystem paths and network operations the process and its descendants can use.
+- **Linux.** The Bubblewrap backend constructs a mount view with writable, read-only, and denied paths. It can use a separate network namespace, route traffic through the Codex proxy, and apply seccomp filters that restrict networking system calls. The launcher sets `no_new_privs`, then child processes inherit the resulting process and namespace boundaries.
+- **Windows.** OpenAI describes a transition from its earlier sandbox implementation to Microsoft eXecution Container (MXC) on compatible devices. MXC applies native process isolation while the command remains in the user's environment.
+
+Bubblewrap is a lightweight, unprivileged sandboxing utility for Linux that uses kernel namespaces and seccomp filters to isolate applications from the host system. It uses mount and network namespaces like a [conventional Linux container](/posts/how-process-sandboxes-containers-and-microvms-isolate-code/#a-linux-container-gives-the-process-a-different-view-of-the-host). Both ask the host Linux kernel to handle the test's system calls. In [gVisor](/posts/how-process-sandboxes-containers-and-microvms-isolate-code/#gvisor-adds-a-userspace-kernel-between-the-app-and-the-host), the Sentry handles those calls. In a [microVM](/posts/how-process-sandboxes-containers-and-microvms-isolate-code/#a-vm-gives-the-workload-a-guest-kernel-and-virtual-hardware), the guest kernel does.
+
+## Sandboxing the shell does not sandbox every related process
+
+The sandbox is attached to the process Codex launches, not to the repository as a permanent state. A process can create the file that a different process uses later, and that later process may run under no sandbox or under a different policy.
+
+Codex's boundary follows a process relationship when the OS or backend applies the policy to descendants of the launched command. If `pnpm test` starts a test runner and the test runner starts another executable, that child normally inherits the applicable namespace and process restrictions. The same rule does not connect two unrelated processes. The editor, terminal and MCP server are siblings or independent hosts unless you explicitly launch them inside the same execution boundary.
+
+This creates two separate risks:
+
+- **A process boundary blocks an action at execution time.** It determines whether a process can open, create or modify a resource while the boundary is active.
+- **A repository state can carry an effect across executions.** A sandboxed process may change a file inside the workspace that is later read by an unsandboxed process.
+
+For example, a test runner inside a sandbox may use a package installation script to modify `node_modules` inside the checkout. The same sandbox may prevent the script from writing outside the workspace, but that does not prevent another process from reading the modified package. If the editor or terminal starts the formatter next, the formatter receives the editor's normal host permissions. Git may not show the change if `node_modules` is ignored, leaving the source diff clean even though executable code changed.
+
+The following situations need to be treated as different execution boundaries:
+
+- **Descendants of a Codex command:** A shell that Codex starts can launch a build tool or test runner. The platform policy should cover the shell and processes that retain the sandboxed inheritance, although the behavior of individual executables still depends on the backend.
+- **The editor and its terminal:** The editor may start formatters, language servers or debuggers outside Codex's command sandbox. They keep the editor or user session's host access.
+- **Long-running services:** A development server started outside the sandbox continues to run after Codex finishes. Connecting to that server can expose a service that the sandbox policy never controlled.
+- **Local `stdio` MCP servers:** Codex normally starts an MCP server configured in `config.toml` as a separate process, outside the shell sandbox. The server owns a different execution boundary and may read or write host resources according to its own process permissions.
+
+The fact that every process uses the same repository does not place every process in the same sandbox. Track the process that has a capability, the resources it can reach and the moment at which those resources are consumed.
+
+For local MCP servers, inspect the command's executable, arguments and environment before connecting it to a workspace. A server that can read arbitrary files or open network connections remains capable of doing so even if a Codex profile denies that access to test commands. Launching the server with `codex sandbox` gives it a profile with an explicit boundary, but that should not be confused with Codex controlling an editor or a server already running on the host.
+
+## Conclusion
+
+A sandbox is not a label attached to the repository or to the agent session. It is an execution boundary applied to a process and, when the backend supports it, to its descendants. Profiles define which resources that boundary permits, approvals decide whether the action is authorized, and the host backend implements the resulting policy.
+
+When a command fails, narrow the problem to the process that tried to perform the operation. Confirm whether the required resource is a file, a directory or a network service; verify the profile actually loaded; and compare it with the same process outside the sandbox only when that comparison is safe and authorized. Widening access should follow the resource, not the error message.
+
+The development environment will still contain processes outside that boundary: editors, terminal sessions, long-running services and MCP servers. Understanding where each process starts and which resources it can reach is the difference between isolating a command and assuming that an entire workspace is isolated.
+
+## References
+
+- Michael Bolin. [Inside the Codex sandbox](https://openai.com/index/inside-the-codex-sandbox/). OpenAI engineering article, November 18, 2026.
+- OpenAI. [Permissions](https://learn.chatgpt.com/docs/permissions). ChatGPT Learn product documentation, accessed November 23, 2026.
+- OpenAI. [Agent approvals & security](https://learn.chatgpt.com/docs/agent-approvals-security). ChatGPT Learn product documentation, accessed November 23, 2026.
+- OpenAI. [Release 0.171.0](https://github.com/openai/codex/releases/tag/rust-v0.171.0). Codex CLI release notes, November 20, 2026.
