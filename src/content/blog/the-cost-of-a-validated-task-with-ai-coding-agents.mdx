@@ -1,0 +1,260 @@
+---
+title: "Which AI Coding Tool Should You Pay For?"
+description: "A buying guide for OpenCode, Cursor, Claude Code, Codex, Antigravity, and Copilot, with a practical way to compare subscriptions by accepted task instead of nominal price."
+pubDate: "2026-11-25"
+published: true
+tags: ["ai-engineering", "ai-agents", "software-engineering", "engineering-practices", "productivity"]
+---
+
+import StaticBarChart from "$components/charts/StaticBarChart.astro";
+
+There are too many AI coding tools available today, and each one seems to have a subscription with complicated usage rules. Weekly limits, monthly limits, API credits, third-party models, cache reads, overages, and account-specific exceptions turn a simple purchase into a small research project.
+
+How do you choose a tool to use in your projects? How do you avoid spending too much on a tool that does the same work as another one for a lower price?
+
+The subscription page is only the first problem. The important moment happens later, after the agent finishes its first attempt. You inspect the diff, run the tests, question an assumption, correct a path, repeat a tool call, or discard the result. The minutes appear everywhere except on the subscription page. The time has not disappeared. It has moved to you.
+
+Imagine that an agent saves ten minutes but adds five minutes of review and produces an attempt that fails once. If you count only the saved time, the benefit looks obvious. If you count the whole task, the calculation becomes different. The useful unit is not the generated patch or the monthly invoice. It is the task that ends up accepted and remains maintainable.
+
+This article gives you a way to make that comparison. We will separate the model, the harness, and the commercial plan; examine what the public evidence can and cannot tell us about OpenCode, Cursor, Claude Code, OpenAI Codex, Gemini CLI/Antigravity, and GitHub Copilot; and turn the available numbers into a pilot you can run in your own workflow.
+
+I decided to use OpenCode, Cursor, Claude Code, Codex, Gemini and Copilot because they're the most popular ones. But you can also apply the same method I used for this analysis for any other tool.
+
+## The cost of an accepted task
+
+A normal subscription comparison asks how much it costs per month. That number describes the purchase, not the value. A better formula is:
+
+$$
+C_a = \frac{S + U + I + rH}{A}
+$$
+
+Where:
+
+- \(C_a\) is the cost per accepted task.
+- \(S\) is the subscription cost allocated to the measurement period.
+- \(U\) is additional usage, such as API calls or overages.
+- \(I\) is infrastructure cost.
+- \(r\) is the hourly cost of human work, and \(H\) is the time spent interacting, reviewing, reworking, and validating.
+- \(A\) is the number of accepted tasks in that period.
+
+Count failed attempts as part of the tasks you started. If ten tasks begin and only seven are accepted, the denominator is seven, but the ten attempts still consume money and human attention.
+
+Four examples show why this matters:
+
+1. Review time is real work even when it overlaps with an agent waiting.
+2. Retries consume inference and context, not only calendar time.
+3. A fast result can help a deadline even if it does not save human hours.
+4. A patch that passes today can create maintenance work later.
+
+I have described this broader supervision problem in [Human Approval in Agent Workflows: What the Evidence Shows](/posts/human-approval-agent-workflows-evidence/). The same distinction applies to buying a tool: a successful interaction, a completed pull request, and a change that remains safe in production are different outcomes.
+
+## Evidence from software-development studies
+
+Trying to find some kind of formula for efficiency vs cost or something else, I delved into academic and market studies on the subject.
+
+Public studies do not support a universal productivity multiplier. These studies measured different things. One timed developers doing tasks. Another counted pull requests. Their percentages do not contradict each other, and neither tells us which tool is the best buy.
+
+In the 2025 METR study, 16 experienced open-source maintainers completed 246 tasks in repositories they already knew. Researchers compared tasks where developers could use AI with tasks where they could not. On average, the tasks took 19% longer when AI was available. The study is a warning against assuming AI always saves time.
+
+METR later ran a follow-up. It estimated that tasks might have been 18% faster for returning participants and 4% faster for new participants. But the results were uncertain enough that the tasks could have been faster or slower. METR also described problems with how the follow-up was run, so it does not settle the question either.
+
+A separate set of three experiments by Cui et al. involved 4,867 developers at three companies using GitHub Copilot's autocomplete. The researchers estimated about 26% more pull requests per week among developers who used the tool. That means more changes were submitted. It does not show that each change was accepted, took less time to review, or cost less to maintain.
+
+So what should you take from these numbers? There is no single productivity percentage you can apply to your team. For a buying decision, measure how long your tasks take, how many are accepted, and how much review and rework they need.
+
+The central lesson is the same one discussed in [How Experienced Developers Actually Use AI Agents in Their Daily Work](/posts/how-experienced-developers-actually-use-ai-agents-in-their-daily-work/): developers with system knowledge tend to plan, supervise, and review. The cost of that work belongs in the calculation.
+
+## Model, harness, and subscription are separate choices
+
+The model generates and interprets text. The harness adds context, tools, permissions, retries, checkpoints, and recording. The execution environment supplies the runtime. The subscription is only the entitlement that grants access through a particular route.
+
+The same model name can therefore behave differently in two tools. In 2026, Artificial Analysis compared coding-agent harnesses and estimated a cost range of US\$ 0.11 to US\$ 0.62 per attempt for GPT-6 Luna, depending on the harness.
+
+Other evidence points in the same direction:
+
+- RUNTA and Baseten measured 27,280 runs and found model–harness–task interactions.
+- Cursor's own CursorBench published scores and cost ranges for model and effort combinations, but it does not include review time or maintenance.
+- Spotify reported a 90% reduction in bulk-context token reads with a Claude Code worker, but the worker also consumed inference and could miss concurrency problems.
+- Context files and generic retrieval can increase inference cost. A short, verified specification is cheaper to reason about than a large collection of maps that may not help.
+
+This does not make benchmarks useless. It makes them a starting point. A benchmark can tell you that a combination performs well on its own tests. It cannot tell you that the combination will reduce the cost of an accepted task in your repository.
+
+## Start with your usage pattern
+
+Before comparing plans, it helps to identify how you use these tools. Use the table below to find the usage pattern closest to your work.
+
+This table is not a ranking of the six tools. It groups common usage patterns, suggests what kind of plan or route to test first, and lists the costs to track for that pattern. Treat these as starting points, and your work may fit more than one row... Take some notes about your usage and we'll use it later on this article.
+
+
+| Usage pattern | What to try first | What to measure |
+| --- | --- | --- |
+| Use the agent occasionally | Existing credits, API usage, or an eligible free tier | Cache misses, output length, retries, and unused subscription capacity |
+| Work with the agent every day | One product that already fits repository, editor, review, and test workflows | Acceptance per family of task, human review, and minutes blocked |
+| Delegate many tasks in parallel | Premium or multiple surfaces with independent execution | Queue time, review capacity, transfer, retries, and coordination |
+| Build and operate a product alone | A route that covers implementation, browser, deployment, recovery, and the next change | First deployment, incidents, rollback, and post-release maintenance |
+| Work in a team | Native integrations plus organization controls | Seats, runners, governance, CI, telemetry, and shared review |
+
+Commercial plans change quickly. The prices and limits in the sections below reflect the public offer available on November 25, 2026 and should be checked at checkout.
+
+First, I'll look at each tool's pricing model and the features it offers. Then I'll compare those features side by side in a table. If you prefer, you can skip straight to the comparison.
+
+### OpenCode
+
+OpenCode is open source and can use BYOK (Bring Your Own Key), local runtimes, or its Console gateway. At the commercial cutoff, Go cost US\$ 10 or US\$ 40 per month, while Go Teams started at US\$ 20 per member for a minimum of two members.
+
+The practical advantage is **control**: the same agent can route work across providers or run locally. The cost is also more visibly your responsibility. A local machine needs hardware, energy, memory, maintenance, and idle capacity. Console PAYG (Pay As You Go) adds gateway charges and a separate prepaid top-up balance. OpenCode is attractive when provider choice or local execution is the constraint, not merely as the cheapest logo on a comparison table.
+
+### Cursor
+
+Cursor's current individual plans range from free to US\$ 200 per month, with Plus at US\$ 8, Premium at US\$ 30, Super at US\$ 100, and Ultra at US\$ 200. Cursor models use a shared weekly pool. Third-party eligible usage is charged separately.
+
+For teams, the product combines editor context, a project agent, cloud execution, browser artifacts, and integrations. Cursor can be worth testing where those surfaces remove handoff and review time. The extra third-party token charges and legacy-plan differences make a screenshot of an old “US\$ 20 Pro” plan especially misleading.
+
+### Claude Code
+
+Claude Code starts with a US\$ 20 Pro plan and offers US\$ 100 and US\$ 200 plans for more usage. It combines terminal, IDE, app, hooks, skills, subagents, MCP, and isolated cloud environments.
+
+The product is strongest as a whole workflow rather than only an answer generator. The trade-off is that Claude usage and API credits may have separate rules, windows, and limits. The price per task should include those routes only when they are part of the workflow you actually use.
+
+### OpenAI Codex
+
+Codex Plus costs US\$ 20, while Pro is priced at US\$ 100, US\$ 200, or US\$ 500 by usage route. Business starts at US\$ 25 per seat for Standard or US\$ 125 for Premium, with annual equivalents.
+
+Codex offers CLI, IDE, app, cloud worktrees, [sandboxing](/posts/how-codex-sandboxes-local-commands/), skills, MCP, and subagents. That is useful for a measurable handoff: implementation in one environment, independent verification in another, and a clear artifact for review. API usage remains a separate billing route.
+
+### Gemini CLI and Antigravity
+
+The Google route depends on the account and product used. Individual Google AI plans start at US\$ 4.99 or US\$ 9.99 with storage and offer Pro and Ultra tiers. Antigravity has its own Free and paid plans, while API and cloud routes have separate billing.
+
+Antigravity and Gemini CLI make browser use, IDE work, remote agents, Android workflows, and model routing plausible. That breadth is not yet evidence of low cost per accepted product task. Check the exact CLI, plan, API entitlement, and legacy migration route before comparing two screenshots from different dates.
+
+### GitHub Copilot
+
+Copilot starts at US\$ 10 for an individual Pro plan and US\$ 39 for Pro+, with Max at US\$ 100. Organizations can use Business or Enterprise plans, while AI Credits and Actions may add metered usage.
+
+The strongest case for Copilot is organizational fit. Issue and pull request context, branch protection, IDE integration, Actions, and team review live in one ecosystem. The cost includes the extra review and runner work created by an increase in pull request volume. Copilot is not free when a team adds 98% more PRs and 91% more review time.
+
+### Features mentioned for each tool
+
+<div
+  className="feature-matrix-scroll"
+  data-feature-matrix-scroll
+>
+
+  <span className="feature-matrix-scroll-cue feature-matrix-scroll-cue--left" aria-hidden="true">←</span>
+
+  <div
+    className="feature-matrix-scroll-viewport"
+    role="region"
+    aria-label="Feature comparison table"
+    tabIndex={0}
+  >
+
+| Tool | Open source | BYOK / local | IDE | CLI / terminal | Desktop / app | Cloud / remote agents | Browser / visual | Hooks / skills / MCP | Subagents | GitHub workflow | Team plans | Android workflow |
+| --- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| OpenCode | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
+| Cursor | ❌ | ❌ | ✅ | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ | ❌ |
+| Claude Code | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| OpenAI Codex | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ | ✅ | ❌ |
+| Gemini CLI / Antigravity | ❌ | ❌ | ✅ | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| GitHub Copilot | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ |
+
+  </div>
+
+  <span className="feature-matrix-scroll-cue feature-matrix-scroll-cue--right" aria-hidden="true">→</span>
+
+</div>
+
+*Availability can depend on the plan, account, and product surface. Gemini CLI and Antigravity are grouped here, so a feature may belong to only one of those surfaces.*
+
+## A simple break-even example
+
+Suppose you are deciding whether to upgrade from US\$ 20 to US\$ 100 per month. That is US\$ 80 more each month. At US\$ 50 per hour, that amount equals 1.6 hours of human work:
+
+$$
+\frac{80}{50} = 1.6 \text{ hours}
+$$
+
+There are 60 minutes in an hour, so convert those 1.6 hours to minutes like this:
+
+$$
+1.6 \text{ hours} \times \frac{60 \text{ minutes}}{1 \text{ hour}} = 96 \text{ minutes}
+$$
+
+The upgrade needs to save at least 96 minutes of human work each month to break even on labor alone.
+
+If acceptance changes, divide the total cost by the number of accepted tasks. In my research, I modeled three hypothetical routes across 40 attempts: a basic subscription with 34 accepted tasks, a premium subscription with 36, and a lower-cost API route with 33. At US\$ 50 per hour, the modeled cost per accepted task looks like this:
+
+<StaticBarChart
+  id="validated-task-cost-at-50-per-hour"
+  title="Modeled cost per accepted task"
+  max={30}
+  data={[
+    { label: "Basic subscription · US$ 20/month", value: 25.39, displayValue: "US$ 25.39", detail: "34 of 40 accepted · 25 human minutes per attempt" },
+    { label: "Premium subscription · US$ 100/month", value: 22.5, displayValue: "US$ 22.50", detail: "36 of 40 accepted · 21 human minutes per attempt" },
+    { label: "Lower-cost API", value: 28.67, displayValue: "US$ 28.67", detail: "33 of 40 accepted · 28 human minutes per attempt" },
+  ]}
+  source="Personal research"
+  note="Illustrative inputs, not measurements of specific products. Subscription scenarios include a hypothetical US$ 10/month for infrastructure."
+  kicker="HYPOTHETICAL SCENARIO"
+/>
+
+In this hypothetical scenario, the US\$ 100 subscription has the **lowest modeled cost per accepted task**: US\$ 22.50, compared with US\$ 25.39 for the basic subscription and US\$ 28.67 for the API route. That result depends on the premium plan’s higher acceptance and lower human time in the model.
+
+These are not estimates of specific products. They show how a premium plan can cost less per accepted task despite a higher invoice when acceptance improves and human rework falls.
+
+Use the same calculation for an upgrade to US\$ 30 or US\$ 200. The relevant saving threshold falls or rises with the hourly cost. A small team should not use a senior engineer's hourly cost for work that can be filled only after a deadline. A fast answer can move a launch without saving a minute of billable time.
+
+## How to run a useful pilot
+
+One successful prompt cannot show how often a tool will produce an accepted result, how much review and rework it will need, or whether it will pay for the added monthly cost across your actual work. Run a small pilot before increasing your bill: it replaces those assumptions with measured outcomes from representative tasks.
+
+Before the first run, fix the task, starting state, acceptance criteria, budget, and a check for whether the result remains maintainable after a later change. Then use the same setup for each tool:
+
+1. Select two or three families of tasks: for example, bug fixing, greenfield features, and migration work.
+2. Define acceptance outside the implementation environment. Hidden tests should run in a separate checkout or runner.
+3. Keep the repository snapshot, packages, network policy, seed, and starting prompt fixed.
+4. Measure model, provider, harness, tokens, cache state, retries, agent time, review time, validation time, and rework.
+5. Re-run at least a subset with a new requirement after the first delivery.
+6. Compare the cost per accepted task, not only the cost per attempt or pull request.
+
+If you cannot log all of this, start smaller. Export the invoice, meter each family of task, and mark sessions that are interrupted or abandoned. Even a basic ledger will reveal whether a limit, a human bottleneck, or extra usage is driving the result.
+
+Do not treat missing evidence as permission to choose by intuition. It means the pilot should stay narrow. Discovery, architecture, mobile, embedded systems, SQL migrations, long-lived production behavior, and incident recovery have different acceptance criteria and cannot share one benchmark.
+
+## Which strategy makes sense
+
+No independent public comparison shows which of the six tools has the lowest cost across the full software-development cycle. Official plan pages document prices, features, and limits; studies and practitioner reports cover narrower tasks and contexts. That evidence can narrow your options, but it cannot rank the tools by cost per accepted task.
+
+I tried to make this job easier with the following reasoning table:
+
+<div className="decision-worksheet">
+
+| Your situation | A reasonable place to start |
+| --- | --- |
+| Occasional use | Start with existing credits, an eligible free tier, or a capped API. Avoid paying for capacity you are unlikely to use. |
+| Daily individual use | Start with the platform that best fits your repository, context, and review flow. Choose the lowest tier with the required features and enough published capacity for your expected use. |
+| High-volume or peak use | Check published limits and overages first. Add PAYG or a second subscription only for a distinct workload the current route cannot cover; include waiting, handoff, and review costs. |
+| Local execution or privacy requirements | Choose local or open-weight tools when policy or workflow requires them. Include hardware, energy, idle time, quantization, and fallback quality. |
+| Team use | Start with an approved platform that fits the existing workflow. Include seats, governance, runners, CI, review, and audit costs. |
+| High-risk work | Prioritize permission scope and recovery requirements over monthly price alone. |
+
+</div>
+
+Without a pilot, choose the lowest-cost tier that meets every hard requirement, fits your budget, and covers your expected use. Treat this as a fit-based starting point, not proof that the option has the lowest cost per accepted task.
+
+The product with the lowest monthly price is rarely the one with the lowest cost per accepted task. The winning configuration is the one that fits the work, passes your verification, and survives rework.
+
+## References
+
+- GitHub. [Plans for GitHub Copilot](https://docs.github.com/en/copilot/get-started/plans) and [Models and pricing for GitHub Copilot](https://docs.github.com/en/copilot/reference/copilot-billing/models-and-pricing). Product documentation, accessed November 25, 2026.
+- OpenAI. [Pricing](https://learn.chatgpt.com/docs/pricing), [What is ChatGPT Plus?](https://help.openai.com/en/articles/6950777-what-is-chatgpt-plus), [Worktrees](https://learn.chatgpt.com/docs/environments/git-worktrees), and [Cloud environments](https://learn.chatgpt.com/docs/environments/cloud-environments). Product documentation, accessed November 25, 2026.
+- Anthropic. [Plans & pricing](https://claude.com/pricing), [Extend Claude Code](https://code.claude.com/docs/en/features-overview), and [Use Claude Code in the cloud](https://code.claude.com/docs/en/claude-code-on-the-web). Product documentation, accessed November 25, 2026.
+- Cursor. [Pricing](https://cursor.com/pricing), [Models & Pricing](https://cursor.com/docs/models-and-pricing), and [Capabilities](https://cursor.com/docs/cloud-agent/capabilities). Product documentation, accessed November 25, 2026.
+- OpenCode. [Intro](https://opencode.ai/docs/), [Go](https://opencode.ai/docs/console/go/), and [Providers](https://opencode.ai/docs/providers/). Product documentation, accessed November 25, 2026.
+- Google. [Google AI Pro & Ultra](https://gemini.google/us/subscriptions/?hl=en), [Plans](https://antigravity.google/docs/plans), [Browser use](https://antigravity.google/docs/browser), and [Remote Agents](https://antigravity.google/docs/remote-agents/). Product documentation, accessed November 25, 2026.
+- Dmitry Lyalin and Taylor Mullen. [An important update: Transitioning Gemini CLI to Antigravity CLI](https://developers.googleblog.com/an-important-update-transitioning-gemini-cli-to-antigravity-cli/). Google Developers Blog, product announcement, May 19, 2026.
+- Joel Becker et al. [Measuring the Impact of Early-2025 AI on Experienced Open-Source Developer Productivity](https://arxiv.org/abs/2507.09089). arXiv:2507.09089v2, revised July 25, 2025. Preprint.
+- METR. [We are Changing our Developer Productivity Experiment Design](https://metr.org/blog/2026-02-24-uplift-update/). Institutional research update, February 24, 2026.
+- Kevin Zheyuan Cui et al. [The Effects of Generative AI on High-Skilled Work: Evidence from Three Field Experiments with Software Developers](https://pubsonline.informs.org/doi/abs/10.1287/mnsc.2025.00535). *Management Science*, published online February 27, 2026, DOI: 10.1287/mnsc.2025.00535.
+- Simon Willison. [Embracing the parallel coding agent lifestyle](https://simonwillison.net/2025/Oct/5/parallel-coding-agents/). Practitioner account, October 5, 2025.

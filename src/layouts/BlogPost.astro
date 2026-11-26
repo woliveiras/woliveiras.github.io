@@ -7,3 +7,40 @@ import ProseWrapper from "./ProseWrapper.astro";
     <slot />
   </main>
 </ProseWrapper>
+
+<script>
+	const featureMatrices = document.querySelectorAll<HTMLElement>(
+		"[data-feature-matrix-scroll]",
+	);
+
+	for (const matrix of featureMatrices) {
+		const viewport = matrix.querySelector<HTMLElement>(
+			".feature-matrix-scroll-viewport",
+		);
+		if (!viewport) continue;
+
+		const updateScrollState = () => {
+			const maxScroll = viewport.scrollWidth - viewport.clientWidth;
+			matrix.classList.toggle("has-horizontal-overflow", maxScroll > 1);
+			matrix.classList.toggle("is-scrolled", viewport.scrollLeft > 1);
+			matrix.classList.toggle(
+				"is-at-end",
+				maxScroll <= 1 || viewport.scrollLeft >= maxScroll - 1,
+			);
+		};
+
+		viewport.addEventListener("scroll", updateScrollState, { passive: true });
+
+		if (typeof ResizeObserver === "function") {
+			const observer = new ResizeObserver(updateScrollState);
+			observer.observe(matrix);
+			observer.observe(viewport);
+			const table = viewport.querySelector("table");
+			if (table) observer.observe(table);
+		} else {
+			window.addEventListener("resize", updateScrollState);
+		}
+
+		updateScrollState();
+	}
+</script>

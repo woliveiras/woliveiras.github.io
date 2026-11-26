@@ -141,6 +141,23 @@ svg[id^="mermaid"] {
 	}
 }
 
+.prose .decision-worksheet table {
+	display: table;
+	width: 100%;
+	max-width: 100%;
+	overflow: visible;
+	table-layout: fixed;
+}
+
+.prose .decision-worksheet th:first-child {
+	width: 36%;
+}
+
+.prose .decision-worksheet :is(th, td) {
+	white-space: normal;
+	overflow-wrap: anywhere;
+}
+
 /* Optional: show a subtle scrollbar track for webkit browsers */
 .table-wrapper::-webkit-scrollbar {
 	height: 8px;
@@ -148,6 +165,118 @@ svg[id^="mermaid"] {
 .table-wrapper::-webkit-scrollbar-thumb {
 	background: rgba(0, 0, 0, 0.12);
 	border-radius: 999px;
+}
+
+.feature-matrix-scroll {
+	display: grid;
+	grid-template-columns: 0 minmax(0, 1fr) 0;
+	width: 100%;
+	max-width: 100%;
+	margin-block: 1.5rem;
+}
+
+.feature-matrix-scroll.has-horizontal-overflow {
+	grid-template-columns: 1.5rem minmax(0, 1fr) 1.5rem;
+}
+
+.feature-matrix-scroll-cue {
+	display: none;
+	grid-row: 1;
+	align-items: center;
+	justify-content: center;
+	z-index: 1;
+	color: color-mix(in srgb, currentColor 85%, transparent);
+	font-size: 1.25rem;
+	font-weight: 700;
+	pointer-events: none;
+}
+
+.feature-matrix-scroll-cue--left {
+	grid-column: 1;
+	background: linear-gradient(
+		to right,
+		color-mix(in srgb, currentColor 26%, transparent),
+		transparent
+	);
+}
+
+.feature-matrix-scroll-cue--right {
+	grid-column: 3;
+	background: linear-gradient(
+		to left,
+		color-mix(in srgb, currentColor 26%, transparent),
+		transparent
+	);
+}
+
+.feature-matrix-scroll.has-horizontal-overflow:not(.is-at-end)
+	.feature-matrix-scroll-cue--right,
+.feature-matrix-scroll.has-horizontal-overflow.is-scrolled
+	.feature-matrix-scroll-cue--left {
+	display: flex;
+}
+
+.feature-matrix-scroll-viewport {
+	grid-column: 2;
+	grid-row: 1;
+	min-width: 0;
+	width: 100%;
+	max-width: 100%;
+	overflow-x: auto;
+	-webkit-overflow-scrolling: touch;
+	scrollbar-color: color-mix(in srgb, currentColor 35%, transparent) transparent;
+	scrollbar-width: thin;
+}
+
+.prose .feature-matrix-scroll-viewport table {
+	display: table;
+	width: max-content;
+	min-width: 100%;
+	max-width: none;
+	margin: 0;
+	overflow: visible;
+	border-collapse: collapse;
+}
+
+.prose .feature-matrix-scroll-viewport :is(th, td) {
+	white-space: nowrap;
+}
+
+.prose .feature-matrix-scroll-viewport :is(th, td):first-child {
+	position: sticky;
+	left: 0;
+	z-index: 1;
+	@apply bg-base-50 dark:bg-base-950;
+}
+
+.prose .feature-matrix-scroll-viewport thead th:first-child {
+	z-index: 2;
+}
+
+.prose
+	.feature-matrix-scroll.is-scrolled
+	.feature-matrix-scroll-viewport
+	:is(th, td):first-child {
+	box-shadow: 0.25rem 0 0.5rem -0.35rem
+		color-mix(in srgb, currentColor 50%, transparent);
+}
+
+.feature-matrix-scroll-viewport:focus-visible {
+	outline: 2px solid currentColor;
+	outline-offset: 3px;
+}
+
+.feature-matrix-scroll-viewport::-webkit-scrollbar {
+	height: 8px;
+}
+
+.feature-matrix-scroll-viewport::-webkit-scrollbar-thumb {
+	border-radius: 999px;
+	background: color-mix(in srgb, currentColor 35%, transparent);
+}
+
+.feature-matrix-scroll-viewport::-webkit-scrollbar-track {
+	background: transparent;
 }
 
 /* Constrain MathJax / mjx-container SVGs so long formulas don't break layout.
