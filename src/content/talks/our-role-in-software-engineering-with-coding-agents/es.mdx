@@ -1,0 +1,596 @@
+---
+title: Nuestro papel en la ingeniería de software con agentes de programación
+description: El agente escribe código. ¿Quién decide qué construir, verifica el resultado y responde por lo que llega a producción?
+lang: es
+published: false
+---
+
+<section class="opening">
+  <h2>William Oliveira</h2>
+  <p>Ingeniero de software</p>
+  <p><a href="https://woliveiras.com/">woliveiras.com</a></p>
+</section>
+
+<section class="opening">
+  <h2>¿Hemos pasado de escribir código a pedírselo a un robot?</h2>
+  <aside class="notes">
+    <p>Esta es la pregunta que plantea la charla. Viene de su descripción.</p>
+    <p>Referencia: descripción de la charla.</p>
+  </aside>
+</section>
+
+<section>
+  <h2>De los commits a las versiones publicadas</h2>
+  <div class="columns">
+    <div class="pair">
+      <strong>+240%</strong>
+      <p>commits</p>
+    </div>
+    <div class="pair">
+      <strong>+30%</strong>
+      <p>versiones publicadas</p>
+    </div>
+  </div>
+  <p class="source">Fuente: Demirer, Musolff y Yang (2026), Writing Code vs. Shipping Code</p>
+  <aside class="notes">
+    <p>Entre un commit y la publicación de una versión sigue habiendo trabajo.</p>
+    <p>Efectos acumulados estimados de los agentes autónomos en más de 500.000 desarrolladores de GitHub: un 240 % más de commits y un 30 % más de versiones publicadas [R28].</p>
+    <p>Refs: R28.</p>
+  </aside>
+</section>
+
+<section>
+  <h2>Generar código se ha abaratado</h2>
+  <p class="label">Dónde se concentra ahora el trabajo</p>
+  <ul>
+    <li>decidir qué construir</li>
+    <li>definir qué resultado es correcto</li>
+    <li>diseñar sistemas que admitan más código</li>
+    <li>verificar lo que llega a producción</li>
+    <li>construir el sistema en el que trabajan los agentes</li>
+  </ul>
+  <aside class="notes">
+    <p>La charla recorre cinco tareas en las que el criterio de un ingeniero sénior ha ganado valor. La última es la más importante.</p>
+    <p>Referencia: tesis de la charla.</p>
+  </aside>
+</section>
+
+<section>
+  <h2>La mejora depende de la tarea</h2>
+  <div class="columns">
+    <div class="pair">
+      <strong>Un 19 % más de tiempo</strong>
+      <p>Dieciséis mantenedores con experiencia creían ser un 20 % más productivos en repositorios que conocían.</p>
+    </div>
+    <div class="pair">
+      <strong>Un 26 % más de tareas por semana</strong>
+      <p>Autocompletado en tres experimentos de campo con 4.867 desarrolladores.</p>
+    </div>
+  </div>
+  <p class="source">Fuentes: METR (2025), Measuring the Impact of Early-2025 AI on Experienced Open-Source Developer Productivity · Cui et al. (2026), The Effects of Generative AI on High-Skilled Work</p>
+  <aside class="notes">
+    <p>El resultado depende de la tarea, la herramienta y quién lo mida. Un problema de selección en la siguiente ronda de METR impidió confirmar o refutar la estimación del 19 % [R27].</p>
+    <p>Evidencia</p>
+    <p>Los 16 mantenedores tardaron un 19 % más en resolver las tareas cuando podían usar IA. Después estimaron que habían ahorrado tiempo [R26].</p>
+    <p>La selección de participantes en la ronda siguiente dificultó estimar el efecto [R27].</p>
+    <p>En tres experimentos de campo con 4.867 desarrolladores, el autocompletado aumentó en un 26,08 % el número estimado de tareas completadas por semana [R25].</p>
+    <p>Refs: R25, R26, R27.</p>
+  </aside>
+</section>
+
+<section>
+  <h2>La IA amplifica las fortalezas y las debilidades de la organización</h2>
+  <div class="amplify">
+    <p>fortalezas <span aria-hidden="true">→</span> <strong>fortalezas++</strong></p>
+    <p>debilidades <span aria-hidden="true">→</span> <strong>debilidades++</strong></p>
+  </div>
+  <p class="source">Fuente: DORA (2025), State of AI-assisted Software Development</p>
+  <aside class="notes">
+    <p>El agente amplifica el proceso que encuentra, incluidos sus problemas.</p>
+    <p>El informe de DORA de 2025 describe cómo la IA amplifica las capacidades y debilidades que ya tiene una organización [R24].</p>
+    <p>Refs: R24.</p>
+  </aside>
+</section>
+
+<section>
+  <h2>¿Qué miden las pruebas de agentes?</h2>
+  <p>De las 178 pruebas comparativas estudiadas</p>
+  <div class="bars">
+    <div class="bar">
+      <span>implementación</span>
+      <meter min="0" max="100" value="61" aria-label="implementación"></meter>
+      <strong>61%</strong>
+    </div>
+    <div class="bar">
+      <span>requisitos</span>
+      <meter min="0" max="100" value="5" aria-label="requisitos"></meter>
+      <strong>5%</strong>
+    </div>
+    <div class="bar">
+      <span>diseño</span>
+      <meter min="0" max="100" value="3" aria-label="diseño"></meter>
+      <strong>3%</strong>
+    </div>
+  </div>
+  <p class="takeaway">Pocas pruebas evalúan los requisitos o el diseño.</p>
+  <p class="source">Fuente: Wang et al. (2025), A Survey of Benchmarks for Code Large Language Models and Agents</p>
+  <aside class="notes">
+    <p>La implementación es lo que más se mide. Los requisitos y el diseño apenas se evalúan.</p>
+    <p>De 178 pruebas, cerca del 61 % evalúa la implementación, el 5 % los requisitos y el 3 % el diseño [R01].</p>
+    <p>Refs: R01.</p>
+  </aside>
+</section>
+
+<section>
+  <h2>Cuando falla la prueba</h2>
+  <p class="label">Auditoría de OpenAI sobre SWE-bench Verified</p>
+  <p class="stat">82 de 138</p>
+  <p>problemas que el modelo «falló» tenían un defecto en el enunciado o en la prueba (59,4 %).</p>
+  <div class="ratio" aria-hidden="true"></div>
+  <p class="legend"><span class="defect-key">Enunciado o prueba con defectos</span> · <span class="clear-key">Sin defectos relevantes</span></p>
+  <p class="source">Fuente: OpenAI (2026), Why we no longer evaluate SWE-bench Verified</p>
+  <aside class="notes">
+    <p>Hasta una prueba comparativa conocida tenía fallos en sus criterios de corrección.</p>
+    <p>OpenAI auditó 138 de los 500 problemas de SWE-bench Verified. Encontró defectos relevantes en el enunciado o las pruebas en el 59,4 % de esos 138 [R14].</p>
+    <p>Refs: R14.</p>
+  </aside>
+</section>
+
+<section>
+  <h2>¿Quién sigue respondiendo por el trabajo?</h2>
+  <ul class="lines">
+    <li>quién decide qué cambios se incorporan</li>
+    <li>quién responde por lo que llega a producción</li>
+    <li>quién atiende el incidente</li>
+  </ul>
+  <aside class="notes">
+    <p>El trabajo ha cambiado de lugar. La responsabilidad sigue siendo del equipo. [Opinión]</p>
+    <p>Referencias: opinión del ponente.</p>
+  </aside>
+</section>
+
+<section>
+  <h2>Qué pierde valor y qué lo gana</h2>
+  <div class="columns">
+    <div>
+      <h3>Pierde valor</h3>
+      <ul>
+        <li>memorizar sintaxis y API</li>
+        <li>código repetitivo</li>
+        <li>la velocidad de tecleo</li>
+        <li>traducir una especificación a código trivial</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Gana valor</h3>
+      <ol>
+        <li>Formular el problema</li>
+        <li>Definir qué resultado es correcto</li>
+        <li>Diseñar sistemas</li>
+        <li>Verificar, revisar y operar</li>
+        <li>Construir el sistema en el que trabajan los agentes</li>
+      </ol>
+    </div>
+  </div>
+  <aside class="notes">
+    <p>Lo que se ha abaratado pierde valor. Lo que exige criterio lo gana. Es mi interpretación de los datos de la primera parte.</p>
+    <p>Referencias de la primera parte: R01, R14, R24, R25, R26, R27, R28.</p>
+  </aside>
+</section>
+
+<section>
+  <h2>Una pirámide con cinco prioridades</h2>
+  <ol class="steps">
+    <li>Formular el problema</li>
+    <li>Definir qué resultado es correcto</li>
+    <li>Diseñar sistemas</li>
+    <li>Verificar, revisar y operar</li>
+    <li>Construir el sistema en el que trabajan los agentes</li>
+  </ol>
+  <aside class="notes">
+    <p>El cuello de botella cambia de sitio. Al acelerarse la generación de código, el trabajo se acumula en la revisión, la verificación y la entrega [R28].</p>
+    <p>Refs: R28.</p>
+  </aside>
+</section>
+
+<section>
+  <h2>Formular el problema</h2>
+  <div class="ticket-example">
+    <div class="ticket">
+      <p class="label">Tarea · ejemplo ficticio</p>
+      <strong>Exportación de informes: mostrar el estado de la solicitud</strong>
+    </div>
+    <div>
+      <h3>¿Qué falta por aclarar?</h3>
+      <ul>
+        <li>¿Qué estado aparece si falla la exportación?</li>
+        <li>¿Qué aparece cuando caduca la solicitud?</li>
+        <li>Al volver, ¿se ve la misma solicitud?</li>
+        <li>¿Quién puede consultar esta solicitud?</li>
+      </ul>
+    </div>
+  </div>
+  <div class="signal">
+    <p class="label">Una buena señal</p>
+    <p>Antes de planificar el cambio, el equipo confirma las reglas con producto y documenta el origen de cada requisito.</p>
+  </div>
+  <p class="source">Fuentes: Zhou et al. (2026), SWE-RPG: A Unified Issue Resolution Benchmark · Dente, Dalpiaz y Papotti (2026), Automated Alignment Between Elicitation Interviews and Requirements</p>
+  <aside class="notes">
+    <p>Una regla ambigua da lugar a implementaciones distintas. Formular el problema implica plantear estas preguntas a producto antes de hacer el plan.</p>
+    <p>Evidencia</p>
+    <p>SWE-RPG evalúa el requisito, el plan y el parche para distinguir los fallos de comprensión de los de implementación [R60].</p>
+    <p>Vincula cada requisito con el pasaje que lo respalda [R03].</p>
+    <p>Las simulaciones reproducen con fidelidad limitada a cada usuario individual [R02].</p>
+    <p>Una especificación larga se justifica cuando despeja una duda relevante [R07, R08].</p>
+    <p>Cada requisito remite a su fuente. Las preguntas llegan a producto antes del plan, mucho antes de revisar el PR [R03].</p>
+    <p>Refs: R02, R03, R07, R08, R60.</p>
+  </aside>
+</section>
+
+<section>
+  <h2>Definir qué resultado es correcto</h2>
+  <p class="label">Pruebas generadas por TestGen-LLM en Meta para Instagram</p>
+  <div class="columns">
+    <div class="pair">
+      <strong>75%</strong>
+      <p>compilaron</p>
+    </div>
+    <div class="pair">
+      <strong>57%</strong>
+      <p>pasaron de forma fiable</p>
+    </div>
+    <div class="pair">
+      <strong>25%</strong>
+      <p>ampliaron la cobertura</p>
+    </div>
+  </div>
+  <p><strong>Una prueba puede pasar aunque el fallo siga ahí.</strong> Si el código y la aserción parten de la misma interpretación errónea, las pruebas pasan aunque el requisito siga sin cumplirse.</p>
+  <div class="signal">
+    <p class="label">Una buena señal</p>
+    <p>El equipo vio fallar la prueba antes de la corrección y la vio pasar después.</p>
+  </div>
+  <p class="source">Fuentes: Alshahwan et al., Meta (2024), Automated Unit Test Improvement using Large Language Models at Meta · Mündler et al. (2024), SWT-Bench</p>
+  <aside class="notes">
+    <p>El oráculo de prueba es una fuente independiente que indica el resultado correcto. Si el código y la aserción comparten un malentendido, las pruebas pueden pasar aunque el requisito siga sin cumplirse.</p>
+    <p>Evidencia</p>
+    <p>Un oráculo de prueba establece de forma independiente cuál es el resultado correcto [R15, R43].</p>
+    <p>En la muestra de Instagram, el 75 % de las pruebas generadas compiló, el 57 % pasó de forma fiable y el 25 % amplió la cobertura. Las cifras corresponden a etapas y poblaciones distintas [R16].</p>
+    <p>Comprueba que la prueba falla antes de la corrección y pasa después. Verifica también los casos cercanos [R15, R43].</p>
+    <p>Refs: R15, R16, R43.</p>
+  </aside>
+</section>
+
+<section>
+  <h2>Diseñar sistemas para delegar cambios</h2>
+  <p>La exportación ha fallado. ¿Por qué la pantalla sigue mostrando «en curso»?</p>
+  <div class="columns">
+    <div>
+      <h3>Generador de informes</h3>
+      <p>Envía el aviso de fallo.</p>
+    </div>
+    <div>
+      <h3>Servicio de solicitudes</h3>
+      <p><strong class="takeaway">Corrección delegada</strong><br />Registrar el fallo en la solicitud.</p>
+    </div>
+    <div>
+      <h3>Pantalla de exportación</h3>
+      <p>Muestra el estado de la solicitud.</p>
+    </div>
+  </div>
+  <div class="signal">
+    <p>Una prueba simula el aviso y comprueba el estado guardado. Quien integra el cambio verifica que el fallo aparezca en pantalla.</p>
+  </div>
+  <p class="source">Fuentes: Nikolov y Taneja, Google (2024), Accelerating code migrations with AI · Cemri et al. (2025), Why Do Multi-Agent LLM Systems Fail?</p>
+  <aside class="notes">
+    <p>Volvamos al ejemplo ficticio de la exportación. El generador ya notifica los fallos y la pantalla sabe mostrar «fallida». El problema está en medio. El servicio recibe el aviso, pero deja la solicitud «en curso».</p>
+    <p>El acuerdo entre las tres partes delimita la tarea del agente. Puede corregir el servicio y enviar un aviso de fallo para una solicitud conocida. Después, quien integra el cambio provoca un fallo en una exportación de prueba y comprueba qué ve la persona que la solicitó.</p>
+    <p>Evidencia</p>
+    <p>Planifica incrementos que se puedan evaluar por separado. Para trabajar en paralelo hacen falta contratos estables en los límites y alguien responsable de la integración [R07, R20, R23].</p>
+    <p>En las migraciones a gran escala de Google, localizar el código, modificarlo, revisarlo y desplegarlo son etapas separadas. La planificación tiene en cuenta la capacidad de revisión [R21].</p>
+    <p>El uso de varios agentes introduce fallos de especificación, coordinación y verificación [R23].</p>
+    <p>Una buena señal: cada cambio delegado se puede verificar por separado y el error de un agente queda contenido dentro de un límite.</p>
+    <p>Refs: R07, R20, R21, R23.</p>
+  </aside>
+</section>
+
+<section>
+  <h2>Verificar, revisar y operar</h2>
+  <ul class="lines">
+    <li>¿Qué prueba muestra que la pantalla ahora indica «fallida»?</li>
+    <li>¿Qué pasa si el mismo aviso de fallo llega dos veces?</li>
+    <li>En producción, ¿cuántas exportaciones fallidas siguen apareciendo «en curso»?</li>
+  </ul>
+  <p class="source">Fuentes: Google Research (2024), Resolving Code Review Comments with Machine Learning · Gao et al. (2026), On Autopilot? Human–AI Teaming and Review Practices in Open Source · Google SRE (2018), Alerting on SLOs</p>
+  <aside class="notes">
+    <p>El agente ha abierto el PR. Para verificar la corrección, provoca un fallo en una exportación de prueba y abre la solicitud en pantalla. Antes del cambio seguía «en curso». Ahora debería mostrar «fallida».</p>
+    <p>Durante la revisión, vuelve a entregar el mismo aviso. La solicitud debería seguir apareciendo como «fallida». Así hay un caso concreto que discutir en el PR.</p>
+    <p>Después del despliegue, usa el ID de la solicitud para comparar los avisos del generador con el estado que consulta la pantalla. Cuenta las solicitudes que siguen «en curso» pasado el tiempo previsto para actualizarse. Así sabrás si la corrección llegó a quien espera el informe.</p>
+    <p>Quien conoce el contexto decide si acepta el cambio. En producción, la persona de guardia confirma el impacto, autoriza la mitigación y comprueba la recuperación mediante el indicador del servicio.</p>
+    <p>Evidencia</p>
+    <p>Los PR con coautoría de IA enviados por personas que no habían sido responsables de ese código mostraron pocas señales explícitas de revisión [R18].</p>
+    <p>RCACopilot alcanzó una exactitud de hasta 0,766 al clasificar la categoría de la causa en incidentes de Microsoft [R31].</p>
+    <p>Quien está de guardia confirma el impacto, autoriza la mitigación y verifica la recuperación con el SLI [R49].</p>
+    <p>Trata el contenido de las herramientas como datos. En el incidente del paquete Nx, un programa malicioso daba instrucciones a las CLI de IA para buscar secretos [E28].</p>
+    <p>Una buena señal: la cola de revisión se mantiene estable al aumentar la generación [R18, R28]. El indicador del servicio confirma la recuperación [R49].</p>
+    <p>Refs: R17, R18, R28, R31, R49, E28.</p>
+  </aside>
+</section>
+
+<section>
+  <h2>Un agente combina un modelo y un entorno</h2>
+  <div class="environment">
+    <p class="core">Modelo</p>
+    <span class="operator" aria-hidden="true">+</span>
+    <div class="environment-group">
+      <h3>Entorno</h3>
+      <ul class="layers">
+        <li>Contexto</li>
+        <li>Herramientas</li>
+        <li>Verificación</li>
+        <li>Límites</li>
+        <li>Medición</li>
+      </ul>
+    </div>
+  </div>
+  <p class="source">Fuentes: Yang et al. (2024), SWE-agent: Agent-Computer Interfaces Enable Automated Software Engineering · OpenAI (2026), Harness engineering · Spotify Engineering (2025), Background Coding Agents: Context Engineering</p>
+  <aside class="notes">
+    <p>Pasemos de «¿qué prompt?» a «¿qué entorno?». Aquí empiezan las cinco capas que veremos a continuación.</p>
+    <p>La interfaz para navegar, editar y recibir información afecta al rendimiento del agente [R11]. Hay informes de ingeniería sobre documentación navegable, respuestas de herramientas y restricciones verificadas por código [R22], además de la preparación de contexto y herramientas para agentes asíncronos [R20].</p>
+    <p>Refs: R11, R20, R22.</p>
+  </aside>
+</section>
+
+<section>
+  <h2>Contexto</h2>
+  <div class="columns">
+    <div>
+      <h3>Qué incluir</h3>
+      <ul>
+        <li>tarea aprobada</li>
+        <li>revisión inicial</li>
+        <li>contrato</li>
+        <li>comando de prueba</li>
+        <li>ejemplo breve</li>
+        <li>skills</li>
+        <li>documentación</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Qué se conserva y qué caduca</h3>
+      <div class="pair">
+        <strong>duradero</strong>
+        <p>contratos y comandos</p>
+      </div>
+      <div class="pair">
+        <strong>evidencia temporal</strong>
+        <p>resultado de la última compilación</p>
+      </div>
+    </div>
+  </div>
+  <div class="signal">
+    <p class="label">Una buena señal</p>
+    <p>Convierte un error recurrente en una regla o una prueba del repositorio.</p>
+  </div>
+  <p class="source">Fuentes: Spotify Engineering (2025), Background Coding Agents: Context Engineering · OpenAI (2026), Harness engineering · Lauren Tan, AI Engineer (2026), All Code Is Slop (Except Mine)</p>
+  <aside class="notes">
+    <p>Una referencia vigente y concreta ayuda más que volcar toda la documentación. En una tarea larga, guarda bajo control de versiones la revisión inicial, la última comprobación, lo que falta y por qué se detuvo.</p>
+    <p>Evidencia</p>
+    <p>Spotify describe fallos tanto por exceso de contexto como por una selección demasiado estrecha de archivos [R20, R22].</p>
+    <p>En el caso de Grok Bot, un comentario de revisión repetido lleva a cambiar la API para dificultar el error o a crear una comprobación que lo detecta y explica cómo corregirlo. Dos ejemplos: prohibir useEffect en el código de producto y separar el proceso principal de Electron de la interfaz en carpetas con reglas de lint que impiden importaciones entre ellas [V01, 5:00–9:40].</p>
+    <p>El código también aporta contexto. Un arreglo improvisado que queda en el repositorio se convierte en un ejemplo para el siguiente agente [V01, 0:01–6:56].</p>
+    <p>Una buena señal: los errores recurrentes dan lugar a reglas o pruebas del repositorio y el equipo deja de repetir instrucciones en cada prompt [R22, V01].</p>
+    <p>Refs: R20, R22, V01.</p>
+  </aside>
+</section>
+
+<section>
+  <h2>Herramientas e interfaz</h2>
+  <div class="columns">
+    <div class="pair">
+      <strong>falta una dependencia</strong>
+      <p>falló el entorno</p>
+    </div>
+    <div class="pair">
+      <strong>regresión detectada</strong>
+      <p>falló el código</p>
+    </div>
+    <div class="pair">
+      <strong>ejecución sin evidencia</strong>
+      <p>se desconoce el resultado</p>
+    </div>
+  </div>
+  <div class="signal">
+    <p class="label">Una buena señal</p>
+    <p>El agente puede decir «no pude verificarlo» cuando la comprobación no aporta evidencia.</p>
+  </div>
+  <p class="source">Fuentes: Yang et al. (2024), SWE-agent: Agent-Computer Interfaces Enable Automated Software Engineering · OpenAI (2026), Harness engineering</p>
+  <aside class="notes">
+    <p>Usa herramientas con entradas tipadas, identificadores estables y resultados que distingan entre éxito, fallo e indisponibilidad.</p>
+    <p>Una buena señal: el agente comunica que no ha podido verificar el resultado en lugar de darlo por bueno.</p>
+    <p>Refs: R11, R20, R22.</p>
+  </aside>
+</section>
+
+<section>
+  <h2>Verificación independiente del agente</h2>
+  <div class="flow">
+    <p>personas + agentes</p>
+    <p class="arrow">→</p>
+    <p class="core">CI</p>
+    <p>la misma fuente de resultados para personas y agentes</p>
+  </div>
+  <div class="signal">
+    <p class="label">Una buena señal</p>
+    <p>Los criterios de aceptación quedan fuera del control del agente.</p>
+  </div>
+  <p class="source">Fuentes: Playwright, Test Agents · GitHub Docs, Risks and mitigations for GitHub Copilot cloud agent</p>
+  <aside class="notes">
+    <p>Si el agente que repara las pruebas puede redefinir el éxito, una regresión puede pasar inadvertida.</p>
+    <p>Un agente que repara pruebas puede marcar una prueba para que se omita [R61]. Si propone cambiar la integración continua, la protección de una rama o la prueba que bloqueó su cambio, la revisión debe tener en cuenta el alcance de esa decisión [R36, R39].</p>
+    <p>Una buena señal: ningún agente puede rebajar los criterios con los que se lo evalúa.</p>
+    <p>Refs: R36, R39, R61.</p>
+  </aside>
+</section>
+
+<section>
+  <h2>Autonomía, límites y estados</h2>
+  <div class="columns">
+    <div>
+      <h3>Qué puede hacer el agente</h3>
+      <ol>
+        <li>leer</li>
+        <li>editar una copia aislada</li>
+        <li>proponer un PR</li>
+        <li>preparar una versión</li>
+        <li>actuar en producción con aprobación del responsable</li>
+      </ol>
+    </div>
+    <div>
+      <h3>Por qué estados pasa la tarea</h3>
+      <ol>
+        <li>propuesta</li>
+        <li>autorizada</li>
+        <li>en ejecución</li>
+        <li>a la espera de evidencia</li>
+        <li>lista para revisión</li>
+        <li>aceptada</li>
+      </ol>
+    </div>
+  </div>
+  <div class="signal">
+    <p class="label">Una buena señal</p>
+    <p>Puedes saber qué se le permite hacer al agente sin abrir el prompt.</p>
+  </div>
+  <p class="source">Fuentes: Schluntz y Zhang, Anthropic (2024), Building effective agents · OWASP (2026), Top 10 for Agentic Applications</p>
+  <aside class="notes">
+    <p>Elige la forma de colaboración según la tarea. Aplica los límites fuera del prompt.</p>
+    <p>Evidencia</p>
+    <p>La colaboración va desde la asistencia interactiva hasta la automatización determinista [R09, R23].</p>
+    <p>Define un límite de tiempo, llamadas o coste y una condición de parada. Por ejemplo, devuelve la tarea a una persona tras dos intentos con el mismo fallo [R20, R41].</p>
+    <p>Aplica los permisos de lectura, escritura, aprobación y ejecución fuera del texto del prompt [R09, R36, R37].</p>
+    <p>Una buena señal: puedes saber qué se le permite hacer al agente sin leer el prompt.</p>
+    <p>Refs: R09, R20, R23, R36, R37, R41.</p>
+  </aside>
+</section>
+
+<section>
+  <h2>Medir y mejorar</h2>
+  <p class="label">Tres cosas que conviene medir por separado</p>
+  <div class="columns">
+    <div class="pair">
+      <strong>producto</strong>
+      <p>¿Cumple lo acordado con el usuario?</p>
+    </div>
+    <div class="pair">
+      <strong>agente</strong>
+      <p>¿Resuelve este tipo de tarea con la calidad y los permisos previstos?</p>
+    </div>
+    <div class="pair">
+      <strong>equipo</strong>
+      <p>¿Entrega y mantiene los cambios con menos esfuerzo total?</p>
+    </div>
+  </div>
+  <div class="signal">
+    <p class="label">Una buena señal</p>
+    <p>Aumenta el ritmo de entrega sin que crezcan la inestabilidad ni la cola de revisión.</p>
+  </div>
+  <p class="source">Fuentes: Anthropic (2026), Demystifying evals for AI agents · Díaz-Villegas et al. (2026), Design Problems, Decisions, and Evidence in Agentic Software Engineering · DORA, Software delivery performance metrics · Lauren Tan, AI Engineer (2026), All Code Is Slop (Except Mine)</p>
+  <aside class="notes">
+    <p>Mide en tres niveles. Para comparar versiones, cambia un componente cada vez.</p>
+    <p>Evidencia</p>
+    <p>Prepara un conjunto local de tareas con desenlace conocido. Guarda el resultado correcto antes de la ejecución [R41].</p>
+    <p>pass@k mide si hay al menos un acierto en k intentos. pass^k exige acertar en los k intentos [R41].</p>
+    <p>En 94 estudios, solo el 19,8 % de los registros de evaluación vinculó evidencia con una decisión de diseño concreta [R57].</p>
+    <p>Mide la proporción de tareas aceptadas sobre asignadas, los minutos humanos dedicados a revisión y rescate, la cola de revisión y las métricas DORA [R27, R30].</p>
+    <p>El equipo de Grok Bot cuenta que llevó 11.000 PR a producción en un mes y revirtió cerca del 0,5 %. También comparó el arranque, la escritura y el cambio de chat al lanzar la versión. La tasa de reversión deja fuera los fallos corregidos en otro PR [V01, 13:32].</p>
+    <p>Una buena señal: aumenta el ritmo de entrega sin que crezcan la inestabilidad ni la cola de revisión [R30].</p>
+    <p>Refs: R27, R30, R41, R57, V01.</p>
+  </aside>
+</section>
+
+<section>
+  <h2>Por qué este punto es el más importante</h2>
+  <dl class="mapping">
+    <div>
+      <dt>Formular el problema</dt>
+      <dd>requisitos vinculados a su fuente</dd>
+    </div>
+    <div>
+      <dt>Definir qué es correcto</dt>
+      <dd>oráculos de prueba y pruebas</dd>
+    </div>
+    <div>
+      <dt>Diseñar</dt>
+      <dd>límites verificados en integración continua</dd>
+    </div>
+    <div>
+      <dt>Verificar</dt>
+      <dd>revisión y límites</dd>
+    </div>
+    <div>
+      <dt>Construir el sistema</dt>
+      <dd>Lo que producen las otras cuatro áreas se aplica a cada agente en cada tarea.</dd>
+    </div>
+  </dl>
+  <p class="source">Fuente: Lauren Tan, AI Engineer (2026), All Code Is Slop (Except Mine)</p>
+  <aside class="notes">
+    <p>Las cuatro primeras áreas pasan a formar parte del entorno al incorporar sus resultados: requisitos vinculados a fuentes, oráculos de prueba, límites y revisión. [Opinión]</p>
+    <p>Evidencia</p>
+    <p>La «pirámide de confianza invertida» de Lauren Tan tiene una forma parecida. La mayor inversión va a decisiones que se toman una vez en el código, como el diseño de API y el análisis estático. Después vienen el lint, los tipos y las pruebas, y luego la verificación en ejecución y la formal. Las reglas escritas y las skills forman una capa menor. La revisión humana ocupa la punta más cara [V01, 0:01].</p>
+    <p>Antes de ampliar el número de agentes, Tan propone crear una regla de lint para el error recurrente, retirar los ejemplos antiguos que el siguiente agente copiaría y darle una forma de verificar el comportamiento. Replicar un ciclo que aún genera defectos multiplica el coste de corregirlos [V01, 15:11].</p>
+    <p>Referencia: V01. El resto corresponde a la interpretación del ponente.</p>
+  </aside>
+</section>
+
+<section>
+  <h2>Sigue aprendiendo lo que delegas</h2>
+  <p class="takeaway">Quienes dejaron el trabajo en manos de la IA comprendieron menos.</p>
+  <p>En un experimento aleatorizado, quienes aprendieron a usar la biblioteca Trio con ayuda de IA obtuvieron una puntuación media menor en una prueba de comprensión justo después de la tarea.</p>
+  <p class="source">Fuente: Anthropic (2026), How AI assistance impacts the formation of coding skills</p>
+  <aside class="notes">
+    <p>Cuando estés aprendiendo, pide al agente que te explique el tema y te haga preguntas.</p>
+    <p>En un experimento aleatorizado con programadores que aprendían Trio, la asistencia de IA dio lugar a una puntuación media menor en la prueba inmediata de comprensión. El estudio no midió la retención a largo plazo [R59].</p>
+    <p>Refs: R59.</p>
+  </aside>
+</section>
+
+<section>
+  <h2>Para verificar hay que entender</h2>
+  <p class="stat">Los fundamentos</p>
+  <p>te permiten reconocer que algo va mal.</p>
+  <aside class="notes">
+    <p>Los fundamentos siguen siendo lo que permite reconocer un error. [Opinión]</p>
+    <p>Referencias: opinión del ponente.</p>
+  </aside>
+</section>
+
+<section>
+  <h2>Cómo forman los ingenieros sénior a la próxima generación</h2>
+  <p class="takeaway">Si quienes empiezan escriben menos código, ¿cómo adquirirán la experiencia para llegar a sénior?</p>
+  <div class="columns">
+    <p class="boundary">programación en pareja</p>
+    <p class="boundary">revisiones comentadas</p>
+    <p class="boundary">decisiones explicadas</p>
+  </div>
+  <aside class="notes">
+    <p>Si quienes empiezan escriben menos código, formarse pasa por programar en pareja, comentar las revisiones y explicar las decisiones. [Opinión]</p>
+    <p>Referencias: opinión del ponente.</p>
+  </aside>
+</section>
+
+<section>
+  <h2>Volvamos a la pregunta inicial</h2>
+  <p><del>Nuestro trabajo consiste ahora en pedirle a un robot que escriba el código.</del></p>
+  <p>Nuestro trabajo es decidir qué construir, definir qué es correcto, diseñar, verificar y construir el sistema en el que trabajan los agentes.</p>
+  <p class="takeaway">El agente escribe código. La ingeniería sigue siendo nuestra responsabilidad.</p>
+  <aside class="notes">
+    <p>«El agente escribe código. La ingeniería sigue siendo nuestra responsabilidad».</p>
+    <p>Referencia: tesis de la charla.</p>
+  </aside>
+</section>
+
+<section class="opening">
+  <h2>¡Gracias!</h2>
+  <p>Sigue mi blog para aprender más sobre agentes de programación.</p>
+  <p><a href="https://woliveiras.com/">woliveiras.com</a></p>
+</section>

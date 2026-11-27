@@ -1,0 +1,29 @@
+---
+import { languageNames, talkPath } from "../talks/catalog";
+
+type Language = keyof typeof languageNames;
+interface Props {
+	slug: string;
+	languages: Language[];
+}
+const { slug, languages } = Astro.props;
+---
+
+{languages.length > 1 && (
+  <nav class="talk-languages" aria-label="Languages">
+    {languages.map((lang) => (
+      <a lang={lang} hreflang={lang} href={talkPath(slug, lang)}>{languageNames[lang]}</a>
+    ))}
+  </nav>
+)}
+
+<style>
+  .talk-languages {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5em 1.25em;
+    margin-top: 1em;
+    font-size: 0.85em;
+  }
+  .talk-languages a { text-decoration: underline; text-underline-offset: 0.2em; }
+</style>

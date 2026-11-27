@@ -1,0 +1,596 @@
+---
+title: Our Role in Software Engineering with Coding Agents
+description: The agent writes code. Who decides what to build, checks the result and takes responsibility for what reaches production?
+lang: en
+published: false
+---
+
+<section class="opening">
+  <h2>William Oliveira</h2>
+  <p>Software engineer</p>
+  <p><a href="https://woliveiras.com/">woliveiras.com</a></p>
+</section>
+
+<section class="opening">
+  <h2>Has our job gone from writing code to asking a robot to write it for us?</h2>
+  <aside class="notes">
+    <p>This is the question the talk sets out to answer. It comes from the talk description.</p>
+    <p>Reference: talk description.</p>
+  </aside>
+</section>
+
+<section>
+  <h2>From commits to releases</h2>
+  <div class="columns">
+    <div class="pair">
+      <strong>+240%</strong>
+      <p>commits</p>
+    </div>
+    <div class="pair">
+      <strong>+30%</strong>
+      <p>releases</p>
+    </div>
+  </div>
+  <p class="source">Source: Demirer, Musolff and Yang (2026), Writing Code vs. Shipping Code</p>
+  <aside class="notes">
+    <p>There is still work to do between a commit and a release.</p>
+    <p>Estimated cumulative effects of autonomous agents across more than 500,000 GitHub developers: 240% more commits and 30% more releases [R28].</p>
+    <p>Refs: R28.</p>
+  </aside>
+</section>
+
+<section>
+  <h2>Generating code got cheap</h2>
+  <p class="label">Where the work went</p>
+  <ul>
+    <li>deciding what to build</li>
+    <li>defining what counts as correct</li>
+    <li>designing systems that can handle more code</li>
+    <li>checking what reaches production</li>
+    <li>building the system the agents work in</li>
+  </ul>
+  <aside class="notes">
+    <p>The talk covers five places where a senior engineer’s judgment has become more valuable. The last one matters most.</p>
+    <p>Reference: the premise of the talk.</p>
+  </aside>
+</section>
+
+<section>
+  <h2>The gain depends on the task</h2>
+  <div class="columns">
+    <div class="pair">
+      <strong>19% longer</strong>
+      <p>Sixteen experienced maintainers working in familiar repositories thought they were 20% more productive.</p>
+    </div>
+    <div class="pair">
+      <strong>26% more tasks per week</strong>
+      <p>Code completion in three field experiments with 4,867 developers.</p>
+    </div>
+  </div>
+  <p class="source">Sources: METR (2025), Measuring the Impact of Early-2025 AI on Experienced Open-Source Developer Productivity · Cui et al. (2026), The Effects of Generative AI on High-Skilled Work</p>
+  <aside class="notes">
+    <p>The outcome depends on the task, the tool and who measures it. A selection problem in METR’s next round means it could neither confirm nor overturn the 19% estimate [R27].</p>
+    <p>Evidence</p>
+    <p>The 16 experienced maintainers spent 19% longer on issues when AI was allowed. Afterwards they estimated that it had saved them time [R26].</p>
+    <p>Selection in the follow-up round made the effect hard to estimate [R27].</p>
+    <p>Across three field experiments with 4,867 developers, the estimated gain from code completion was 26.08% in tasks completed per week [R25].</p>
+    <p>Refs: R25, R26, R27.</p>
+  </aside>
+</section>
+
+<section>
+  <h2>AI amplifies an organization’s strengths and weaknesses</h2>
+  <div class="amplify">
+    <p>strengths <span aria-hidden="true">→</span> <strong>strengths++</strong></p>
+    <p>weaknesses <span aria-hidden="true">→</span> <strong>weaknesses++</strong></p>
+  </div>
+  <p class="source">Source: DORA (2025), State of AI-assisted Software Development</p>
+  <aside class="notes">
+    <p>An agent amplifies the process it inherits, including its problems.</p>
+    <p>DORA’s 2025 report describes AI as an amplifier of an organization’s existing strengths and weaknesses [R24].</p>
+    <p>Refs: R24.</p>
+  </aside>
+</section>
+
+<section>
+  <h2>What do agent benchmarks measure?</h2>
+  <p>Of the 178 benchmarks surveyed</p>
+  <div class="bars">
+    <div class="bar">
+      <span>implementation</span>
+      <meter min="0" max="100" value="61" aria-label="implementation"></meter>
+      <strong>61%</strong>
+    </div>
+    <div class="bar">
+      <span>requirements</span>
+      <meter min="0" max="100" value="5" aria-label="requirements"></meter>
+      <strong>5%</strong>
+    </div>
+    <div class="bar">
+      <span>design</span>
+      <meter min="0" max="100" value="3" aria-label="design"></meter>
+      <strong>3%</strong>
+    </div>
+  </div>
+  <p class="takeaway">Few benchmarks measure requirements or design.</p>
+  <p class="source">Source: Wang et al. (2025), A Survey of Benchmarks for Code Large Language Models and Agents</p>
+  <aside class="notes">
+    <p>Implementation gets measured most often. Requirements and design get little coverage.</p>
+    <p>Of 178 benchmarks, about 61% cover implementation, 5% requirements and 3% design [R01].</p>
+    <p>Refs: R01.</p>
+  </aside>
+</section>
+
+<section>
+  <h2>When the benchmark gets it wrong</h2>
+  <p class="label">OpenAI’s audit of SWE-bench Verified</p>
+  <p class="stat">82 of 138</p>
+  <p>problems the model “failed” had a faulty description or test (59.4%).</p>
+  <div class="ratio" aria-hidden="true"></div>
+  <p class="legend"><span class="defect-key">Faulty description or test</span> · <span class="clear-key">No material defect</span></p>
+  <p class="source">Source: OpenAI (2026), Why we no longer evaluate SWE-bench Verified</p>
+  <aside class="notes">
+    <p>Even a widely used benchmark had weaknesses in how it judged correctness.</p>
+    <p>OpenAI audited 138 of SWE-bench Verified’s 500 problems. It found material issues in the description or tests in 59.4% of those 138 [R14].</p>
+    <p>Refs: R14.</p>
+  </aside>
+</section>
+
+<section>
+  <h2>Who still owns the work?</h2>
+  <ul class="lines">
+    <li>who decides what gets merged</li>
+    <li>who answers for what ships</li>
+    <li>who responds to the incident</li>
+  </ul>
+  <aside class="notes">
+    <p>The work has shifted. Responsibility still sits with the team. [Opinion]</p>
+    <p>References: speaker’s own view.</p>
+  </aside>
+</section>
+
+<section>
+  <h2>Where engineering judgment gains value</h2>
+  <div class="columns">
+    <div>
+      <h3>Losing value</h3>
+      <ul>
+        <li>memorizing syntax and APIs</li>
+        <li>boilerplate</li>
+        <li>typing speed</li>
+        <li>turning a spec into trivial code</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Gaining value</h3>
+      <ol>
+        <li>Frame the problem</li>
+        <li>Define what counts as correct</li>
+        <li>Design systems</li>
+        <li>Verify, review and operate</li>
+        <li>Build the system the agents work in</li>
+      </ol>
+    </div>
+  </div>
+  <aside class="notes">
+    <p>Work that became cheap loses value. Work that takes judgment gains it. This is my reading of the evidence in the first part of the talk.</p>
+    <p>References from part one: R01, R14, R24, R25, R26, R27, R28.</p>
+  </aside>
+</section>
+
+<section>
+  <h2>Five areas of focus</h2>
+  <ol class="steps">
+    <li>Frame the problem</li>
+    <li>Define what counts as correct</li>
+    <li>Design systems</li>
+    <li>Verify, review and operate</li>
+    <li>Build the system the agents work in</li>
+  </ol>
+  <aside class="notes">
+    <p>The bottleneck moves. As generation speeds up, work piles up in review, verification and delivery [R28].</p>
+    <p>Refs: R28.</p>
+  </aside>
+</section>
+
+<section>
+  <h2>Frame the problem</h2>
+  <div class="ticket-example">
+    <div class="ticket">
+      <p class="label">Ticket · fictional example</p>
+      <strong>Report exports: show the request status</strong>
+    </div>
+    <div>
+      <h3>What’s still open?</h3>
+      <ul>
+        <li>What status appears if the export fails?</li>
+        <li>What appears when the request expires?</li>
+        <li>When someone comes back, do they see the same request?</li>
+        <li>Who can look up this request?</li>
+      </ul>
+    </div>
+  </div>
+  <div class="signal">
+    <p class="label">A good sign</p>
+    <p>Before planning the change, the team checks the rules with product and records the source of each requirement.</p>
+  </div>
+  <p class="source">Sources: Zhou et al. (2026), SWE-RPG: A Unified Issue Resolution Benchmark · Dente, Dalpiaz and Papotti (2026), Automated Alignment Between Elicitation Interviews and Requirements</p>
+  <aside class="notes">
+    <p>An ambiguous rule leads to different implementations. Framing the problem means bringing these questions to product before making a plan.</p>
+    <p>Evidence</p>
+    <p>SWE-RPG evaluates the requirement and plan as well as the patch, separating misunderstandings from implementation failures [R60].</p>
+    <p>Link each requirement to the passage that supports it [R03].</p>
+    <p>User simulations have limited fidelity at the individual level [R02].</p>
+    <p>A long specification earns its length when it resolves meaningful uncertainty [R07, R08].</p>
+    <p>Each requirement points to its source, and questions reach product before the plan is drawn up, well before PR review [R03].</p>
+    <p>Refs: R02, R03, R07, R08, R60.</p>
+  </aside>
+</section>
+
+<section>
+  <h2>Define what counts as correct</h2>
+  <p class="label">Tests generated by TestGen-LLM at Meta for Instagram</p>
+  <div class="columns">
+    <div class="pair">
+      <strong>75%</strong>
+      <p>compiled</p>
+    </div>
+    <div class="pair">
+      <strong>57%</strong>
+      <p>passed reliably</p>
+    </div>
+    <div class="pair">
+      <strong>25%</strong>
+      <p>increased coverage</p>
+    </div>
+  </div>
+  <p><strong>A passing test can miss the bug.</strong> If the code and the assertion come from the same misunderstanding, the suite can pass while the requirement still fails.</p>
+  <div class="signal">
+    <p class="label">A good sign</p>
+    <p>The team saw the test fail before the fix and pass afterwards.</p>
+  </div>
+  <p class="source">Sources: Alshahwan et al., Meta (2024), Automated Unit Test Improvement using Large Language Models at Meta · Mündler et al. (2024), SWT-Bench</p>
+  <aside class="notes">
+    <p>A test oracle is an independent source for the expected result. When the assertion and the code share a misunderstanding, a green suite can hide an unmet requirement.</p>
+    <p>Evidence</p>
+    <p>A test oracle independently establishes the correct result [R15, R43].</p>
+    <p>For the Instagram subset, 75% of generated tests compiled, 57% passed reliably and 25% increased coverage. The figures describe distinct stages and populations [R16].</p>
+    <p>See the test fail before the fix and pass afterwards. Check that neighboring cases still work [R15, R43].</p>
+    <p>Refs: R15, R16, R43.</p>
+  </aside>
+</section>
+
+<section>
+  <h2>Design systems so you can delegate changes</h2>
+  <p>The export failed. Why does the screen still say “in progress”?</p>
+  <div class="columns">
+    <div>
+      <h3>Report generator</h3>
+      <p>Sends the failure notification.</p>
+    </div>
+    <div>
+      <h3>Request service</h3>
+      <p><strong class="takeaway">Delegated fix</strong><br />Record the failure on the request.</p>
+    </div>
+    <div>
+      <h3>Export screen</h3>
+      <p>Shows the request status.</p>
+    </div>
+  </div>
+  <div class="signal">
+    <p>A test simulates the notification and checks the stored status. Whoever integrates the fix checks that the failure appears on screen.</p>
+  </div>
+  <p class="source">Sources: Nikolov and Taneja, Google (2024), Accelerating code migrations with AI · Cemri et al. (2025), Why Do Multi-Agent LLM Systems Fail?</p>
+  <aside class="notes">
+    <p>Back to the fictional export. Imagine the generator already reports failures and the screen already knows how to show “failed.” The problem is in between. The service receives the notification but leaves the request “in progress.”</p>
+    <p>The agreement between the three parts bounds the agent’s task. It can fix the service and send a failure notification for a known request to test the result. The engineer integrating the change then triggers a failed test export and checks what the user sees.</p>
+    <p>Evidence</p>
+    <p>Plan in increments that can be assessed separately. Parallel work needs stable contracts at the boundaries and someone responsible for integration [R07, R20, R23].</p>
+    <p>In Google’s large-scale migrations, locating code, changing it, reviewing it and rolling it out are separate steps. Planning accounts for reviewer capacity [R21].</p>
+    <p>Multiple agents introduce specification, coordination and verification failures [R23].</p>
+    <p>A good sign: each delegated change can be checked on its own, and a boundary contains an agent’s error.</p>
+    <p>Refs: R07, R20, R21, R23.</p>
+  </aside>
+</section>
+
+<section>
+  <h2>Verify, review and operate</h2>
+  <ul class="lines">
+    <li>Which test shows that the screen now says “failed”?</li>
+    <li>What happens if the same failure notification arrives twice?</li>
+    <li>In production, how many failed exports still show up as “in progress”?</li>
+  </ul>
+  <p class="source">Sources: Google Research (2024), Resolving Code Review Comments with Machine Learning · Gao et al. (2026), On Autopilot? Human–AI Teaming and Review Practices in Open Source · Google SRE (2018), Alerting on SLOs</p>
+  <aside class="notes">
+    <p>The agent opened the PR. To verify the fix, make a test export fail and open the request on screen. Before the change, it stayed “in progress.” With the fix, it should say “failed.”</p>
+    <p>During review, try delivering the same notification again. The request should still say “failed.” That gives the reviewer a concrete case to discuss in the PR.</p>
+    <p>After deployment, match failure notifications from the generator to the status the screen reads, using the request ID. Count requests still marked “in progress” after the expected update time. Track that count to see whether the fix reached the person waiting for the report.</p>
+    <p>Someone with context still decides whether to accept the change. In production, the on-call engineer confirms impact, authorizes mitigation and checks recovery against the service indicator.</p>
+    <p>Evidence</p>
+    <p>AI-assisted PRs from contributors who had not previously owned the code showed few explicit signs of review [R18].</p>
+    <p>RCACopilot reached up to 0.766 accuracy in classifying the cause category of Microsoft incidents [R31].</p>
+    <p>The on-call engineer confirms impact, authorizes mitigation and uses the SLI to check recovery [R49].</p>
+    <p>Treat tool output as data. In the Nx package incident, malware instructed AI CLIs to look for secrets [E28].</p>
+    <p>A good sign: the review queue stays manageable as generation increases [R18, R28]. The service indicator confirms recovery [R49].</p>
+    <p>Refs: R17, R18, R28, R31, R49, E28.</p>
+  </aside>
+</section>
+
+<section>
+  <h2>An agent is a model plus its environment</h2>
+  <div class="environment">
+    <p class="core">Model</p>
+    <span class="operator" aria-hidden="true">+</span>
+    <div class="environment-group">
+      <h3>Environment</h3>
+      <ul class="layers">
+        <li>Context</li>
+        <li>Tools</li>
+        <li>Verification</li>
+        <li>Limits</li>
+        <li>Measurement</li>
+      </ul>
+    </div>
+  </div>
+  <p class="source">Sources: Yang et al. (2024), SWE-agent: Agent-Computer Interfaces Enable Automated Software Engineering · OpenAI (2026), Harness engineering · Spotify Engineering (2025), Background Coding Agents: Context Engineering</p>
+  <aside class="notes">
+    <p>Shift the question from “which prompt?” to “which environment?” This introduces the five layers that follow.</p>
+    <p>The interface for navigation, editing and feedback affects agent performance [R11]. Engineering reports describe navigable documentation, tool feedback and constraints checked in code [R22], along with context and tool preparation for asynchronous agents [R20].</p>
+    <p>Refs: R11, R20, R22.</p>
+  </aside>
+</section>
+
+<section>
+  <h2>Context</h2>
+  <div class="columns">
+    <div>
+      <h3>What goes in</h3>
+      <ul>
+        <li>approved issue</li>
+        <li>starting revision</li>
+        <li>contract</li>
+        <li>test command</li>
+        <li>small example</li>
+        <li>skills</li>
+        <li>documentation</li>
+      </ul>
+    </div>
+    <div>
+      <h3>What lasts and what expires</h3>
+      <div class="pair">
+        <strong>durable</strong>
+        <p>contracts, commands</p>
+      </div>
+      <div class="pair">
+        <strong>temporary evidence</strong>
+        <p>last build result</p>
+      </div>
+    </div>
+  </div>
+  <div class="signal">
+    <p class="label">A good sign</p>
+    <p>Turn a recurring mistake into a repository rule or test.</p>
+  </div>
+  <p class="source">Sources: Spotify Engineering (2025), Background Coding Agents: Context Engineering · OpenAI (2026), Harness engineering · Lauren Tan, AI Engineer (2026), All Code Is Slop (Except Mine)</p>
+  <aside class="notes">
+    <p>A current, specific reference is more useful than dumping the whole knowledge base. For longer tasks, version the starting revision, the latest check, the work left and the reason for stopping.</p>
+    <p>Evidence</p>
+    <p>Spotify reports failures from overly broad context and overly narrow file selection [R20, R22].</p>
+    <p>In the Grok Bot example, repeated review feedback leads to an API change that makes the mistake hard to write, or a check that catches it and explains the fix. Examples include banning useEffect in product code and keeping Electron’s main process and UI in separate folders with lint rules against cross-imports [V01, 5:00–9:40].</p>
+    <p>Code is context too. A workaround left in the repository becomes an example the next agent can copy [V01, 0:01–6:56].</p>
+    <p>A good sign: the team encodes recurring mistakes in repository rules or tests instead of having to repeat instructions in prompts [R22, V01].</p>
+    <p>Refs: R20, R22, V01.</p>
+  </aside>
+</section>
+
+<section>
+  <h2>Tools and interfaces</h2>
+  <div class="columns">
+    <div class="pair">
+      <strong>missing dependency</strong>
+      <p>the environment failed</p>
+    </div>
+    <div class="pair">
+      <strong>regression detected</strong>
+      <p>the code failed</p>
+    </div>
+    <div class="pair">
+      <strong>run without evidence</strong>
+      <p>the outcome is unknown</p>
+    </div>
+  </div>
+  <div class="signal">
+    <p class="label">A good sign</p>
+    <p>The agent can say “I couldn’t verify this” when a check yields no evidence.</p>
+  </div>
+  <p class="source">Sources: Yang et al. (2024), SWE-agent: Agent-Computer Interfaces Enable Automated Software Engineering · OpenAI (2026), Harness engineering</p>
+  <aside class="notes">
+    <p>Use tools with typed inputs, stable identifiers and results that distinguish success, failure and unavailability.</p>
+    <p>A good sign: the agent can report that it could not verify the result rather than claiming success.</p>
+    <p>Refs: R11, R20, R22.</p>
+  </aside>
+</section>
+
+<section>
+  <h2>Verification outside the agent’s control</h2>
+  <div class="flow">
+    <p>people + agents</p>
+    <p class="arrow">→</p>
+    <p class="core">CI</p>
+    <p>the same source of results for people and agents</p>
+  </div>
+  <div class="signal">
+    <p class="label">A good sign</p>
+    <p>Keep the acceptance criteria outside the agent’s control.</p>
+  </div>
+  <p class="source">Sources: Playwright, Test Agents · GitHub Docs, Risks and mitigations for GitHub Copilot cloud agent</p>
+  <aside class="notes">
+    <p>If the test-repair agent can redefine success, a regression can go undetected.</p>
+    <p>A test-repair agent can mark a test as skipped [R61]. When it proposes a change to CI, branch protection or the test that blocked its work, review that proposal in proportion to its influence [R36, R39].</p>
+    <p>A good sign: an agent cannot loosen the criteria used to evaluate it.</p>
+    <p>Refs: R36, R39, R61.</p>
+  </aside>
+</section>
+
+<section>
+  <h2>Autonomy, limits and task states</h2>
+  <div class="columns">
+    <div>
+      <h3>What the agent can do</h3>
+      <ol>
+        <li>read</li>
+        <li>edit an isolated copy</li>
+        <li>propose a PR</li>
+        <li>prepare a release</li>
+        <li>act in production with the owner’s approval</li>
+      </ol>
+    </div>
+    <div>
+      <h3>How the task progresses</h3>
+      <ol>
+        <li>proposed</li>
+        <li>authorized</li>
+        <li>in progress</li>
+        <li>awaiting evidence</li>
+        <li>ready for review</li>
+        <li>accepted</li>
+      </ol>
+    </div>
+  </div>
+  <div class="signal">
+    <p class="label">A good sign</p>
+    <p>You can tell what the agent may do without opening the prompt.</p>
+  </div>
+  <p class="source">Sources: Schluntz and Zhang, Anthropic (2024), Building effective agents · OWASP (2026), Top 10 for Agentic Applications</p>
+  <aside class="notes">
+    <p>Choose the kind of collaboration to suit the task. Enforce limits outside the prompt.</p>
+    <p>Evidence</p>
+    <p>Collaboration ranges from interactive assistance to deterministic automation [R09, R23].</p>
+    <p>Set a budget for time, calls or cost and a stopping condition. For example, hand the task back to a person after two attempts with the same failure [R20, R41].</p>
+    <p>Enforce read, write, approval and execution permissions outside the prompt text [R09, R36, R37].</p>
+    <p>A good sign: you can tell what the agent is allowed to do without reading the prompt.</p>
+    <p>Refs: R09, R20, R23, R36, R37, R41.</p>
+  </aside>
+</section>
+
+<section>
+  <h2>Measure and improve</h2>
+  <p class="label">Three things to measure separately</p>
+  <div class="columns">
+    <div class="pair">
+      <strong>product</strong>
+      <p>Does it deliver what the user was promised?</p>
+    </div>
+    <div class="pair">
+      <strong>agent</strong>
+      <p>Can it do this kind of task with the expected quality and permissions?</p>
+    </div>
+    <div class="pair">
+      <strong>team</strong>
+      <p>Does it take less total effort to ship and maintain changes?</p>
+    </div>
+  </div>
+  <div class="signal">
+    <p class="label">A good sign</p>
+    <p>Throughput rises while instability and the review queue stay in check.</p>
+  </div>
+  <p class="source">Sources: Anthropic (2026), Demystifying evals for AI agents · Díaz-Villegas et al. (2026), Design Problems, Decisions, and Evidence in Agentic Software Engineering · DORA, Software delivery performance metrics · Lauren Tan, AI Engineer (2026), All Code Is Slop (Except Mine)</p>
+  <aside class="notes">
+    <p>Measure at three levels. Compare versions by changing one component at a time.</p>
+    <p>Evidence</p>
+    <p>Build a local suite of tasks with known outcomes. Record the expected result before execution [R41].</p>
+    <p>pass@k measures at least one success in k attempts. pass^k requires success on all k attempts [R41].</p>
+    <p>Across 94 studies, only 19.8% of evaluation records attributed evidence to an individual design decision [R57].</p>
+    <p>Track accepted tasks divided by assigned tasks, human minutes including review and rescue work, the review queue and DORA metrics [R27, R30].</p>
+    <p>The Grok Bot team reports shipping 11,000 PRs in a month and reverting about 0.5%. They also compared startup, typing and chat-switching performance at release. The revert rate misses bugs fixed in a subsequent PR [V01, 13:32].</p>
+    <p>A good sign: higher throughput with no increase in instability or the review queue [R30].</p>
+    <p>Refs: R27, R30, R41, R57, V01.</p>
+  </aside>
+</section>
+
+<section>
+  <h2>Why this matters most</h2>
+  <dl class="mapping">
+    <div>
+      <dt>Frame the problem</dt>
+      <dd>requirements linked to their sources</dd>
+    </div>
+    <div>
+      <dt>Define correctness</dt>
+      <dd>test oracles and tests</dd>
+    </div>
+    <div>
+      <dt>Design</dt>
+      <dd>boundaries checked in CI</dd>
+    </div>
+    <div>
+      <dt>Verify</dt>
+      <dd>review and limits</dd>
+    </div>
+    <div>
+      <dt>Build the system</dt>
+      <dd>What the first four areas produce now applies to every agent on every task.</dd>
+    </div>
+  </dl>
+  <p class="source">Source: Lauren Tan, AI Engineer (2026), All Code Is Slop (Except Mine)</p>
+  <aside class="notes">
+    <p>The first four areas become part of the environment when their outputs are encoded in it: requirements linked to sources, test oracles, boundaries, review and limits. [Opinion]</p>
+    <p>Evidence</p>
+    <p>Lauren Tan’s “inverted trust pyramid” has a similar shape. Most investment goes into decisions made once in code, such as API design and static analysis, followed by lint, types and tests, then runtime and formal verification. Written rules and skills form a smaller layer. Human review sits at the most expensive tip [V01, 0:01].</p>
+    <p>Before scaling to many agents, Tan recommends adding a lint rule for a recurring mistake, removing old examples the next agent might copy, and giving the agent a way to check behavior. Replicating a loop that still produces defects multiplies the cost of fixing them [V01, 15:11].</p>
+    <p>Reference: V01. The remaining interpretation is the speaker’s.</p>
+  </aside>
+</section>
+
+<section>
+  <h2>Keep learning the work you delegate</h2>
+  <p class="takeaway">Those who let AI do the work understood less.</p>
+  <p>In a randomized experiment, programmers learning the Trio library with AI assistance scored lower on average on a comprehension test immediately after the task.</p>
+  <p class="source">Source: Anthropic (2026), How AI assistance impacts the formation of coding skills</p>
+  <aside class="notes">
+    <p>When learning, ask the agent to explain and to ask you questions.</p>
+    <p>In a randomized experiment with programmers learning Trio, AI assistance was associated with lower average scores on the immediate comprehension test. The study did not measure long-term retention [R59].</p>
+    <p>Refs: R59.</p>
+  </aside>
+</section>
+
+<section>
+  <h2>Verification takes understanding</h2>
+  <p class="stat">Fundamentals</p>
+  <p>help you recognize when something is wrong.</p>
+  <aside class="notes">
+    <p>Understanding the fundamentals is still how you recognize that something is wrong. [Opinion]</p>
+    <p>References: speaker’s own view.</p>
+  </aside>
+</section>
+
+<section>
+  <h2>How senior engineers teach the next generation</h2>
+  <p class="takeaway">If people starting out write less code, how do they grow into senior engineers?</p>
+  <div class="columns">
+    <p class="boundary">pair programming</p>
+    <p class="boundary">reviews with explanations</p>
+    <p class="boundary">explaining decisions</p>
+  </div>
+  <aside class="notes">
+    <p>If people starting out write less code, pairing, explaining reviews and talking through decisions become central to training. [Opinion]</p>
+    <p>References: speaker’s own view.</p>
+  </aside>
+</section>
+
+<section>
+  <h2>Back to the opening question</h2>
+  <p><del>Our job is now to ask a robot to write the code.</del></p>
+  <p>Our job is to decide what to build, define what counts as correct, design and verify the change, and build the system the agents work in.</p>
+  <p class="takeaway">The agent writes code. Engineering is still our responsibility.</p>
+  <aside class="notes">
+    <p>“The agent writes code. Engineering is still our responsibility.”</p>
+    <p>Reference: the premise of the talk.</p>
+  </aside>
+</section>
+
+<section class="opening">
+  <h2>Thank you!</h2>
+  <p>Follow my blog for more on coding agents.</p>
+  <p><a href="https://woliveiras.com/">woliveiras.com</a></p>
+</section>

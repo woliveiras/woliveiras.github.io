@@ -1,6 +1,8 @@
 ---
-import { NAME } from "../config.json";
+import { getVisibleTalks } from "../talks/catalog";
+import { BASE, NAME } from "../config.json";
 
+const hasTalks = (await getVisibleTalks()).length > 0;
 const today = new Date();
 ---
 
@@ -11,6 +13,7 @@ const today = new Date();
     <p
       class="mt-8 text-center text-sm/6 text-base-600 dark:text-base-400 md:order-1 md:mt-0"
     >
+      {hasTalks && <a class="block mb-2 underline" href={BASE + "/talks/"}>Talks</a>}
       &copy; {today.getFullYear()}
       {NAME}. This work is licensed under a <a href="https://creativecommons.org/licenses/by/4.0/" rel="license">Creative Commons Attribution 4.0 International License</a>.
     </p>

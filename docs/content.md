@@ -24,6 +24,21 @@ metadata; helpers in `src/brief/` check for duplicates and exclude drafts and
 future issues from public output. Read the [editorial workflow](monday-brief.md)
 before creating or correcting an issue. The template is `templates/brief.mdx`.
 
+## Talks
+
+Give each talk an English slug and use it as the folder name under
+`src/content/talks/`. Put the English edition in `en.mdx`. It opens at
+`/talks/<slug>/`. Add `pt-BR.mdx` or `es.mdx` in the same folder to serve
+translations at `/talks/<slug>/pt-BR/` and `/talks/<slug>/es/`.
+
+Set each edition’s `title`, `description`, `lang` and `published` in its
+frontmatter. Match `lang` to the filename, including the capitalization of
+`pt-BR`. The cover shows the title and author. The Talks catalog links to the
+available languages. Start the MDX body with the next slide. Each
+`<section>` is a slide and its `<aside class="notes">` holds the speaker notes.
+Keep a new edition at `published: false` for local preview. The production build
+includes only published editions and lists each talk once in the catalog.
+
 ## Books
 
 Export `book` from a `src/books/<name>.book.ts` file using

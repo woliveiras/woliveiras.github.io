@@ -1,0 +1,75 @@
+---
+import { render } from "astro:content";
+import { BASE, NAME } from "../../../config.json";
+import { getVisibleTalks, talkPath } from "../../../talks/catalog";
+import "reveal.js/reveal.css";
+import "../../../styles/talk.css";
+
+export async function getStaticPaths() {
+	const groups = await getVisibleTalks();
+	return groups.flatMap(({ slug, editions }) =>
+		editions.flatMap((talk) => {
+			const { lang, legacySlug } = talk.data;
+			const languages = editions.map(({ data }) => data.lang);
+			const props = { talk, languages, slug };
+			const route = { params: { slug, locale: lang === "en" ? undefined : lang }, props };
+			return legacySlug
+				? [route, { params: { slug: legacySlug, locale: undefined }, props }]
+				: [route];
+		})
+	);
+}
+
+const { talk, languages, slug } = Astro.props;
+const { title, description, lang, published } = talk.data;
+if (Astro.params.slug !== slug) return Astro.redirect(talkPath(slug, lang), 301);
+const { Content } = await render(talk);
+const backLabel = { en: "Talks", "pt-BR": "Palestras", es: "Charlas" }[lang];
+---
+
+<!doctype html>
+<html lang={lang}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    {!published && <meta name="robots" content="noindex" />}
+    <link rel="canonical" href={new URL(talkPath(slug, lang), Astro.site)} />
+    {languages.map((language) => (
+      <link rel="alternate" hreflang={language} href={new URL(talkPath(slug, language), Astro.site)} />
+    ))}
+    {languages.includes("en") && <link rel="alternate" hreflang="x-default" href={new URL(talkPath(slug, "en"), Astro.site)} />}
+  </head>
+  <body>
+    <a class="talks-link" href={BASE + "/talks/"}>← {backLabel}</a>
+    <main class="reveal" aria-label={title}>
+      <div class="slides">
+        <section class="opening">
+          <h1>{title}</h1>
+          <p class="byline">{NAME}</p>
+        </section>
+        <Content />
+      </div>
+    </main>
+    <script>
+      import Reveal from "reveal.js";
+      import Notes from "reveal.js/plugin/notes";
+
+      const portrait = matchMedia("(max-width: 620px) and (orientation: portrait)");
+      const dimensions = () => portrait.matches
+        ? { width: 540, height: 940 }
+        : { width: 1200, height: 675 };
+      const deck = new Reveal({
+        ...dimensions(),
+        hash: true,
+        slideNumber: "c/t",
+        transition: "none",
+        scrollActivationWidth: 0,
+        plugins: [Notes],
+      });
+      await deck.initialize();
+      portrait.addEventListener("change", () => deck.configure(dimensions()));
+    </script>
+  </body>
+</html>

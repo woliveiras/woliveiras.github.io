@@ -1,0 +1,390 @@
+body,
+body.reveal-viewport {
+	--paper: #0f1115;
+	--ink: #f3f0e8;
+	--muted: #b0b3bc;
+	--lime: #c8f03c;
+	--panel: #202329;
+	--r-link-color: var(--lime);
+	background: var(--paper);
+	color: var(--ink);
+	margin: 0;
+	font-family: "Helvetica Neue", Arial, sans-serif;
+}
+
+.talks-link {
+	position: fixed;
+	z-index: 4;
+	top: 12px;
+	left: 16px;
+	color: var(--muted);
+	font-size: 14px;
+	text-underline-offset: 3px;
+}
+
+.reveal {
+	color: var(--ink);
+	font-size: 30px;
+	line-height: 1.22;
+}
+.reveal .slides {
+	text-align: left;
+}
+.reveal .slides > section {
+	box-sizing: border-box;
+	padding: 28px 56px;
+}
+.reveal .slides > section:has(> .source) {
+	height: 100%;
+	align-content: center;
+	padding-bottom: 64px;
+}
+.reveal h1,
+.reveal h2,
+.reveal h3,
+.reveal p,
+.reveal dl {
+	margin: 0;
+}
+.reveal h1,
+.reveal h2 {
+	text-wrap: balance;
+	letter-spacing: -0.04em;
+	line-height: 1.02;
+}
+.reveal h1 {
+	max-width: 1040px;
+	font-size: 78px;
+}
+.reveal h2 {
+	font-size: 58px;
+}
+.reveal h3 {
+	font-size: 31px;
+}
+.reveal section > * + * {
+	margin-top: 20px;
+}
+.reveal section > h2 + * {
+	margin-top: 38px;
+}
+.reveal .columns > div > * + * {
+	margin-top: 20px;
+}
+.reveal .opening::before {
+	display: block;
+	content: "";
+	width: 68px;
+	height: 8px;
+	margin-bottom: 26px;
+	background: var(--lime);
+}
+.reveal .opening h2 {
+	font-size: 65px;
+}
+.reveal .byline,
+.reveal del {
+	color: var(--muted);
+}
+.reveal .byline {
+	margin-top: 44px;
+}
+.reveal a,
+.reveal .controls,
+.reveal .progress {
+	color: var(--lime);
+}
+.reveal .slide-number {
+	color: var(--ink);
+	background: var(--panel);
+}
+
+.reveal ul,
+.reveal ol {
+	margin-bottom: 0;
+	padding-left: 1.3em;
+}
+.reveal li + li {
+	margin-top: 0.22em;
+}
+.reveal li::marker {
+	color: var(--lime);
+}
+.reveal .columns {
+	display: grid;
+	grid-auto-flow: column;
+	grid-auto-columns: 1fr;
+	gap: 24px;
+}
+.reveal .columns > div,
+.reveal .ticket {
+	padding: 20px 24px;
+	background: var(--panel);
+}
+.ticket-example {
+	display: grid;
+	grid-template-columns: 2fr 3fr;
+	align-items: start;
+	gap: 36px;
+}
+.ticket-example .label {
+	margin-bottom: 8px;
+}
+.ticket-example ul {
+	margin-top: 12px;
+	font-size: 0.9em;
+}
+.reveal .pair > strong,
+.reveal .stat {
+	color: var(--lime);
+	font-size: 1.4em;
+}
+.reveal .pair > p {
+	margin-top: 8px;
+}
+.reveal .columns :is(ol, ul) {
+	font-size: 0.9em;
+}
+.reveal .stat {
+	font-weight: 700;
+	font-size: 2.5em;
+	line-height: 1;
+}
+.reveal .takeaway {
+	color: var(--lime);
+	font-weight: 650;
+}
+.reveal .label {
+	color: var(--muted);
+	font-size: 0.74em;
+	font-weight: 650;
+}
+.reveal .signal {
+	border-left: 5px solid var(--lime);
+	padding: 4px 0 4px 20px;
+	font-size: 0.83em;
+}
+.reveal .signal .label {
+	color: var(--lime);
+	margin-bottom: 6px;
+}
+.reveal .source,
+.reveal .legend {
+	color: var(--muted);
+	font-size: 19px;
+	line-height: 1.3;
+}
+.reveal .source {
+	position: absolute;
+	/* Reveal scales the slide, but its navigation controls use viewport pixels. */
+	inset-inline: 0 calc(120px / var(--slide-scale, 1));
+	bottom: 8px;
+	padding-inline: inherit;
+	margin: 0;
+	font-size: 11px;
+}
+
+.reveal .amplify p {
+	display: flex;
+	align-items: center;
+	gap: 30px;
+}
+.reveal .amplify strong {
+	font-size: 1.7em;
+	color: var(--lime);
+}
+.reveal .bars {
+	display: grid;
+	gap: 12px;
+}
+.reveal .bar {
+	display: grid;
+	grid-template-columns: 220px 1fr 90px;
+	align-items: center;
+	gap: 16px;
+}
+.reveal meter {
+	width: 100%;
+	height: 28px;
+	accent-color: var(--lime);
+}
+.reveal meter::-webkit-meter-optimum-value {
+	background: var(--lime);
+}
+.reveal .ratio {
+	height: 20px;
+	background: linear-gradient(to right, var(--lime) 59.4%, #686e79 59.4%);
+}
+.reveal .defect-key::before,
+.reveal .clear-key::before {
+	content: "";
+	display: inline-block;
+	width: .7em;
+	height: .7em;
+	margin-right: .3em;
+	background: var(--lime);
+}
+.reveal .clear-key::before {
+	background: #686e79;
+}
+.reveal .lines {
+	padding-left: 0;
+	list-style: none;
+}
+.reveal .lines li,
+.reveal .mapping > div {
+	padding: 12px 0;
+	border-bottom: 1px solid #565b63;
+}
+.reveal .steps {
+	text-align: center;
+	padding: 0;
+	list-style-position: inside;
+}
+.reveal .steps li {
+	padding: 10px;
+	background: var(--panel);
+	margin-inline: auto;
+	width: 90%;
+}
+.reveal .steps li:nth-child(1) {
+	width: 52%;
+}
+.reveal .steps li:nth-child(2) {
+	width: 61%;
+}
+.reveal .steps li:nth-child(3) {
+	width: 70%;
+}
+.reveal .steps li:nth-child(4) {
+	width: 80%;
+}
+.reveal .steps li:last-child,
+.reveal .core {
+	background: var(--lime);
+	color: var(--paper);
+}
+.reveal .steps li:last-child::marker {
+	color: var(--paper);
+}
+.reveal .boundary {
+	padding: 16px;
+	background: var(--panel);
+}
+.reveal .environment,
+.reveal .flow {
+	display: flex;
+	align-items: center;
+	gap: 24px;
+}
+.reveal .flow > :last-child {
+	flex: 1;
+}
+.reveal .core {
+	display: inline-block;
+	padding: 20px 32px;
+	font-weight: bold;
+}
+.reveal .environment {
+	justify-content: center;
+}
+.reveal .operator {
+	color: var(--muted);
+	font-size: 1.5em;
+	line-height: 1;
+}
+.reveal .environment-group {
+	padding: 24px 32px;
+	background: var(--panel);
+}
+.reveal .layers {
+	display: grid;
+	grid-template-columns: repeat(2, auto);
+	gap: 8px 2.5em;
+	margin: 16px 0 0;
+	padding-left: 1em;
+}
+.reveal .layers li {
+	margin: 0;
+}
+.reveal .mapping > div {
+	display: grid;
+	grid-template-columns: 32% 1fr;
+	gap: 16px;
+}
+.reveal .mapping dt {
+	font-weight: bold;
+}
+.reveal .mapping dd {
+	margin: 0;
+}
+.reveal .mapping > :last-child {
+	color: var(--lime);
+}
+.reveal aside.notes {
+	display: none;
+}
+
+@media (max-width: 620px) and (orientation: portrait) {
+	.reveal {
+		font-size: 24px;
+	}
+	.reveal .slides > section {
+		padding: 22px;
+	}
+	.reveal h2 {
+		font-size: 40px;
+	}
+	.reveal h1,
+	.reveal .opening h2 {
+		font-size: 54px;
+	}
+	.reveal h3 {
+		font-size: 28px;
+	}
+	.reveal section > * + *,
+	.reveal section > h2 + * {
+		margin-top: 16px;
+	}
+	.reveal .columns {
+		grid-auto-flow: row;
+		gap: 10px;
+	}
+	.ticket-example {
+		grid-template-columns: 1fr;
+		gap: 20px;
+	}
+	.reveal .columns > div,
+	.reveal .ticket {
+		padding: 11px 15px;
+	}
+	.reveal .columns > div > * + * {
+		margin-top: 6px;
+	}
+	.reveal .legend {
+		font-size: 18px;
+	}
+	.reveal .environment {
+		flex-direction: column;
+		gap: 14px;
+	}
+	.reveal .layers {
+		column-gap: 1.5em;
+	}
+	.reveal .flow {
+		flex-wrap: wrap;
+	}
+	.reveal .bar {
+		grid-template-columns: 158px 1fr 62px;
+		gap: 6px;
+	}
+	.reveal .amplify p {
+		gap: 10px;
+	}
+	.reveal .steps li {
+		width: auto;
+	}
+	.reveal .mapping > div {
+		grid-template-columns: 36% 1fr;
+	}
+}

@@ -35,6 +35,7 @@
 		"rehype-mathjax": "^7.1.0",
 		"rehype-mermaid": "^3.0.0",
 		"remark-math": "^6.0.0",
+		"reveal.js": "^6.0.2",
 		"sharp": "^0.35.5",
 		"svelte": "^5.57.2",
 		"tailwind-merge": "^3.7.0",

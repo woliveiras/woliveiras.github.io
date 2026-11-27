@@ -86,7 +86,23 @@ const bookChapters = defineCollection({
 	}),
 });
 
+const talks = defineCollection({
+	loader: glob({
+		pattern: "*/*.mdx",
+		base: "./src/content/talks/",
+		generateId: ({ entry }) => entry.replace(/\.mdx$/, ""),
+	}),
+	schema: z.object({
+		title: z.string(),
+		description: z.string(),
+		lang: z.enum(["en", "pt-BR", "es"]),
+		legacySlug: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).optional(),
+		published: z.boolean(),
+	}),
+});
+
 export const collections = {
+	talks,
 	blog,
 	brief,
 	posts,
