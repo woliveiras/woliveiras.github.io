@@ -7,6 +7,7 @@ import {
 	SEARCH_ENABLED,
 	SITE_NAME,
 } from "../config.json";
+import { getVisibleTalks } from "../talks/catalog";
 import CodeCopyButton from "./CodeCopyButton.astro";
 import HeaderDropdown from "./HeaderDropdown.astro";
 import HeaderLink from "./HeaderLink.astro";
@@ -15,6 +16,7 @@ import Search from "./search/Search.svelte";
 import ThemeToggle from "./ThemeToggle.astro";
 
 const { active } = Astro.props;
+const hasTalks = (await getVisibleTalks()).length > 0;
 const bookLinks = books
   .filter(({ book }) => isBookAvailable(book, import.meta.env.MODE))
   .map(({ book }) => ({ name: book.title, href: BASE + book.path }));
@@ -63,12 +65,14 @@ const bookLinks = books
         active={active === "blog"}
         class="text-sm font-semibold leading-6">Blog</HeaderLink
       >
-      <HeaderLink
-        href={BASE + "/brief/"}
-        active={active === "brief"}
-        aria-current={active === "brief" ? "page" : undefined}
-        class="text-sm font-semibold leading-6">Brief</HeaderLink
-      >
+      {hasTalks && (
+        <HeaderLink
+          href={BASE + "/talks/"}
+          active={active === "talks"}
+          aria-current={active === "talks" ? "page" : undefined}
+          class="text-sm font-semibold leading-6"
+        >Talks</HeaderLink>
+      )}
       <HeaderLink
         href={BASE + "/about"}
         active={active === "about"}
@@ -137,16 +141,18 @@ const bookLinks = books
             : "text-base-900 dark:text-base-50",
         ]}
       >Blog</a>
-      <a
-        href={BASE + "/brief/"}
-        aria-current={active === "brief" ? "page" : undefined}
-        class:list={[
-          "block text-lg font-semibold py-3 border-b border-base-200 dark:border-base-800",
-          active === "brief"
-            ? "text-accent-700 dark:text-accent-500"
-            : "text-base-900 dark:text-base-50",
-        ]}
-      >Brief</a>
+      {hasTalks && (
+        <a
+          href={BASE + "/talks/"}
+          aria-current={active === "talks" ? "page" : undefined}
+          class:list={[
+            "block text-lg font-semibold py-3 border-b border-base-200 dark:border-base-800",
+            active === "talks"
+              ? "text-accent-700 dark:text-accent-500"
+              : "text-base-900 dark:text-base-50",
+          ]}
+        >Talks</a>
+      )}
       <a
         href={BASE + "/about"}
         class:list={[

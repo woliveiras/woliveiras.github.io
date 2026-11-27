@@ -369,10 +369,7 @@ test("Monday Brief builds public routes, metadata and search from isolated fixtu
 					),
 					"/brief/rss.xml",
 				);
-				assert.ok(
-					first('header a[href="/brief/"]').length > 0,
-					"Brief belongs to the shared navigation.",
-				);
+				assert.equal(first('header a[href="/brief/"]').length, 0);
 			},
 		);
 
