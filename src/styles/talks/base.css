@@ -1,11 +1,6 @@
 body,
 body.reveal-viewport {
-	--paper: #0f1115;
-	--ink: #f3f0e8;
-	--muted: #b0b3bc;
-	--lime: #c8f03c;
-	--panel: #202329;
-	--r-link-color: var(--lime);
+	--r-link-color: var(--accent);
 	background: var(--paper);
 	color: var(--ink);
 	margin: 0;
@@ -31,10 +26,11 @@ body.reveal-viewport {
 	text-align: left;
 }
 .reveal .slides > section {
+	--slide-inline-padding: 56px;
 	box-sizing: border-box;
-	padding: 28px 56px;
+	padding: 28px var(--slide-inline-padding);
 }
-.reveal .slides > section:has(> .source) {
+.reveal .slides > section:has(> .source, > .chart-figure) {
 	height: 100%;
 	align-content: center;
 	padding-bottom: 64px;
@@ -77,7 +73,7 @@ body.reveal-viewport {
 	width: 68px;
 	height: 8px;
 	margin-bottom: 26px;
-	background: var(--lime);
+	background: var(--accent);
 }
 .reveal .opening h2 {
 	font-size: 65px;
@@ -92,7 +88,7 @@ body.reveal-viewport {
 .reveal a,
 .reveal .controls,
 .reveal .progress {
-	color: var(--lime);
+	color: var(--accent);
 }
 .reveal .slide-number {
 	color: var(--ink);
@@ -108,7 +104,7 @@ body.reveal-viewport {
 	margin-top: 0.22em;
 }
 .reveal li::marker {
-	color: var(--lime);
+	color: var(--accent);
 }
 .reveal .columns {
 	display: grid;
@@ -136,7 +132,7 @@ body.reveal-viewport {
 }
 .reveal .pair > strong,
 .reveal .stat {
-	color: var(--lime);
+	color: var(--accent);
 	font-size: 1.4em;
 }
 .reveal .pair > p {
@@ -151,7 +147,7 @@ body.reveal-viewport {
 	line-height: 1;
 }
 .reveal .takeaway {
-	color: var(--lime);
+	color: var(--accent);
 	font-weight: 650;
 }
 .reveal .label {
@@ -160,12 +156,12 @@ body.reveal-viewport {
 	font-weight: 650;
 }
 .reveal .signal {
-	border-left: 5px solid var(--lime);
+	border-left: 5px solid var(--accent);
 	padding: 4px 0 4px 20px;
 	font-size: 0.83em;
 }
 .reveal .signal .label {
-	color: var(--lime);
+	color: var(--accent);
 	margin-bottom: 6px;
 }
 .reveal .source,
@@ -174,14 +170,21 @@ body.reveal-viewport {
 	font-size: 19px;
 	line-height: 1.3;
 }
-.reveal .source {
+.reveal .source,
+.reveal .slides .chart-figure .chart-meta {
 	position: absolute;
 	/* Reveal scales the slide, but its navigation controls use viewport pixels. */
 	inset-inline: 0 calc(120px / var(--slide-scale, 1));
 	bottom: 8px;
-	padding-inline: inherit;
+	padding-inline: var(--slide-inline-padding);
 	margin: 0;
 	font-size: 11px;
+}
+
+.reveal .source a,
+.reveal .chart-meta a {
+	color: inherit;
+	text-underline-offset: 0.15em;
 }
 
 .reveal .amplify p {
@@ -191,29 +194,36 @@ body.reveal-viewport {
 }
 .reveal .amplify strong {
 	font-size: 1.7em;
-	color: var(--lime);
+	color: var(--accent);
 }
-.reveal .bars {
-	display: grid;
-	gap: 12px;
+.reveal .slides .chart-figure {
+	--chart-bar: var(--accent);
+	--chart-track: var(--panel);
+	--chart-zero: var(--muted);
+	--chart-muted: var(--muted);
+	margin: 24px 0 0;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	color: inherit;
 }
-.reveal .bar {
-	display: grid;
-	grid-template-columns: 220px 1fr 90px;
-	align-items: center;
-	gap: 16px;
+.reveal .slides .chart-figure h3 {
+	font-size: 1em;
 }
-.reveal meter {
-	width: 100%;
-	height: 28px;
-	accent-color: var(--lime);
+.reveal .slides .chart-figure .chart-label,
+.reveal .slides .chart-figure .chart-value {
+	font-size: 0.9em;
 }
-.reveal meter::-webkit-meter-optimum-value {
-	background: var(--lime);
+.reveal .slides .chart-figure .chart-meta {
+	border: 0;
+	padding-block: 0;
+}
+.reveal .slides .chart-figure .chart-meta p {
+	font-size: inherit;
 }
 .reveal .ratio {
 	height: 20px;
-	background: linear-gradient(to right, var(--lime) 59.4%, #686e79 59.4%);
+	background: linear-gradient(to right, var(--accent) 59.4%, var(--secondary) 59.4%);
 }
 .reveal .defect-key::before,
 .reveal .clear-key::before {
@@ -222,10 +232,10 @@ body.reveal-viewport {
 	width: .7em;
 	height: .7em;
 	margin-right: .3em;
-	background: var(--lime);
+	background: var(--accent);
 }
 .reveal .clear-key::before {
-	background: #686e79;
+	background: var(--secondary);
 }
 .reveal .lines {
 	padding-left: 0;
@@ -234,7 +244,7 @@ body.reveal-viewport {
 .reveal .lines li,
 .reveal .mapping > div {
 	padding: 12px 0;
-	border-bottom: 1px solid #565b63;
+	border-bottom: 1px solid var(--rule);
 }
 .reveal .steps {
 	text-align: center;
@@ -261,7 +271,7 @@ body.reveal-viewport {
 }
 .reveal .steps li:last-child,
 .reveal .core {
-	background: var(--lime);
+	background: var(--accent);
 	color: var(--paper);
 }
 .reveal .steps li:last-child::marker {
@@ -319,7 +329,7 @@ body.reveal-viewport {
 	margin: 0;
 }
 .reveal .mapping > :last-child {
-	color: var(--lime);
+	color: var(--accent);
 }
 .reveal aside.notes {
 	display: none;
@@ -330,7 +340,8 @@ body.reveal-viewport {
 		font-size: 24px;
 	}
 	.reveal .slides > section {
-		padding: 22px;
+		--slide-inline-padding: 22px;
+		padding: 22px var(--slide-inline-padding);
 	}
 	.reveal h2 {
 		font-size: 40px;
@@ -373,10 +384,6 @@ body.reveal-viewport {
 	}
 	.reveal .flow {
 		flex-wrap: wrap;
-	}
-	.reveal .bar {
-		grid-template-columns: 158px 1fr 62px;
-		gap: 6px;
 	}
 	.reveal .amplify p {
 		gap: 10px;

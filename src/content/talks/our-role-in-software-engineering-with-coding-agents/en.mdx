@@ -5,6 +5,10 @@ lang: en
 published: true
 ---
 
+import StaticBarChart from "$components/charts/StaticBarChart.astro";
+import TalkReferencesLink from "$components/TalkReferencesLink.astro";
+import { benchmarkData } from "./benchmarks";
+
 <section class="opening">
   <h2>William Oliveira</h2>
   <p>Software engineer</p>
@@ -31,7 +35,7 @@ published: true
       <p>releases</p>
     </div>
   </div>
-  <p class="source">Source: Demirer, Musolff and Yang (2026), Writing Code vs. Shipping Code</p>
+  <p class="source">Source: <TalkReferencesLink sourceId="r28">Demirer, Musolff and Yang (2026), Writing Code vs. Shipping Code</TalkReferencesLink></p>
   <aside class="notes">
     <p>There is still work to do between a commit and a release.</p>
     <p>Estimated cumulative effects of autonomous agents across more than 500,000 GitHub developers: 240% more commits and 30% more releases [R28].</p>
@@ -67,7 +71,7 @@ published: true
       <p>Code completion in three field experiments with 4,867 developers.</p>
     </div>
   </div>
-  <p class="source">Sources: METR (2025), Measuring the Impact of Early-2025 AI on Experienced Open-Source Developer Productivity · Cui et al. (2026), The Effects of Generative AI on High-Skilled Work</p>
+  <p class="source">Sources: <TalkReferencesLink sourceId="r26">METR (2025), Measuring the Impact of Early-2025 AI on Experienced Open-Source Developer Productivity</TalkReferencesLink> · <TalkReferencesLink sourceId="r25">Cui et al. (2026), The Effects of Generative AI on High-Skilled Work</TalkReferencesLink></p>
   <aside class="notes">
     <p>The outcome depends on the task, the tool and who measures it. A selection problem in METR’s next round means it could neither confirm nor overturn the 19% estimate [R27].</p>
     <p>Evidence</p>
@@ -84,7 +88,7 @@ published: true
     <p>strengths <span aria-hidden="true">→</span> <strong>strengths++</strong></p>
     <p>weaknesses <span aria-hidden="true">→</span> <strong>weaknesses++</strong></p>
   </div>
-  <p class="source">Source: DORA (2025), State of AI-assisted Software Development</p>
+  <p class="source">Source: <TalkReferencesLink sourceId="r24">DORA (2025), State of AI-assisted Software Development</TalkReferencesLink></p>
   <aside class="notes">
     <p>An agent amplifies the process it inherits, including its problems.</p>
     <p>DORA’s 2025 report describes AI as an amplifier of an organization’s existing strengths and weaknesses [R24].</p>
@@ -94,26 +98,19 @@ published: true
 
 <section>
   <h2>What do agent benchmarks measure?</h2>
-  <p>Of the 178 benchmarks surveyed</p>
-  <div class="bars">
-    <div class="bar">
-      <span>implementation</span>
-      <meter min="0" max="100" value="61" aria-label="implementation"></meter>
-      <strong>61%</strong>
-    </div>
-    <div class="bar">
-      <span>requirements</span>
-      <meter min="0" max="100" value="5" aria-label="requirements"></meter>
-      <strong>5%</strong>
-    </div>
-    <div class="bar">
-      <span>design</span>
-      <meter min="0" max="100" value="3" aria-label="design"></meter>
-      <strong>3%</strong>
-    </div>
-  </div>
+  <StaticBarChart
+    id="benchmark-coverage"
+    title="Share of the 178 benchmarks surveyed"
+    data={benchmarkData("en")}
+    min={0}
+    max={100}
+    kicker=""
+    tableLabels={["Item", "Value", "Context"]}
+    source="Wang et al. (2026, v3)"
+    sourceHref="https://arxiv.org/abs/2505.05283v3"
+    sourceLabel="Source:"
+  />
   <p class="takeaway">Few benchmarks measure requirements or design.</p>
-  <p class="source">Source: Wang et al. (2025), A Survey of Benchmarks for Code Large Language Models and Agents</p>
   <aside class="notes">
     <p>Implementation gets measured most often. Requirements and design get little coverage.</p>
     <p>Of 178 benchmarks, about 61% cover implementation, 5% requirements and 3% design [R01].</p>
@@ -128,7 +125,7 @@ published: true
   <p>problems the model “failed” had a faulty description or test (59.4%).</p>
   <div class="ratio" aria-hidden="true"></div>
   <p class="legend"><span class="defect-key">Faulty description or test</span> · <span class="clear-key">No material defect</span></p>
-  <p class="source">Source: OpenAI (2026), Why we no longer evaluate SWE-bench Verified</p>
+  <p class="source">Source: <TalkReferencesLink sourceId="r14">OpenAI (2026), Why we no longer evaluate SWE-bench Verified</TalkReferencesLink></p>
   <aside class="notes">
     <p>Even a widely used benchmark had weaknesses in how it judged correctness.</p>
     <p>OpenAI audited 138 of SWE-bench Verified’s 500 problems. It found material issues in the description or tests in 59.4% of those 138 [R14].</p>
@@ -214,7 +211,7 @@ published: true
     <p class="label">A good sign</p>
     <p>Before planning the change, the team checks the rules with product and records the source of each requirement.</p>
   </div>
-  <p class="source">Sources: Zhou et al. (2026), SWE-RPG: A Unified Issue Resolution Benchmark · Dente, Dalpiaz and Papotti (2026), Automated Alignment Between Elicitation Interviews and Requirements</p>
+  <p class="source">Sources: <TalkReferencesLink sourceId="r60">Zhou et al. (2026), SWE-RPG: A Unified Issue Resolution Benchmark</TalkReferencesLink> · <TalkReferencesLink sourceId="r03">Dente, Dalpiaz and Papotti (2026), Automated Alignment Between Elicitation Interviews and Requirements</TalkReferencesLink></p>
   <aside class="notes">
     <p>An ambiguous rule leads to different implementations. Framing the problem means bringing these questions to product before making a plan.</p>
     <p>Evidence</p>
@@ -249,7 +246,7 @@ published: true
     <p class="label">A good sign</p>
     <p>The team saw the test fail before the fix and pass afterwards.</p>
   </div>
-  <p class="source">Sources: Alshahwan et al., Meta (2024), Automated Unit Test Improvement using Large Language Models at Meta · Mündler et al. (2024), SWT-Bench</p>
+  <p class="source">Sources: <TalkReferencesLink sourceId="r16">Alshahwan et al., Meta (2024), Automated Unit Test Improvement using Large Language Models at Meta</TalkReferencesLink> · <TalkReferencesLink sourceId="r43">Mündler et al. (2024), SWT-Bench</TalkReferencesLink></p>
   <aside class="notes">
     <p>A test oracle is an independent source for the expected result. When the assertion and the code share a misunderstanding, a green suite can hide an unmet requirement.</p>
     <p>Evidence</p>
@@ -280,7 +277,7 @@ published: true
   <div class="signal">
     <p>A test simulates the notification and checks the stored status. Whoever integrates the fix checks that the failure appears on screen.</p>
   </div>
-  <p class="source">Sources: Nikolov and Taneja, Google (2024), Accelerating code migrations with AI · Cemri et al. (2025), Why Do Multi-Agent LLM Systems Fail?</p>
+  <p class="source">Sources: <TalkReferencesLink sourceId="r21">Nikolov and Taneja, Google (2024), Accelerating code migrations with AI</TalkReferencesLink> · <TalkReferencesLink sourceId="r23">Cemri et al. (2025), Why Do Multi-Agent LLM Systems Fail?</TalkReferencesLink></p>
   <aside class="notes">
     <p>Back to the fictional export. Imagine the generator already reports failures and the screen already knows how to show “failed.” The problem is in between. The service receives the notification but leaves the request “in progress.”</p>
     <p>The agreement between the three parts bounds the agent’s task. It can fix the service and send a failure notification for a known request to test the result. The engineer integrating the change then triggers a failed test export and checks what the user sees.</p>
@@ -300,7 +297,7 @@ published: true
     <li>What happens if the same failure notification arrives twice?</li>
     <li>In production, how many failed exports still show up as “in progress”?</li>
   </ul>
-  <p class="source">Sources: Google Research (2024), Resolving Code Review Comments with Machine Learning · Gao et al. (2026), On Autopilot? Human–AI Teaming and Review Practices in Open Source · Google SRE (2018), Alerting on SLOs</p>
+  <p class="source">Sources: <TalkReferencesLink sourceId="r17">Google Research (2024), Resolving Code Review Comments with Machine Learning</TalkReferencesLink> · <TalkReferencesLink sourceId="r18">Gao et al. (2026), On Autopilot? Human–AI Teaming and Review Practices in Open Source</TalkReferencesLink> · <TalkReferencesLink sourceId="r49">Google SRE (2018), Alerting on SLOs</TalkReferencesLink></p>
   <aside class="notes">
     <p>The agent opened the PR. To verify the fix, make a test export fail and open the request on screen. Before the change, it stayed “in progress.” With the fix, it should say “failed.”</p>
     <p>During review, try delivering the same notification again. The request should still say “failed.” That gives the reviewer a concrete case to discuss in the PR.</p>
@@ -332,7 +329,7 @@ published: true
       </ul>
     </div>
   </div>
-  <p class="source">Sources: Yang et al. (2024), SWE-agent: Agent-Computer Interfaces Enable Automated Software Engineering · OpenAI (2026), Harness engineering · Spotify Engineering (2025), Background Coding Agents: Context Engineering</p>
+  <p class="source">Sources: <TalkReferencesLink sourceId="r11">Yang et al. (2024), SWE-agent: Agent-Computer Interfaces Enable Automated Software Engineering</TalkReferencesLink> · <TalkReferencesLink sourceId="r22">OpenAI (2026), Harness engineering</TalkReferencesLink> · <TalkReferencesLink sourceId="r20">Spotify Engineering (2025), Background Coding Agents: Context Engineering</TalkReferencesLink></p>
   <aside class="notes">
     <p>Shift the question from “which prompt?” to “which environment?” This introduces the five layers that follow.</p>
     <p>The interface for navigation, editing and feedback affects agent performance [R11]. Engineering reports describe navigable documentation, tool feedback and constraints checked in code [R22], along with context and tool preparation for asynchronous agents [R20].</p>
@@ -371,7 +368,7 @@ published: true
     <p class="label">A good sign</p>
     <p>Turn a recurring mistake into a repository rule or test.</p>
   </div>
-  <p class="source">Sources: Spotify Engineering (2025), Background Coding Agents: Context Engineering · OpenAI (2026), Harness engineering · Lauren Tan, AI Engineer (2026), All Code Is Slop (Except Mine)</p>
+  <p class="source">Sources: <TalkReferencesLink sourceId="r20">Spotify Engineering (2025), Background Coding Agents: Context Engineering</TalkReferencesLink> · <TalkReferencesLink sourceId="r22">OpenAI (2026), Harness engineering</TalkReferencesLink> · <TalkReferencesLink sourceId="v01">Lauren Tan, AI Engineer (2026), All Code Is Slop (Except Mine)</TalkReferencesLink></p>
   <aside class="notes">
     <p>A current, specific reference is more useful than dumping the whole knowledge base. For longer tasks, version the starting revision, the latest check, the work left and the reason for stopping.</p>
     <p>Evidence</p>
@@ -403,7 +400,7 @@ published: true
     <p class="label">A good sign</p>
     <p>The agent can say “I couldn’t verify this” when a check yields no evidence.</p>
   </div>
-  <p class="source">Sources: Yang et al. (2024), SWE-agent: Agent-Computer Interfaces Enable Automated Software Engineering · OpenAI (2026), Harness engineering</p>
+  <p class="source">Sources: <TalkReferencesLink sourceId="r11">Yang et al. (2024), SWE-agent: Agent-Computer Interfaces Enable Automated Software Engineering</TalkReferencesLink> · <TalkReferencesLink sourceId="r22">OpenAI (2026), Harness engineering</TalkReferencesLink></p>
   <aside class="notes">
     <p>Use tools with typed inputs, stable identifiers and results that distinguish success, failure and unavailability.</p>
     <p>A good sign: the agent can report that it could not verify the result rather than claiming success.</p>
@@ -423,7 +420,7 @@ published: true
     <p class="label">A good sign</p>
     <p>Keep the acceptance criteria outside the agent’s control.</p>
   </div>
-  <p class="source">Sources: Playwright, Test Agents · GitHub Docs, Risks and mitigations for GitHub Copilot cloud agent</p>
+  <p class="source">Sources: <TalkReferencesLink sourceId="r61">Playwright, Test Agents</TalkReferencesLink> · <TalkReferencesLink sourceId="r36">GitHub Docs, Risks and mitigations for GitHub Copilot cloud agent</TalkReferencesLink></p>
   <aside class="notes">
     <p>If the test-repair agent can redefine success, a regression can go undetected.</p>
     <p>A test-repair agent can mark a test as skipped [R61]. When it proposes a change to CI, branch protection or the test that blocked its work, review that proposal in proportion to its influence [R36, R39].</p>
@@ -461,7 +458,7 @@ published: true
     <p class="label">A good sign</p>
     <p>You can tell what the agent may do without opening the prompt.</p>
   </div>
-  <p class="source">Sources: Schluntz and Zhang, Anthropic (2024), Building effective agents · OWASP (2026), Top 10 for Agentic Applications</p>
+  <p class="source">Sources: <TalkReferencesLink sourceId="r09">Schluntz and Zhang, Anthropic (2024), Building effective agents</TalkReferencesLink> · <TalkReferencesLink sourceId="r37">OWASP (2026), Top 10 for Agentic Applications</TalkReferencesLink></p>
   <aside class="notes">
     <p>Choose the kind of collaboration to suit the task. Enforce limits outside the prompt.</p>
     <p>Evidence</p>
@@ -494,7 +491,7 @@ published: true
     <p class="label">A good sign</p>
     <p>Throughput rises while instability and the review queue stay in check.</p>
   </div>
-  <p class="source">Sources: Anthropic (2026), Demystifying evals for AI agents · Díaz-Villegas et al. (2026), Design Problems, Decisions, and Evidence in Agentic Software Engineering · DORA, Software delivery performance metrics · Lauren Tan, AI Engineer (2026), All Code Is Slop (Except Mine)</p>
+  <p class="source">Sources: <TalkReferencesLink sourceId="r41">Anthropic (2026), Demystifying evals for AI agents</TalkReferencesLink> · <TalkReferencesLink sourceId="r57">Díaz-Villegas et al. (2026), Design Problems, Decisions, and Evidence in Agentic Software Engineering</TalkReferencesLink> · <TalkReferencesLink sourceId="r30">DORA, Software delivery performance metrics</TalkReferencesLink> · <TalkReferencesLink sourceId="v01">Lauren Tan, AI Engineer (2026), All Code Is Slop (Except Mine)</TalkReferencesLink></p>
   <aside class="notes">
     <p>Measure at three levels. Compare versions by changing one component at a time.</p>
     <p>Evidence</p>
@@ -532,7 +529,7 @@ published: true
       <dd>What the first four areas produce now applies to every agent on every task.</dd>
     </div>
   </dl>
-  <p class="source">Source: Lauren Tan, AI Engineer (2026), All Code Is Slop (Except Mine)</p>
+  <p class="source">Source: <TalkReferencesLink sourceId="v01">Lauren Tan, AI Engineer (2026), All Code Is Slop (Except Mine)</TalkReferencesLink></p>
   <aside class="notes">
     <p>The first four areas become part of the environment when their outputs are encoded in it: requirements linked to sources, test oracles, boundaries, review and limits. [Opinion]</p>
     <p>Evidence</p>
@@ -546,7 +543,7 @@ published: true
   <h2>Keep learning the work you delegate</h2>
   <p class="takeaway">Those who let AI do the work understood less.</p>
   <p>In a randomized experiment, programmers learning the Trio library with AI assistance scored lower on average on a comprehension test immediately after the task.</p>
-  <p class="source">Source: Anthropic (2026), How AI assistance impacts the formation of coding skills</p>
+  <p class="source">Source: <TalkReferencesLink sourceId="r59">Anthropic (2026), How AI assistance impacts the formation of coding skills</TalkReferencesLink></p>
   <aside class="notes">
     <p>When learning, ask the agent to explain and to ask you questions.</p>
     <p>In a randomized experiment with programmers learning Trio, AI assistance was associated with lower average scores on the immediate comprehension test. The study did not measure long-term retention [R59].</p>
@@ -593,4 +590,5 @@ published: true
   <h2>Thank you!</h2>
   <p>Follow my blog for more on coding agents.</p>
   <p><a href="https://woliveiras.com/">woliveiras.com</a></p>
+  <p><TalkReferencesLink>References</TalkReferencesLink></p>
 </section>

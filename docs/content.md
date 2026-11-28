@@ -39,6 +39,24 @@ available languages. Start the MDX body with the next slide. Each
 Keep a new edition at `published: false` for local preview. The production build
 includes only published editions and lists each talk once in the catalog.
 
+`TalkLayout.astro` renders the cover and initializes Reveal.js for keyboard
+navigation, slide numbers and presenter notes. The slide body can use the same
+Astro components as a blog post. For translated charts, keep the numbers in a
+file such as `benchmarks.ts` beside the editions and localize the labels in MDX
+or the data module. The current talk imports `StaticBarChart.astro` this way.
+
+The default theme is `dark-lime`. To change it for every edition of a talk,
+add `talk.ts` in that talk’s folder and export `{ theme: "paper" }` as the
+default. Shared slide styles live in `src/styles/talks/base.css`. Each palette
+has its own stylesheet under `src/styles/talks/themes/`.
+
+Keep the bibliography in an optional `references.md` beside the editions.
+Astro serves it at `/talks/<slug>/references/` when the catalog includes an
+edition. Import `$components/TalkReferencesLink.astro` in MDX and use
+`<TalkReferencesLink>References</TalkReferencesLink>` on the closing slide.
+Translate the link text in each edition. To point a slide citation at a single
+entry, give the entry an HTML id and pass it as `sourceId` to the same component.
+
 ## Books
 
 Export `book` from a `src/books/<name>.book.ts` file using

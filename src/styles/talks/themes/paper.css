@@ -1,0 +1,9 @@
+[data-theme="paper"] {
+	--paper: #fffdf7;
+	--ink: #212721;
+	--muted: #505b51;
+	--accent: #24664c;
+	--panel: #e9eee5;
+	--rule: #a8b5a9;
+	--secondary: #80908a;
+}

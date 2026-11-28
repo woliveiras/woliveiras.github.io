@@ -43,6 +43,7 @@ details and examples.
 | Architecture overview (directories, config, path aliases) | [docs/architecture.md](docs/architecture.md) |
 | Development workflow (commands, build, deployment) | [docs/development.md](docs/development.md) |
 | Content schema (collections, embeds, markdown processing, search) | [docs/content.md](docs/content.md) |
+| Talks (slides, speaker notes, translations, themes, charts, and references) | [Talks in the content guide](docs/content.md#talks) |
 | Monday Brief (format, drafts, RSS, and publishing) | [docs/monday-brief.md](docs/monday-brief.md) |
 | Code quality (Biome, style guidelines, utilities) | [docs/code-quality.md](docs/code-quality.md) |
 

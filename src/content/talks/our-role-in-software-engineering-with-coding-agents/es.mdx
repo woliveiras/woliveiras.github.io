@@ -5,6 +5,10 @@ lang: es
 published: true
 ---
 
+import StaticBarChart from "$components/charts/StaticBarChart.astro";
+import TalkReferencesLink from "$components/TalkReferencesLink.astro";
+import { benchmarkData } from "./benchmarks";
+
 <section class="opening">
   <h2>William Oliveira</h2>
   <p>Ingeniero de software</p>
@@ -31,7 +35,7 @@ published: true
       <p>versiones publicadas</p>
     </div>
   </div>
-  <p class="source">Fuente: Demirer, Musolff y Yang (2026), Writing Code vs. Shipping Code</p>
+  <p class="source">Fuente: <TalkReferencesLink sourceId="r28">Demirer, Musolff y Yang (2026), Writing Code vs. Shipping Code</TalkReferencesLink></p>
   <aside class="notes">
     <p>Entre un commit y la publicación de una versión sigue habiendo trabajo.</p>
     <p>Efectos acumulados estimados de los agentes autónomos en más de 500.000 desarrolladores de GitHub: un 240 % más de commits y un 30 % más de versiones publicadas [R28].</p>
@@ -67,7 +71,7 @@ published: true
       <p>Autocompletado en tres experimentos de campo con 4.867 desarrolladores.</p>
     </div>
   </div>
-  <p class="source">Fuentes: METR (2025), Measuring the Impact of Early-2025 AI on Experienced Open-Source Developer Productivity · Cui et al. (2026), The Effects of Generative AI on High-Skilled Work</p>
+  <p class="source">Fuentes: <TalkReferencesLink sourceId="r26">METR (2025), Measuring the Impact of Early-2025 AI on Experienced Open-Source Developer Productivity</TalkReferencesLink> · <TalkReferencesLink sourceId="r25">Cui et al. (2026), The Effects of Generative AI on High-Skilled Work</TalkReferencesLink></p>
   <aside class="notes">
     <p>El resultado depende de la tarea, la herramienta y quién lo mida. Un problema de selección en la siguiente ronda de METR impidió confirmar o refutar la estimación del 19 % [R27].</p>
     <p>Evidencia</p>
@@ -84,7 +88,7 @@ published: true
     <p>fortalezas <span aria-hidden="true">→</span> <strong>fortalezas++</strong></p>
     <p>debilidades <span aria-hidden="true">→</span> <strong>debilidades++</strong></p>
   </div>
-  <p class="source">Fuente: DORA (2025), State of AI-assisted Software Development</p>
+  <p class="source">Fuente: <TalkReferencesLink sourceId="r24">DORA (2025), State of AI-assisted Software Development</TalkReferencesLink></p>
   <aside class="notes">
     <p>El agente amplifica el proceso que encuentra, incluidos sus problemas.</p>
     <p>El informe de DORA de 2025 describe cómo la IA amplifica las capacidades y debilidades que ya tiene una organización [R24].</p>
@@ -94,26 +98,19 @@ published: true
 
 <section>
   <h2>¿Qué miden las pruebas de agentes?</h2>
-  <p>De las 178 pruebas comparativas estudiadas</p>
-  <div class="bars">
-    <div class="bar">
-      <span>implementación</span>
-      <meter min="0" max="100" value="61" aria-label="implementación"></meter>
-      <strong>61%</strong>
-    </div>
-    <div class="bar">
-      <span>requisitos</span>
-      <meter min="0" max="100" value="5" aria-label="requisitos"></meter>
-      <strong>5%</strong>
-    </div>
-    <div class="bar">
-      <span>diseño</span>
-      <meter min="0" max="100" value="3" aria-label="diseño"></meter>
-      <strong>3%</strong>
-    </div>
-  </div>
+  <StaticBarChart
+    id="benchmark-coverage"
+    title="Porcentaje de las 178 pruebas estudiadas"
+    data={benchmarkData("es")}
+    min={0}
+    max={100}
+    kicker=""
+    tableLabels={["Elemento", "Valor", "Contexto"]}
+    source="Wang et al. (2026, v3)"
+    sourceHref="https://arxiv.org/abs/2505.05283v3"
+    sourceLabel="Fuente:"
+  />
   <p class="takeaway">Pocas pruebas evalúan los requisitos o el diseño.</p>
-  <p class="source">Fuente: Wang et al. (2025), A Survey of Benchmarks for Code Large Language Models and Agents</p>
   <aside class="notes">
     <p>La implementación es lo que más se mide. Los requisitos y el diseño apenas se evalúan.</p>
     <p>De 178 pruebas, cerca del 61 % evalúa la implementación, el 5 % los requisitos y el 3 % el diseño [R01].</p>
@@ -128,7 +125,7 @@ published: true
   <p>problemas que el modelo «falló» tenían un defecto en el enunciado o en la prueba (59,4 %).</p>
   <div class="ratio" aria-hidden="true"></div>
   <p class="legend"><span class="defect-key">Enunciado o prueba con defectos</span> · <span class="clear-key">Sin defectos relevantes</span></p>
-  <p class="source">Fuente: OpenAI (2026), Why we no longer evaluate SWE-bench Verified</p>
+  <p class="source">Fuente: <TalkReferencesLink sourceId="r14">OpenAI (2026), Why we no longer evaluate SWE-bench Verified</TalkReferencesLink></p>
   <aside class="notes">
     <p>Hasta una prueba comparativa conocida tenía fallos en sus criterios de corrección.</p>
     <p>OpenAI auditó 138 de los 500 problemas de SWE-bench Verified. Encontró defectos relevantes en el enunciado o las pruebas en el 59,4 % de esos 138 [R14].</p>
@@ -214,7 +211,7 @@ published: true
     <p class="label">Una buena señal</p>
     <p>Antes de planificar el cambio, el equipo confirma las reglas con producto y documenta el origen de cada requisito.</p>
   </div>
-  <p class="source">Fuentes: Zhou et al. (2026), SWE-RPG: A Unified Issue Resolution Benchmark · Dente, Dalpiaz y Papotti (2026), Automated Alignment Between Elicitation Interviews and Requirements</p>
+  <p class="source">Fuentes: <TalkReferencesLink sourceId="r60">Zhou et al. (2026), SWE-RPG: A Unified Issue Resolution Benchmark</TalkReferencesLink> · <TalkReferencesLink sourceId="r03">Dente, Dalpiaz y Papotti (2026), Automated Alignment Between Elicitation Interviews and Requirements</TalkReferencesLink></p>
   <aside class="notes">
     <p>Una regla ambigua da lugar a implementaciones distintas. Formular el problema implica plantear estas preguntas a producto antes de hacer el plan.</p>
     <p>Evidencia</p>
@@ -249,7 +246,7 @@ published: true
     <p class="label">Una buena señal</p>
     <p>El equipo vio fallar la prueba antes de la corrección y la vio pasar después.</p>
   </div>
-  <p class="source">Fuentes: Alshahwan et al., Meta (2024), Automated Unit Test Improvement using Large Language Models at Meta · Mündler et al. (2024), SWT-Bench</p>
+  <p class="source">Fuentes: <TalkReferencesLink sourceId="r16">Alshahwan et al., Meta (2024), Automated Unit Test Improvement using Large Language Models at Meta</TalkReferencesLink> · <TalkReferencesLink sourceId="r43">Mündler et al. (2024), SWT-Bench</TalkReferencesLink></p>
   <aside class="notes">
     <p>El oráculo de prueba es una fuente independiente que indica el resultado correcto. Si el código y la aserción comparten un malentendido, las pruebas pueden pasar aunque el requisito siga sin cumplirse.</p>
     <p>Evidencia</p>
@@ -280,7 +277,7 @@ published: true
   <div class="signal">
     <p>Una prueba simula el aviso y comprueba el estado guardado. Quien integra el cambio verifica que el fallo aparezca en pantalla.</p>
   </div>
-  <p class="source">Fuentes: Nikolov y Taneja, Google (2024), Accelerating code migrations with AI · Cemri et al. (2025), Why Do Multi-Agent LLM Systems Fail?</p>
+  <p class="source">Fuentes: <TalkReferencesLink sourceId="r21">Nikolov y Taneja, Google (2024), Accelerating code migrations with AI</TalkReferencesLink> · <TalkReferencesLink sourceId="r23">Cemri et al. (2025), Why Do Multi-Agent LLM Systems Fail?</TalkReferencesLink></p>
   <aside class="notes">
     <p>Volvamos al ejemplo ficticio de la exportación. El generador ya notifica los fallos y la pantalla sabe mostrar «fallida». El problema está en medio. El servicio recibe el aviso, pero deja la solicitud «en curso».</p>
     <p>El acuerdo entre las tres partes delimita la tarea del agente. Puede corregir el servicio y enviar un aviso de fallo para una solicitud conocida. Después, quien integra el cambio provoca un fallo en una exportación de prueba y comprueba qué ve la persona que la solicitó.</p>
@@ -300,7 +297,7 @@ published: true
     <li>¿Qué pasa si el mismo aviso de fallo llega dos veces?</li>
     <li>En producción, ¿cuántas exportaciones fallidas siguen apareciendo «en curso»?</li>
   </ul>
-  <p class="source">Fuentes: Google Research (2024), Resolving Code Review Comments with Machine Learning · Gao et al. (2026), On Autopilot? Human–AI Teaming and Review Practices in Open Source · Google SRE (2018), Alerting on SLOs</p>
+  <p class="source">Fuentes: <TalkReferencesLink sourceId="r17">Google Research (2024), Resolving Code Review Comments with Machine Learning</TalkReferencesLink> · <TalkReferencesLink sourceId="r18">Gao et al. (2026), On Autopilot? Human–AI Teaming and Review Practices in Open Source</TalkReferencesLink> · <TalkReferencesLink sourceId="r49">Google SRE (2018), Alerting on SLOs</TalkReferencesLink></p>
   <aside class="notes">
     <p>El agente ha abierto el PR. Para verificar la corrección, provoca un fallo en una exportación de prueba y abre la solicitud en pantalla. Antes del cambio seguía «en curso». Ahora debería mostrar «fallida».</p>
     <p>Durante la revisión, vuelve a entregar el mismo aviso. La solicitud debería seguir apareciendo como «fallida». Así hay un caso concreto que discutir en el PR.</p>
@@ -332,7 +329,7 @@ published: true
       </ul>
     </div>
   </div>
-  <p class="source">Fuentes: Yang et al. (2024), SWE-agent: Agent-Computer Interfaces Enable Automated Software Engineering · OpenAI (2026), Harness engineering · Spotify Engineering (2025), Background Coding Agents: Context Engineering</p>
+  <p class="source">Fuentes: <TalkReferencesLink sourceId="r11">Yang et al. (2024), SWE-agent: Agent-Computer Interfaces Enable Automated Software Engineering</TalkReferencesLink> · <TalkReferencesLink sourceId="r22">OpenAI (2026), Harness engineering</TalkReferencesLink> · <TalkReferencesLink sourceId="r20">Spotify Engineering (2025), Background Coding Agents: Context Engineering</TalkReferencesLink></p>
   <aside class="notes">
     <p>Pasemos de «¿qué prompt?» a «¿qué entorno?». Aquí empiezan las cinco capas que veremos a continuación.</p>
     <p>La interfaz para navegar, editar y recibir información afecta al rendimiento del agente [R11]. Hay informes de ingeniería sobre documentación navegable, respuestas de herramientas y restricciones verificadas por código [R22], además de la preparación de contexto y herramientas para agentes asíncronos [R20].</p>
@@ -371,7 +368,7 @@ published: true
     <p class="label">Una buena señal</p>
     <p>Convierte un error recurrente en una regla o una prueba del repositorio.</p>
   </div>
-  <p class="source">Fuentes: Spotify Engineering (2025), Background Coding Agents: Context Engineering · OpenAI (2026), Harness engineering · Lauren Tan, AI Engineer (2026), All Code Is Slop (Except Mine)</p>
+  <p class="source">Fuentes: <TalkReferencesLink sourceId="r20">Spotify Engineering (2025), Background Coding Agents: Context Engineering</TalkReferencesLink> · <TalkReferencesLink sourceId="r22">OpenAI (2026), Harness engineering</TalkReferencesLink> · <TalkReferencesLink sourceId="v01">Lauren Tan, AI Engineer (2026), All Code Is Slop (Except Mine)</TalkReferencesLink></p>
   <aside class="notes">
     <p>Una referencia vigente y concreta ayuda más que volcar toda la documentación. En una tarea larga, guarda bajo control de versiones la revisión inicial, la última comprobación, lo que falta y por qué se detuvo.</p>
     <p>Evidencia</p>
@@ -403,7 +400,7 @@ published: true
     <p class="label">Una buena señal</p>
     <p>El agente puede decir «no pude verificarlo» cuando la comprobación no aporta evidencia.</p>
   </div>
-  <p class="source">Fuentes: Yang et al. (2024), SWE-agent: Agent-Computer Interfaces Enable Automated Software Engineering · OpenAI (2026), Harness engineering</p>
+  <p class="source">Fuentes: <TalkReferencesLink sourceId="r11">Yang et al. (2024), SWE-agent: Agent-Computer Interfaces Enable Automated Software Engineering</TalkReferencesLink> · <TalkReferencesLink sourceId="r22">OpenAI (2026), Harness engineering</TalkReferencesLink></p>
   <aside class="notes">
     <p>Usa herramientas con entradas tipadas, identificadores estables y resultados que distingan entre éxito, fallo e indisponibilidad.</p>
     <p>Una buena señal: el agente comunica que no ha podido verificar el resultado en lugar de darlo por bueno.</p>
@@ -423,7 +420,7 @@ published: true
     <p class="label">Una buena señal</p>
     <p>Los criterios de aceptación quedan fuera del control del agente.</p>
   </div>
-  <p class="source">Fuentes: Playwright, Test Agents · GitHub Docs, Risks and mitigations for GitHub Copilot cloud agent</p>
+  <p class="source">Fuentes: <TalkReferencesLink sourceId="r61">Playwright, Test Agents</TalkReferencesLink> · <TalkReferencesLink sourceId="r36">GitHub Docs, Risks and mitigations for GitHub Copilot cloud agent</TalkReferencesLink></p>
   <aside class="notes">
     <p>Si el agente que repara las pruebas puede redefinir el éxito, una regresión puede pasar inadvertida.</p>
     <p>Un agente que repara pruebas puede marcar una prueba para que se omita [R61]. Si propone cambiar la integración continua, la protección de una rama o la prueba que bloqueó su cambio, la revisión debe tener en cuenta el alcance de esa decisión [R36, R39].</p>
@@ -461,7 +458,7 @@ published: true
     <p class="label">Una buena señal</p>
     <p>Puedes saber qué se le permite hacer al agente sin abrir el prompt.</p>
   </div>
-  <p class="source">Fuentes: Schluntz y Zhang, Anthropic (2024), Building effective agents · OWASP (2026), Top 10 for Agentic Applications</p>
+  <p class="source">Fuentes: <TalkReferencesLink sourceId="r09">Schluntz y Zhang, Anthropic (2024), Building effective agents</TalkReferencesLink> · <TalkReferencesLink sourceId="r37">OWASP (2026), Top 10 for Agentic Applications</TalkReferencesLink></p>
   <aside class="notes">
     <p>Elige la forma de colaboración según la tarea. Aplica los límites fuera del prompt.</p>
     <p>Evidencia</p>
@@ -494,7 +491,7 @@ published: true
     <p class="label">Una buena señal</p>
     <p>Aumenta el ritmo de entrega sin que crezcan la inestabilidad ni la cola de revisión.</p>
   </div>
-  <p class="source">Fuentes: Anthropic (2026), Demystifying evals for AI agents · Díaz-Villegas et al. (2026), Design Problems, Decisions, and Evidence in Agentic Software Engineering · DORA, Software delivery performance metrics · Lauren Tan, AI Engineer (2026), All Code Is Slop (Except Mine)</p>
+  <p class="source">Fuentes: <TalkReferencesLink sourceId="r41">Anthropic (2026), Demystifying evals for AI agents</TalkReferencesLink> · <TalkReferencesLink sourceId="r57">Díaz-Villegas et al. (2026), Design Problems, Decisions, and Evidence in Agentic Software Engineering</TalkReferencesLink> · <TalkReferencesLink sourceId="r30">DORA, Software delivery performance metrics</TalkReferencesLink> · <TalkReferencesLink sourceId="v01">Lauren Tan, AI Engineer (2026), All Code Is Slop (Except Mine)</TalkReferencesLink></p>
   <aside class="notes">
     <p>Mide en tres niveles. Para comparar versiones, cambia un componente cada vez.</p>
     <p>Evidencia</p>
@@ -532,7 +529,7 @@ published: true
       <dd>Lo que producen las otras cuatro áreas se aplica a cada agente en cada tarea.</dd>
     </div>
   </dl>
-  <p class="source">Fuente: Lauren Tan, AI Engineer (2026), All Code Is Slop (Except Mine)</p>
+  <p class="source">Fuente: <TalkReferencesLink sourceId="v01">Lauren Tan, AI Engineer (2026), All Code Is Slop (Except Mine)</TalkReferencesLink></p>
   <aside class="notes">
     <p>Las cuatro primeras áreas pasan a formar parte del entorno al incorporar sus resultados: requisitos vinculados a fuentes, oráculos de prueba, límites y revisión. [Opinión]</p>
     <p>Evidencia</p>
@@ -546,7 +543,7 @@ published: true
   <h2>Sigue aprendiendo lo que delegas</h2>
   <p class="takeaway">Quienes dejaron el trabajo en manos de la IA comprendieron menos.</p>
   <p>En un experimento aleatorizado, quienes aprendieron a usar la biblioteca Trio con ayuda de IA obtuvieron una puntuación media menor en una prueba de comprensión justo después de la tarea.</p>
-  <p class="source">Fuente: Anthropic (2026), How AI assistance impacts the formation of coding skills</p>
+  <p class="source">Fuente: <TalkReferencesLink sourceId="r59">Anthropic (2026), How AI assistance impacts the formation of coding skills</TalkReferencesLink></p>
   <aside class="notes">
     <p>Cuando estés aprendiendo, pide al agente que te explique el tema y te haga preguntas.</p>
     <p>En un experimento aleatorizado con programadores que aprendían Trio, la asistencia de IA dio lugar a una puntuación media menor en la prueba inmediata de comprensión. El estudio no midió la retención a largo plazo [R59].</p>
@@ -593,4 +590,5 @@ published: true
   <h2>¡Gracias!</h2>
   <p>Sigue mi blog para aprender más sobre agentes de programación.</p>
   <p><a href="https://woliveiras.com/">woliveiras.com</a></p>
+  <p><TalkReferencesLink>Referencias</TalkReferencesLink></p>
 </section>

@@ -1,0 +1,29 @@
+---
+import Header from "$components/Header.astro";
+import Footer from "$components/Footer.astro";
+import BaseLayout from "$layouts/BaseLayout.astro";
+import { getVisibleTalks, talkPath } from "../../../talks/catalog";
+import { getTalkReferences } from "../../../talks/references";
+
+export async function getStaticPaths() {
+  return (await getVisibleTalks())
+    .filter(({ slug }) => getTalkReferences(slug))
+    .map(({ slug, editions }) => ({ params: { slug }, props: { edition: editions[0] } }));
+}
+
+const { slug } = Astro.params;
+const { edition } = Astro.props;
+const { Content } = await getTalkReferences(slug)();
+const { title, lang, published } = edition.data;
+---
+
+<BaseLayout title={`References · ${title}`} description={`Sources cited in “${title}”.`} showSupportWidget={false}>
+  {!published && <meta slot="head" name="robots" content="noindex" />}
+  <Header active="talks" />
+  <main class="prose dark:prose-invert mx-auto my-16 max-w-3xl px-6">
+    <a lang={lang} href={talkPath(slug, lang)}>← {title}</a>
+    <h1 class="mt-6">References</h1>
+    <Content />
+  </main>
+  <Footer />
+</BaseLayout>

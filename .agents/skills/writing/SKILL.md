@@ -25,7 +25,11 @@ For substantial technical prose, also read:
 - [technical blog structures](./references/technical-blog-structure.md)
 - [quality checklist](./references/quality-checklist.md)
 
-For Astro or MDX content, also read [Astro and MDX
+For talk slides and speaker notes, read [Talks in the content guide](../../../docs/content.md#talks).
+Write in the language of the edition. Keep the main point readable at a glance
+and use the speaker notes for the explanation the audience will hear.
+
+For other Astro or MDX content, also read [Astro and MDX
 posts](./references/astro-mdx.md).
 
 When auditing or changing this skill, read [evaluation

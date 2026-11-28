@@ -1,0 +1,19 @@
+---
+import { getTalkReferences, referencesPath } from "../talks/references";
+
+interface Props { sourceId?: string }
+const { sourceId } = Astro.props;
+const { slug } = Astro.params;
+---
+{slug && getTalkReferences(slug) && (
+  <a class:list={{ "bibliography-link": !sourceId }} href={referencesPath(slug) + (sourceId ? `#${sourceId}` : "")}>
+    <slot />
+  </a>
+)}
+
+<style>
+  .bibliography-link {
+    font-size: 0.5625em;
+    color: var(--muted);
+  }
+</style>

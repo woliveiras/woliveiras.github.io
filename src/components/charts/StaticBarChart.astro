@@ -10,15 +10,17 @@ export type BarDatum = {
 type Props = {
 	id: string;
 	title: string;
-	description: string;
+	description?: string;
 	data: BarDatum[];
 	min?: number;
 	max?: number;
 	source: string;
+	sourceHref?: string;
 	note?: string;
 	kicker?: string;
 	sourceLabel?: string;
 	noteLabel?: string;
+	tableLabels?: [string, string, string];
 };
 
 const {
@@ -29,10 +31,12 @@ const {
 	min,
 	max,
 	source,
+	sourceHref,
 	note,
 	kicker = "DATA",
 	sourceLabel = "Source:",
 	noteLabel = "Read with care:",
+	tableLabels = ["Item", "Value", "Context"],
 } = Astro.props;
 const values = data.map(({ value }) => value);
 const scaleMin = min ?? Math.min(0, ...values);
@@ -48,11 +52,11 @@ const rows = data.map((datum) => {
 });
 ---
 
-<figure class="chart-figure not-prose" aria-labelledby={`${id}-title`} aria-describedby={`${id}-description`}>
+<figure class="chart-figure not-prose" aria-labelledby={`${id}-title`} aria-describedby={description ? `${id}-description` : undefined}>
 	<figcaption>
-		<p class="chart-kicker">{kicker}</p>
+		{kicker && <p class="chart-kicker">{kicker}</p>}
 		<h3 id={`${id}-title`}>{title}</h3>
-		<p id={`${id}-description`} class="chart-description">{description}</p>
+		{description && <p id={`${id}-description`} class="chart-description">{description}</p>}
 	</figcaption>
 
 	<div class="chart" aria-hidden="true">
@@ -81,9 +85,7 @@ const rows = data.map((datum) => {
 		<caption>{title}</caption>
 		<thead>
 			<tr>
-				<th scope="col">Item</th>
-				<th scope="col">Value</th>
-				<th scope="col">Context</th>
+				{tableLabels.map((label) => <th scope="col">{label}</th>)}
 			</tr>
 		</thead>
 		<tbody>
@@ -100,7 +102,7 @@ const rows = data.map((datum) => {
 	</table>
 
 	<div class="chart-meta">
-		<p><strong>{sourceLabel}</strong> {source}</p>
+		<p><strong>{sourceLabel}</strong> {sourceHref ? <a href={sourceHref}>{source}</a> : source}</p>
 		{note && <p><strong>{noteLabel}</strong> {note}</p>}
 	</div>
 </figure>
