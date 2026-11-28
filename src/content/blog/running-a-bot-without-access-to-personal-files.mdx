@@ -1,0 +1,247 @@
+---
+title: "Running a Bot on Your Computer Without Giving It Access to Personal Files"
+description: "A bot running with your permissions can expose private files or send messages from your accounts. Learn how to isolate it and give it only the access each task needs."
+pubDate: "2026-11-28"
+published: true
+tags: ["ai-agents", "security", "privacy", "self-hosting"]
+---
+
+You ask a bot to summarize `expenses.csv`, but you don't say where this file is or how the bot should do it. It's a bot; we don't need to give it much information because it can use its own tools to find the small details, right? The file is in your `Downloads` folder, next to a bank statement, a copy of your tax return, and other personal files. Which of those files can the bot open? You named one, but the bot is autonomous; this is the agency in agentic software.
+
+To reconcile one spreadsheet, I don't need to give a bot access to every file on my computer or to any of my accounts. The bot can work with a copy of the CSV, run Python, and let me check its arithmetic. My bank statement and the email account I use to receive it stay outside that arrangement.
+
+In this post, I'll test what those boundaries look like in practice. I'll compare common isolation options, set up a Lima VM on Apple silicon, and check how shared mounts, SSH forwarding, browser sessions, and network access can still create routes back to the host.
+
+I'll use OpenBot as the main example because it can run tools and gain broad access when configured that way. The concern is not specific to OpenBot, though. Tools such as OpenClaw, Claude Code, Codex, Cursor, and other coding agents can also read files, run commands, use browsers, or call APIs depending on their setup. The exact permissions vary; the question remains the same: what can the agent reach when it makes a mistake?
+
+## What can the bot do with your account?
+
+Start with the process that does the work. A local agent might have a tool for reading a single uploaded file, a shell running as your operating-system user, or a browser with its own profile. Those arrangements give the same sentence, *“summarize my expenses”*, very different consequences.
+
+OpenBot, a desktop workspace for AI agents, is one concrete example we can use to explore the possibilities. Its documented full-access mode lets an agent **read and change local files**, **run commands**, **reach the network**, and **control its embedded browser** without asking about each action. On a personal laptop, even an ordinary user can usually do everything necessary to ruin that user's afternoon.
+
+The security threats below follow the boundaries an agent crosses: files, browser sessions, model context, and network access.
+
+### A read-only folder still exposes every readable file in it
+
+An agent should not receive file access that exceeds the task. Read access can expose documents to model context, logs, or later output, even when no command changes those documents. Write access creates a second risk: the agent can overwrite or delete the original.
+
+Read-only mounts protect files from modification, but they do not restrict which files the agent can read. A directory containing several files can still let the agent choose the wrong one. A backup can recover an overwritten original, but it cannot undo a document that has already been sent elsewhere.
+
+The boundary needs to be narrow enough for the task. In this experiment, the bot should receive one copy of the CSV in a fresh directory rather than access to `Downloads`. It can have write access to that copy if needed, without reaching the bank statement, tax return, or other originals.
+
+### A signed-in browser can already act as you
+
+Authenticated sessions carry permissions beyond a password. A browser profile signed into email or another service can read messages, change account settings, or send requests as the user. A password manager can protect the credential, but it does not remove the browser's existing session.
+
+Browser isolation also needs to consider which agent or user can access an authenticated tab. In November 2026, OpenBot published an advisory about releases before 0.74.0: a team member denied access to an agent could still view its authenticated browser tabs. Version 0.74.0 fixed that issue.
+
+For this experiment, the bot should not open a browser signed into the user's personal mailbox. If a task needs email, a test account with narrow permissions is safer. Use one-shot execution for a one-off task; recurring work needs run limits and spending caps so one mistake does not repeat unattended.
+
+API credentials have the same risk in less visible form. A token scoped to read one repository can support a review without permitting unrelated repositories. A token with write access gives a mistaken command a remote side effect. The account's permissions still apply even when the command runs inside a VM.
+
+### Reading somebody else's document can change what the agent does next
+
+Content supplied to an agent can also change the agent's behavior. A page or document may contain text instructing it to send data, change a file, or perform another action. A person may recognize that the document is not authorized to issue new work. A model receiving the text as input can treat it as an instruction. This is **indirect prompt injection**, and it can occur alongside an otherwise legitimate task.
+
+> You can receive an indirect prompt injection when you ask the agent to check a product detail page on an e-commerce site and, because of a platform fault, the agent reads a malicious instruction in the user comments section.
+
+Prompt injection becomes more serious when data access and transmission access exist together. Removing the email connector closes one route, but an unrestricted shell or outbound network can provide another. Sensitive tasks benefit from controlling outbound destinations, or from running entirely offline with a local model.
+
+In the CSV example, the bot could encounter instructions asking it to send the spreadsheet elsewhere. For that task, it does not need email or unrestricted network access. If sending mail is genuinely required, an approval should show the recipient and attachment, not merely ask the user to approve “finish reconciling expenses.”
+
+### A correct answer can still disclose the input
+
+A correct answer does not necessarily keep the input private. A cloud model may receive rows, tool output, or conversation excerpts while producing it. A desktop application, local database, or virtual machine can each participate in that data flow.
+
+Before using real data, check which provider receives the context and whether the data may leave the machine. OpenBot keeps conversation history on the host and sends selected context to its configured provider. The same principle applies to any agent interface that connects to a remote model.
+
+For this experiment, we can avoid that exposure by using made-up expenses.
+
+### An empty guest disk can still have a route back to your computer
+
+Isolation is not complete if the guest can still reach sensitive services on the host or local network. Binding a service to `127.0.0.1` prevents other machines on the Wi-Fi from connecting directly. A virtualization or container network can still provide a route to that loopback service from the guest.
+
+In the Lima setup used later, the default user-mode network exposes host services through `host.lima.internal`. A local API that trusts loopback traffic could receive requests from the guest. We will disable that host route and verify the boundary with an ordinary text file.
+
+## How much isolation does one simple assistant need?
+
+In [Code Isolation in Sandboxes, Containers, and MicroVMs](/posts/how-process-sandboxes-containers-and-microvms-isolate-code/), I followed a file read and a network connection through different execution environments. Here I'd use those same two operations to decide what to run on the laptop.
+
+| Option | What it buys you for this task | What still deserves a look |
+| --- | --- | --- |
+| Separate OS user | A fresh home directory and browser profile. File permissions can keep the main user's private documents out. | Shared directories and reachable services remain available. Signing into the same accounts brings their permissions back. |
+| Process sandbox | A policy can restrict file access to the input copy and the output directory. | Check that the policy covers child commands and network access. The agent's working directory alone enforces neither. |
+| Container | You choose the image and which host paths appear inside it. Mounting just the copy is enough for this job. | A mount of your home, a forwarded SSH agent, or access to a container engine socket grants additional capabilities. On macOS, also check which paths the container runtime shares with its Linux VM. |
+| Dedicated VM or microVM | A separate guest kernel and disk give the bot a place to run its own tools. You can discard the whole guest after the experiment. | Shared folders, host services, outbound connections, and accounts you sign into are still decisions you make. |
+
+For this tutorial, I'll use a MacBook setup: a headless Ubuntu VM with Lima and Apple's `vz` virtualization backend to show how to isolate OpenBot. OpenBot supports that split as a self-hosted server, so you don't need a second desktop to install. A small VM is sufficient here. What protects the tax return is keeping it off the guest disk, out of shared mounts, and out of the accounts the guest can reach.
+
+## Creating the VM
+
+You'll need Homebrew, Python 3 on the Mac for a temporary HTTP check, and **Lima 2.3 or later**. Version 2.3 added the loopback setting used below for `vz` with its default user-mode network. The setting leaves outbound access enabled, including routes to LAN or VPN services when those networks allow it. If your work VPN exposes sensitive services, disconnect it and use a guest network with internet-only access for this exercise.
+
+In a **Mac terminal**, install Lima with `brew install lima`, or use `brew upgrade lima` if you have an older Homebrew installation. Check `limactl --version`.
+
+Use a fresh instance name for the test so you can delete it later without touching any other VM.
+
+```sh
+limactl create --name=bot-lab --vm-type=vz --plain \
+  --cpus=4 --memory=8 --disk=40 \
+  --set='.networkOpts.hostLoopback = false | .ssh.forwardAgent = false | .ssh.loadDotSSHPubKeys = false | .propagateProxyEnv = false' \
+  template:ubuntu-24.04
+limactl start bot-lab
+```
+
+`--name=bot-lab` gives the VM a recognizable name, while `--vm-type=vz` asks Lima to use Apple's virtualization backend. `--plain` disables host directory mounts and automatic application port forwarding. This leaves file sharing disabled unless you enable it later.
+
+The resource flags set the VM to 4 CPUs, 8 GB of memory, and 40 GB of disk. The `--set` option disables four routes from the guest to the host:
+
+- `networkOpts.hostLoopback=false` prevents the guest from reaching host services through loopback.
+- `ssh.forwardAgent=false` does not forward the Mac's SSH agent socket into the VM.
+- `ssh.loadDotSSHPubKeys=false` does not copy the Mac's SSH public keys into the guest.
+- `propagateProxyEnv=false` prevents proxy variables from the launching process from entering the VM.
+
+Finally, `template:ubuntu-24.04` chooses the Ubuntu 24.04 base image and `limactl start bot-lab` starts the instance.
+
+## Check the boundary before installing the bot
+
+In a **second Mac terminal**, serve one harmless file on loopback. Giving the server a fresh directory matters. Python's HTTP server would otherwise serve the directory where you started it.
+
+```sh
+probe_dir=$(mktemp -d)
+printf 'mac-only\n' > "$probe_dir/marker.txt"
+printf 'Marker path on the Mac: %s/marker.txt\n' "$probe_dir"
+python3 -m http.server 18765 --bind 127.0.0.1 --directory "$probe_dir"
+```
+
+Keep that terminal open. Back in the **first Mac terminal**, check that the service is actually listening, then open the Ubuntu shell.
+
+```sh
+curl --noproxy '*' -fsS http://127.0.0.1:18765/marker.txt
+limactl shell --workdir=/tmp bot-lab
+```
+
+The terminal should print `mac-only`. The `limactl shell` command opens an Ubuntu terminal inside the VM. Its prompt changes from the Mac prompt to the Ubuntu prompt, usually similar to `ubuntu@lima-bot-lab:~$`.
+
+Now run the following commands in that Ubuntu terminal. `findmnt` lists the common Lima file-sharing mounts, and the second command checks whether an SSH agent socket was forwarded. For this setup, expect no mounts in the first command and `unset` in the second. You can also try `ls` with the exact marker path printed on the Mac. The guest should report that the file does not exist.
+
+```sh
+findmnt -rn -t virtiofs,9p,fuse.sshfs -o TARGET,SOURCE
+printf 'Forwarded SSH agent: %s\n' "${SSH_AUTH_SOCK:-unset}"
+getent hosts host.lima.internal
+curl --noproxy '*' --max-time 5 -fsS http://host.lima.internal:18765/marker.txt
+curl -fsSL -o /dev/null -w 'External HTTP status: %{http_code}\n' https://github.com
+```
+
+`host.lima.internal` is Lima's host address from inside the guest.
+
+The expected result is that the marker request fails while the request to GitHub succeeds. This shows that Ubuntu has internet access but cannot reach the Mac's loopback service. If Ubuntu prints `mac-only`, stop and check the Lima version, backend, and network configuration. The host route is still available.
+
+If both marker requests fail, the test cannot prove isolation: the Mac server may not be running or it may be listening on a different interface. Once you see the expected difference, press `Ctrl-C` in the Mac terminal running Python. This test covers only the loopback route. A service listening on the Mac's LAN address may still be reachable from Ubuntu.
+
+Keep this Ubuntu terminal open for the installation in the next section.
+
+## Install OpenBot inside Ubuntu
+
+Stay in the **Ubuntu shell**. The installer needs `sudo` in this disposable guest to install packages and a system service. Download the script to a file so you can read it first. The installer script is pinned to the release used for this guide. The script itself downloads the current OpenBot release and checks its SHA-512 against the project's release manifest, so check the installed version afterwards.
+
+```sh
+cd /tmp
+curl -fsSLo openbot-install.sh https://raw.githubusercontent.com/nightly-labs/openbot/v0.81.0/scripts/install-server.sh
+less openbot-install.sh
+sudo bash openbot-install.sh
+sudo openbot status
+```
+
+The first commands save the installer to `/tmp` and open it in `less`. Read it before continuing, then press `q` to return to the Ubuntu shell. `sudo bash openbot-install.sh` is the privilege boundary: it lets the script install system packages and create the OpenBot service. `sudo openbot status` checks the service without changing it.
+
+On Ubuntu 24.04.5 ARM64, OpenBot 0.81.0 should report a signed-out, unconfigured server before sign-in:
+
+```text
+OpenBot 0.81.0
+Account: signed out. Sign in with: openbot login
+Server: unconfigured
+```
+
+If `openbot status` instead says, “Run this with sudo, or as the user openbot,” you ran the command through the Lima login user, not through the installed service user. `sudo openbot status` avoids that permission issue.
+
+The installer creates a Linux service user named `openbot`. Use that account for the rest of the setup so the file permissions match the service. Give it a small CSV with no personal information, stored inside the guest:
+
+```sh
+sudo -u openbot -H sh -c 'mkdir -p "$HOME/csv-lab" && cat > "$HOME/csv-lab/expenses.csv"' <<'CSV'
+category,amount
+transport,12.50
+food,8.00
+transport,7.50
+CSV
+getent passwd openbot | cut -d: -f6
+```
+
+This avoids an easy permissions mistake: a file in the Lima login user's private home may be unreadable to the `openbot` service account. With the default installer, `getent passwd` should print `/var/lib/openbot` as the service user's home. Use that path below unless the command prints a different value.
+
+Next, register the VM under a **dedicated OpenBot test account**. The login command prints a one-time code and asks you to enter it in your own mail client. Use the code to authenticate this server, without opening your personal mailbox inside the guest.
+
+```sh
+sudo openbot login --name csv-lab
+sudo openbot status
+```
+
+## Connect from the Mac's browser
+
+The VM, network checks, service startup, and CSV permissions should now be in place. The steps below use a fresh browser profile and the dedicated test account. They also keep all personal accounts and connectors out of the experiment.
+
+“Local-first” does not mean every part of this setup runs offline. OpenBot, for example, can execute the agent and keep its files on the server you control, while the browser interface, account sign-in, and model provider may use external services. For this experiment, the boundary is the VM and its guest data, not an absolute guarantee that no service receives network traffic.
+
+1. In a fresh browser profile on the **Mac**, open `https://openbot.run/app`. This URL serves the OpenBot web interface, not the server inside the VM. Sign in with the dedicated test account, select `csv-lab` in the server list, and connect the browser to the server running in Ubuntu. The server can offer provider setup before you create the first agent.
+2. Choose **OpenCode**. If the server shows **Download**, install the provider from the server. Then choose **Connect** and select a model marked **Free**. If no free model is available, stop or configure a provider with dedicated test credentials. Do not use a personal provider account for this experiment.
+3. Create an agent named `Expense reader` on `csv-lab`. Select the provider and model you just connected. Leave email, cloud storage, personal browser sessions, and any other connectors out of the agent.
+4. Send this task to the agent:
+
+> Read `/var/lib/openbot/csv-lab/expenses.csv` on this server. Show the total for each category and the grand total. Leave the input file as it is.
+
+The expected answer is **20.00 for transport, 8.00 for food, and 28.00 overall**. Before trusting the answer, check that the output matches the fixture.
+
+If the agent reports a missing file, first confirm that `csv-lab` is selected. Then return to the Ubuntu shell and run `sudo -u openbot cat /var/lib/openbot/csv-lab/expenses.csv`. This should print the three fixture rows. If the service user's home is different, replace `/var/lib/openbot` with the path printed by `getent passwd openbot`.
+
+There are two different browsers in this setup. The Mac browser displays the control interface and sends the task. The agent's embedded browser, if it uses one, runs on the OpenBot host inside the VM. This task needs neither browser. Uploading a file from the Mac or signing a personal account into the remote browser would deliberately add more access to the experiment.
+
+## What survives deleting the VM?
+
+Cleanup has to cover more than the VM itself. First, stop the OpenBot server in Ubuntu and disconnect it from the test account:
+
+```sh
+sudo openbot logout
+exit
+```
+
+Then sign out in the web app. If you connected a test provider account or created an API key, revoke that grant or key at the provider. These actions also close external dependencies that deleting a local disk cannot remove.
+
+Back in the **Mac terminal**, confirm the instance name before deleting its disk:
+
+```sh
+limactl list
+limactl stop bot-lab
+limactl delete bot-lab
+```
+
+Deleting `bot-lab` removes the guest disk, including the CSV copy, service-user files, and agent history stored in the VM. It does not undo an action that already left the VM. Data sent to a model provider remains subject to that provider's retention rules, and an email already delivered remains in the recipient's inbox.
+
+Sending the expense report later would be a separate permission decision. You would need to choose which account may send it, who receives it, and whether the actual recipient and attachment can be reviewed before the data leaves.
+
+## Conclusion
+
+A VM or container does not make an agent safe by itself. Isolation works only when the file system, network routes, browser sessions, credentials, and model provider align with the task.
+
+For this CSV reconciliation, the smallest useful boundary is a copy of that file in a disposable guest, no shared Mac directories, no personal account, and no unnecessary network route. Lima's plain mode, loopback check, and service-user permissions let you verify those boundaries before the agent receives the task. OpenBot can run the example, but the conclusion applies to any agent with shell, file, browser, or API access.
+
+This example does not remove every risk. A model provider can still receive the input, an agent can be influenced by content it reads, and an action sent outside the VM cannot be undone by deleting the guest. Isolation is therefore a continuing access decision: give the agent the smallest permission set, run it for the shortest necessary time, and review what can cross the boundary before it happens.
+
+## References
+
+- OWASP Gen AI Security Project. [LLM06:2025 Excessive Agency](https://genai.owasp.org/llmrisk/llm062025-excessive-agency/). OWASP Top 10 for Large Language Model Applications, 2025 edition, risk LLM06.
+- OWASP Gen AI Security Project. [LLM01:2025 Prompt Injection](https://genai.owasp.org/llmrisk/llm01-prompt-injection/). OWASP Top 10 for Large Language Model Applications, 2025 edition, risk LLM01.
+- Nightly Labs. [Security Policy](https://github.com/nightly-labs/openbot/blob/v0.81.0/SECURITY.md), [Privacy](https://github.com/nightly-labs/openbot/blob/v0.81.0/PRIVACY.md), and [OpenBot](https://github.com/nightly-labs/openbot/blob/v0.81.0/README.md). Project policies and README, release v0.81.0, November 27, 2026.
+- Sniezka1927. [Member denied an agent (none) can still read its authenticated browser tabs](https://github.com/nightly-labs/openbot/security/advisories/GHSA-x95w-7q8q-gwx5). OpenBot security advisory, GHSA-x95w-7q8q-gwx5, November 26, 2026. Fixed in v0.74.0.
+- Lima project. [v2.3.0](https://github.com/lima-vm/lima/releases/tag/v2.3.0), release notes, November 6, 2026. [Configuration reference](https://github.com/lima-vm/lima/blob/v2.3.0/templates/default.yaml), v2.3.0. [Plain mode](https://lima-vm.io/docs/config/plain/) and [Default user-mode network](https://lima-vm.io/docs/config/network/user/), project documentation.
+- Nightly Labs. [Self-hosted servers](https://github.com/nightly-labs/openbot/blob/v0.81.0/docs/self-hosted-server.md), [Hosted servers](https://github.com/nightly-labs/openbot/blob/v0.81.0/docs/hosted-servers.md#providers), [Web client delivery](https://github.com/nightly-labs/openbot/blob/v0.81.0/docs/web-client.md), and [install-server.sh](https://github.com/nightly-labs/openbot/blob/v0.81.0/scripts/install-server.sh). OpenBot deployment documentation and installer source, release v0.81.0, November 27, 2026.
